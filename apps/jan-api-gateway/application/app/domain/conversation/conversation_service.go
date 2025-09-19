@@ -2,6 +2,7 @@ package conversation
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -273,6 +274,17 @@ func (s *ConversationService) CountItemsByFilter(ctx context.Context, filter Ite
 
 // AddMultipleItems adds multiple items to a conversation in a single transaction
 func (s *ConversationService) AddMultipleItems(ctx context.Context, conversation *Conversation, userID uint, items []*Item) ([]*Item, *common.Error) {
+	// Validate conversation exists and has valid ID
+	if conversation == nil || conversation.ID == 0 {
+		return nil, common.NewErrorWithMessage("Invalid conversation: conversation is nil or has no ID", "m9n0o1p2-q3r4-5678-mnop-901234567890")
+	}
+
+	// Verify conversation actually exists in database
+	_, err := s.conversationRepo.FindByID(ctx, conversation.ID)
+	if err != nil {
+		return nil, common.NewErrorWithMessage("Conversation does not exist in database", "o1p2q3r4-s5t6-7890-opqr-123456789012")
+	}
+
 	// Check access permissions
 	now := time.Now()
 	createdItems := make([]*Item, len(items))
@@ -295,6 +307,10 @@ func (s *ConversationService) AddMultipleItems(ctx context.Context, conversation
 		}
 
 		if err := s.conversationRepo.AddItem(ctx, conversation.ID, item); err != nil {
+			// Check if it's a foreign key constraint error
+			if strings.Contains(err.Error(), "foreign key constraint") {
+				return nil, common.NewErrorWithMessage("Conversation does not exist or foreign key constraint violation", "p2q3r4s5-t6u7-8901-pqrs-234567890123")
+			}
 			return nil, common.NewErrorWithMessage("Failed to add item", "l8m9n0o1-p2q3-4567-lmno-890123456789")
 		}
 

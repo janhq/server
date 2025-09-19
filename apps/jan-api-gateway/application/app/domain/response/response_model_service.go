@@ -14,6 +14,7 @@ import (
 	"menlo.ai/jan-api-gateway/app/domain/common"
 	"menlo.ai/jan-api-gateway/app/domain/conversation"
 	inferencemodelregistry "menlo.ai/jan-api-gateway/app/domain/inference_model_registry"
+	"menlo.ai/jan-api-gateway/app/domain/mcp/serpermcp"
 	"menlo.ai/jan-api-gateway/app/domain/user"
 	requesttypes "menlo.ai/jan-api-gateway/app/interfaces/http/requests"
 	responsetypes "menlo.ai/jan-api-gateway/app/interfaces/http/responses"
@@ -48,6 +49,7 @@ func NewResponseModelService(
 	apikeyService *apikey.ApiKeyService,
 	conversationService *conversation.ConversationService,
 	responseService *ResponseService,
+	serperService *serpermcp.SerperService,
 ) *ResponseModelService {
 	responseModelService := &ResponseModelService{
 		UserService:         userService,
@@ -59,7 +61,7 @@ func NewResponseModelService(
 
 	// Initialize specialized handlers
 	responseModelService.streamModelService = NewStreamModelService(responseModelService)
-	responseModelService.nonStreamModelService = NewNonStreamModelService(responseModelService)
+	responseModelService.nonStreamModelService = NewNonStreamModelService(responseModelService, serperService)
 
 	return responseModelService
 }
