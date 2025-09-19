@@ -637,19 +637,110 @@ func (s *ResponseService) ConvertToChatCompletionRequest(req *requesttypes.Creat
 		})
 	}
 
-	// Add user input as message
+	// Normalize input into chat messages
 	if req.Input != nil {
-		// Try to parse input as JSON array of messages first
-		var messages []openai.ChatCompletionMessage
-		if err := json.Unmarshal([]byte(fmt.Sprintf("%v", req.Input)), &messages); err == nil {
-			// Input is an array of messages
-			chatReq.Messages = append(chatReq.Messages, messages...)
-		} else {
-			// Input is a single string message
+		switch v := req.Input.(type) {
+		case string:
+			if v != "" {
+				chatReq.Messages = append(chatReq.Messages, openai.ChatCompletionMessage{
+					Role:    openai.ChatMessageRoleUser,
+					Content: v,
+				})
+			}
+		case []any:
+			// Can be array of strings or message objects
+			for _, item := range v {
+				switch msg := item.(type) {
+				case string:
+					if msg != "" {
+						chatReq.Messages = append(chatReq.Messages, openai.ChatCompletionMessage{
+							Role:    openai.ChatMessageRoleUser,
+							Content: msg,
+						})
+					}
+				case map[string]any:
+					// Expecting { role: string, content: string }
+					role, _ := msg["role"].(string)
+					content, _ := msg["content"].(string)
+					if role == "" {
+						role = openai.ChatMessageRoleUser
+					}
+					if content != "" {
+						chatReq.Messages = append(chatReq.Messages, openai.ChatCompletionMessage{
+							Role:    role,
+							Content: content,
+						})
+					}
+				}
+			}
+		case map[string]any:
+			// Structured input object: we only support type=text or function_calls
+			if typeVal, ok := v["type"].(string); ok {
+				switch typeVal {
+				case string(requesttypes.InputTypeText):
+					if text, ok := v["text"].(string); ok && text != "" {
+						chatReq.Messages = append(chatReq.Messages, openai.ChatCompletionMessage{
+							Role:    openai.ChatMessageRoleUser,
+							Content: text,
+						})
+					}
+				case string(requesttypes.InputTypeFunctionCalls):
+					// Nothing to add to messages; function tools are configured below via Tools/ToolChoice
+				default:
+					// Unsupported structured type for current scope; ignore here (validator should reject earlier)
+				}
+			}
+		default:
+			// Fallback: stringify
 			chatReq.Messages = append(chatReq.Messages, openai.ChatCompletionMessage{
 				Role:    openai.ChatMessageRoleUser,
 				Content: fmt.Sprintf("%v", req.Input),
 			})
+		}
+	}
+
+	// Map tools (function definitions) to completion request if provided
+	if len(req.Tools) > 0 {
+		tools := make([]openai.Tool, 0, len(req.Tools))
+		for _, t := range req.Tools {
+			if t.Type != "function" || t.Function == nil {
+				continue
+			}
+			// Convert parameters map to json.RawMessage
+			var params json.RawMessage
+			if t.Function.Parameters != nil {
+				if b, err := json.Marshal(t.Function.Parameters); err == nil {
+					params = b
+				}
+			}
+			tools = append(tools, openai.Tool{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        t.Function.Name,
+					Description: "",
+					Parameters:  params,
+				},
+			})
+		}
+		if len(tools) > 0 {
+			chatReq.Tools = tools
+		}
+	}
+
+	// Map tool_choice
+	if req.ToolChoice != nil {
+		switch req.ToolChoice.Type {
+		case "none", "auto":
+			chatReq.ToolChoice = req.ToolChoice.Type
+		case "function":
+			if req.ToolChoice.Function != nil {
+				chatReq.ToolChoice = map[string]any{
+					"type": "function",
+					"function": map[string]any{
+						"name": req.ToolChoice.Function.Name,
+					},
+				}
+			}
 		}
 	}
 
@@ -674,6 +765,10 @@ func (s *ResponseService) ConvertToChatCompletionRequest(req *requesttypes.Creat
 	}
 	if req.User != nil {
 		chatReq.User = *req.User
+	}
+	// Set stream flag for inference if requested
+	if req.Stream != nil {
+		chatReq.Stream = *req.Stream
 	}
 
 	return chatReq

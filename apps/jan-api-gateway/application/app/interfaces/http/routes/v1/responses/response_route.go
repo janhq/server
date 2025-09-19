@@ -3,34 +3,45 @@ package responses
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"menlo.ai/jan-api-gateway/app/domain/apikey"
 	"menlo.ai/jan-api-gateway/app/domain/auth"
+	"menlo.ai/jan-api-gateway/app/domain/common"
+	"menlo.ai/jan-api-gateway/app/domain/conversation"
 	"menlo.ai/jan-api-gateway/app/domain/response"
-
-	requesttypes "menlo.ai/jan-api-gateway/app/interfaces/http/requests"
-	"menlo.ai/jan-api-gateway/app/interfaces/http/responses"
+	"menlo.ai/jan-api-gateway/app/domain/user"
+	responsetypes "menlo.ai/jan-api-gateway/app/interfaces/http/responses"
+	"menlo.ai/jan-api-gateway/app/utils/ptr"
 )
 
-// Use types from the response packages instead of defining internal types
+// moved: ResponseCreationResult now lives in response_model_handler.go
 
 // ResponseRoute represents the response API routes
 type ResponseRoute struct {
-	responseModelService  *response.ResponseModelService
-	authService           *auth.AuthService
-	responseService       *response.ResponseService
-	streamModelService    *response.StreamModelService
-	nonStreamModelService *response.NonStreamModelService
+	userService                 *user.UserService
+	authService                 *auth.AuthService
+	apikeyService               *apikey.ApiKeyService
+	conversationService         *conversation.ConversationService
+	responseService             *response.ResponseService
+	responseStreamingHandler    *ResponseStreamingHandler
+	responseNonStreamingHandler *ResponseNonStreamingHandler
+	responseModelHandler        *ResponseModelHandler
 }
 
 // NewResponseRoute creates a new ResponseRoute instance
-func NewResponseRoute(responseModelService *response.ResponseModelService, authService *auth.AuthService, responseService *response.ResponseService, streamHandler *response.StreamModelService, nonStreamHandler *response.NonStreamModelService) *ResponseRoute {
+func NewResponseRoute(userService *user.UserService, authService *auth.AuthService, apikeyService *apikey.ApiKeyService, conversationService *conversation.ConversationService, responseService *response.ResponseService, responseStreamingHandler *ResponseStreamingHandler, responseNonStreamingHandler *ResponseNonStreamingHandler, responseModelHandler *ResponseModelHandler) *ResponseRoute {
 	return &ResponseRoute{
-		responseModelService:  responseModelService,
-		authService:           authService,
-		responseService:       responseService,
-		streamModelService:    streamHandler,
-		nonStreamModelService: nonStreamHandler,
+		userService:                 userService,
+		authService:                 authService,
+		apikeyService:               apikeyService,
+		conversationService:         conversationService,
+		responseService:             responseService,
+		responseStreamingHandler:    responseStreamingHandler,
+		responseNonStreamingHandler: responseNonStreamingHandler,
+		responseModelHandler:        responseModelHandler,
 	}
 }
 
@@ -52,10 +63,10 @@ func (responseRoute *ResponseRoute) registerRoutes(router *gin.RouterGroup) {
 
 	// Apply response middleware for routes that need response context
 	responseMiddleWare := responseRoute.responseService.GetResponseMiddleWare()
-	responseGroup.GET(fmt.Sprintf("/:%s", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.responseModelService.GetResponseHandler)
-	responseGroup.DELETE(fmt.Sprintf("/:%s", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.responseModelService.DeleteResponseHandler)
-	responseGroup.POST(fmt.Sprintf("/:%s/cancel", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.responseModelService.CancelResponseHandler)
-	responseGroup.GET(fmt.Sprintf("/:%s/input_items", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.responseModelService.ListInputItemsHandler)
+	responseGroup.GET(fmt.Sprintf("/:%s", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.GetResponseHandler)
+	responseGroup.DELETE(fmt.Sprintf("/:%s", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.DeleteResponseHandler)
+	responseGroup.POST(fmt.Sprintf("/:%s/cancel", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.CancelResponseHandler)
+	responseGroup.GET(fmt.Sprintf("/:%s/input_items", string(response.ResponseContextKeyPublicID)), responseMiddleWare, responseRoute.ListInputItemsHandler)
 }
 
 // CreateResponse creates a new response from LLM
@@ -132,100 +143,36 @@ func (responseRoute *ResponseRoute) registerRoutes(router *gin.RouterGroup) {
 // @Param request body requesttypes.CreateResponseRequest true "Request payload containing model, input, and generation parameters"
 // @Success 200 {object} responses.Response "Created response"
 // @Success 202 {object} responses.Response "Response accepted for background processing"
-// @Failure 400 {object} responses.ErrorResponse "Invalid request payload"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 422 {object} responses.ErrorResponse "Validation error"
-// @Failure 429 {object} responses.ErrorResponse "Rate limit exceeded"
-// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Failure 400 {object} responsetypes.ErrorResponse "Invalid request payload"
+// @Failure 401 {object} responsetypes.ErrorResponse "Unauthorized"
+// @Failure 422 {object} responsetypes.ErrorResponse "Validation error"
+// @Failure 429 {object} responsetypes.ErrorResponse "Rate limit exceeded"
+// @Failure 500 {object} responsetypes.ErrorResponse "Internal server error"
 // @Router /v1/responses [post]
 func (responseRoute *ResponseRoute) CreateResponse(reqCtx *gin.Context) {
-	ctx := reqCtx.Request.Context()
 	user, _ := auth.GetUserFromContext(reqCtx)
 	userID := user.ID
 
-	var request requesttypes.CreateResponseRequest
-	if err := reqCtx.ShouldBindJSON(&request); err != nil {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
-			Code: "g7h8i9j0-k1l2-3456-ghij-789012345678",
-		})
-		return
-	}
-
-	// Validate request parameters
-	if request.Model == "" {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
-			Code: "h8i9j0k1-l2m3-4567-hijk-890123456789",
-		})
-		return
-	}
-
-	if request.Input == nil {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
-			Code: "i9j0k1l2-m3n4-5678-ijkl-901234567890",
-		})
-		return
-	}
-
-	// Convert to domain request type
-	domainRequest := &requesttypes.CreateResponseRequest{
-		Model:              request.Model,
-		Input:              request.Input,
-		Stream:             request.Stream,
-		Temperature:        request.Temperature,
-		MaxTokens:          request.MaxTokens,
-		PreviousResponseID: request.PreviousResponseID,
-		SystemPrompt:       request.SystemPrompt,
-		TopP:               request.TopP,
-		TopK:               request.TopK,
-		RepetitionPenalty:  request.RepetitionPenalty,
-		Seed:               request.Seed,
-		Stop:               request.Stop,
-		PresencePenalty:    request.PresencePenalty,
-		FrequencyPenalty:   request.FrequencyPenalty,
-		LogitBias:          request.LogitBias,
-		ResponseFormat:     request.ResponseFormat,
-		Tools:              request.Tools,
-		ToolChoice:         request.ToolChoice,
-		Metadata:           request.Metadata,
-		Background:         request.Background,
-		Timeout:            request.Timeout,
-		User:               request.User,
-		Conversation:       request.Conversation,
-		Store:              request.Store,
-	}
-
-	// Call domain service (pure business logic)
-	result, err := responseRoute.responseModelService.CreateResponse(ctx, userID, domainRequest)
+	// Parse and validate the request
+	domainRequest, err := responseRoute.responseModelHandler.parseAndValidateRequest(reqCtx)
 	if err != nil {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
-			Code:  err.GetCode(),
-			Error: err.Error(),
+		return // Error response already sent
+	}
+
+	// Validate the request
+	success, validationErr := ValidateCreateResponseRequest(domainRequest)
+	if !success {
+		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responsetypes.ErrorResponse{
+			Code:  validationErr.GetCode(),
+			Error: validationErr.Error(),
 		})
 		return
 	}
 
-	// Handle HTTP/SSE concerns directly
-	responseRoute.handleResponseCreation(reqCtx, result, domainRequest)
+	responseRoute.responseModelHandler.ProcessResponseRequest(reqCtx, domainRequest, userID)
 }
 
-// handleResponseCreation handles both streaming and non-streaming response creation
-func (responseRoute *ResponseRoute) handleResponseCreation(reqCtx *gin.Context, result *response.ResponseCreationResult, request *requesttypes.CreateResponseRequest) {
-	// Set up streaming headers if needed
-	if result.IsStreaming {
-		reqCtx.Header("Content-Type", "text/event-stream")
-		reqCtx.Header("Cache-Control", "no-cache")
-		reqCtx.Header("Connection", "keep-alive")
-		reqCtx.Header("Access-Control-Allow-Origin", "*")
-		reqCtx.Header("Access-Control-Allow-Headers", "Cache-Control")
-	}
-
-	// Delegate to appropriate handler based on streaming preference
-	if result.IsStreaming {
-		responseRoute.streamModelService.CreateStreamResponse(reqCtx, request, result.APIKey, result.Conversation, result.Response, result.ChatCompletionRequest)
-	} else {
-		responseRoute.nonStreamModelService.CreateNonStreamResponseHandler(reqCtx, request, result.APIKey, result.Conversation, result.Response, result.ChatCompletionRequest)
-	}
-}
+// moved handleResponseCreation to response_model_handler.go
 
 // GetResponse retrieves a response by ID
 // @Summary Get a response
@@ -247,11 +194,11 @@ func (responseRoute *ResponseRoute) handleResponseCreation(reqCtx *gin.Context, 
 // @Produce json
 // @Param response_id path string true "Unique identifier of the response"
 // @Success 200 {object} responses.Response "Response details"
-// @Failure 400 {object} responses.ErrorResponse "Invalid request"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Access denied"
-// @Failure 404 {object} responses.ErrorResponse "Response not found"
-// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Failure 400 {object} responsetypes.ErrorResponse "Invalid request"
+// @Failure 401 {object} responsetypes.ErrorResponse "Unauthorized"
+// @Failure 403 {object} responsetypes.ErrorResponse "Access denied"
+// @Failure 404 {object} responsetypes.ErrorResponse "Response not found"
+// @Failure 500 {object} responsetypes.ErrorResponse "Internal server error"
 // @Router /v1/responses/{response_id} [get]
 func (responseRoute *ResponseRoute) GetResponse(reqCtx *gin.Context) {
 	resp, ok := response.GetResponseFromContext(reqCtx)
@@ -283,17 +230,17 @@ func (responseRoute *ResponseRoute) GetResponse(reqCtx *gin.Context) {
 // @Produce json
 // @Param response_id path string true "Unique identifier of the response"
 // @Success 200 {object} responses.Response "Deleted response"
-// @Failure 400 {object} responses.ErrorResponse "Invalid request"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Access denied"
-// @Failure 404 {object} responses.ErrorResponse "Response not found"
-// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Failure 400 {object} responsetypes.ErrorResponse "Invalid request"
+// @Failure 401 {object} responsetypes.ErrorResponse "Unauthorized"
+// @Failure 403 {object} responsetypes.ErrorResponse "Access denied"
+// @Failure 404 {object} responsetypes.ErrorResponse "Response not found"
+// @Failure 500 {object} responsetypes.ErrorResponse "Internal server error"
 // @Router /v1/responses/{response_id} [delete]
 func (responseRoute *ResponseRoute) DeleteResponse(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 	resp, ok := response.GetResponseFromContext(reqCtx)
 	if !ok {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responsetypes.ErrorResponse{
 			Code: "k1l2m3n4-o5p6-7890-klmn-123456789012",
 		})
 		return
@@ -301,7 +248,7 @@ func (responseRoute *ResponseRoute) DeleteResponse(reqCtx *gin.Context) {
 
 	success, err := responseRoute.responseService.DeleteResponse(ctx, resp.ID)
 	if !success {
-		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, responsetypes.ErrorResponse{
 			Code:  err.GetCode(),
 			Error: err.Error(),
 		})
@@ -332,17 +279,17 @@ func (responseRoute *ResponseRoute) DeleteResponse(reqCtx *gin.Context) {
 // @Produce json
 // @Param response_id path string true "Unique identifier of the response to cancel"
 // @Success 200 {object} responses.Response "Response cancelled successfully"
-// @Failure 400 {object} responses.ErrorResponse "Invalid request or response cannot be cancelled"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Access denied"
-// @Failure 404 {object} responses.ErrorResponse "Response not found"
-// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Failure 400 {object} responsetypes.ErrorResponse "Invalid request or response cannot be cancelled"
+// @Failure 401 {object} responsetypes.ErrorResponse "Unauthorized"
+// @Failure 403 {object} responsetypes.ErrorResponse "Access denied"
+// @Failure 404 {object} responsetypes.ErrorResponse "Response not found"
+// @Failure 500 {object} responsetypes.ErrorResponse "Internal server error"
 // @Router /v1/responses/{response_id}/cancel [post]
 func (responseRoute *ResponseRoute) CancelResponse(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 	resp, ok := response.GetResponseFromContext(reqCtx)
 	if !ok {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responsetypes.ErrorResponse{
 			Code: "m3n4o5p6-q7r8-9012-mnop-345678901234",
 		})
 		return
@@ -352,7 +299,7 @@ func (responseRoute *ResponseRoute) CancelResponse(reqCtx *gin.Context) {
 	// Cancel the stream if it is streaming in go routine and update response status in go routine
 	success, err := responseRoute.responseService.UpdateResponseStatus(ctx, resp.ID, response.ResponseStatusCancelled)
 	if !success {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responsetypes.ErrorResponse{
 			Code:  err.GetCode(),
 			Error: err.Error(),
 		})
@@ -362,7 +309,7 @@ func (responseRoute *ResponseRoute) CancelResponse(reqCtx *gin.Context) {
 	// Reload the response to get updated status
 	updatedResp, err := responseRoute.responseService.GetResponseByPublicID(ctx, resp.PublicID)
 	if err != nil {
-		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, responsetypes.ErrorResponse{
 			Code:  err.GetCode(),
 			Error: err.Error(),
 		})
@@ -413,18 +360,18 @@ func (responseRoute *ResponseRoute) CancelResponse(reqCtx *gin.Context) {
 // @Param limit query int false "Maximum number of items to return (default: 20, max: 100)"
 // @Param after query string false "Cursor for pagination - return items after this ID"
 // @Param before query string false "Cursor for pagination - return items before this ID"
-// @Success 200 {object} responses.ListInputItemsResponse "List of input items"
-// @Failure 400 {object} responses.ErrorResponse "Invalid request or pagination parameters"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Access denied"
-// @Failure 404 {object} responses.ErrorResponse "Response not found"
-// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Success 200 {object} responsetypes.ListInputItemsResponse "List of input items"
+// @Failure 400 {object} responsetypes.ErrorResponse "Invalid request or pagination parameters"
+// @Failure 401 {object} responsetypes.ErrorResponse "Unauthorized"
+// @Failure 403 {object} responsetypes.ErrorResponse "Access denied"
+// @Failure 404 {object} responsetypes.ErrorResponse "Response not found"
+// @Failure 500 {object} responsetypes.ErrorResponse "Internal server error"
 // @Router /v1/responses/{response_id}/input_items [get]
 func (responseRoute *ResponseRoute) ListInputItems(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 	resp, ok := response.GetResponseFromContext(reqCtx)
 	if !ok {
-		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusBadRequest, responsetypes.ErrorResponse{
 			Code: "p6q7r8s9-t0u1-2345-pqrs-678901234567",
 		})
 		return
@@ -433,7 +380,7 @@ func (responseRoute *ResponseRoute) ListInputItems(reqCtx *gin.Context) {
 	// Get items for this response using the response service
 	items, err := responseRoute.responseService.GetItemsForResponse(ctx, resp.ID, nil)
 	if err != nil {
-		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, responses.ErrorResponse{
+		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, responsetypes.ErrorResponse{
 			Code:  err.GetCode(),
 			Error: err.Error(),
 		})
@@ -448,13 +395,13 @@ func (responseRoute *ResponseRoute) ListInputItems(reqCtx *gin.Context) {
 	}
 
 	// Convert conversation items to input items using the service
-	inputItems := make([]responses.InputItem, 0, len(items))
+	inputItems := make([]responsetypes.InputItem, 0, len(items))
 	for _, item := range items {
 		inputItem := responseRoute.responseService.ConvertConversationItemToInputItem(item)
 		inputItems = append(inputItems, inputItem)
 	}
 
-	reqCtx.JSON(http.StatusOK, responses.ListInputItemsResponse{
+	reqCtx.JSON(http.StatusOK, responsetypes.ListInputItemsResponse{
 		Object:  "list",
 		Data:    inputItems,
 		FirstID: firstId,
@@ -463,4 +410,274 @@ func (responseRoute *ResponseRoute) ListInputItems(reqCtx *gin.Context) {
 	})
 }
 
-// All transformation functions removed - now using service methods
+// moved createResponse to response_model_handler.go
+
+// GetResponseHandler handles the business logic for getting a response
+func (h *ResponseRoute) GetResponseHandler(reqCtx *gin.Context) {
+	// Get response from middleware context
+	responseEntity, ok := GetResponseFromContext(reqCtx)
+	if !ok {
+		// Fallback: load by public ID if middleware didn't set context
+		publicID := reqCtx.Param(string(response.ResponseContextKeyPublicID))
+		if publicID != "" {
+			if resp, err := h.responseService.GetResponseByPublicID(reqCtx, publicID); err == nil && resp != nil {
+				if user, okUser := auth.GetUserFromContext(reqCtx); okUser && resp.UserID == user.ID {
+					responseEntity = resp
+					ok = true
+				}
+			}
+		}
+	}
+	if !ok {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "response not found in context")
+		return
+	}
+
+	result, err := h.getResponse(responseEntity)
+	if err != nil {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, err.GetCode(), err.Error())
+		return
+	}
+
+	h.sendSuccessResponse(reqCtx, result)
+}
+
+// DeleteResponseHandler handles the business logic for deleting a response
+func (h *ResponseRoute) DeleteResponseHandler(reqCtx *gin.Context) {
+	// Get response from middleware context
+	responseEntity, ok := GetResponseFromContext(reqCtx)
+	if !ok {
+		publicID := reqCtx.Param(string(response.ResponseContextKeyPublicID))
+		if publicID != "" {
+			if resp, err := h.responseService.GetResponseByPublicID(reqCtx, publicID); err == nil && resp != nil {
+				if user, okUser := auth.GetUserFromContext(reqCtx); okUser && resp.UserID == user.ID {
+					responseEntity = resp
+					ok = true
+				}
+			}
+		}
+	}
+	if !ok {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, "b2c3d4e5-f6g7-8901-bcde-f23456789012", "response not found in context")
+		return
+	}
+
+	result, err := h.deleteResponse(reqCtx, responseEntity)
+	if err != nil {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, err.GetCode(), err.Error())
+		return
+	}
+
+	h.sendSuccessResponse(reqCtx, result)
+}
+
+// CancelResponseHandler handles the business logic for cancelling a response
+func (h *ResponseRoute) CancelResponseHandler(reqCtx *gin.Context) {
+	// Get response from middleware context
+	responseEntity, ok := GetResponseFromContext(reqCtx)
+	if !ok {
+		publicID := reqCtx.Param(string(response.ResponseContextKeyPublicID))
+		if publicID != "" {
+			if resp, err := h.responseService.GetResponseByPublicID(reqCtx, publicID); err == nil && resp != nil {
+				if user, okUser := auth.GetUserFromContext(reqCtx); okUser && resp.UserID == user.ID {
+					responseEntity = resp
+					ok = true
+				}
+			}
+		}
+	}
+	if !ok {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, "d4e5f6g7-h8i9-0123-defg-456789012345", "response not found in context")
+		return
+	}
+
+	result, err := h.cancelResponse(responseEntity)
+	if err != nil {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, err.GetCode(), err.Error())
+		return
+	}
+
+	h.sendSuccessResponse(reqCtx, result)
+}
+
+// ListInputItemsHandler handles the business logic for listing input items
+func (h *ResponseRoute) ListInputItemsHandler(reqCtx *gin.Context) {
+	// Get response from middleware context
+	responseEntity, ok := GetResponseFromContext(reqCtx)
+	if !ok {
+		publicID := reqCtx.Param(string(response.ResponseContextKeyPublicID))
+		if publicID != "" {
+			if resp, err := h.responseService.GetResponseByPublicID(reqCtx, publicID); err == nil && resp != nil {
+				if user, okUser := auth.GetUserFromContext(reqCtx); okUser && resp.UserID == user.ID {
+					responseEntity = resp
+					ok = true
+				}
+			}
+		}
+	}
+	if !ok {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, "e5f6g7h8-i9j0-1234-efgh-567890123456", "response not found in context")
+		return
+	}
+
+	result, err := h.listInputItems(reqCtx, responseEntity)
+	if err != nil {
+		h.sendErrorResponse(reqCtx, http.StatusBadRequest, err.GetCode(), err.Error())
+		return
+	}
+
+	reqCtx.JSON(http.StatusOK, result)
+}
+
+// getResponse performs the business logic for getting a response
+func (h *ResponseRoute) getResponse(responseEntity *response.Response) (responsetypes.Response, *common.Error) {
+	// Convert domain response to API response using domain service
+	apiResponse := h.responseService.ConvertDomainResponseToAPIResponse(responseEntity)
+	return apiResponse, nil
+}
+
+// deleteResponse performs the business logic for deleting a response
+func (h *ResponseRoute) deleteResponse(reqCtx *gin.Context, responseEntity *response.Response) (responsetypes.Response, *common.Error) {
+	// Delete the response from database
+	success, err := h.responseService.DeleteResponse(reqCtx, responseEntity.ID)
+	if !success {
+		return responsetypes.Response{}, err
+	}
+
+	// Return the deleted response data
+	deletedResponse := responsetypes.Response{
+		ID:          responseEntity.PublicID,
+		Object:      "response",
+		Created:     responseEntity.CreatedAt.Unix(),
+		Model:       responseEntity.Model,
+		Status:      responsetypes.ResponseStatusCancelled,
+		CancelledAt: ptr.ToInt64(time.Now().Unix()),
+	}
+
+	return deletedResponse, nil
+}
+
+// cancelResponse performs the business logic for cancelling a response
+func (h *ResponseRoute) cancelResponse(responseEntity *response.Response) (responsetypes.Response, *common.Error) {
+	// TODO: Implement actual cancellation logic
+	// For now, return the response with cancelled status
+	mockResponse := responsetypes.Response{
+		ID:          responseEntity.PublicID,
+		Object:      "response",
+		Created:     responseEntity.CreatedAt.Unix(),
+		Model:       responseEntity.Model,
+		Status:      responsetypes.ResponseStatusCancelled,
+		CancelledAt: ptr.ToInt64(time.Now().Unix()),
+	}
+
+	return mockResponse, nil
+}
+
+// listInputItems performs the business logic for listing input items
+func (h *ResponseRoute) listInputItems(reqCtx *gin.Context, responseEntity *response.Response) (responsetypes.OpenAIListResponse[responsetypes.InputItem], *common.Error) {
+	// Parse pagination parameters
+	limit := 20 // default limit
+	if limitStr := reqCtx.Query("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 100 {
+			limit = parsedLimit
+		}
+	}
+
+	// Get input items for the response (only user role messages)
+	userRole := conversation.ItemRole("user")
+	items, err := h.responseService.GetItemsForResponse(reqCtx, responseEntity.ID, &userRole)
+	if err != nil {
+		return responsetypes.OpenAIListResponse[responsetypes.InputItem]{}, err
+	}
+
+	// Convert conversation items to input items using domain service
+	inputItems := make([]responsetypes.InputItem, 0, len(items))
+	for _, item := range items {
+		inputItem := h.responseService.ConvertConversationItemToInputItem(item)
+		inputItems = append(inputItems, inputItem)
+	}
+
+	// Apply pagination (simple implementation - in production you'd want cursor-based pagination)
+	after := reqCtx.Query("after")
+	before := reqCtx.Query("before")
+
+	var paginatedItems []responsetypes.InputItem
+	var hasMore bool
+
+	if after != "" {
+		// Find items after the specified ID
+		found := false
+		for _, item := range inputItems {
+			if found {
+				paginatedItems = append(paginatedItems, item)
+				if len(paginatedItems) >= limit {
+					break
+				}
+			}
+			if item.ID == after {
+				found = true
+			}
+		}
+	} else if before != "" {
+		// Find items before the specified ID
+		for _, item := range inputItems {
+			if item.ID == before {
+				break
+			}
+			paginatedItems = append(paginatedItems, item)
+			if len(paginatedItems) >= limit {
+				break
+			}
+		}
+	} else {
+		// No pagination, return first N items
+		if len(inputItems) > limit {
+			paginatedItems = inputItems[:limit]
+			hasMore = true
+		} else {
+			paginatedItems = inputItems
+		}
+	}
+
+	// Set pagination metadata
+	var firstID, lastID *string
+	if len(paginatedItems) > 0 {
+		firstID = &paginatedItems[0].ID
+		lastID = &paginatedItems[len(paginatedItems)-1].ID
+	}
+
+	status := responsetypes.ResponseCodeOk
+	objectType := responsetypes.ObjectTypeList
+
+	return responsetypes.OpenAIListResponse[responsetypes.InputItem]{
+		JanStatus: &status,
+		Object:    &objectType,
+		HasMore:   &hasMore,
+		FirstID:   firstID,
+		LastID:    lastID,
+		T:         paginatedItems,
+	}, nil
+}
+
+// sendErrorResponse sends a standardized error response
+func (h *ResponseRoute) sendErrorResponse(reqCtx *gin.Context, statusCode int, errorCode, errorMessage string) {
+	reqCtx.AbortWithStatusJSON(statusCode, responsetypes.ErrorResponse{
+		Code:  errorCode,
+		Error: errorMessage,
+	})
+}
+
+// sendSuccessResponse sends a standardized success response
+func (h *ResponseRoute) sendSuccessResponse(reqCtx *gin.Context, data any) {
+	reqCtx.JSON(http.StatusOK, data.(responsetypes.Response))
+}
+
+// GetResponseFromContext extracts response from gin context
+func GetResponseFromContext(reqCtx *gin.Context) (*response.Response, bool) {
+	responseEntity, exists := reqCtx.Get(string(response.ResponseContextEntity))
+	if !exists {
+		return nil, false
+	}
+	response, ok := responseEntity.(*response.Response)
+	return response, ok
+}

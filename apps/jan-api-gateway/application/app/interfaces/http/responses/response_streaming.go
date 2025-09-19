@@ -352,8 +352,8 @@ type ResponseOutputFunctionCallsDeltaEvent struct {
 
 // FunctionCallDelta represents a delta for function call
 type FunctionCallDelta struct {
-	Name      string                 `json:"name"`
-	Arguments map[string]any `json:"arguments"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
 
 // FunctionCallsDelta represents a delta for function calls output

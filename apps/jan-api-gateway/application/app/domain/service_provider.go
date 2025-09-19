@@ -22,8 +22,5 @@ var ServiceProvider = wire.NewSet(
 	user.NewService,
 	conversation.NewService,
 	response.NewResponseService,
-	response.NewResponseModelService,
-	response.NewStreamModelService,
-	response.NewNonStreamModelService,
 	serpermcp.NewSerperService,
 )

@@ -1,4 +1,4 @@
-package response
+package responses
 
 import (
 	"fmt"
@@ -131,51 +131,36 @@ func validateInput(input any) *[]ValidationError {
 				Message: "input string cannot be empty",
 			})
 		}
-	case []any:
-		if len(v) == 0 {
+	case map[string]any:
+		// Only support structured input of type "text" or "function_calls"
+		structuredInput := convertToCreateResponseInput(v)
+		if structuredInput == nil {
 			errors = append(errors, ValidationError{
 				Field:   "input",
-				Message: "input array cannot be empty",
+				Message: "unsupported structured input; only type 'text' or 'function_calls' is allowed",
 			})
+			break
 		}
-		for i, item := range v {
-			switch itemVal := item.(type) {
-			case string:
-				if itemVal == "" {
-					errors = append(errors, ValidationError{
-						Field:   fmt.Sprintf("input[%d]", i),
-						Message: "input array string items cannot be empty",
-					})
-				}
-			case map[string]any:
-				// Validate message object format
-				if err := validateMessageObject(itemVal, i); err != nil {
-					errors = append(errors, *err...)
-				}
-			default:
-				errors = append(errors, ValidationError{
-					Field:   fmt.Sprintf("input[%d]", i),
-					Message: "input array items must be strings or message objects with 'role' and 'content'",
-				})
-			}
+		if structuredInput.Type != requesttypes.InputTypeText && structuredInput.Type != requesttypes.InputTypeFunctionCalls {
+			errors = append(errors, ValidationError{
+				Field:   "input.type",
+				Message: "only 'text' and 'function_calls' input types are supported",
+			})
+			break
 		}
-	case map[string]any:
-		// Check if this is a structured CreateResponseInput object
-		if structuredInput := convertToCreateResponseInput(v); structuredInput != nil {
-			// Delegate to structured input validation
-			if err := validateCreateResponseInput(structuredInput); err != nil {
-				errors = append(errors, *err...)
-			}
-		} else {
-			// Treat as a single message object
-			if err := validateMessageObject(v, 0); err != nil {
-				errors = append(errors, *err...)
-			}
+		if err := validateCreateResponseInput(structuredInput); err != nil {
+			errors = append(errors, *err...)
 		}
+	case []any:
+		// Not supported in current scope
+		errors = append(errors, ValidationError{
+			Field:   "input",
+			Message: "array input is not supported; use a string or {type: 'text'|'function_calls', ...}",
+		})
 	default:
 		errors = append(errors, ValidationError{
 			Field:   "input",
-			Message: "input must be a string, array of strings/message objects, or structured input object",
+			Message: "input must be a string or structured object with type 'text' or 'function_calls'",
 		})
 	}
 
