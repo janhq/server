@@ -676,6 +676,47 @@ func (s *ResponseService) ConvertToChatCompletionRequest(req *requesttypes.Creat
 		chatReq.User = *req.User
 	}
 
+	// Convert tools if provided
+	if req.Tools != nil {
+		chatReq.Tools = make([]openai.Tool, 0, len(req.Tools))
+		for _, tool := range req.Tools {
+			openaiTool := openai.Tool{
+				Type: openai.ToolType(tool.Type),
+			}
+
+			if tool.Function != nil {
+				var description string
+				if tool.Function.Description != nil {
+					description = *tool.Function.Description
+				}
+
+				openaiTool.Function = &openai.FunctionDefinition{
+					Name:        tool.Function.Name,
+					Description: description,
+					Parameters:  tool.Function.Parameters,
+				}
+			}
+
+			chatReq.Tools = append(chatReq.Tools, openaiTool)
+		}
+	}
+
+	// Convert tool choice if provided
+	if req.ToolChoice != nil {
+		// Convert tool choice to the appropriate type
+		toolChoice := &openai.ToolChoice{
+			Type: openai.ToolType(req.ToolChoice.Type),
+		}
+
+		if req.ToolChoice.Function != nil {
+			toolChoice.Function = openai.ToolFunction{
+				Name: req.ToolChoice.Function.Name,
+			}
+		}
+
+		chatReq.ToolChoice = toolChoice
+	}
+
 	return chatReq
 }
 

@@ -2,6 +2,7 @@ package response
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -53,6 +54,7 @@ func (h *NonStreamModelService) CreateNonStreamResponseHandler(reqCtx *gin.Conte
 // doCreateNonStreamResponse performs the business logic for creating a non-streaming response
 func (h *NonStreamModelService) CreateNonStreamResponse(reqCtx *gin.Context, request *requesttypes.CreateResponseRequest, key string, conv *conversation.Conversation, responseEntity *Response, chatCompletionRequest *openai.ChatCompletionRequest) (responsetypes.Response, *common.Error) {
 	// Process with Jan inference client for non-streaming with timeout
+
 	janInferenceClient := janinference.NewJanInferenceClient(reqCtx)
 	ctx, cancel := context.WithTimeout(reqCtx.Request.Context(), DefaultTimeout)
 	defer cancel()
@@ -65,10 +67,12 @@ func (h *NonStreamModelService) CreateNonStreamResponse(reqCtx *gin.Context, req
 	var processedResponse *openai.ChatCompletionResponse = chatResponse
 
 	// Append assistant's response to conversation (only if conversation exists)
-	if conv != nil && len(processedResponse.Choices) > 0 && processedResponse.Choices[0].Message.Content != "" {
+	if conv != nil && len(processedResponse.Choices) > 0 {
+		choice := processedResponse.Choices[0]
 		assistantMessage := openai.ChatCompletionMessage{
-			Role:    openai.ChatMessageRoleAssistant,
-			Content: processedResponse.Choices[0].Message.Content,
+			Role:      openai.ChatMessageRoleAssistant,
+			Content:   choice.Message.Content,
+			ToolCalls: choice.Message.ToolCalls,
 		}
 		success, err := h.responseService.AppendMessagesToConversation(reqCtx, conv, []openai.ChatCompletionMessage{assistantMessage}, &responseEntity.ID)
 		if !success {
@@ -79,6 +83,13 @@ func (h *NonStreamModelService) CreateNonStreamResponse(reqCtx *gin.Context, req
 
 	// Convert chat completion response to response format
 	responseData := h.convertFromChatCompletionResponse(processedResponse, request, conv, responseEntity)
+
+	// TODO
+	// if the finish_reason is tool_calls, then we need to call the tool
+	// if the  function_calls is google search then call SerperService
+	// if the function_calls is scrape then call SerperService
+	// get the response and wrap it in a function call result then call completion again with result
+	// repeat call until the finish_reason is not tool_calls
 
 	// Update response with all fields at once (optimized to prevent N+1 queries)
 	updates := &ResponseUpdates{
@@ -98,9 +109,10 @@ func (h *NonStreamModelService) CreateNonStreamResponse(reqCtx *gin.Context, req
 // convertFromChatCompletionResponse converts a ChatCompletionResponse to a Response
 func (h *NonStreamModelService) convertFromChatCompletionResponse(chatResp *openai.ChatCompletionResponse, req *requesttypes.CreateResponseRequest, conv *conversation.Conversation, responseEntity *Response) responsetypes.Response {
 
-	// Extract the content and reasoning from the first choice
+	// Extract the content, reasoning, and tool calls from the first choice
 	var outputText string
 	var reasoningContent string
+	var toolCalls []openai.ToolCall
 
 	if len(chatResp.Choices) > 0 {
 		choice := chatResp.Choices[0]
@@ -109,6 +121,11 @@ func (h *NonStreamModelService) convertFromChatCompletionResponse(chatResp *open
 		// Extract reasoning content if present
 		if choice.Message.ReasoningContent != "" {
 			reasoningContent = choice.Message.ReasoningContent
+		}
+
+		// Extract tool calls if present
+		if len(choice.Message.ToolCalls) > 0 {
+			toolCalls = choice.Message.ToolCalls
 		}
 	}
 
@@ -145,6 +162,40 @@ func (h *NonStreamModelService) convertFromChatCompletionResponse(chatResp *open
 			Text: &responsetypes.TextOutput{
 				Value:       outputText,
 				Annotations: []responsetypes.Annotation{},
+			},
+		})
+	}
+
+	// Add tool calls if present
+	if len(toolCalls) > 0 {
+		var functionCalls []responsetypes.FunctionCallResult
+		for _, toolCall := range toolCalls {
+			functionCall := responsetypes.FunctionCallResult{
+				Name:      toolCall.Function.Name,
+				Arguments: make(map[string]any),
+				Result:    nil, // Tool call results are not available in the response
+				Error:     nil,
+			}
+
+			// Parse arguments if they exist
+			if toolCall.Function.Arguments != "" {
+				// Try to parse JSON arguments
+				var args map[string]any
+				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err == nil {
+					functionCall.Arguments = args
+				} else {
+					// If parsing fails, store as raw string
+					functionCall.Arguments = map[string]any{"raw": toolCall.Function.Arguments}
+				}
+			}
+
+			functionCalls = append(functionCalls, functionCall)
+		}
+
+		output = append(output, responsetypes.ResponseOutput{
+			Type: responsetypes.OutputTypeFunctionCalls,
+			FunctionCalls: &responsetypes.FunctionCallsOutput{
+				Calls: functionCalls,
 			},
 		})
 	}
@@ -187,15 +238,15 @@ func (h *NonStreamModelService) convertFromChatCompletionResponse(chatResp *open
 		MaxOutputTokens:    req.MaxTokens,
 		ParallelToolCalls:  false,
 		PreviousResponseID: nil,
-		Reasoning: &responsetypes.Reasoning{
-			Effort: nil,
-			Summary: func() *string {
-				if reasoningContent != "" {
-					return &reasoningContent
-				}
-				return nil
-			}(),
-		},
+		// Reasoning: &responsetypes.Reasoning{
+		// 	Effort: nil,
+		// 	Summary: func() *string {
+		// 		if reasoningContent != "" {
+		// 			return &reasoningContent
+		// 		}
+		// 		return nil
+		// 	}(),
+		// },
 		Store:       true,
 		Temperature: req.Temperature,
 		Text: &responsetypes.TextFormat{
