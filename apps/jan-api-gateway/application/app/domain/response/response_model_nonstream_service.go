@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -72,19 +73,8 @@ func (h *NonStreamModelService) CreateNonStreamResponse(reqCtx *gin.Context, req
 		return responsetypes.Response{}, processErr
 	}
 
-	// Add final assistant response to conversation messages if present
-	if conv != nil && conv.ID > 0 && len(processedResponse.Choices) > 0 {
-		choice := processedResponse.Choices[0]
-		assistantMessage := openai.ChatCompletionMessage{
-			Role:      openai.ChatMessageRoleAssistant,
-			Content:   choice.Message.Content,
-			ToolCalls: choice.Message.ToolCalls,
-		}
-		conversationMessages = append(conversationMessages, ConversationMessage{
-			Message:    assistantMessage,
-			ResponseID: &responseEntity.ID,
-		})
-	}
+	// Note: Final assistant response is already handled by processToolCalls method
+	// and added to the outputSequence, so we don't need to add it again here
 
 	// Batch append all conversation messages at once
 	if conv != nil && conv.ID > 0 && len(conversationMessages) > 0 {
@@ -152,13 +142,16 @@ func (h *NonStreamModelService) convertFromChatCompletionResponse(chatResp *open
 				},
 			})
 		case "assistant_text":
-			output = append(output, responsetypes.ResponseOutput{
-				Type: responsetypes.OutputTypeText,
-				Text: &responsetypes.TextOutput{
-					Value:       item.Content,
-					Annotations: []responsetypes.Annotation{},
-				},
-			})
+			// Only create text output if content is not empty or just whitespace
+			if strings.TrimSpace(item.Content) != "" {
+				output = append(output, responsetypes.ResponseOutput{
+					Type: responsetypes.OutputTypeText,
+					Text: &responsetypes.TextOutput{
+						Value:       item.Content,
+						Annotations: []responsetypes.Annotation{},
+					},
+				})
+			}
 		case "tool_call":
 			if item.ToolCall != nil {
 				functionCall := responsetypes.FunctionCallResult{
@@ -203,13 +196,16 @@ func (h *NonStreamModelService) convertFromChatCompletionResponse(chatResp *open
 				}
 			}
 		case "final_text":
-			output = append(output, responsetypes.ResponseOutput{
-				Type: responsetypes.OutputTypeText,
-				Text: &responsetypes.TextOutput{
-					Value:       item.Content,
-					Annotations: []responsetypes.Annotation{},
-				},
-			})
+			// Only create text output if content is not empty or just whitespace
+			if strings.TrimSpace(item.Content) != "" {
+				output = append(output, responsetypes.ResponseOutput{
+					Type: responsetypes.OutputTypeText,
+					Text: &responsetypes.TextOutput{
+						Value:       item.Content,
+						Annotations: []responsetypes.Annotation{},
+					},
+				})
+			}
 		}
 	}
 
@@ -400,14 +396,38 @@ func (h *NonStreamModelService) processToolCalls(reqCtx *gin.Context, chatRespon
 		}
 	}
 
-	// Add final result if present
+	// Add final result if present (only if it's different from the last assistant_text)
 	if len(currentResponse.Choices) > 0 {
 		choice := currentResponse.Choices[0]
 		if choice.Message.Content != "" {
-			outputSequence = append(outputSequence, OutputSequenceItem{
-				Type:    "final_text",
-				Content: choice.Message.Content,
-			})
+			// Check if this content was already added as assistant_text in the loop
+			alreadyAdded := false
+			if len(outputSequence) > 0 {
+				lastItem := outputSequence[len(outputSequence)-1]
+				if lastItem.Type == "assistant_text" && lastItem.Content == choice.Message.Content {
+					alreadyAdded = true
+				}
+			}
+
+			if !alreadyAdded {
+				outputSequence = append(outputSequence, OutputSequenceItem{
+					Type:    "final_text",
+					Content: choice.Message.Content,
+				})
+			}
+
+			// Also add to conversation messages for database storage
+			if conv != nil && conv.ID > 0 {
+				assistantMessage := openai.ChatCompletionMessage{
+					Role:      openai.ChatMessageRoleAssistant,
+					Content:   choice.Message.Content,
+					ToolCalls: choice.Message.ToolCalls,
+				}
+				conversationMessages = append(conversationMessages, ConversationMessage{
+					Message:    assistantMessage,
+					ResponseID: &responseEntity.ID,
+				})
+			}
 		}
 	}
 
