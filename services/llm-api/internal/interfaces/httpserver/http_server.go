@@ -27,7 +27,17 @@ type HttpServer struct {
 
 func (s *HttpServer) bindSwagger() {
 	g := s.engine.Group("/")
-	g.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Serve swagger UI with custom URL pointing to combined swagger if available
+	g.GET("/api/swagger/*any", func(c *gin.Context) {
+		// If requesting doc.json, serve the combined version
+		if c.Param("any") == "/doc.json" {
+			ServeCombinedSwagger()(c)
+			return
+		}
+		// Otherwise serve from swagger assets
+		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
+	})
 }
 
 func NewHttpServer(

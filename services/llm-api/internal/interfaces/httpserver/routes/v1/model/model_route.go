@@ -52,16 +52,17 @@ func (ModelRoute *ModelRoute) RegisterRouter(router *gin.RouterGroup) {
 
 // ListModels
 // @Summary List available models
-// @Description Retrieves a list of available models that can be used for chat completions or other tasks.
+// @Description Retrieves a list of available models that can be used for chat completions or other tasks. Returns either simple model list or detailed list with provider metadata based on X-PROVIDER-DATA header.
 // @Tags Chat Completions API
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param X-PROVIDER-DATA header string false "Set to true to include provider metadata" Enums(true, false)
-// @Success 200 {object} modelresponses.ModelResponseList "List of models"
-// @Success 200 {object} modelresponses.ModelWithProviderResponseList "List of models with provider metadata"
+// @Param X-PROVIDER-DATA header string false "Set to 'true' to include provider metadata in response" Enums(true, false)
+// @Success 200 {object} modelresponses.ModelResponseList "List of models (when X-PROVIDER-DATA header is not true)"
+// @Success 200 {object} modelresponses.ModelWithProviderResponseList "List of models with provider metadata (when X-PROVIDER-DATA=true)"
 // @Failure 404 {object} responses.ErrorResponse "Models or providers not found"
 // @Failure 500 {object} responses.ErrorResponse "Failed to retrieve models"
+// @Router /v1/models [get]
 func (ModelRoute *ModelRoute) GetModels(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 	includeProviderData := strings.EqualFold(reqCtx.GetHeader(HeaderIncludeProviderData), "true")
@@ -114,7 +115,7 @@ func (ModelRoute *ModelRoute) GetModels(reqCtx *gin.Context) {
 // @Failure 400 {object} responses.ErrorResponse "Invalid request"
 // @Failure 404 {object} responses.ErrorResponse "Model catalog not found"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
-// @Router /v1/models/{model_public_id} [get]
+// @Router /v1/models/catalogs/{model_public_id} [get]
 func (route *ModelRoute) GetModelCatalog(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 	// Wildcard param includes leading slash, so trim it

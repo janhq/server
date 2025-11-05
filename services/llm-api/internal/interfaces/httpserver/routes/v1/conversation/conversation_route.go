@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/requests"
@@ -12,6 +11,8 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
 	conversationresponses "jan-server/services/llm-api/internal/interfaces/httpserver/responses/conversation"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ConversationRoute struct {
@@ -185,13 +186,13 @@ func (route *ConversationRoute) createConversation(reqCtx *gin.Context) {
 // @Tags Conversations API
 // @Security BearerAuth
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Success 200 {object} conversationresponses.ConversationResponse "Successfully retrieved conversation"
 // @Failure 400 {object} responses.ErrorResponse "Invalid conversation ID format"
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation not found or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
-// @Router /v1/conversations/{conversation_id} [get]
+// @Router /v1/conversations/{conv_public_id} [get]
 func (route *ConversationRoute) getConversation(reqCtx *gin.Context) {
 	// Get conversation from context (set by middleware)
 	conv, ok := conversationhandler.GetConversationFromContext(reqCtx)
@@ -222,14 +223,14 @@ func (route *ConversationRoute) getConversation(reqCtx *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Param request body conversationrequests.UpdateConversationRequest true "Update conversation request with new metadata"
 // @Success 200 {object} conversationresponses.ConversationResponse "Successfully updated conversation"
 // @Failure 400 {object} responses.ErrorResponse "Invalid request - validation failed or invalid metadata"
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation not found or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error - update failed"
-// @Router /v1/conversations/{conversation_id} [post]
+// @Router /v1/conversations/{conv_public_id} [post]
 func (route *ConversationRoute) updateConversation(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -277,13 +278,13 @@ func (route *ConversationRoute) updateConversation(reqCtx *gin.Context) {
 // @Tags Conversations API
 // @Security BearerAuth
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Success 200 {object} conversationresponses.ConversationDeletedResponse "Successfully deleted conversation"
 // @Failure 400 {object} responses.ErrorResponse "Invalid conversation ID format"
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation not found or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error - deletion failed"
-// @Router /v1/conversations/{conversation_id} [delete]
+// @Router /v1/conversations/{conv_public_id} [delete]
 func (route *ConversationRoute) deleteConversation(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -332,7 +333,7 @@ func (route *ConversationRoute) deleteConversation(reqCtx *gin.Context) {
 // @Tags Conversations API
 // @Security BearerAuth
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Param after query string false "Item ID cursor to list items after (pagination)"
 // @Param limit query integer false "Number of items to return (1-100)" default(20) minimum(1) maximum(100)
 // @Param order query string false "Sort order: asc or desc" default(desc) Enums(asc, desc)
@@ -342,7 +343,7 @@ func (route *ConversationRoute) deleteConversation(reqCtx *gin.Context) {
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation not found or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error - listing failed"
-// @Router /v1/conversations/{conversation_id}/items [get]
+// @Router /v1/conversations/{conv_public_id}/items [get]
 func (route *ConversationRoute) listItems(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -458,7 +459,7 @@ func (route *ConversationRoute) listItems(reqCtx *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Param include query []string false "Additional fields to include in response"
 // @Param request body conversationrequests.CreateItemsRequest true "Create items request with array of items"
 // @Success 200 {object} conversationresponses.ConversationItemCreatedResponse "Successfully created items"
@@ -466,7 +467,7 @@ func (route *ConversationRoute) listItems(reqCtx *gin.Context) {
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation not found or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error - item creation failed"
-// @Router /v1/conversations/{conversation_id}/items [post]
+// @Router /v1/conversations/{conv_public_id}/items [post]
 func (route *ConversationRoute) createItems(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -517,7 +518,7 @@ func (route *ConversationRoute) createItems(reqCtx *gin.Context) {
 // @Tags Conversations API
 // @Security BearerAuth
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Param item_id path string true "Item ID (format: msg_xxxxx)"
 // @Param include query []string false "Additional fields to include in response"
 // @Success 200 {object} conversationresponses.ItemResponse "Successfully retrieved item"
@@ -525,7 +526,7 @@ func (route *ConversationRoute) createItems(reqCtx *gin.Context) {
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation or item not found, or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
-// @Router /v1/conversations/{conversation_id}/items/{item_id} [get]
+// @Router /v1/conversations/{conv_public_id}/items/{item_id} [get]
 func (route *ConversationRoute) getItem(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -572,14 +573,14 @@ func (route *ConversationRoute) getItem(reqCtx *gin.Context) {
 // @Tags Conversations API
 // @Security BearerAuth
 // @Produce json
-// @Param conversation_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Param item_id path string true "Item ID to delete (format: msg_xxxxx)"
 // @Success 200 {object} conversationresponses.ConversationResponse "Successfully deleted item, returns conversation"
 // @Failure 400 {object} responses.ErrorResponse "Invalid conversation ID or item ID format"
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation or item not found, or access denied"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error - deletion failed"
-// @Router /v1/conversations/{conversation_id}/items/{item_id} [delete]
+// @Router /v1/conversations/{conv_public_id}/items/{item_id} [delete]
 func (route *ConversationRoute) deleteItem(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 

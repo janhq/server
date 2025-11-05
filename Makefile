@@ -120,6 +120,17 @@ ifeq ($(OS),Windows_NT)
 else
 	@bash scripts/generate-swagger.sh
 endif
+	@echo ""
+	@echo "Combining swagger specs..."
+	@$(MAKE) swagger-combine
+
+swagger-combine:
+	@echo "Merging LLM API and MCP Tools swagger specs..."
+	@cd tools/swagger-merge-json && go run main.go \
+		-llm-api ../../services/llm-api/docs/swagger/swagger.json \
+		-mcp-tools ../../services/mcp-tools/docs/swagger/swagger.json \
+		-output ../../services/llm-api/docs/swagger/swagger-combined.json
+	@echo "✓ Combined swagger created for unified API documentation"
 
 swagger-llm-api:
 	@echo "Generating Swagger for llm-api service..."

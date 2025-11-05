@@ -46,12 +46,12 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 }
 
 // GetVersion godoc
-// @Summary     Get API build version
-// @Description Returns the current build version of the API server.
-// @Tags        Server API
-// @Produce     json
-// @Success     200 {object} map[string]string "version info"
-// @Router      /v1/version [get]
+// @Summary Get API build version
+// @Description Returns the current build version of the API server and environment reload timestamp.
+// @Tags Server API
+// @Produce json
+// @Success 200 {object} map[string]string "Version information including version number and environment reload timestamp"
+// @Router /v1/version [get]
 func GetVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"version":         config.Version,
@@ -59,10 +59,24 @@ func GetVersion(c *gin.Context) {
 	})
 }
 
+// GetHealthz godoc
+// @Summary Health check endpoint
+// @Description Returns the health status of the API server. Used by orchestrators and monitoring systems.
+// @Tags Server API
+// @Produce json
+// @Success 200 {object} map[string]string "Health status OK"
+// @Router /v1/healthz [get]
 func GetHealthz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
+// GetReadyz godoc
+// @Summary Readiness check endpoint
+// @Description Returns the readiness status of the API server. Indicates if the service is ready to accept traffic.
+// @Tags Server API
+// @Produce json
+// @Success 200 {object} map[string]string "Readiness status ready"
+// @Router /v1/readyz [get]
 func GetReadyz(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ready"})
 }

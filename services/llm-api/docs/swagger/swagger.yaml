@@ -2356,7 +2356,7 @@ paths:
       summary: Create a conversation
       tags:
       - Conversations API
-  /v1/conversations/{conversation_id}:
+  /v1/conversations/{conv_public_id}:
     delete:
       description: |-
         Delete a conversation (soft delete). Items in the conversation will not be deleted but will be inaccessible.
@@ -2374,7 +2374,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       produces:
@@ -2422,7 +2422,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       produces:
@@ -2472,7 +2472,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       - description: Update conversation request with new metadata
@@ -2509,7 +2509,7 @@ paths:
       summary: Update a conversation
       tags:
       - Conversations API
-  /v1/conversations/{conversation_id}/items:
+  /v1/conversations/{conv_public_id}/items:
     get:
       description: |-
         List all items in a conversation with cursor-based pagination support
@@ -2534,7 +2534,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       - description: Item ID cursor to list items after (pagination)
@@ -2616,7 +2616,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       - collectionFormat: csv
@@ -2661,7 +2661,7 @@ paths:
       summary: Create conversation items
       tags:
       - Conversations API
-  /v1/conversations/{conversation_id}/items/{item_id}:
+  /v1/conversations/{conv_public_id}/items/{item_id}:
     delete:
       description: |-
         Delete an item from a conversation. The item will be removed from the conversation.
@@ -2683,7 +2683,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       - description: 'Item ID to delete (format: msg_xxxxx)'
@@ -2739,7 +2739,7 @@ paths:
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
-        name: conversation_id
+        name: conv_public_id
         required: true
         type: string
       - description: 'Item ID (format: msg_xxxxx)'
@@ -2782,7 +2782,58 @@ paths:
       summary: Get a conversation item
       tags:
       - Conversations API
-  /v1/models/{model_public_id}:
+  /v1/healthz:
+    get:
+      description: Returns the health status of the API server. Used by orchestrators
+        and monitoring systems.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Health status OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - Server API
+  /v1/models:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of available models that can be used for chat
+        completions or other tasks. Returns either simple model list or detailed list
+        with provider metadata based on X-PROVIDER-DATA header.
+      parameters:
+      - description: Set to 'true' to include provider metadata in response
+        enum:
+        - "true"
+        - "false"
+        in: header
+        name: X-PROVIDER-DATA
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of models with provider metadata (when X-PROVIDER-DATA=true)
+          schema:
+            $ref: '#/definitions/modelresponses.ModelWithProviderResponseList'
+        "404":
+          description: Models or providers not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to retrieve models
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List available models
+      tags:
+      - Chat Completions API
+  /v1/models/catalogs/{model_public_id}:
     get:
       description: Retrieves detailed information about a model catalog entry by its
         public ID (supports IDs with slashes like openrouter/nova-lite-v1)
@@ -2838,14 +2889,32 @@ paths:
       summary: List model providers
       tags:
       - Model API
-  /v1/version:
+  /v1/readyz:
     get:
-      description: Returns the current build version of the API server.
+      description: Returns the readiness status of the API server. Indicates if the
+        service is ready to accept traffic.
       produces:
       - application/json
       responses:
         "200":
-          description: version info
+          description: Readiness status ready
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Readiness check endpoint
+      tags:
+      - Server API
+  /v1/version:
+    get:
+      description: Returns the current build version of the API server and environment
+        reload timestamp.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Version information including version number and environment
+            reload timestamp
           schema:
             additionalProperties:
               type: string

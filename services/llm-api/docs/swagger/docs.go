@@ -1048,7 +1048,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/conversations/{conversation_id}": {
+        "/v1/conversations/{conv_public_id}": {
             "get": {
                 "security": [
                     {
@@ -1067,7 +1067,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     }
@@ -1126,7 +1126,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     },
@@ -1191,7 +1191,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     }
@@ -1230,7 +1230,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/conversations/{conversation_id}/items": {
+        "/v1/conversations/{conv_public_id}/items": {
             "get": {
                 "security": [
                     {
@@ -1249,7 +1249,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     },
@@ -1344,7 +1344,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     },
@@ -1402,7 +1402,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/conversations/{conversation_id}/items/{item_id}": {
+        "/v1/conversations/{conv_public_id}/items/{item_id}": {
             "get": {
                 "security": [
                     {
@@ -1421,7 +1421,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     },
@@ -1494,7 +1494,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Conversation ID (format: conv_xxxxx)",
-                        "name": "conversation_id",
+                        "name": "conv_public_id",
                         "in": "path",
                         "required": true
                     },
@@ -1540,14 +1540,37 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/models/providers": {
+        "/v1/healthz": {
+            "get": {
+                "description": "Returns the health status of the API server. Used by orchestrators and monitoring systems.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server API"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Health status OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieves a list of available model providers that can be used for inference.",
+                "description": "Retrieves a list of available models that can be used for chat completions or other tasks. Returns either simple model list or detailed list with provider metadata based on X-PROVIDER-DATA header.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1555,18 +1578,36 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Model API"
+                    "Chat Completions API"
                 ],
-                "summary": "List model providers",
+                "summary": "List available models",
+                "parameters": [
+                    {
+                        "enum": [
+                            "true",
+                            "false"
+                        ],
+                        "type": "string",
+                        "description": "Set to 'true' to include provider metadata in response",
+                        "name": "X-PROVIDER-DATA",
+                        "in": "header"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "List of providers",
+                        "description": "List of models with provider metadata (when X-PROVIDER-DATA=true)",
                         "schema": {
-                            "$ref": "#/definitions/modelresponses.ProviderResponseList"
+                            "$ref": "#/definitions/modelresponses.ModelWithProviderResponseList"
+                        }
+                    },
+                    "404": {
+                        "description": "Models or providers not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to retrieve providers",
+                        "description": "Failed to retrieve models",
                         "schema": {
                             "$ref": "#/definitions/responses.ErrorResponse"
                         }
@@ -1574,7 +1615,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/models/{model_public_id}": {
+        "/v1/models/catalogs/{model_public_id}": {
             "get": {
                 "security": [
                     {
@@ -1626,9 +1667,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/models/providers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a list of available model providers that can be used for inference.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Model API"
+                ],
+                "summary": "List model providers",
+                "responses": {
+                    "200": {
+                        "description": "List of providers",
+                        "schema": {
+                            "$ref": "#/definitions/modelresponses.ProviderResponseList"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve providers",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/readyz": {
+            "get": {
+                "description": "Returns the readiness status of the API server. Indicates if the service is ready to accept traffic.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Server API"
+                ],
+                "summary": "Readiness check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Readiness status ready",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/version": {
             "get": {
-                "description": "Returns the current build version of the API server.",
+                "description": "Returns the current build version of the API server and environment reload timestamp.",
                 "produces": [
                     "application/json"
                 ],
@@ -1638,7 +1736,7 @@ const docTemplate = `{
                 "summary": "Get API build version",
                 "responses": {
                     "200": {
-                        "description": "version info",
+                        "description": "Version information including version number and environment reload timestamp",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

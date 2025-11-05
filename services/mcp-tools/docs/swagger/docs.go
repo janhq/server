@@ -94,8 +94,6 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Model Context Protocol (MCP) tools service providing search and scraping capabilities.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
-	LeftDelim:        "{{",
-	RightDelim:       "}}",
 }
 
 func init() {
