@@ -2,7 +2,8 @@ COMPOSE ?= docker compose
 VLLM_COMPOSE ?= docker compose -f docker-compose.yml -f docker-compose.vllm.yml
 VLLM_COMPOSE_ONLY ?= docker compose -f docker-compose.vllm.yml
 NEWMAN ?= newman
-NEWMAN_COLLECTION ?= tests/automation/auth-postman-scripts.json
+NEWMAN_AUTH_COLLECTION ?= tests/automation/auth-postman-scripts.json
+NEWMAN_CONVERSATION_COLLECTION ?= tests/automation/conversations-postman-scripts.json
 
 .PHONY: up up-gpu up-cpu down down-db reset-db logs swag curl-chat fmt lint test newman newman-debug up-full-local up-full-docker restart-kong
 
@@ -102,7 +103,8 @@ test:
 	go test ./...
 
 newman:
-	$(NEWMAN) run $(NEWMAN_COLLECTION) \
+	@echo "Running Newman tests..."
+	@$(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "llm_api_url=http://localhost:8000" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
@@ -110,11 +112,21 @@ newman:
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=llm-api" \
-		--reporters cli,json \
-		--reporter-json-export newman.json
+		--reporters cli && \
+	$(NEWMAN) run $(NEWMAN_CONVERSATION_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
+		--env-var "llm_api_url=http://localhost:8000" \
+		--env-var "keycloak_base_url=http://localhost:8085" \
+		--env-var "keycloak_admin=admin" \
+		--env-var "keycloak_admin_password=admin" \
+		--env-var "realm=jan" \
+		--env-var "client_id_public=llm-api" \
+		--reporters cli
+	@echo ""
+	@echo "All Newman tests completed successfully!"
 
 newman-debug:
-	NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_COLLECTION) \
+	NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "llm_api_url=http://localhost:8000" \
 		--env-var "keycloak_base_url=http://localhost:8085" \

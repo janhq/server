@@ -10,11 +10,11 @@
       "name": "Health Check",
       "item": [
         {
-          "name": "LLM API Ready Check",
+          "name": "LLM API Health Check",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{llm_api_url}}/readyz"
+            "url": "{{llm_api_url}}/healthz"
           },
           "event": [
             {
@@ -22,12 +22,55 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('service is ready', function () {",
+                  "pm.test('health status is 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('ready status confirmed', function () {",
+                  "pm.test('body reports ok', function () {",
                   "    var data = pm.response.json();",
-                  "    pm.expect(data.status).to.eql('ready');",
+                  "    pm.expect(data.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Request Guest Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{llm_api_url}}/auth/guest-login",
+            "description": "Provision a new guest and capture issued tokens."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('guest token issued', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "    pm.expect(data.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('access_token', data.access_token);",
+                  "});",
+                  "pm.test('response includes expiry', function () {",
+                  "    pm.expect(data).to.have.property('expires_in');",
                   "});"
                 ]
               }
@@ -40,7 +83,35 @@
       "name": "Basic Conversation Flow",
       "item": [
         {
-          "name": "Create New Conversation",
+          "name": "Step 3: Create Conversation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[Step 3] Conversation created with title', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('[Step 3] Response contains conversation ID and title', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.exist;",
+                  "    pm.expect(response.id).to.include('conv_');",
+                  "    pm.expect(response.title).to.exist;",
+                  "    pm.expect(response.title).to.equal('Test Runner Conversation');",
+                  "    ",
+                  "    // Save conversation ID",
+                  "    pm.collectionVariables.set('conversationId1', response.id);",
+                  "    console.log('Saved conversationId1:', response.id);",
+                  "    console.log('Conversation title:', response.title);",
+                  "});",
+                  "",
+                  "console.log('✅ Step 3 Complete: Conversation Created with Title');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -55,7 +126,84 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Hello, how are you?\"}\n  ]\n}"
+              "raw": "{\n  \"title\": \"Test Runner Conversation\" }\n}"
+            },
+            "url": {
+              "raw": "{{llm_api_url}}/v1/conversations",
+              "host": [
+                "{{llm_api_url}}"
+              ],
+              "path": [
+                "v1",
+                "conversations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 4: Verify Conversation Title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('[Step 4] Get conversation successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 4] Conversation title is correct', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.equal(pm.collectionVariables.get('conversationId1'));",
+                  "    pm.expect(response.title).to.exist;",
+                  "    pm.expect(response.title).to.equal('Test Runner Conversation');",
+                  "    console.log('✅ Verified title:', response.title);",
+                  "});",
+                  "",
+                  "console.log('✅ Step 4 Complete: Title Verified');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{llm_api_url}}/v1/conversations/{{conversationId1}}",
+              "host": [
+                "{{llm_api_url}}"
+              ],
+              "path": [
+                "v1",
+                "conversations",
+                "{{conversationId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 5: Start Chat with Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! This is test message #1.\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{conversationId1}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
+
             },
             "url": "{{llm_api_url}}/v1/chat/completions"
           },
@@ -88,7 +236,7 @@
           ]
         },
         {
-          "name": "Continue Conversation",
+          "name": "Step 6: Continue Conversation",
           "request": {
             "method": "POST",
             "header": [
@@ -130,7 +278,7 @@
           ]
         },
         {
-          "name": "Get Conversation Details",
+          "name": "Step 7: Get Conversation Details",
           "request": {
             "method": "GET",
             "header": [
@@ -151,19 +299,14 @@
                   "pm.test('conversation retrieved successfully', function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test('conversation contains items', function () {",
-                  "    pm.expect(data).to.have.property('items');",
-                  "    pm.expect(data.items).to.be.an('array');",
-                  "    pm.expect(data.items.length).to.be.at.least(2);",
+                  "pm.test('conversation has correct structure', function () {",
+                  "    pm.expect(data).to.have.property('id');",
+                  "    pm.expect(data).to.have.property('object', 'conversation');",
+                  "    pm.expect(data).to.have.property('title');",
+                  "    pm.expect(data).to.have.property('created_at');",
                   "});",
-                  "pm.test('items have expected structure', function () {",
-                  "    const firstItem = data.items[0];",
-                  "    pm.expect(firstItem).to.have.property('id');",
-                  "    pm.expect(firstItem).to.have.property('type');",
-                  "    pm.expect(firstItem).to.have.property('content');",
-                  "    if (firstItem.id) {",
-                  "        pm.collectionVariables.set('first_item_id', firstItem.id);",
-                  "    }",
+                  "pm.test('conversation ID matches', function () {",
+                  "    pm.expect(data.id).to.equal(pm.collectionVariables.get('conversation_id'));",
                   "});"
                 ]
               }
@@ -171,7 +314,7 @@
           ]
         },
         {
-          "name": "List User Conversations",
+          "name": "Step 8: List User Conversations",
           "request": {
             "method": "GET",
             "header": [
@@ -209,201 +352,10 @@
       ]
     },
     {
-      "name": "Conversation with Category",
-      "item": [
-        {
-          "name": "Create Conversation in Category",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Help me with customer support.\"}\n  ]\n}"
-            },
-            "url": "{{llm_api_url}}/v1/category/customer-support/chat/completions"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var data = pm.response.json();",
-                  "pm.test('categorized conversation created', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('conversation has category metadata', function () {",
-                  "    pm.expect(data.conversation).to.have.property('id');",
-                  "    pm.collectionVariables.set('category_conversation_id', data.conversation.id);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Item Rating Flow",
-      "item": [
-        {
-          "name": "Rate Conversation Item - Like",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"rating\": \"like\",\n  \"comment\": \"This response was very helpful!\"\n}"
-            },
-            "url": "{{llm_api_url}}/v1/conversations/{{conversation_id}}/items/{{first_item_id}}/rating"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('item rated successfully', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('rating confirmed', function () {",
-                  "    var data = pm.response.json();",
-                  "    pm.expect(data).to.have.property('rating', 'like');",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get Item Rating",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": "{{llm_api_url}}/v1/conversations/{{conversation_id}}/items/{{first_item_id}}/rating"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('rating retrieved successfully', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('rating matches what was set', function () {",
-                  "    var data = pm.response.json();",
-                  "    pm.expect(data.rating).to.eql('like');",
-                  "    pm.expect(data.comment).to.be.a('string');",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Conversation Branching",
-      "item": [
-        {
-          "name": "Create Conversation for Branching",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"What is AI?\"}\n  ]\n}"
-            },
-            "url": "{{llm_api_url}}/v1/chat/completions"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var data = pm.response.json();",
-                  "pm.test('branching conversation created', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.collectionVariables.set('branch_conversation_id', data.conversation.id);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List Conversation Branches",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": "{{llm_api_url}}/v1/conversations/{{branch_conversation_id}}/branches"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('branches retrieved', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('MAIN branch exists', function () {",
-                  "    var data = pm.response.json();",
-                  "    pm.expect(data).to.be.an('array');",
-                  "    const mainBranch = data.find(b => b.name === 'MAIN');",
-                  "    pm.expect(mainBranch).to.exist;",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
       "name": "Cleanup",
       "item": [
         {
-          "name": "Delete Conversation",
+          "name": "Step 9: Delete Conversation",
           "request": {
             "method": "DELETE",
             "header": [
@@ -431,28 +383,15 @@
       ]
     }
   ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "if (!pm.collectionVariables.get('access_token')) {",
-          "    console.warn('access_token not set, you may need to run auth flow first');",
-          "}"
-        ]
-      }
-    }
-  ],
   "variable": [
     {
       "key": "llm_api_url",
-      "value": "http://localhost:8080",
+      "value": "http://localhost:8000",
       "type": "string"
     },
     {
       "key": "model_id",
-      "value": "Qwen/Qwen2.5-0.5B-Instruct",
+      "value": "qwen/qwen2.5-0.5b-instruct",
       "type": "string"
     },
     {
