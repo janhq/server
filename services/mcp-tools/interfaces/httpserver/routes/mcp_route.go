@@ -65,16 +65,24 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 }
 
 // serveMCP streams Model Context Protocol responses using the underlying MCP server.
-// @Summary MCP streamable endpoint
-// @Description Handles Model Context Protocol (MCP) requests over an HTTP stream. The response is sent as a continuous stream of data.
-// @Tags Chat Completions API
-// @Security BearerAuth
+// @Summary MCP endpoint for tool execution
+// @Description Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.
+// @Description
+// @Description **Available Tools:**
+// @Description - `google_search`: Web search via Serper API (params: q, gl, hl, location, num, tbs, page, autocorrect)
+// @Description - `scrape`: Web page scraping (params: url, includeMarkdown)
+// @Description
+// @Description **MCP Protocol:**
+// @Description - Request format: JSON-RPC 2.0 with method and params
+// @Description - Response format: Server-Sent Events (SSE) stream
+// @Description - Stateless mode (no session management)
+// @Tags MCP API
 // @Accept json
 // @Produce text/event-stream
-// @Param request body any true "MCP request payload"
-// @Success 200 {string} string "Streamed response (SSE or chunked transfer)"
-// @Failure 400 {object} responses.ErrorResponse "Invalid MCP request payload"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Param request body object true "MCP JSON-RPC request payload (e.g., {\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1})"
+// @Success 200 {string} string "Streamed MCP response in SSE format"
+// @Failure 400 {object} responses.ErrorResponse "Invalid MCP request payload or unsupported method"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /v1/mcp [post]
 func (route *MCPRoute) serveMCP(reqCtx *gin.Context) {
 	route.httpHandler.ServeHTTP(reqCtx.Writer, reqCtx.Request)

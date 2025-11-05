@@ -14,6 +14,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// @title Jan Server MCP Tools Service
+// @version 1.0
+// @description Model Context Protocol (MCP) tools service providing search and scraping capabilities.
+// @contact.name Jan Server Team
+// @contact.url https://github.com/janhq/jan-server
+// @BasePath /
+
 func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()

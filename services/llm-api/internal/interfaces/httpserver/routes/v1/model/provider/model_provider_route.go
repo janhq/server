@@ -25,6 +25,16 @@ func (modelProviderRoute *ModelProviderRoute) RegisterRouter(router *gin.RouterG
 	group.GET("", modelProviderRoute.listProviders)
 }
 
+// listProviders godoc
+// @Summary List model providers
+// @Description Retrieves a list of available model providers that can be used for inference.
+// @Tags Model API
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} modelresponses.ProviderResponseList "List of providers"
+// @Failure 500 {object} responses.ErrorResponse "Failed to retrieve providers"
+// @Router /v1/models/providers [get]
 func (modelProviderRoute *ModelProviderRoute) listProviders(reqCtx *gin.Context) {
 	accessibleModels, err := modelProviderRoute.modelHandler.BuildAccessibleProviderModels(reqCtx)
 	if err != nil || accessibleModels == nil {

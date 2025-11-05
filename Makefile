@@ -112,6 +112,40 @@ monitor-logs:
 logs:
 	$(COMPOSE) logs -f
 
+# Swagger generation
+swagger:
+	@echo "Generating Swagger documentation for all services..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/generate-swagger.ps1
+else
+	@bash scripts/generate-swagger.sh
+endif
+
+swagger-llm-api:
+	@echo "Generating Swagger for llm-api service..."
+	@cd services/llm-api && swag init \
+		--dir ./cmd/server,./internal/interfaces/httpserver/routes \
+		--generalInfo server.go \
+		--output ./docs/swagger \
+		--parseDependency \
+		--parseInternal
+	@echo "✓ llm-api swagger generated at services/llm-api/docs/swagger"
+
+swagger-mcp-tools:
+	@echo "Generating Swagger for mcp-tools service..."
+	@cd services/mcp-tools && swag init \
+		--dir . \
+		--generalInfo main.go \
+		--output ./docs/swagger \
+		--parseDependency \
+		--parseInternal
+	@echo "✓ mcp-tools swagger generated at services/mcp-tools/docs/swagger"
+
+swagger-install:
+	@echo "Installing swagger tools..."
+	@go install github.com/swaggo/swag/cmd/swag@latest
+	@echo "✓ swag installed successfully"
+
 swag:
 	go run ./tools/swagger-merge -in docs/openapi/llm-api.json -out docs/openapi/combined.json
 

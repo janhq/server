@@ -26,9 +26,11 @@ func init() {
 	config.Load()
 }
 
-// @title Menlo Platform
-// @version 1.0
-// @description This is the API gateway for Menlo Platform.
+// @title Jan Server LLM API
+// @version 2.0
+// @description OpenAI-compatible LLM API platform with enterprise authentication, conversation management, and streaming support.
+// @contact.name Jan Server Team
+// @contact.url https://github.com/janhq/jan-server
 // @BasePath /
 
 // @securityDefinitions.apikey BearerAuth

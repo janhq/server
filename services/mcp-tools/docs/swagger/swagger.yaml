@@ -1,0 +1,62 @@
+basePath: /
+definitions:
+  responses.ErrorResponse:
+    properties:
+      code:
+        description: UUID from PlatformError
+        type: string
+      error:
+        type: string
+      request_id:
+        type: string
+    type: object
+info:
+  contact:
+    name: Jan Server Team
+    url: https://github.com/janhq/jan-server
+  description: Model Context Protocol (MCP) tools service providing search and scraping
+    capabilities.
+  title: Jan Server MCP Tools Service
+  version: "1.0"
+paths:
+  /v1/mcp:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.
+
+        **Available Tools:**
+        - `google_search`: Web search via Serper API (params: q, gl, hl, location, num, tbs, page, autocorrect)
+        - `scrape`: Web page scraping (params: url, includeMarkdown)
+
+        **MCP Protocol:**
+        - Request format: JSON-RPC 2.0 with method and params
+        - Response format: Server-Sent Events (SSE) stream
+        - Stateless mode (no session management)
+      parameters:
+      - description: MCP JSON-RPC request payload (e.g., {\
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Streamed MCP response in SSE format
+          schema:
+            type: string
+        "400":
+          description: Invalid MCP request payload or unsupported method
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: MCP endpoint for tool execution
+      tags:
+      - MCP API
+swagger: "2.0"

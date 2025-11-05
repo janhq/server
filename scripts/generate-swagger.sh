@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Generate Swagger documentation for Jan Server
+# This script generates swagger docs for both llm-api and mcp-tools services
+# and combines them into a single swagger spec
+
+set -e
+
+echo "🔧 Generating Swagger documentation for Jan Server..."
+
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Directories
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LLM_API_DIR="$ROOT_DIR/services/llm-api"
+MCP_TOOLS_DIR="$ROOT_DIR/services/mcp-tools"
+DOCS_DIR="$ROOT_DIR/docs/openapi"
+
+# Create docs directory if it doesn't exist
+mkdir -p "$DOCS_DIR"
+
+# Generate swagger for llm-api
+echo -e "${BLUE}📝 Generating swagger for llm-api service...${NC}"
+cd "$LLM_API_DIR"
+swag init \
+  --dir ./cmd/server,./internal/interfaces/httpserver/routes \
+  --generalInfo server.go \
+  --output ./docs/swagger \
+  --parseDependency \
+  --parseInternal
+
+if [ -f "./docs/swagger/swagger.json" ]; then
+  echo -e "${GREEN}✓ llm-api swagger generated successfully${NC}"
+  cp "./docs/swagger/swagger.json" "$DOCS_DIR/llm-api.json"
+else
+  echo -e "${YELLOW}⚠ llm-api swagger.json not found${NC}"
+fi
+
+# Generate swagger for mcp-tools
+echo -e "${BLUE}📝 Generating swagger for mcp-tools service...${NC}"
+cd "$MCP_TOOLS_DIR"
+swag init \
+  --dir . \
+  --generalInfo main.go \
+  --output ./docs/swagger \
+  --parseDependency \
+  --parseInternal
+
+if [ -f "./docs/swagger/swagger.json" ]; then
+  echo -e "${GREEN}✓ mcp-tools swagger generated successfully${NC}"
+  cp "./docs/swagger/swagger.json" "$DOCS_DIR/mcp-tools.json"
+else
+  echo -e "${YELLOW}⚠ mcp-tools swagger.json not found${NC}"
+fi
+
+# Combine swagger specs using Go tool
+echo -e "${BLUE}🔗 Combining swagger specifications...${NC}"
+cd "$ROOT_DIR/tools/swagger-merge"
+go run main.go \
+  --in="$DOCS_DIR/llm-api.json" \
+  --in="$DOCS_DIR/mcp-tools.json" \
+  --out="$DOCS_DIR/combined.json"
+
+if [ -f "$DOCS_DIR/combined.json" ]; then
+  echo -e "${GREEN}✓ Combined swagger spec created successfully${NC}"
+else
+  echo -e "${YELLOW}⚠ Combined swagger spec not found${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}✅ Swagger generation complete!${NC}"
+echo ""
+echo "Generated files:"
+echo "  - $DOCS_DIR/llm-api.json (LLM API service)"
+echo "  - $DOCS_DIR/mcp-tools.json (MCP Tools service)"
+echo "  - $DOCS_DIR/combined.json (Combined spec)"
+echo ""
+echo "View the API documentation:"
+echo "  - LLM API: http://localhost:8080/api/swagger/index.html"
+echo "  - Combined: file://$DOCS_DIR/index.html"
+echo ""
