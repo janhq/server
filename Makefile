@@ -4,7 +4,7 @@ VLLM_COMPOSE_ONLY ?= docker compose -f docker-compose.vllm.yml
 NEWMAN ?= newman
 NEWMAN_COLLECTION ?= tests/automation/auth-postman-scripts.json
 
-.PHONY: up up-gpu up-cpu down logs swag curl-chat fmt lint test newman newman-debug up-full-local up-full-docker
+.PHONY: up up-gpu up-cpu down down-db reset-db logs swag curl-chat fmt lint test newman newman-debug up-full-local up-full-docker restart-kong
 
 ifeq ($(OS),Windows_NT)
 define compose_full_with_env
@@ -64,6 +64,23 @@ up-gpu-full:
 down:
 	$(COMPOSE) down -v
 
+down-db:
+	$(COMPOSE) down -v api-db
+
+reset-db:
+	@echo "Stopping and removing API database to fix migration issues..."
+	$(COMPOSE) stop api-db
+	$(COMPOSE) rm -f api-db
+	docker volume rm jan-server_api-db-data || true
+	@echo "Database reset complete. Run 'make up-llm-api' or 'make up-full' to restart."
+
+restart-kong:
+	@echo "Restarting Kong to reload configuration..."
+	$(COMPOSE) restart kong
+	@echo "Kong restarted. Waiting for it to be ready..."
+	@sleep 3
+	@echo "Kong is ready."
+
 logs:
 	$(COMPOSE) logs -f
 
@@ -85,7 +102,27 @@ test:
 	go test ./...
 
 newman:
-	$(NEWMAN) run $(NEWMAN_COLLECTION)
+	$(NEWMAN) run $(NEWMAN_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
+		--env-var "llm_api_url=http://localhost:8000" \
+		--env-var "keycloak_base_url=http://localhost:8085" \
+		--env-var "keycloak_admin=admin" \
+		--env-var "keycloak_admin_password=admin" \
+		--env-var "realm=jan" \
+		--env-var "client_id_public=llm-api" \
+		--reporters cli,json \
+		--reporter-json-export newman.json
 
 newman-debug:
-	NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_COLLECTION) --verbose --reporter-cli-no-banner --reporter-cli-no-summary --reporter-cli-show-timestamps
+	NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
+		--env-var "llm_api_url=http://localhost:8000" \
+		--env-var "keycloak_base_url=http://localhost:8085" \
+		--env-var "keycloak_admin=admin" \
+		--env-var "keycloak_admin_password=admin" \
+		--env-var "realm=jan" \
+		--env-var "client_id_public=llm-api" \
+		--verbose \
+		--reporter-cli-no-banner \
+		--reporter-cli-no-summary \
+		--reporter-cli-show-timestamps

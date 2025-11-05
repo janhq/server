@@ -5,24 +5,25 @@ services:
   - name: llm-api-svc
     url: http://host.docker.internal:8080
     routes:
-      - name: llm-api
+      - name: llm-api-v1
         paths: [/v1]
         strip_path: false
         path_handling: v1
         tags: [public]
+      - name: llm-api-auth
+        paths: [/auth]
+        strip_path: false
+        path_handling: v1
+        tags: [public]
+      - name: llm-api-health
+        paths: [/healthz, /health]
+        strip_path: false
+        path_handling: v1
+        tags: [public]
     plugins:
-      - name: key-auth
-        config:
-          key_names: ["X-API-Key"]
-          hide_credentials: true
-          anonymous: anon
       - name: cors
         config:
           origins: ["*"]
-          methods: ["GET", "POST", "OPTIONS"]
-          headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
+          methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+          headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
           credentials: false
-
-consumers:
-  - username: anon
-    tags: [anonymous]

@@ -105,3 +105,20 @@ services:
       - "${OTEL_GRPC_PORT:-4317}:4317"
       - "${OTEL_HTTP_PORT:-4318}:4318"
     profiles: ["otel", "full"]
+
+  mcp-tools:
+    build: ./services/mcp-tools
+    restart: unless-stopped
+    environment:
+      HTTP_PORT: ${MCP_TOOLS_HTTP_PORT}
+      SERPER_API_KEY: ${SERPER_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_FORMAT: ${LOG_FORMAT}
+    ports:
+      - "${MCP_TOOLS_HTTP_PORT:-8091}:${MCP_TOOLS_HTTP_PORT:-8091}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${MCP_TOOLS_HTTP_PORT}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["mcp-tools", "full"]

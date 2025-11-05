@@ -1,0 +1,378 @@
+package model
+
+import (
+	"context"
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	"jan-server/services/llm-api/internal/config"
+	"jan-server/services/llm-api/internal/domain/query"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
+	"jan-server/services/llm-api/internal/utils/crypto"
+	"jan-server/services/llm-api/internal/utils/httpclients/chat"
+	"jan-server/services/llm-api/internal/utils/idgen"
+	"jan-server/services/llm-api/internal/utils/platformerrors"
+	"jan-server/services/llm-api/internal/utils/ptr"
+)
+
+type ProviderService struct {
+	providerRepo         ProviderRepository
+	providerModelService *ProviderModelService
+	modelCatalogService  *ModelCatalogService
+	modelProviderSecret  string // Encryption secret for provider API keys
+}
+
+func NewProviderService(
+	providerRepo ProviderRepository,
+	providerModelService *ProviderModelService,
+	modelCatalogService *ModelCatalogService,
+) *ProviderService {
+	return &ProviderService{
+		providerRepo:         providerRepo,
+		providerModelService: providerModelService,
+		modelCatalogService:  modelCatalogService,
+	}
+}
+
+type RegisterProviderInput struct {
+	Name     string
+	Vendor   string
+	BaseURL  string
+	APIKey   string
+	Metadata map[string]string
+	Active   bool
+}
+
+type UpdateProviderInput struct {
+	Name     *string
+	BaseURL  *string
+	APIKey   *string
+	Metadata *map[string]string
+	Active   *bool
+}
+
+type UpsertProviderInput struct {
+	Name     string
+	Vendor   string
+	BaseURL  string
+	APIKey   string
+	Metadata map[string]string
+	Active   bool
+}
+
+func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterProviderInput) (*Provider, error) {
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider name is required", nil, "c86f2bc3-5ea3-41d3-b450-e86adb33352c")
+	}
+
+	baseURL := strings.TrimSpace(input.BaseURL)
+	if baseURL == "" {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "base_url is required", nil, "c80a4867-6c8b-4adb-878d-41fe1b5e96ae")
+	}
+	if _, err := url.ParseRequestURI(baseURL); err != nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("invalid base_url format: %v", err), nil, "9e944ba1-c849-4959-957f-cb3de40e2eb1")
+	}
+
+	kind := providerKindFromVendor(input.Vendor)
+
+	if kind != ProviderCustom {
+		filter := ProviderFilter{Kind: &kind}
+		count, err := s.providerRepo.Count(ctx, filter)
+		if err != nil {
+			return nil, err
+		}
+		if count > 0 {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeConflict, "provider kind already exists", nil, "ac1dfff6-c184-4572-b613-6f900c36443f")
+		}
+	}
+
+	publicID, err := idgen.GenerateSecureID("prov", 16)
+	if err != nil {
+		return nil, err
+	}
+
+	plainAPIKey := strings.TrimSpace(input.APIKey)
+	apiKeyHint := apiKeyHint(plainAPIKey)
+	var encryptedAPIKey string
+	if plainAPIKey != "" {
+		secret := strings.TrimSpace(config.GetGlobal().ModelProviderSecret)
+		if secret == "" {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeInternal, "model provider secret is not configured", nil, "9fd675bb-1471-4dd4-9160-16df36500595")
+		}
+		cipher, err := crypto.EncryptString(secret, plainAPIKey)
+		if err != nil {
+			return nil, err
+		}
+		encryptedAPIKey = cipher
+	}
+
+	metadata := sanitizeMetadata(input.Metadata)
+
+	provider := &Provider{
+		PublicID:        publicID,
+		DisplayName:     name,
+		Kind:            kind,
+		BaseURL:         normalizeURL(baseURL),
+		EncryptedAPIKey: encryptedAPIKey,
+		APIKeyHint:      apiKeyHint,
+		IsModerated:     false,
+		Active:          input.Active,
+		Metadata:        metadata,
+	}
+
+	if err := s.providerRepo.Create(ctx, provider); err != nil {
+		return nil, err
+	}
+
+	return provider, nil
+}
+
+func (s *ProviderService) FindProviderByVendor(ctx context.Context, vendor string) (*Provider, error) {
+	kind := providerKindFromVendor(vendor)
+	filter := ProviderFilter{Kind: &kind}
+	result, err := s.providerRepo.FindByFilter(ctx, filter, &query.Pagination{Limit: ptr.ToInt(1)})
+	if err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result[0], nil
+}
+
+func providerKindFromVendor(vendor string) ProviderKind {
+	switch strings.ToLower(strings.TrimSpace(vendor)) {
+	case "jan":
+		return ProviderJan
+	case "openrouter":
+		return ProviderOpenRouter
+	case "openai":
+		return ProviderOpenAI
+	case "anthropic":
+		return ProviderAnthropic
+	case "gemini", "google", "googleai":
+		return ProviderGoogle
+	case "mistral":
+		return ProviderMistral
+	case "groq":
+		return ProviderGroq
+	case "cohere":
+		return ProviderCohere
+	case "ollama":
+		return ProviderOllama
+	case "replicate":
+		return ProviderReplicate
+	case "azure_openai", "azure-openai":
+		return ProviderAzureOpenAI
+	case "aws_bedrock", "bedrock":
+		return ProviderAWSBedrock
+	case "perplexity":
+		return ProviderPerplexity
+	case "togetherai", "together":
+		return ProviderTogetherAI
+	case "huggingface":
+		return ProviderHuggingFace
+	case "vercel_ai", "vercel-ai", "vercel":
+		return ProviderVercelAI
+	case "deepinfra":
+		return ProviderDeepInfra
+	default:
+		return ProviderCustom
+	}
+}
+
+func apiKeyHint(apiKey string) *string {
+	key := strings.TrimSpace(apiKey)
+	if len(key) < 4 {
+		return nil
+	}
+	hint := key[len(key)-4:]
+	return ptr.ToString(hint)
+}
+
+func (s *ProviderService) GetByID(ctx context.Context, providerId uint) (*Provider, error) {
+	provider, err := s.providerRepo.FindByID(ctx, providerId)
+	if err != nil {
+		return nil, err
+	}
+	return provider, nil
+}
+
+func (s *ProviderService) FindByPublicID(ctx context.Context, publicID string) (*Provider, error) {
+	return s.providerRepo.FindByPublicID(ctx, publicID)
+}
+
+func (s *ProviderService) GetByIDs(ctx context.Context, ids []uint) (map[uint]*Provider, error) {
+	if len(ids) == 0 {
+		return make(map[uint]*Provider), nil
+	}
+
+	providers, err := s.providerRepo.FindByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[uint]*Provider, len(providers))
+	for _, provider := range providers {
+		result[provider.ID] = provider
+	}
+
+	return result, nil
+}
+
+func (s *ProviderService) FindAllProviders(ctx context.Context) ([]*Provider, error) {
+	filter := ProviderFilter{}
+	return s.providerRepo.FindByFilter(ctx, filter, nil)
+}
+
+func (s *ProviderService) FindAllActiveProviders(ctx context.Context) ([]*Provider, error) {
+	filter := ProviderFilter{Active: ptr.ToBool(true)}
+	return s.providerRepo.FindByFilter(ctx, filter, nil)
+}
+
+func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProviderInput) (*Provider, error) {
+	// Check if provider exists by display name (since Name field doesn't exist in filter)
+	filter := ProviderFilter{}
+	allProviders, err := s.providerRepo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find existing provider by name
+	var existing *Provider
+	for _, p := range allProviders {
+		if p.DisplayName == input.Name {
+			existing = p
+			break
+		}
+	}
+
+	if existing != nil {
+		// Update existing provider
+		updateInput := UpdateProviderInput{
+			BaseURL:  &input.BaseURL,
+			APIKey:   &input.APIKey,
+			Metadata: &input.Metadata,
+			Active:   &input.Active,
+		}
+		return s.UpdateProvider(ctx, existing, updateInput)
+	}
+
+	// Register new provider
+	registerInput := RegisterProviderInput{
+		Name:     input.Name,
+		Vendor:   input.Vendor,
+		BaseURL:  input.BaseURL,
+		APIKey:   input.APIKey,
+		Metadata: input.Metadata,
+		Active:   input.Active,
+	}
+	return s.RegisterProvider(ctx, registerInput)
+}
+
+func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider, input UpdateProviderInput) (*Provider, error) {
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider name is required", nil, "a5df830c-8084-4238-9e17-f44950764ca5")
+		}
+		provider.DisplayName = name
+	}
+	if input.BaseURL != nil {
+		baseURL := strings.TrimSpace(*input.BaseURL)
+		if baseURL == "" {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "base_url is required", nil, "302ffb5e-243f-4112-99ec-e4f9bfbc331a")
+		}
+		if _, err := url.ParseRequestURI(baseURL); err != nil {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("invalid base_url format: %v", err), nil, "0037a0ec-1342-49e9-8479-cda7db9d1ce8")
+		}
+		provider.BaseURL = normalizeURL(baseURL)
+	}
+	if input.APIKey != nil {
+		key := strings.TrimSpace(*input.APIKey)
+		if key == "" {
+			provider.EncryptedAPIKey = ""
+			provider.APIKeyHint = nil
+		} else {
+			secret := strings.TrimSpace(config.GetGlobal().ModelProviderSecret)
+			if secret == "" {
+				return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeInternal, "model provider secret is not configured", nil, "b31c3083-4a15-4e86-baf9-35fc557cfa0a")
+			}
+			cipher, err := crypto.EncryptString(secret, key)
+			if err != nil {
+				return nil, err
+			}
+			provider.EncryptedAPIKey = cipher
+			provider.APIKeyHint = apiKeyHint(key)
+		}
+	}
+	if input.Metadata != nil {
+		provider.Metadata = sanitizeMetadata(*input.Metadata)
+	}
+	if input.Active != nil {
+		provider.Active = *input.Active
+	}
+	if err := s.providerRepo.Update(ctx, provider); err != nil {
+		return nil, err
+	}
+
+	return provider, nil
+}
+
+func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, provider *Provider, models []chat.Model, autoEnableNewModels bool) ([]*ProviderModel, error) {
+	results := make([]*ProviderModel, 0, len(models))
+	for _, model := range models {
+		catalog, created, err := s.modelCatalogService.UpsertCatalog(ctx, provider.Kind, model)
+		if err != nil {
+			log := logger.GetLogger()
+			log.Error().
+				Str("model_id", model.ID).
+				Str("provider", provider.DisplayName).
+				Err(err).
+				Msgf("failed to upsert catalog for model '%s' from provider '%s'", model.ID, provider.DisplayName)
+			continue
+		}
+		shouldAutoEnable := autoEnableNewModels && created
+		providerModel, err := s.providerModelService.UpsertProviderModelWithOptions(ctx, provider, catalog, model, shouldAutoEnable)
+		if err != nil {
+			log := logger.GetLogger()
+			log.Error().
+				Str("model_id", model.ID).
+				Str("provider", provider.DisplayName).
+				Err(err).
+				Msgf("failed to upsert provider model for '%s' from provider '%s'", model.ID, provider.DisplayName)
+			continue
+		}
+		results = append(results, providerModel)
+	}
+
+	now := time.Now().UTC()
+	provider.LastSyncedAt = &now
+	if err := s.providerRepo.Update(ctx, provider); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func sanitizeMetadata(metadata map[string]string) map[string]string {
+	if len(metadata) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(metadata))
+	for key, value := range metadata {
+		k := strings.TrimSpace(key)
+		v := strings.TrimSpace(value)
+		if k == "" || v == "" {
+			continue
+		}
+		result[k] = v
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}

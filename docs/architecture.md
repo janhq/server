@@ -376,7 +376,6 @@ HTTP_PORT=8080
 LOG_LEVEL=info
 LOG_FORMAT=json
 AUTO_MIGRATE=true
-PROVIDERS_CONFIG_PATH=/app/config/providers.yaml
 
 # Keycloak
 KEYCLOAK_BASE_URL=http://keycloak:8080

@@ -1,0 +1,682 @@
+package chathandler
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	openai "github.com/sashabaranov/go-openai"
+
+	"jan-server/services/llm-api/internal/domain/conversation"
+	"jan-server/services/llm-api/internal/infrastructure/inference"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
+	conversationHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
+	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
+	chatrequests "jan-server/services/llm-api/internal/interfaces/httpserver/requests/chat"
+	"jan-server/services/llm-api/internal/utils/httpclients/chat"
+	"jan-server/services/llm-api/internal/utils/idgen"
+	"jan-server/services/llm-api/internal/utils/platformerrors"
+)
+
+const ConversationReferrerContextKey = "conversation_referrer"
+
+// ChatCompletionResult wraps the response with conversation context
+type ChatCompletionResult struct {
+	Response          *openai.ChatCompletionResponse
+	ConversationID    string
+	ConversationTitle *string
+}
+
+// ChatHandler handles chat completion requests
+type ChatHandler struct {
+	inferenceProvider   *inference.InferenceProvider
+	providerHandler     *modelHandler.ProviderHandler
+	conversationHandler *conversationHandler.ConversationHandler
+	conversationService *conversation.ConversationService
+}
+
+// NewChatHandler creates a new chat handler
+func NewChatHandler(
+	inferenceProvider *inference.InferenceProvider,
+	providerHandler *modelHandler.ProviderHandler,
+	conversationHandler *conversationHandler.ConversationHandler,
+	conversationService *conversation.ConversationService,
+) *ChatHandler {
+	return &ChatHandler{
+		inferenceProvider:   inferenceProvider,
+		providerHandler:     providerHandler,
+		conversationHandler: conversationHandler,
+		conversationService: conversationService,
+	}
+}
+
+// CreateChatCompletion handles chat completion requests (both streaming and non-streaming)
+func (h *ChatHandler) CreateChatCompletion(
+	ctx context.Context,
+	reqCtx *gin.Context,
+	userID uint,
+	request chatrequests.ChatCompletionRequest,
+) (*ChatCompletionResult, error) {
+	var conv *conversation.Conversation
+	var conversationID string
+	var err error
+	newMessages := append([]openai.ChatCompletionMessage(nil), request.Messages...)
+
+	// Extract referrer from context or query parameters
+	referrer := strings.TrimSpace(reqCtx.GetString(ConversationReferrerContextKey))
+	if referrer == "" {
+		referrer = strings.TrimSpace(reqCtx.Param("referrer"))
+	}
+	if referrer == "" {
+		referrer = strings.TrimSpace(reqCtx.Query("referrer"))
+	}
+
+	// Check if conversation.id exists in request
+	if referrer != "" || (request.Conversation != nil && !request.Conversation.IsEmpty()) {
+
+		// Get or create conversation with referrer (referrer can be empty)
+		conv, err = h.getOrCreateConversation(ctx, userID, request.Conversation, referrer)
+		if err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get or create conversation")
+		}
+
+		// Auto-generate title from first message if conversation was just created
+		conv = h.updateConversationTitleFromMessages(ctx, userID, conv, request.Messages)
+
+		// Prepend conversation items to messages
+		conversationID = conv.PublicID
+		request.Messages = h.prependConversationItems(conv, request.Messages)
+	}
+	// If no conversation.id exists, bypass as non-conversation completion
+
+	// Validate messages (after prepending conversation items)
+	if len(request.Messages) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "messages cannot be empty", nil, "")
+	}
+
+	// Get provider based on the requested model
+	selectedProviderModel, selectedProvider, err := h.providerHandler.SelectProviderModelForModelPublicID(ctx, request.Model)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to select provider model")
+	}
+
+	if selectedProviderModel == nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, fmt.Sprintf("model not found: %s", request.Model), nil, "")
+	}
+
+	if selectedProvider == nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "")
+	}
+
+	// Override the request model with the provider's original model ID
+	request.Model = selectedProviderModel.ProviderOriginalModelID
+
+	// Get chat completion client
+	chatClient, err := h.inferenceProvider.GetChatCompletionClient(ctx, selectedProvider)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create chat client")
+	}
+
+	var response *openai.ChatCompletionResponse
+
+	// Handle streaming vs non-streaming
+	if request.Stream {
+		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, request.ChatCompletionRequest)
+	} else {
+		response, err = h.callCompletion(ctx, chatClient, request.ChatCompletionRequest)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Add request and response to conversation if conversation context was provided
+	storeConversation := true
+	if request.Store != nil {
+		storeConversation = *request.Store
+	}
+
+	if conv != nil && response != nil && storeConversation {
+		var askItemID, completionItemID string
+		if id, genErr := idgen.GenerateSecureID("msg", 16); genErr == nil {
+			askItemID = id
+		} else {
+			log := logger.GetLogger()
+			log.Warn().
+				Err(genErr).
+				Str("conversation_id", conv.PublicID).
+				Msg("failed to generate ask item id")
+		}
+		if id, genErr := idgen.GenerateSecureID("msg", 16); genErr == nil {
+			completionItemID = id
+		} else {
+			log := logger.GetLogger()
+			log.Warn().
+				Err(genErr).
+				Str("conversation_id", conv.PublicID).
+				Msg("failed to generate completion item id")
+		}
+		storeReasoning := false
+		if request.StoreReasoning != nil {
+			storeReasoning = *request.StoreReasoning
+		}
+
+		if err := h.addCompletionToConversation(ctx, conv, newMessages, response, askItemID, completionItemID, storeReasoning); err != nil {
+			// Log error but don't fail the request
+			log := logger.GetLogger()
+			log.Warn().
+				Err(err).
+				Str("conversation_id", conv.PublicID).
+				Msg("failed to store completion in conversation")
+		}
+	}
+
+	// Prepare conversation title for response
+	var conversationTitle *string
+	if conv != nil && conv.Title != nil {
+		conversationTitle = conv.Title
+	}
+
+	return &ChatCompletionResult{
+		Response:          response,
+		ConversationID:    conversationID,
+		ConversationTitle: conversationTitle,
+	}, nil
+}
+
+// callCompletion handles non-streaming chat completion
+func (h *ChatHandler) callCompletion(
+	ctx context.Context,
+	chatClient *chat.ChatCompletionClient,
+	request openai.ChatCompletionRequest,
+) (*openai.ChatCompletionResponse, error) {
+	chatCompletion, err := chatClient.CreateChatCompletion(ctx, "", request)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "chat completion failed")
+	}
+
+	return chatCompletion, nil
+}
+
+// streamCompletion handles streaming chat completion
+func (h *ChatHandler) streamCompletion(
+	ctx context.Context,
+	reqCtx *gin.Context,
+	chatClient *chat.ChatCompletionClient,
+	conv *conversation.Conversation,
+	request openai.ChatCompletionRequest,
+) (*openai.ChatCompletionResponse, error) {
+	// Create callback to send conversation data before [DONE]
+	var beforeDoneCallback chat.BeforeDoneCallback
+	if conv != nil && conv.PublicID != "" {
+		beforeDoneCallback = func(reqCtx *gin.Context) error {
+			// Build conversation data with ID and title
+			conversationData := map[string]interface{}{
+				"id": conv.PublicID,
+			}
+
+			// Include title if available
+			if conv.Title != nil && *conv.Title != "" {
+				conversationData["title"] = *conv.Title
+			}
+
+			conversationChunk := map[string]interface{}{
+				"conversation": conversationData,
+				"created":      time.Now().Unix(),
+				"id":           "", // Empty for conversation-only chunk
+				"model":        request.Model,
+				"object":       "chat.completion.chunk",
+			}
+
+			chunkJSON, err := json.Marshal(conversationChunk)
+			if err != nil {
+				return err
+			}
+
+			// Write conversation context as an SSE event BEFORE [DONE]
+			return h.writeSSEData(reqCtx, string(chunkJSON))
+		}
+	}
+
+	// Stream completion response to context with callback
+	resp, err := chatClient.StreamChatCompletionToContextWithCallback(reqCtx, "", request, beforeDoneCallback)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "streaming completion failed")
+	}
+
+	return resp, nil
+}
+
+func (h *ChatHandler) createConversationWithReferrer(ctx context.Context, userID uint, referrer string) (*conversation.Conversation, error) {
+	cleaned := strings.TrimSpace(referrer)
+	if cleaned == "" {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "referrer cannot be empty", nil, "")
+	}
+
+	referrerCopy := cleaned
+	input := conversation.CreateConversationInput{
+		UserID:   userID,
+		Referrer: &referrerCopy,
+	}
+
+	conv, err := h.conversationService.CreateConversationWithInput(ctx, input)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create conversation")
+	}
+	return conv, nil
+}
+
+// generateTitleFromMessage generates a conversation title from the first user message
+func (h *ChatHandler) generateTitleFromMessage(messages []openai.ChatCompletionMessage) string {
+	// Find the first user message
+	for _, msg := range messages {
+		if msg.Role == "user" && msg.Content != "" {
+			// Extract first 60 characters for title
+			content := strings.TrimSpace(msg.Content)
+			if len(content) > 60 {
+				// Find a good breaking point (end of word)
+				truncated := content[:60]
+				if lastSpace := strings.LastIndex(truncated, " "); lastSpace > 30 {
+					content = content[:lastSpace] + "..."
+				} else {
+					content = truncated + "..."
+				}
+			}
+			return content
+		}
+	}
+	return "New Conversation"
+}
+
+// updateConversationTitleFromMessages updates conversation title if it's still default and returns the updated conversation
+func (h *ChatHandler) updateConversationTitleFromMessages(ctx context.Context, userID uint, conv *conversation.Conversation, messages []openai.ChatCompletionMessage) *conversation.Conversation {
+	if conv == nil {
+		return nil
+	}
+
+	// Only update if title is not set or is empty
+	if conv.Title == nil || *conv.Title == "" {
+		newTitle := h.generateTitleFromMessage(messages)
+		if newTitle != "" {
+			// Update the conversation title
+			titleCopy := newTitle
+			updateInput := conversation.UpdateConversationInput{
+				Title: &titleCopy,
+			}
+			updatedConv, err := h.conversationService.UpdateConversationWithInput(ctx, userID, conv.PublicID, updateInput)
+			if err != nil {
+				// Log but don't fail the request
+				log := logger.GetLogger()
+				log.Warn().
+					Err(err).
+					Str("conversation_id", conv.PublicID).
+					Msg("failed to update conversation title")
+				return conv
+			}
+			return updatedConv
+		}
+	}
+	return conv
+}
+
+// getOrCreateConversation retrieves an existing conversation or creates a new one with optional referrer
+func (h *ChatHandler) getOrCreateConversation(
+	ctx context.Context,
+	userID uint,
+	convRef *chatrequests.ConversationReference,
+	referrer string,
+) (*conversation.Conversation, error) {
+	// If a conversation ID was provided (either directly or from object), fetch it from the service
+	if convRef != nil && convRef.GetID() != "" {
+		conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, convRef.GetID(), userID)
+		if err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+		}
+
+		// Return existing conversation with its original referrer
+		// Note: Referrer is immutable after creation - it represents the conversation's origin
+		return conv, nil
+	}
+
+	// If no ID was provided, create a new conversation
+	if referrer != "" {
+		return h.createConversationWithReferrer(ctx, userID, referrer)
+	}
+
+	// Create conversation without referrer
+	input := conversation.CreateConversationInput{
+		UserID: userID,
+	}
+	conv, err := h.conversationService.CreateConversationWithInput(ctx, input)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create conversation")
+	}
+	return conv, nil
+}
+
+// prependConversationItems prepends conversation items to the request messages
+func (h *ChatHandler) prependConversationItems(
+	conv *conversation.Conversation,
+	messages []openai.ChatCompletionMessage,
+) []openai.ChatCompletionMessage {
+	if conv == nil {
+		return messages
+	}
+
+	// Get items from the active branch or main branch
+	var items []conversation.Item
+	if conv.Branches != nil && conv.ActiveBranch != "" {
+		items = conv.Branches[conv.ActiveBranch]
+	} else {
+		items = conv.Items
+	}
+
+	if len(items) == 0 {
+		return messages
+	}
+
+	// Convert conversation items to chat messages
+	conversationMessages := make([]openai.ChatCompletionMessage, 0, len(items))
+	for _, item := range items {
+		msg := h.itemToMessage(item)
+		if msg != nil {
+			conversationMessages = append(conversationMessages, *msg)
+		}
+	}
+
+	// Prepend conversation messages to request messages
+	return append(conversationMessages, messages...)
+}
+
+// itemToMessage converts a conversation item to a chat completion message
+func (h *ChatHandler) itemToMessage(item conversation.Item) *openai.ChatCompletionMessage {
+	// Skip items that aren't in completed status
+	if item.Status != nil && *item.Status != conversation.ItemStatusCompleted {
+		return nil
+	}
+
+	role := conversation.ItemRoleUser
+	if item.Role != nil {
+		role = *item.Role
+	}
+
+	msg := &openai.ChatCompletionMessage{
+		Role: h.itemRoleToOpenAI(role),
+	}
+
+	// Extract content from item
+	if len(item.Content) > 0 {
+		// For simplicity, concatenate all text content parts
+		var contentParts []string
+		for _, content := range item.Content {
+			if content.Text != nil && content.Text.Text != "" {
+				contentParts = append(contentParts, content.Text.Text)
+			} else if content.InputText != nil {
+				contentParts = append(contentParts, *content.InputText)
+			} else if content.OutputText != nil {
+				contentParts = append(contentParts, content.OutputText.Text)
+			}
+		}
+		if len(contentParts) > 0 {
+			msg.Content = contentParts[0] // OpenAI typically uses single string content
+		}
+	}
+
+	return msg
+}
+
+// itemRoleToOpenAI converts conversation item role to OpenAI chat message role
+func (h *ChatHandler) itemRoleToOpenAI(role conversation.ItemRole) string {
+	switch role {
+	case conversation.ItemRoleSystem, conversation.ItemRoleDeveloper:
+		return openai.ChatMessageRoleSystem
+	case conversation.ItemRoleUser:
+		return openai.ChatMessageRoleUser
+	case conversation.ItemRoleAssistant:
+		return openai.ChatMessageRoleAssistant
+	case conversation.ItemRoleTool:
+		return openai.ChatMessageRoleTool
+	default:
+		return openai.ChatMessageRoleUser // Default to user role
+	}
+}
+
+// addCompletionToConversation persists the latest input and assistant response to the conversation
+func (h *ChatHandler) addCompletionToConversation(
+	ctx context.Context,
+	conv *conversation.Conversation,
+	newMessages []openai.ChatCompletionMessage,
+	response *openai.ChatCompletionResponse,
+	askItemID string,
+	completionItemID string,
+	storeReasoning bool,
+) error {
+	if conv == nil || response == nil || len(response.Choices) == 0 {
+		return nil
+	}
+
+	items := make([]conversation.Item, 0, 2)
+
+	if item := h.buildInputConversationItem(newMessages, storeReasoning, askItemID); item != nil {
+		items = append(items, *item)
+	}
+
+	if item := h.buildAssistantConversationItem(response, storeReasoning, completionItemID); item != nil {
+		items = append(items, *item)
+	}
+
+	if len(items) == 0 {
+		return nil
+	}
+
+	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, conversation.BranchMain, items); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to add items to conversation")
+	}
+
+	return nil
+}
+
+func (h *ChatHandler) buildInputConversationItem(
+	messages []openai.ChatCompletionMessage,
+	storeReasoning bool,
+	publicID string,
+) *conversation.Item {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	msg := messages[len(messages)-1]
+	item := h.messageToItem(msg)
+
+	if item.Role != nil && *item.Role == conversation.ItemRoleSystem {
+		return nil
+	}
+
+	item.Content = h.filterReasoningContent(item.Content, storeReasoning)
+	if len(item.Content) == 0 && msg.Content == "" && msg.FunctionCall == nil && len(msg.ToolCalls) == 0 {
+		return nil
+	}
+
+	if publicID != "" {
+		item.PublicID = publicID
+	}
+	item.CreatedAt = time.Now().UTC()
+	return &item
+}
+
+func (h *ChatHandler) buildAssistantConversationItem(
+	response *openai.ChatCompletionResponse,
+	storeReasoning bool,
+	publicID string,
+) *conversation.Item {
+	if response == nil || len(response.Choices) == 0 {
+		return nil
+	}
+
+	choice := response.Choices[0]
+	item := h.messageToItem(choice.Message)
+	item.Content = h.filterReasoningContent(item.Content, storeReasoning)
+
+	if finishReason := string(choice.FinishReason); finishReason != "" && len(item.Content) > 0 {
+		item.Content[0].FinishReason = &finishReason
+	}
+
+	if len(item.Content) == 0 && choice.Message.Content == "" && choice.Message.FunctionCall == nil && len(choice.Message.ToolCalls) == 0 {
+		return nil
+	}
+
+	if publicID != "" {
+		item.PublicID = publicID
+	}
+	item.CreatedAt = time.Now().UTC()
+	return &item
+}
+
+func (h *ChatHandler) filterReasoningContent(contents []conversation.Content, storeReasoning bool) []conversation.Content {
+	if storeReasoning || len(contents) == 0 {
+		return contents
+	}
+
+	filtered := make([]conversation.Content, 0, len(contents))
+	for _, content := range contents {
+		if strings.EqualFold(content.Type, "reasoning_content") {
+			continue
+		}
+		filtered = append(filtered, content)
+	}
+	return filtered
+}
+
+// messageToItem converts a chat completion message to a conversation item
+func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversation.Item {
+	status := conversation.ItemStatusCompleted
+	role := h.openAIRoleToItem(msg.Role)
+
+	item := conversation.Item{
+		Type:   conversation.ItemTypeMessage,
+		Role:   &role,
+		Status: &status,
+	}
+
+	contents := make([]conversation.Content, 0, 4)
+
+	if msg.Content != "" {
+		switch role {
+		case conversation.ItemRoleUser:
+			contents = append(contents, conversation.NewInputTextContent(msg.Content))
+		case conversation.ItemRoleTool:
+			toolContent := conversation.Content{
+				Type: "tool_result",
+				Text: &conversation.Text{
+					Text: msg.Content,
+				},
+			}
+			contents = append(contents, toolContent)
+		default:
+			contents = append(contents, conversation.NewTextContent(msg.Content))
+		}
+	}
+
+	if msg.ReasoningContent != "" {
+		reasoning := msg.ReasoningContent
+		contents = append(contents, conversation.Content{
+			Type:             "reasoning_content",
+			ReasoningContent: &reasoning,
+		})
+	}
+
+	if msg.FunctionCall != nil {
+		functionCall := conversation.FunctionCall{
+			Name:      msg.FunctionCall.Name,
+			Arguments: msg.FunctionCall.Arguments,
+		}
+
+		contents = append(contents, conversation.Content{
+			Type:         "function_call",
+			FunctionCall: &functionCall,
+		})
+	}
+
+	if len(msg.ToolCalls) > 0 {
+		toolCalls := make([]conversation.ToolCall, 0, len(msg.ToolCalls))
+		for _, call := range msg.ToolCalls {
+			toolCall := conversation.ToolCall{
+				ID:   call.ID,
+				Type: string(call.Type),
+				Function: conversation.FunctionCall{
+					Name:      call.Function.Name,
+					Arguments: call.Function.Arguments,
+				},
+			}
+			toolCalls = append(toolCalls, toolCall)
+		}
+
+		contents = append(contents, conversation.Content{
+			Type:      "tool_calls",
+			ToolCalls: toolCalls,
+		})
+	}
+
+	if msg.ToolCallID != "" {
+		toolCallID := msg.ToolCallID
+		attached := false
+		for i := range contents {
+			if contents[i].ToolCallID == nil {
+				content := contents[i]
+				content.ToolCallID = &toolCallID
+				contents[i] = content
+				attached = true
+				break
+			}
+		}
+		if !attached {
+			contents = append(contents, conversation.Content{
+				Type:       "tool_reference",
+				ToolCallID: &toolCallID,
+			})
+		}
+	}
+
+	if len(contents) > 0 {
+		item.Content = contents
+	}
+
+	return item
+}
+
+// openAIRoleToItem converts OpenAI chat message role to conversation item role
+func (h *ChatHandler) openAIRoleToItem(role string) conversation.ItemRole {
+	switch role {
+	case openai.ChatMessageRoleSystem:
+		return conversation.ItemRoleSystem
+	case openai.ChatMessageRoleUser:
+		return conversation.ItemRoleUser
+	case openai.ChatMessageRoleAssistant:
+		return conversation.ItemRoleAssistant
+	case openai.ChatMessageRoleTool:
+		return conversation.ItemRoleTool
+	default:
+		return conversation.ItemRoleUnknown
+	}
+}
+
+// writeSSEData writes an SSE data event to the response
+func (h *ChatHandler) writeSSEData(reqCtx *gin.Context, data string) error {
+	_, err := reqCtx.Writer.Write([]byte("data: "))
+	if err != nil {
+		return err
+	}
+	_, err = reqCtx.Writer.Write([]byte(data))
+	if err != nil {
+		return err
+	}
+	_, err = reqCtx.Writer.Write([]byte("\n\n"))
+	if err != nil {
+		return err
+	}
+	reqCtx.Writer.Flush()
+	return nil
+}
