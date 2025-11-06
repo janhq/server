@@ -9,10 +9,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	openai "github.com/sashabaranov/go-openai"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
+	"jan-server/services/llm-api/internal/infrastructure/observability"
 	conversationHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	chatrequests "jan-server/services/llm-api/internal/interfaces/httpserver/requests/chat"
@@ -60,6 +63,21 @@ func (h *ChatHandler) CreateChatCompletion(
 	userID uint,
 	request chatrequests.ChatCompletionRequest,
 ) (*ChatCompletionResult, error) {
+	// Start OpenTelemetry span for chat completion
+	ctx, span := observability.StartSpan(ctx, "llm-api", "ChatHandler.CreateChatCompletion")
+	defer span.End()
+
+	// Track request start time for duration metrics
+	startTime := time.Now()
+
+	// Add basic attributes
+	observability.AddSpanAttributes(ctx,
+		attribute.String("chat.model", request.Model),
+		attribute.Bool("chat.stream", request.Stream),
+		attribute.Int("chat.message_count", len(request.Messages)),
+		attribute.Int("user.id", int(userID)),
+	)
+
 	var conv *conversation.Conversation
 	var conversationID string
 	var err error
@@ -76,10 +94,12 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	// Check if conversation.id exists in request
 	if referrer != "" || (request.Conversation != nil && !request.Conversation.IsEmpty()) {
+		observability.AddSpanEvent(ctx, "conversation_context_detected")
 
 		// Get or create conversation with referrer (referrer can be empty)
 		conv, err = h.getOrCreateConversation(ctx, userID, request.Conversation, referrer)
 		if err != nil {
+			observability.RecordError(ctx, err)
 			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get or create conversation")
 		}
 
@@ -88,28 +108,47 @@ func (h *ChatHandler) CreateChatCompletion(
 
 		// Prepend conversation items to messages
 		conversationID = conv.PublicID
+		observability.AddSpanAttributes(ctx,
+			attribute.String("conversation.id", conversationID),
+		)
 		request.Messages = h.prependConversationItems(conv, request.Messages)
 	}
 	// If no conversation.id exists, bypass as non-conversation completion
 
 	// Validate messages (after prepending conversation items)
 	if len(request.Messages) == 0 {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "messages cannot be empty", nil, "")
+		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "messages cannot be empty", nil, "")
+		observability.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Get provider based on the requested model
+	observability.AddSpanEvent(ctx, "selecting_provider")
 	selectedProviderModel, selectedProvider, err := h.providerHandler.SelectProviderModelForModelPublicID(ctx, request.Model)
 	if err != nil {
+		observability.RecordError(ctx, err)
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to select provider model")
 	}
 
 	if selectedProviderModel == nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, fmt.Sprintf("model not found: %s", request.Model), nil, "")
+		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, fmt.Sprintf("model not found: %s", request.Model), nil, "")
+		observability.RecordError(ctx, err)
+		return nil, err
 	}
 
 	if selectedProvider == nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "")
+		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "")
+		observability.RecordError(ctx, err)
+		return nil, err
 	}
+
+	// Add provider information to span
+	observability.AddSpanAttributes(ctx,
+		attribute.String("provider.display_name", selectedProvider.DisplayName),
+		attribute.String("provider.id", selectedProvider.PublicID),
+		attribute.String("provider.kind", string(selectedProvider.Kind)),
+		attribute.String("model.original_id", selectedProviderModel.ProviderOriginalModelID),
+	)
 
 	// Override the request model with the provider's original model ID
 	request.Model = selectedProviderModel.ProviderOriginalModelID
@@ -117,20 +156,44 @@ func (h *ChatHandler) CreateChatCompletion(
 	// Get chat completion client
 	chatClient, err := h.inferenceProvider.GetChatCompletionClient(ctx, selectedProvider)
 	if err != nil {
+		observability.RecordError(ctx, err)
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create chat client")
 	}
 
 	var response *openai.ChatCompletionResponse
 
 	// Handle streaming vs non-streaming
+	observability.AddSpanEvent(ctx, "calling_llm")
+	llmStartTime := time.Now()
 	if request.Stream {
 		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, request.ChatCompletionRequest)
 	} else {
 		response, err = h.callCompletion(ctx, chatClient, request.ChatCompletionRequest)
 	}
+	llmDuration := time.Since(llmStartTime)
 
 	if err != nil {
+		observability.RecordError(ctx, err)
+		observability.AddSpanAttributes(ctx,
+			attribute.String("completion.status", "failed"),
+		)
 		return nil, err
+	}
+
+	// Add LLM response metrics
+	if response != nil && response.Usage.TotalTokens > 0 {
+		observability.AddSpanAttributes(ctx,
+			attribute.Int("completion.prompt_tokens", response.Usage.PromptTokens),
+			attribute.Int("completion.completion_tokens", response.Usage.CompletionTokens),
+			attribute.Int("completion.total_tokens", response.Usage.TotalTokens),
+			attribute.Float64("completion.llm_duration_ms", float64(llmDuration.Milliseconds())),
+			attribute.String("completion.status", "success"),
+		)
+		if len(response.Choices) > 0 {
+			observability.AddSpanAttributes(ctx,
+				attribute.String("completion.finish_reason", string(response.Choices[0].FinishReason)),
+			)
+		}
 	}
 
 	// Add request and response to conversation if conversation context was provided
@@ -140,6 +203,7 @@ func (h *ChatHandler) CreateChatCompletion(
 	}
 
 	if conv != nil && response != nil && storeConversation {
+		observability.AddSpanEvent(ctx, "storing_conversation")
 		var askItemID, completionItemID string
 		if id, genErr := idgen.GenerateSecureID("msg", 16); genErr == nil {
 			askItemID = id
@@ -171,8 +235,24 @@ func (h *ChatHandler) CreateChatCompletion(
 				Err(err).
 				Str("conversation_id", conv.PublicID).
 				Msg("failed to store completion in conversation")
+			observability.AddSpanEvent(ctx, "conversation_storage_failed",
+				attribute.String("error", err.Error()),
+			)
+		} else {
+			observability.AddSpanAttributes(ctx,
+				attribute.Bool("completion.stored", true),
+			)
 		}
 	}
+
+	// Calculate total duration
+	totalDuration := time.Since(startTime)
+	observability.AddSpanAttributes(ctx,
+		attribute.Float64("completion.total_duration_ms", float64(totalDuration.Milliseconds())),
+	)
+
+	// Set span status to OK
+	observability.SetSpanStatus(ctx, codes.Ok, "chat completion successful")
 
 	// Prepare conversation title for response
 	var conversationTitle *string
