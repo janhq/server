@@ -59,6 +59,17 @@ func ReflectToMCPOptions(description string, v interface{}) []mcpgo.ToolOption {
 			} else {
 				arg = mcpgo.WithBoolean(name, mcpgo.Description(desc))
 			}
+		case reflect.Slice:
+			if baseType.Elem().Kind() == reflect.String {
+				propertyOpts := []mcpgo.PropertyOption{mcpgo.WithStringItems()}
+				if desc != "" {
+					propertyOpts = append(propertyOpts, mcpgo.Description(desc))
+				}
+				if required {
+					propertyOpts = append(propertyOpts, mcpgo.Required())
+				}
+				arg = mcpgo.WithArray(name, propertyOpts...)
+			}
 		default:
 			continue
 		}

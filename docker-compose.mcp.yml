@@ -27,6 +27,28 @@ services:
       - mcp-network
     profiles: ["mcp", "mcp-full"]
 
+  # Lightweight vector store for MCP file search
+  vector-store-mcp:
+    build: ./services/mcp-tools/tools/vector-store-service
+    restart: unless-stopped
+    environment:
+      VECTOR_STORE_PORT: 3015
+    ports:
+      - "3015:3015"
+    networks:
+      - mcp-network
+    profiles: ["mcp", "mcp-full"]
+
+  # SandboxFusion code interpreter
+  sandbox-fusion:
+    image: volcengine/sandbox-fusion:server-20250609
+    restart: unless-stopped
+    ports:
+      - "3010:8080"
+    networks:
+      - mcp-network
+    profiles: ["mcp", "mcp-full"]
+
 networks:
   mcp-network:
     external: true

@@ -6,6 +6,7 @@ MCP_COMPOSE ?= docker compose -f docker-compose.mcp.yml
 NEWMAN ?= newman
 NEWMAN_AUTH_COLLECTION ?= tests/automation/auth-postman-scripts.json
 NEWMAN_CONVERSATION_COLLECTION ?= tests/automation/conversations-postman-scripts.json
+NEWMAN_MCP_COLLECTION ?= tests/automation/mcp-postman-scripts.json
 
 .PHONY: up up-gpu up-cpu down down-db reset-db logs swag curl-chat fmt lint test newman newman-debug up-full-local up-full-docker restart-kong monitor-up monitor-down monitor-logs up-mcp-tools mcp-full mcp-down mcp-with-tools mcp-down-all
 
@@ -50,6 +51,8 @@ mcp-full:
 	@echo ""
 	@echo "MCP Services Started:"
 	@echo "  - SearXNG:           http://localhost:8086"
+	@echo "  - Vector Store:      http://localhost:3015"
+	@echo "  - SandboxFusion:     http://localhost:3010"
 	@echo ""
 
 # Bring down the MCP stack
@@ -69,6 +72,8 @@ endif
 	@echo ""
 	@echo "MCP Stack with Tools Bridge Started:"
 	@echo "  - SearXNG:           http://localhost:8086"
+	@echo "  - Vector Store:      http://localhost:3015"
+	@echo "  - SandboxFusion:     http://localhost:3010"
 	@echo "  - MCP Tools Bridge:  http://localhost:8091/v1/mcp"
 	@echo ""
 	@echo "Query available tools: curl -X POST http://localhost:8091/v1/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}'"
@@ -237,6 +242,19 @@ newman:
 		--reporters cli
 	@echo ""
 	@echo "All Newman tests completed successfully!"
+
+newman-mcp:
+	@echo "Running MCP Newman tests..."
+	@$(NEWMAN) run $(NEWMAN_MCP_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
+		--env-var "llm_api_url=http://localhost:8000" \
+		--env-var "mcp_tools_url=http://localhost:8091" \
+		--env-var "searxng_url=http://localhost:8086" \
+		--verbose \
+		--reporters cli
+	@echo ""
+	@echo "MCP Newman tests completed successfully!"
+	
 
 newman-debug:
 	NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \

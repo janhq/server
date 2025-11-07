@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"jan-server/services/mcp-tools/domain/serper"
+	domainsearch "jan-server/services/mcp-tools/domain/search"
 	"jan-server/services/mcp-tools/infrastructure/config"
 	"jan-server/services/mcp-tools/infrastructure/logger"
 	"jan-server/services/mcp-tools/infrastructure/mcpprovider"
-	serperclient "jan-server/services/mcp-tools/infrastructure/serper"
+	sandboxfusionclient "jan-server/services/mcp-tools/infrastructure/sandboxfusion"
+	searchclient "jan-server/services/mcp-tools/infrastructure/search"
+	vectorstoreclient "jan-server/services/mcp-tools/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/interfaces/httpserver/middlewares"
 	"jan-server/services/mcp-tools/interfaces/httpserver/routes"
 
@@ -38,8 +40,25 @@ func main() {
 		Msg("Starting MCP Tools service")
 
 	// Initialize infrastructure
-	serperClient := serperclient.NewSerperClient(cfg.SerperAPIKey)
-	serperService := serper.NewSerperService(serperClient)
+	searchClient := searchclient.NewSearchClient(searchclient.ClientConfig{
+		Engine:        searchclient.Engine(cfg.SearchEngine),
+		SerperAPIKey:  cfg.SerperAPIKey,
+		SearxngURL:    cfg.SearxngURL,
+		DomainFilters: cfg.SerperDomainFilter,
+		LocationHint:  cfg.SerperLocationHint,
+		OfflineMode:   cfg.SerperOfflineMode,
+	})
+	searchService := domainsearch.NewSearchService(searchClient)
+
+	var vectorClient *vectorstoreclient.Client
+	if cfg.VectorStoreURL != "" {
+		vectorClient = vectorstoreclient.NewClient(cfg.VectorStoreURL)
+	}
+	var sandboxMCP *routes.SandboxFusionMCP
+	if cfg.SandboxFusionURL != "" {
+		sandboxClient := sandboxfusionclient.NewClient(cfg.SandboxFusionURL)
+		sandboxMCP = routes.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval)
+	}
 
 	// Load MCP provider configuration
 	providerConfig, err := mcpprovider.LoadConfig("configs/mcp-providers.yml")
@@ -49,7 +68,7 @@ func main() {
 	}
 
 	// Initialize MCP routes
-	serperMCP := routes.NewSerperMCP(serperService)
+	serperMCP := routes.NewSerperMCP(searchService, vectorClient)
 
 	// Initialize external MCP providers
 	ctx := context.Background()
@@ -58,7 +77,7 @@ func main() {
 		log.Error().Err(err).Msg("Failed to initialize MCP providers")
 	}
 
-	mcpRoute := routes.NewMCPRoute(serperMCP, providerMCP)
+	mcpRoute := routes.NewMCPRoute(serperMCP, providerMCP, sandboxMCP)
 
 	// Setup HTTP server
 	router := gin.New()

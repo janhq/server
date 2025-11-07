@@ -37,6 +37,7 @@ var allowedMCPMethods = map[string]bool{
 type MCPRoute struct {
 	serperMCP   *SerperMCP
 	providerMCP *ProviderMCP
+	sandboxMCP  *SandboxFusionMCP
 	mcpServer   *mcpserver.MCPServer
 	httpHandler http.Handler
 }
@@ -44,6 +45,7 @@ type MCPRoute struct {
 func NewMCPRoute(
 	serperMCP *SerperMCP,
 	providerMCP *ProviderMCP,
+	sandboxMCP *SandboxFusionMCP,
 ) *MCPRoute {
 	server := mcpserver.NewMCPServer("menlo-platform", "1.0.0",
 		mcpserver.WithToolCapabilities(true),
@@ -51,6 +53,10 @@ func NewMCPRoute(
 	)
 
 	serperMCP.RegisterTools(server)
+
+	if sandboxMCP != nil {
+		sandboxMCP.RegisterTools(server)
+	}
 
 	// Register tools from external MCP providers
 	if providerMCP != nil {
@@ -80,8 +86,10 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Description Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.
 // @Description
 // @Description **Available Tools:**
-// @Description - `google_search`: Web search via Serper API (params: q, gl, hl, location, num, tbs, page, autocorrect)
-// @Description - `scrape`: Web page scraping (params: url, includeMarkdown)
+// @Description - `google_search`: Web search via pluggable engines (Serper/SearXNG/duckduckgo) with params: q, gl, hl, location, num, tbs, page, autocorrect, domain_allow_list, location_hint, offline_mode. Returns structured citations.
+// @Description - `scrape`: Web page scraping (params: url, includeMarkdown) returning text, preview, cache_status, and metadata.
+// @Description - `file_search_index` / `file_search_query`: Index arbitrary text and run similarity queries against the lightweight vector store.
+// @Description - `python_exec`: Execute trusted code through SandboxFusion (params: code, language, session_id, approved) to retrieve stdout/stderr/artifacts.
 // @Description
 // @Description **MCP Protocol:**
 // @Description - Request format: JSON-RPC 2.0 with method and params

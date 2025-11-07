@@ -16,6 +16,20 @@ providers:
         description: Search the web using SearXNG meta search engine
         enabled: false  # Disabled until we implement SearXNG API wrapper
 
+  # Vector Store Service - used by MCP file_search tools
+  - name: vector-store
+    description: Lightweight in-memory vector store backing MCP file_search tools
+    enabled: false
+    endpoint: ${VECTOR_STORE_URL}
+    type: http
+
+  # SandboxFusion MCP placeholder (direct integration handled via python_exec)
+  - name: sandbox-fusion
+    description: SandboxFusion python interpreter service
+    enabled: false
+    endpoint: ${SANDBOX_FUSION_URL}
+    type: http
+
 # Global settings
 settings:
   # Maximum timeout for any MCP provider call
