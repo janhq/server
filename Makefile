@@ -2,11 +2,12 @@ COMPOSE ?= docker compose
 VLLM_COMPOSE ?= docker compose -f docker-compose.yml -f docker-compose.vllm.yml
 VLLM_COMPOSE_ONLY ?= docker compose -f docker-compose.vllm.yml
 MONITOR_COMPOSE ?= docker compose -f docker-compose.monitor.yml
+MCP_COMPOSE ?= docker compose -f docker-compose.mcp.yml
 NEWMAN ?= newman
 NEWMAN_AUTH_COLLECTION ?= tests/automation/auth-postman-scripts.json
 NEWMAN_CONVERSATION_COLLECTION ?= tests/automation/conversations-postman-scripts.json
 
-.PHONY: up up-gpu up-cpu down down-db reset-db logs swag curl-chat fmt lint test newman newman-debug up-full-local up-full-docker restart-kong monitor-up monitor-down monitor-logs up-mcp-tools
+.PHONY: up up-gpu up-cpu down down-db reset-db logs swag curl-chat fmt lint test newman newman-debug up-full-local up-full-docker restart-kong monitor-up monitor-down monitor-logs up-mcp-tools mcp-full mcp-down mcp-with-tools mcp-down-all
 
 ifeq ($(OS),Windows_NT)
 define compose_full_with_env
@@ -41,6 +42,42 @@ up-llm-api:
 
 up-mcp-tools:
 	$(COMPOSE) --profile mcp-tools up -d --build
+
+# Bring up the full MCP stack defined in docker-compose.mcp.yml
+mcp-full:
+	@echo "Starting MCP network and services..."
+	$(MCP_COMPOSE) --profile mcp-full up -d --build
+	@echo ""
+	@echo "MCP Services Started:"
+	@echo "  - SearXNG:           http://localhost:8086"
+	@echo ""
+
+# Bring down the MCP stack
+mcp-down:
+	$(MCP_COMPOSE) down -v
+
+# Start MCP stack + mcp-tools service
+mcp-with-tools:
+	@echo "Starting MCP services and mcp-tools bridge..."
+	$(MCP_COMPOSE) --profile mcp-full up -d --build
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "Start-Sleep -Seconds 5"
+else
+	@sleep 5
+endif
+	$(COMPOSE) --profile mcp-tools up -d --build
+	@echo ""
+	@echo "MCP Stack with Tools Bridge Started:"
+	@echo "  - SearXNG:           http://localhost:8086"
+	@echo "  - MCP Tools Bridge:  http://localhost:8091/v1/mcp"
+	@echo ""
+	@echo "Query available tools: curl -X POST http://localhost:8091/v1/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}'"
+	@echo ""
+
+# Stop all MCP-related services
+mcp-down-all:
+	$(COMPOSE) --profile mcp-tools down
+	$(MCP_COMPOSE) down -v
 
 up-kong:
 	$(COMPOSE) --profile kong up -d
@@ -83,7 +120,11 @@ restart-kong:
 	@echo "Restarting Kong to reload configuration..."
 	$(COMPOSE) restart kong
 	@echo "Kong restarted. Waiting for it to be ready..."
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "Start-Sleep -Seconds 3"
+else
 	@sleep 3
+endif
 	@echo "Kong is ready."
 
 monitor-up:

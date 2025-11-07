@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"jan-server/services/mcp-tools/domain/serper"
 	"jan-server/services/mcp-tools/infrastructure/config"
 	"jan-server/services/mcp-tools/infrastructure/logger"
+	"jan-server/services/mcp-tools/infrastructure/mcpprovider"
 	serperclient "jan-server/services/mcp-tools/infrastructure/serper"
 	"jan-server/services/mcp-tools/interfaces/httpserver/middlewares"
 	"jan-server/services/mcp-tools/interfaces/httpserver/routes"
@@ -39,9 +41,24 @@ func main() {
 	serperClient := serperclient.NewSerperClient(cfg.SerperAPIKey)
 	serperService := serper.NewSerperService(serperClient)
 
+	// Load MCP provider configuration
+	providerConfig, err := mcpprovider.LoadConfig("configs/mcp-providers.yml")
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to load MCP provider config, continuing without external providers")
+		providerConfig = &mcpprovider.Config{} // Empty config
+	}
+
 	// Initialize MCP routes
 	serperMCP := routes.NewSerperMCP(serperService)
-	mcpRoute := routes.NewMCPRoute(serperMCP)
+
+	// Initialize external MCP providers
+	ctx := context.Background()
+	providerMCP := routes.NewProviderMCP(providerConfig)
+	if err := providerMCP.Initialize(ctx); err != nil {
+		log.Error().Err(err).Msg("Failed to initialize MCP providers")
+	}
+
+	mcpRoute := routes.NewMCPRoute(serperMCP, providerMCP)
 
 	// Setup HTTP server
 	router := gin.New()

@@ -1,0 +1,29 @@
+# MCP Provider Configuration
+# This file defines external MCP servers that mcp-tools will bridge to
+# Each provider exposes tools that will be registered in the unified MCP server
+
+providers:
+  # SearXNG - Meta Search Engine
+  - name: searxng
+    description: Meta search engine for privacy-focused web searches
+    enabled: true
+    endpoint: http://searxng:8080
+    type: http
+    # SearXNG doesn't directly expose MCP protocol but we can create wrapper tools
+    # This is a placeholder - actual implementation would need SearXNG API integration
+    tools:
+      - name: searxng_search
+        description: Search the web using SearXNG meta search engine
+        enabled: false  # Disabled until we implement SearXNG API wrapper
+
+# Global settings
+settings:
+  # Maximum timeout for any MCP provider call
+  max_timeout: 120s
+  
+  # Enable detailed logging of provider communications
+  debug_logging: ${MCP_PROVIDER_DEBUG:-false}
+  
+  # Retry configuration
+  retry_attempts: 2
+  retry_delay: 1s

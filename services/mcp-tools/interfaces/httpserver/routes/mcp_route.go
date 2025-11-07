@@ -36,12 +36,14 @@ var allowedMCPMethods = map[string]bool{
 
 type MCPRoute struct {
 	serperMCP   *SerperMCP
+	providerMCP *ProviderMCP
 	mcpServer   *mcpserver.MCPServer
 	httpHandler http.Handler
 }
 
 func NewMCPRoute(
 	serperMCP *SerperMCP,
+	providerMCP *ProviderMCP,
 ) *MCPRoute {
 	server := mcpserver.NewMCPServer("menlo-platform", "1.0.0",
 		mcpserver.WithToolCapabilities(true),
@@ -50,8 +52,17 @@ func NewMCPRoute(
 
 	serperMCP.RegisterTools(server)
 
+	// Register tools from external MCP providers
+	if providerMCP != nil {
+		if err := providerMCP.RegisterTools(server); err != nil {
+			// Log error but continue
+			// (error already logged in RegisterTools)
+		}
+	}
+
 	return &MCPRoute{
 		serperMCP:   serperMCP,
+		providerMCP: providerMCP,
 		mcpServer:   server,
 		httpHandler: mcpserver.NewStreamableHTTPServer(server, mcpserver.WithStateLess(true)),
 	}
