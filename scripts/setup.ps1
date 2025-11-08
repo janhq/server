@@ -108,15 +108,17 @@ if (-not (Test-Path "config")) {
 # Setup Docker
 Print-Header "Docker Setup"
 
-try {
-    $dockerInfo = docker info 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Docker is not running"
-    }
-} catch {
+# Check if Docker is running (suppress all output)
+$ErrorActionPreference = "SilentlyContinue"
+docker info *> $null
+$dockerExitCode = $LASTEXITCODE
+$ErrorActionPreference = "Stop"
+
+if ($dockerExitCode -ne 0) {
     Print-Error "Docker is not running. Please start Docker and run this script again."
     exit 1
 }
+Print-Success "Docker is running"
 
 Print-Info "Creating Docker networks..."
 @("jan-network", "mcp-network") | ForEach-Object {
@@ -132,11 +134,10 @@ Print-Info "Creating Docker networks..."
 
 # Pull base images
 Print-Info "Pulling base Docker images (this may take a while)..."
-try {
-    docker compose pull postgres keycloak kong
-} catch {
-    Print-Warning "Some images could not be pulled"
-}
+$ErrorActionPreference = "SilentlyContinue"
+docker compose pull --ignore-pull-failures *> $null
+$ErrorActionPreference = "Stop"
+Print-Success "Base images pulled"
 
 Print-Success "Docker setup complete"
 

@@ -40,7 +40,7 @@ services:
       KONG_DECLARATIVE_CONFIG: /kong/kong-hybrid.yml
       KONG_LOG_LEVEL: info
     volumes:
-      - ./kong/kong-hybrid.yml:/kong/kong-hybrid.yml:ro
+      - ../kong/kong-hybrid.yml:/kong/kong-hybrid.yml:ro
     profiles: ["hybrid-kong"]
 
   # MCP infrastructure for hybrid mode

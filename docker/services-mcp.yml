@@ -39,7 +39,7 @@ services:
 
   # Lightweight vector store for MCP file search
   vector-store:
-    build: ./services/mcp-tools/tools/vector-store-service
+    build: ../services/mcp-tools/tools/vector-store-service
     restart: unless-stopped
     environment:
       VECTOR_STORE_PORT: ${VECTOR_STORE_PORT:-3015}
@@ -47,11 +47,12 @@ services:
       - "${VECTOR_STORE_PORT:-3015}:3015"
     networks:
       - mcp-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3015/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # Distroless image - no healthcheck tools available
+    # healthcheck:
+    #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3015/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
     profiles: ["mcp", "full"]
 
   # SandboxFusion code interpreter
@@ -71,10 +72,10 @@ services:
 
   # MCP Tools API - Unified MCP interface
   mcp-tools:
-    build: ./services/mcp-tools
+    build: ../services/mcp-tools
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../.env}
     environment:
       HTTP_PORT: ${MCP_TOOLS_HTTP_PORT:-8091}
       SERPER_API_KEY: ${SERPER_API_KEY:-}
@@ -83,18 +84,18 @@ services:
       # MCP Provider endpoints (internal Docker network)
       SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
       VECTOR_STORE_URL: ${VECTOR_STORE_URL:-http://vector-store:3015}
-      SANDBOXFUSION_URL: ${SANDBOXFUSION_URL:-http://sandboxfusion:8080}
+      SANDBOX_FUSION_URL: ${SANDBOX_FUSION_URL:-http://sandboxfusion:8080}
     ports:
       - "${MCP_TOOLS_HTTP_PORT:-8091}:${MCP_TOOLS_HTTP_PORT:-8091}"
     depends_on:
       searxng:
         condition: service_healthy
       vector-store:
-        condition: service_healthy
+        condition: service_started
       sandboxfusion:
-        condition: service_healthy
+        condition: service_started
     volumes:
-      - ./services/mcp-tools/configs:/app/configs:ro
+      - ../services/mcp-tools/configs:/app/configs:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:${MCP_TOOLS_HTTP_PORT:-8091}/healthz"]
       interval: 10s

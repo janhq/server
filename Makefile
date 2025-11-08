@@ -700,7 +700,7 @@ ci-build: build-all
 
 hybrid-infra-up:
 	@echo "Starting infrastructure for hybrid mode..."
-	$(COMPOSE) --profile hybrid up -d
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
 	@echo "✅ Infrastructure ready for hybrid development"
 	@echo ""
 	@echo "Infrastructure services running in Docker:"
@@ -712,11 +712,11 @@ hybrid-infra-up:
 	@echo "  - MCP:  ./scripts/hybrid-run-mcp.sh (or .ps1 on Windows)"
 
 hybrid-infra-down:
-	$(COMPOSE) --profile hybrid down
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
 
 hybrid-mcp-up:
 	@echo "Starting MCP infrastructure for hybrid mode..."
-	$(COMPOSE) --profile hybrid-mcp up -d
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo "✅ MCP infrastructure ready"
 	@echo ""
 	@echo "MCP services running in Docker:"
@@ -727,7 +727,7 @@ hybrid-mcp-up:
 	@echo "Run MCP Tools natively: ./scripts/hybrid-run-mcp.sh"
 
 hybrid-mcp-down:
-	$(COMPOSE) --profile hybrid-mcp down
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
 
 # --- Run Services Natively ---
 

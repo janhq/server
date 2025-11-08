@@ -2,5 +2,4 @@
   - path: docker/infrastructure.yml
   - path: docker/services-api.yml
   - path: docker/services-mcp.yml
-  - path: docker/dev-hybrid.yml
   - path: docker/inference.yml

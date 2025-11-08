@@ -2,10 +2,10 @@
 
 services:
   llm-api:
-    build: ./services/llm-api
+    build: ../services/llm-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../.env}
     environment:
       HTTP_PORT: ${HTTP_PORT:-8080}
       DB_DSN: ${DB_DSN:-postgres://jan_user:jan_password@api-db:5432/jan_llm_api?sslmode=disable}
@@ -27,7 +27,7 @@ services:
       keycloak:
         condition: service_started
     volumes:
-      - ./services/llm-api/config:/app/config:ro
+      - ../services/llm-api/config:/app/config:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${HTTP_PORT:-8080}/healthz"]
       interval: 10s

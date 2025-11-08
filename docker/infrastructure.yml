@@ -53,10 +53,10 @@ services:
 
   # Keycloak Authentication Server
   keycloak:
-    build: ./keycloak
+    build: ../keycloak
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../.env}
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: keycloak-db
@@ -91,7 +91,7 @@ services:
       KONG_DECLARATIVE_CONFIG: /kong/kong.yml
       KONG_LOG_LEVEL: info
     volumes:
-      - ./kong/kong.yml:/kong/kong.yml:ro
+      - ../kong/kong.yml:/kong/kong.yml:ro
     ports:
       - "${KONG_HTTP_PORT:-8000}:8000"
     healthcheck:
