@@ -1105,7 +1105,6 @@ ifeq ($(OS),Windows_NT)
 	@echo ============================================
 	@echo Checking All Services Health Status
 	@echo ============================================
-	@echo.
 	@echo [Infrastructure Services]
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Keycloak:   healthy' } catch { Write-Host '  ✗ Keycloak:   unhealthy' }"
 	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { if ($$_.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } }"
@@ -1119,7 +1118,6 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8086 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ SearXNG:        healthy' } catch { Write-Host '  ✗ SearXNG:        unhealthy' }"
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3015/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Vector Store:   healthy' } catch { Write-Host '  ✗ Vector Store:   unhealthy' }"
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3010 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ SandboxFusion:  healthy' } catch { Write-Host '  ✗ SandboxFusion:  unhealthy' }"
-	@echo.
 	@echo ============================================
 else
 	@echo "============================================"
