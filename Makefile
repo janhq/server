@@ -30,9 +30,9 @@
 #   make up-infra                    - Start infrastructure (postgres, keycloak, kong)
 #   make up-api                      - Start LLM API service
 #   make up-mcp                      - Start MCP services
-#   make up-vllm-gpu                 - Start vLLM GPU inference
-#   make up-vllm-cpu                 - Start vLLM CPU inference
-#   make up-full                     - Start all services
+#   make up-full                     - Start all services (infra + api + mcp + vllm-gpu)
+#   make up-vllm-gpu                 - Start vLLM GPU inference only
+#   make up-vllm-cpu                 - Start vLLM CPU inference only
 #   make down                        - Stop all services
 #
 # Development (Hybrid Mode):
@@ -454,6 +454,7 @@ up-full:
 	@echo "  - SearXNG:        http://localhost:8086"
 	@echo "  - Vector Store:   http://localhost:3015"
 	@echo "  - SandboxFusion:  http://localhost:3010"
+	@echo "  - vLLM GPU:       http://localhost:8001"
 
 down-full:
 	$(COMPOSE) --profile full down
@@ -995,23 +996,83 @@ git-status:
 # SECTION 10: HEALTH CHECKS
 # ============================================================================================================
 
-.PHONY: health-check health-api health-mcp
+.PHONY: health-check health-api health-mcp health-infra
 
 health-check:
-	@echo "Checking service health..."
-	@curl -sf http://localhost:8080/healthz >/dev/null && echo "✅ LLM API: healthy" || echo "❌ LLM API: unhealthy"
+ifeq ($(OS),Windows_NT)
+	@echo ============================================
+	@echo Checking All Services Health Status
+	@echo ============================================
+	@echo.
+	@echo [Infrastructure Services]
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Keycloak:   healthy' } catch { Write-Host '  ✗ Keycloak:   unhealthy' }"
+	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { if ($$_.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } }"
+	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host '  ✓ PostgreSQL: healthy' } else { Write-Host '  ✗ PostgreSQL: unhealthy' } } catch { Write-Host '  ✗ PostgreSQL: unhealthy' }"
+	@echo.
+	@echo [API Services]
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8080/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ LLM API:    healthy' } catch { Write-Host '  ✗ LLM API:    unhealthy' }"
+	@echo.
+	@echo [MCP Services]
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8091/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ MCP Tools:      healthy' } catch { Write-Host '  ✗ MCP Tools:      unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8086 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ SearXNG:        healthy' } catch { Write-Host '  ✗ SearXNG:        unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3015/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Vector Store:   healthy' } catch { Write-Host '  ✗ Vector Store:   unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3010 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ SandboxFusion:  healthy' } catch { Write-Host '  ✗ SandboxFusion:  unhealthy' }"
+	@echo.
+	@echo ============================================
+else
+	@echo "============================================"
+	@echo "Checking All Services Health Status"
+	@echo "============================================"
+	@echo ""
+	@echo "[Infrastructure Services]"
+	@curl -sf http://localhost:8085 >/dev/null && echo "  ✓ Keycloak:   healthy" || echo "  ✗ Keycloak:   unhealthy"
+	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "  ✓ Kong:       healthy" || echo "  ✗ Kong:       unhealthy")
+	@docker compose exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "  ✓ PostgreSQL: healthy" || echo "  ✗ PostgreSQL: unhealthy"
+	@echo ""
+	@echo "[API Services]"
+	@curl -sf http://localhost:8080/healthz >/dev/null && echo "  ✓ LLM API:    healthy" || echo "  ✗ LLM API:    unhealthy"
+	@echo ""
+	@echo "[MCP Services]"
+	@curl -sf http://localhost:8091/healthz >/dev/null && echo "  ✓ MCP Tools:      healthy" || echo "  ✗ MCP Tools:      unhealthy"
+	@curl -sf http://localhost:8086 >/dev/null && echo "  ✓ SearXNG:        healthy" || echo "  ✗ SearXNG:        unhealthy"
+	@curl -sf http://localhost:3015/healthz >/dev/null && echo "  ✓ Vector Store:   healthy" || echo "  ✗ Vector Store:   unhealthy"
+	@curl -sf http://localhost:3010 >/dev/null && echo "  ✓ SandboxFusion:  healthy" || echo "  ✗ SandboxFusion:  unhealthy"
+	@echo ""
+	@echo "============================================"
+endif
+
+health-infra:
+ifeq ($(OS),Windows_NT)
+	@echo Checking infrastructure services...
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK Keycloak: healthy' } catch { Write-Host 'ERROR Keycloak: unhealthy' }"
+	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } } catch { if ($$_.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } }"
+	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host 'OK PostgreSQL: healthy' } else { Write-Host 'ERROR PostgreSQL: unhealthy' } } catch { Write-Host 'ERROR PostgreSQL: unhealthy' }"
+else
 	@curl -sf http://localhost:8085 >/dev/null && echo "✅ Keycloak: healthy" || echo "❌ Keycloak: unhealthy"
-	@curl -sf http://localhost:8000 >/dev/null && echo "✅ Kong: healthy" || echo "❌ Kong: unhealthy"
+	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "✅ Kong: healthy" || echo "❌ Kong: unhealthy")
+	@docker compose exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "✅ PostgreSQL: healthy" || echo "❌ PostgreSQL: unhealthy"
+endif
 
 health-api:
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "try { Invoke-WebRequest -Uri http://localhost:8080/healthz -UseBasicParsing | Select-Object -ExpandProperty Content | ConvertFrom-Json | ConvertTo-Json } catch { Write-Host 'ERROR API not responding' }"
+else
 	@curl -sf http://localhost:8080/healthz | jq || echo "❌ API not responding"
+endif
 
 health-mcp:
-	@echo "Checking MCP services..."
+ifeq ($(OS),Windows_NT)
+	@echo Checking MCP services...
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8091/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK MCP Tools: healthy' } catch { Write-Host 'ERROR MCP Tools: unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8086 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK SearXNG: healthy' } catch { Write-Host 'ERROR SearXNG: unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3015/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK Vector Store: healthy' } catch { Write-Host 'ERROR Vector Store: unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3010 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK SandboxFusion: healthy' } catch { Write-Host 'ERROR SandboxFusion: unhealthy' }"
+else
 	@curl -sf http://localhost:8091/healthz >/dev/null && echo "✅ MCP Tools: healthy" || echo "❌ MCP Tools: unhealthy"
 	@curl -sf http://localhost:8086 >/dev/null && echo "✅ SearXNG: healthy" || echo "❌ SearXNG: unhealthy"
-	@curl -sf http://localhost:3015/health >/dev/null && echo "✅ Vector Store: healthy" || echo "❌ Vector Store: unhealthy"
+	@curl -sf http://localhost:3015/healthz >/dev/null && echo "✅ Vector Store: healthy" || echo "❌ Vector Store: unhealthy"
 	@curl -sf http://localhost:3010 >/dev/null && echo "✅ SandboxFusion: healthy" || echo "❌ SandboxFusion: unhealthy"
+endif
 
 # ============================================================================================================
 # END OF MAKEFILE
