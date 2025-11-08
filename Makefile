@@ -128,10 +128,17 @@ endif
 
 check-deps:
 	@echo "Checking dependencies..."
+ifeq ($(OS),Windows_NT)
 	@docker --version >nul 2>&1 || echo "Docker not found"
 	@docker compose version >nul 2>&1 || echo "Docker Compose V2 not found"
 	@go version >nul 2>&1 || echo "Go not found (optional)"
 	@newman --version >nul 2>&1 || echo "Newman not found (optional)"
+else
+	@docker --version >/dev/null 2>&1 || echo "Docker not found"
+	@docker compose version >/dev/null 2>&1 || echo "Docker Compose V2 not found"
+	@go version >/dev/null 2>&1 || echo "Go not found (optional)"
+	@newman --version >/dev/null 2>&1 || echo "Newman not found (optional)"
+endif
 	@echo "Dependency check complete"
 
 install-deps:
@@ -443,6 +450,7 @@ logs-vllm:
 .PHONY: up-full down-full restart-full logs logs-follow stop down down-clean stop-info
 
 stop-info:
+ifeq ($(OS),Windows_NT)
 	@echo ==========================================
 	@echo Stop/Down Commands Comparison
 	@echo ==========================================
@@ -469,6 +477,34 @@ stop-info:
 	@echo   - Use: Complete cleanup, fresh start
 	@echo.
 	@echo ==========================================
+else
+	@echo "==========================================="
+	@echo "Stop/Down Commands Comparison"
+	@echo "==========================================="
+	@echo ""
+	@echo "make stop"
+	@echo "  - Stops all services"
+	@echo "  - Keeps containers (fast restart)"
+	@echo "  - Keeps volumes"
+	@echo "  - Keeps networks"
+	@echo "  - Use: Quick pause during development"
+	@echo ""
+	@echo "make down"
+	@echo "  - Stops all services"
+	@echo "  - Removes containers"
+	@echo "  - Keeps volumes (data preserved)"
+	@echo "  - Removes networks"
+	@echo "  - Use: Clean shutdown, data preserved"
+	@echo ""
+	@echo "make down-clean"
+	@echo "  - Stops all services"
+	@echo "  - Removes containers"
+	@echo "  - Removes volumes (data deleted)"
+	@echo "  - Removes networks"
+	@echo "  - Use: Complete cleanup, fresh start"
+	@echo ""
+	@echo "==========================================="
+endif
 
 up-full:
 	@echo "Starting full stack..."
@@ -569,7 +605,7 @@ db-console:
 db-backup:
 	@echo "Backing up database..."
 	@mkdir -p backups
-	@docker compose exec -T api-db pg_dump -U jan_user jan_llm_api > backups/db_backup_$$(date +%Y%m%d_%H%M%S).sql
+	@$(COMPOSE) exec -T api-db pg_dump -U jan_user jan_llm_api > backups/db_backup_$$(date +%Y%m%d_%H%M%S).sql
 	@echo "✅ Database backed up to backups/"
 
 db-restore:
@@ -578,7 +614,7 @@ db-restore:
 		exit 1; \
 	fi
 	@echo "Restoring database from $(FILE)..."
-	@cat $(FILE) | docker compose exec -T api-db psql -U jan_user -d jan_llm_api
+	@cat $(FILE) | $(COMPOSE) exec -T api-db psql -U jan_user -d jan_llm_api
 	@echo "✅ Database restored"
 
 db-dump:
@@ -690,6 +726,20 @@ test-mcp-integration:
 
 newman-debug:
 	@echo "Running authentication tests with debug output..."
+ifeq ($(OS),Windows_NT)
+	@set NODE_DEBUG=request && $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
+		--env-var "llm_api_url=http://localhost:8080" \
+		--env-var "keycloak_base_url=http://localhost:8085" \
+		--env-var "keycloak_admin=admin" \
+		--env-var "keycloak_admin_password=admin" \
+		--env-var "realm=jan" \
+		--env-var "client_id_public=llm-api" \
+		--verbose \
+		--reporter-cli-no-banner \
+		--reporter-cli-no-summary \
+		--reporter-cli-show-timestamps
+else
 	@NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "llm_api_url=http://localhost:8080" \
@@ -702,6 +752,7 @@ newman-debug:
 		--reporter-cli-no-banner \
 		--reporter-cli-no-summary \
 		--reporter-cli-show-timestamps
+endif
 
 # --- Test Environment Management ---
 
@@ -752,7 +803,7 @@ ci-build: build-all
 
 hybrid-infra-up:
 	@echo "Starting infrastructure for hybrid mode..."
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
+	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
 	@echo "✅ Infrastructure ready for hybrid development"
 	@echo ""
 	@echo "Infrastructure services running in Docker:"
@@ -764,11 +815,11 @@ hybrid-infra-up:
 	@echo "  - MCP:  ./scripts/hybrid-run-mcp.sh (or .ps1 on Windows)"
 
 hybrid-infra-down:
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
+	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
 
 hybrid-mcp-up:
 	@echo "Starting MCP infrastructure for hybrid mode..."
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
+	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo "✅ MCP infrastructure ready"
 	@echo ""
 	@echo "MCP services running in Docker:"
@@ -779,7 +830,7 @@ hybrid-mcp-up:
 	@echo "Run MCP Tools natively: ./scripts/hybrid-run-mcp.sh"
 
 hybrid-mcp-down:
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
+	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
 
 # --- Run Services Natively ---
 
@@ -1078,7 +1129,7 @@ else
 	@echo "[Infrastructure Services]"
 	@curl -sf http://localhost:8085 >/dev/null && echo "  ✓ Keycloak:   healthy" || echo "  ✗ Keycloak:   unhealthy"
 	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "  ✓ Kong:       healthy" || echo "  ✗ Kong:       unhealthy")
-	@docker compose exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "  ✓ PostgreSQL: healthy" || echo "  ✗ PostgreSQL: unhealthy"
+	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "  ✓ PostgreSQL: healthy" || echo "  ✗ PostgreSQL: unhealthy"
 	@echo ""
 	@echo "[API Services]"
 	@curl -sf http://localhost:8080/healthz >/dev/null && echo "  ✓ LLM API:    healthy" || echo "  ✗ LLM API:    unhealthy"
@@ -1101,7 +1152,7 @@ ifeq ($(OS),Windows_NT)
 else
 	@curl -sf http://localhost:8085 >/dev/null && echo "✅ Keycloak: healthy" || echo "❌ Keycloak: unhealthy"
 	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "✅ Kong: healthy" || echo "❌ Kong: unhealthy")
-	@docker compose exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "✅ PostgreSQL: healthy" || echo "❌ PostgreSQL: unhealthy"
+	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "✅ PostgreSQL: healthy" || echo "❌ PostgreSQL: unhealthy"
 endif
 
 health-api:

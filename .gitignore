@@ -8,7 +8,7 @@
 # Environment files (containing secrets, API keys, credentials)
 .env
 *.env
-.env.*
+.env.
 
 # Production and secrets (never commit these!)
 config/production.env
