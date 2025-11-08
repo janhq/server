@@ -76,7 +76,7 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("invalid base_url format: %v", err), nil, "9e944ba1-c849-4959-957f-cb3de40e2eb1")
 	}
 
-	kind := providerKindFromVendor(input.Vendor)
+	kind := ProviderKindFromVendor(input.Vendor)
 
 	if kind != ProviderCustom {
 		filter := ProviderFilter{Kind: &kind}
@@ -131,7 +131,7 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 }
 
 func (s *ProviderService) FindProviderByVendor(ctx context.Context, vendor string) (*Provider, error) {
-	kind := providerKindFromVendor(vendor)
+	kind := ProviderKindFromVendor(vendor)
 	filter := ProviderFilter{Kind: &kind}
 	result, err := s.providerRepo.FindByFilter(ctx, filter, &query.Pagination{Limit: ptr.ToInt(1)})
 	if err != nil {
@@ -143,7 +143,7 @@ func (s *ProviderService) FindProviderByVendor(ctx context.Context, vendor strin
 	return result[0], nil
 }
 
-func providerKindFromVendor(vendor string) ProviderKind {
+func ProviderKindFromVendor(vendor string) ProviderKind {
 	switch strings.ToLower(strings.TrimSpace(vendor)) {
 	case "jan":
 		return ProviderJan

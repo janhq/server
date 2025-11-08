@@ -1,0 +1,32 @@
+providers:
+  default:
+    - name: Local vLLM Provider
+      type: jan
+      url: http://vllm-jan-gpu:8001/v1
+      api_key: ${VLLM_INTERNAL_KEY}
+      description: Default access to vLLM Provider
+      auto_enable_new_models: true
+      sync_models: true
+      metadata:
+        environment: local-gpu
+    - name: External Gemini
+      type: gemini
+      url: https://generativelanguage.googleapis.com/v1beta/openai
+      api_key: ${GEMINI_API_KEY}
+      description: Shared Gemini workspace
+      auto_enable_new_models: true
+      sync_models: true
+  production:
+    # - name: External OpenAI
+    #   type: openai
+    #   url: https://api.openai.com/v1
+    #   api_key: ${OPENAI_API_KEY}
+    #   description: Shared OpenAI workspace
+    #   auto_enable_new_models: false
+    - name: External Gemini
+      type: gemini
+      url: https://generativelanguage.googleapis.com/v1beta/openai
+      api_key: ${GEMINI_API_KEY}
+      description: Shared Gemini workspace
+      auto_enable_new_models: true
+      sync_models: true

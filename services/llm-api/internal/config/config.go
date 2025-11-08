@@ -49,10 +49,14 @@ type Config struct {
 	DBPostgresqlRead1DSN string `env:"DB_POSTGRESQL_READ1_DSN"`
 
 	// Model Provider
-	ModelProviderSecret  string `env:"MODEL_PROVIDER_SECRET" envDefault:"jan-model-provider-secret-2024"`
-	JanDefaultNodeSetup  bool   `env:"JAN_DEFAULT_NODE_SETUP" envDefault:"true"`
-	JanDefaultNodeURL    string `env:"JAN_DEFAULT_NODE_URL" envDefault:"http://localhost:8001/v1"`
-	JanDefaultNodeAPIKey string `env:"JAN_DEFAULT_NODE_API_KEY" envDefault:"changeme"`
+	ModelProviderSecret       string                   `env:"MODEL_PROVIDER_SECRET" envDefault:"jan-model-provider-secret-2024"`
+	JanDefaultNodeSetup       bool                     `env:"JAN_DEFAULT_NODE_SETUP" envDefault:"true"`
+	JanDefaultNodeURL         string                   `env:"JAN_DEFAULT_NODE_URL" envDefault:"http://localhost:8001/v1"`
+	JanDefaultNodeAPIKey      string                   `env:"JAN_DEFAULT_NODE_API_KEY" envDefault:"changeme"`
+	JanProviderConfigsEnabled bool                     `env:"JAN_PROVIDER_CONFIGS" envDefault:"false"`
+	JanProviderConfigSet      string                   `env:"JAN_PROVIDER_CONFIG_SET" envDefault:"default"`
+	JanProviderConfigFile     string                   `env:"JAN_PROVIDER_CONFIGS_FILE"`
+	ProviderBootstrap         *ProviderBootstrapConfig `env:"-"`
 
 	// Model Sync
 	ModelSyncIntervalMinutes int  `env:"MODEL_SYNC_INTERVAL_MINUTES" envDefault:"60"`
@@ -81,6 +85,26 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("parse env: %w", err)
+	}
+
+	cfg.JanProviderConfigSet = strings.TrimSpace(cfg.JanProviderConfigSet)
+	if cfg.JanProviderConfigSet == "" {
+		cfg.JanProviderConfigSet = "default"
+	}
+
+	if cfg.JanProviderConfigsEnabled {
+		configFile := strings.TrimSpace(cfg.JanProviderConfigFile)
+		if configFile == "" {
+			configFile = DefaultProviderConfigFile
+		}
+		bootstrap, err := LoadProviderBootstrapConfig(configFile)
+		if err != nil {
+			return nil, fmt.Errorf("load provider configs: %w", err)
+		}
+		cfg.ProviderBootstrap = bootstrap
+		if len(bootstrap.ProvidersForSet(cfg.JanProviderConfigSet)) == 0 {
+			return nil, fmt.Errorf("provider config set %q is missing or empty in %s", cfg.JanProviderConfigSet, configFile)
+		}
 	}
 
 	if cfg.JWKSURL == "" && cfg.OIDCDiscoveryURL == "" {
@@ -159,6 +183,14 @@ func GetEnvReloadedAt() time.Time {
 		return globalConfig.EnvReloadedAt
 	}
 	return time.Time{}
+}
+
+// ProviderBootstrapEntries returns the configured provider definitions for the active set.
+func (c *Config) ProviderBootstrapEntries() []ProviderBootstrapEntry {
+	if c == nil || c.ProviderBootstrap == nil {
+		return nil
+	}
+	return c.ProviderBootstrap.ProvidersForSet(c.JanProviderConfigSet)
 }
 
 var Version = "dev"
