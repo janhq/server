@@ -803,7 +803,7 @@ ci-build: build-all
 
 hybrid-infra-up:
 	@echo "Starting infrastructure for hybrid mode..."
-	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
 	@echo "✅ Infrastructure ready for hybrid development"
 	@echo ""
 	@echo "Infrastructure services running in Docker:"
@@ -815,11 +815,11 @@ hybrid-infra-up:
 	@echo "  - MCP:  ./scripts/hybrid-run-mcp.sh (or .ps1 on Windows)"
 
 hybrid-infra-down:
-	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
 
 hybrid-mcp-up:
 	@echo "Starting MCP infrastructure for hybrid mode..."
-	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo "✅ MCP infrastructure ready"
 	@echo ""
 	@echo "MCP services running in Docker:"
@@ -830,7 +830,7 @@ hybrid-mcp-up:
 	@echo "Run MCP Tools natively: ./scripts/hybrid-run-mcp.sh"
 
 hybrid-mcp-down:
-	$(COMPOSE) -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
+	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
 
 # --- Run Services Natively ---
 
@@ -884,7 +884,8 @@ hybrid-env-mcp:
 
 hybrid-dev-api:
 	@echo "Setting up hybrid API development environment..."
-	@$(MAKE) hybrid-infra-up
+	@echo "Starting infrastructure for hybrid mode..."
+	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
 	@echo ""
 	@echo "✅ Ready for API development!"
 	@echo ""
@@ -894,7 +895,8 @@ hybrid-dev-api:
 
 hybrid-dev-mcp:
 	@echo "Setting up hybrid MCP development environment..."
-	@$(MAKE) hybrid-mcp-up
+	@echo "Starting MCP infrastructure for hybrid mode..."
+	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo ""
 	@echo "✅ Ready for MCP development!"
 	@echo ""
@@ -904,8 +906,10 @@ hybrid-dev-mcp:
 
 hybrid-dev-full:
 	@echo "Setting up full hybrid development environment..."
-	@$(MAKE) hybrid-infra-up
-	@$(MAKE) hybrid-mcp-up
+	@echo "Starting infrastructure for hybrid mode..."
+	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
+	@echo "Starting MCP infrastructure for hybrid mode..."
+	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo ""
 	@echo "✅ Ready for full hybrid development!"
 	@echo ""
@@ -915,8 +919,8 @@ hybrid-dev-full:
 
 hybrid-stop:
 	@echo "Stopping hybrid infrastructure..."
-	@$(MAKE) hybrid-infra-down
-	@$(MAKE) hybrid-mcp-down
+	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
+	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
 	@echo "✅ Hybrid infrastructure stopped"
 
 # --- Debugging ---
@@ -1094,6 +1098,60 @@ git-status:
 	@echo "=== Uncommitted changes ==="
 	@git diff --stat
 
+# --- Quick Start Commands ---
+
+.PHONY: start-llm-api start-mcp-tools run-all-tests
+
+start-llm-api:
+	@echo "Starting LLM API natively..."
+	@echo "Infrastructure must be running (make hybrid-infra-up)"
+	@echo ""
+ifeq ($(OS),Windows_NT)
+	@cd services/llm-api && set DATABASE_URL=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable && set DB_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable && set KEYCLOAK_BASE_URL=http://localhost:8085 && set JWKS_URL=http://localhost:8085/realms/jan/protocol/openid-connect/certs && set ISSUER=http://localhost:8085/realms/jan && set HTTP_PORT=8080 && set LOG_LEVEL=debug && set LOG_FORMAT=console && set AUTO_MIGRATE=true && set OTEL_ENABLED=false && go run ./cmd/server
+else
+	@cd services/llm-api && \
+		export DATABASE_URL='postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable' && \
+		export DB_DSN='postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable' && \
+		export KEYCLOAK_BASE_URL='http://localhost:8085' && \
+		export JWKS_URL='http://localhost:8085/realms/jan/protocol/openid-connect/certs' && \
+		export ISSUER='http://localhost:8085/realms/jan' && \
+		export HTTP_PORT='8080' && \
+		export LOG_LEVEL='debug' && \
+		export LOG_FORMAT='console' && \
+		export AUTO_MIGRATE='true' && \
+		export OTEL_ENABLED='false' && \
+		go run ./cmd/server
+endif
+
+start-mcp-tools:
+	@echo "Starting MCP Tools natively..."
+	@echo "MCP Infrastructure must be running (make hybrid-mcp-up)"
+	@echo ""
+ifeq ($(OS),Windows_NT)
+	@cd services/mcp-tools && set HTTP_PORT=8091 && set VECTOR_STORE_URL=http://localhost:3015 && set SEARXNG_URL=http://localhost:8086 && set SANDBOXFUSION_URL=http://localhost:3010 && set LOG_LEVEL=debug && set LOG_FORMAT=console && set OTEL_ENABLED=false && go run .
+else
+	@cd services/mcp-tools && \
+		export HTTP_PORT='8091' && \
+		export VECTOR_STORE_URL='http://localhost:3015' && \
+		export SEARXNG_URL='http://localhost:8086' && \
+		export SANDBOXFUSION_URL='http://localhost:3010' && \
+		export LOG_LEVEL='debug' && \
+		export LOG_FORMAT='console' && \
+		export OTEL_ENABLED='false' && \
+		go run .
+endif
+
+run-all-tests:
+	@echo "Running all tests (unit + integration)..."
+	@echo ""
+	@echo "=== Step 1: Unit Tests ==="
+	@$(MAKE) test
+	@echo ""
+	@echo "=== Step 2: Integration Tests ==="
+	@$(MAKE) test-all
+	@echo ""
+	@echo "✅ All tests completed!"
+
 # ============================================================================================================
 # SECTION 10: HEALTH CHECKS
 # ============================================================================================================
@@ -1107,7 +1165,7 @@ ifeq ($(OS),Windows_NT)
 	@echo ============================================
 	@echo [Infrastructure Services]
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Keycloak:   healthy' } catch { Write-Host '  ✗ Keycloak:   unhealthy' }"
-	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { if ($$_.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } }"
+	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { Write-Host '  ✗ Kong:       unhealthy' } }"
 	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host '  ✓ PostgreSQL: healthy' } else { Write-Host '  ✗ PostgreSQL: unhealthy' } } catch { Write-Host '  ✗ PostgreSQL: unhealthy' }"
 	@echo.
 	@echo [API Services]
@@ -1135,7 +1193,7 @@ else
 	@echo "[MCP Services]"
 	@curl -sf http://localhost:8091/healthz >/dev/null && echo "  ✓ MCP Tools:      healthy" || echo "  ✗ MCP Tools:      unhealthy"
 	@curl -sf http://localhost:8086 >/dev/null && echo "  ✓ SearXNG:        healthy" || echo "  ✗ SearXNG:        unhealthy"
-	@curl -sf http://localhost:3015/healthz >/dev/null && echo "  ✓ Vector Store:   healthy" || echo "  ✗ Vector Store:   unhealthy"
+	@curl -sf http://localhost:3015/healthz >/dev/null && echo "  ✓ Vector Store:   healthy" || echo "  ✗ V ector Store:   unhealthy"
 	@curl -sf http://localhost:3010 >/dev/null && echo "  ✓ SandboxFusion:  healthy" || echo "  ✗ SandboxFusion:  unhealthy"
 	@echo ""
 	@echo "============================================"
@@ -1145,7 +1203,7 @@ health-infra:
 ifeq ($(OS),Windows_NT)
 	@echo Checking infrastructure services...
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK Keycloak: healthy' } catch { Write-Host 'ERROR Keycloak: unhealthy' }"
-	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } } catch { if ($$_.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } }"
+	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } } catch { Write-Host 'ERROR Kong: unhealthy' } }"
 	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host 'OK PostgreSQL: healthy' } else { Write-Host 'ERROR PostgreSQL: unhealthy' } } catch { Write-Host 'ERROR PostgreSQL: unhealthy' }"
 else
 	@curl -sf http://localhost:8085 >/dev/null && echo "✅ Keycloak: healthy" || echo "❌ Keycloak: unhealthy"

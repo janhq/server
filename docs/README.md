@@ -32,6 +32,7 @@ Services will be available at: http://localhost:8000
 
 ### For Developers
 - 💻 [Development Guide](guides/development.md) - Local development workflow
+- 🖥️ [VS Code Guide](guides/ide/vscode.md) - VS Code debugging and tasks
 - 🧪 [Testing Guide](guides/testing.md) - Running tests
 - 🔄 [Hybrid Mode](guides/hybrid-mode.md) - Hybrid development setup
 - 📊 [Monitoring](guides/monitoring.md) - Observability and monitoring
