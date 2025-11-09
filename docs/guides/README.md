@@ -15,7 +15,7 @@ Comprehensive how-to guides for working with Jan Server.
 
 ### Operations
 - **[Monitoring](monitoring.md)** - Observability, metrics, traces, and dashboards
-- **[Deployment](deployment.md)** - Production deployment strategies (Coming Soon)
+- **[Deployment](deployment.md)** - Kubernetes, Docker Compose, and hybrid deployment strategies
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions (Coming Soon)
 
 ### Special Topics
@@ -104,11 +104,11 @@ See [Monitoring Guide](monitoring.md) for details.
 ## Getting Help
 
 Each guide includes:
-- ✅ Step-by-step instructions
-- ✅ Code examples
-- ✅ Common pitfalls
-- ✅ Troubleshooting tips
-- ✅ Related resources
+-  Step-by-step instructions
+-  Code examples
+-  Common pitfalls
+-  Troubleshooting tips
+-  Related resources
 
 ### Need More Help?
 

@@ -12,14 +12,15 @@ This directory contains Helm charts for deploying the entire Jan Server stack:
 │                    (LoadBalancer)                        │
 └─────────────────────────────────────────────────────────┘
                            │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-        ▼                  ▼                  ▼
-   ┌─────────┐      ┌──────────┐      ┌──────────┐
-   │ LLM API │      │Media API │      │MCP Tools │
-   └─────────┘      └──────────┘      └──────────┘
-        │                  │                  │
-        └──────────────────┼──────────────────┘
+        ┌──────────────────┼──────────────────┬──────────┐
+        │                  │                  │          │
+        ▼                  ▼                  ▼          ▼
+   ┌─────────┐      ┌──────────┐      ┌──────────┐ ┌─────────┐
+   │ LLM API │      │Media API │      │Response  │ │MCP Tools│
+   │         │      │          │      │   API    │ │         │
+   └─────────┘      └──────────┘      └──────────┘ └─────────┘
+        │                  │                  │          │
+        └──────────────────┼──────────────────┴──────────┘
                            │
                            ▼
                    ┌──────────────┐
@@ -35,7 +36,7 @@ This directory contains Helm charts for deploying the entire Jan Server stack:
 └──────────────┘   └──────────────┘
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -51,19 +52,60 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```
 
+**Important:** If you don't have a Kubernetes cluster yet, see [SETUP.md](./SETUP.md) for detailed instructions on setting up Docker Desktop Kubernetes or minikube.
+
 ### Install Jan Server
 
+**For Minikube Development Setup**, follow these steps:
+
 ```bash
-# Install with default values (development)
+# Step 1: Build Go services and Docker images
+cd services/llm-api && go mod tidy && docker build -t jan/llm-api:latest .
+cd ../media-api && go mod tidy && docker build -t jan/media-api:latest .
+cd ../response-api && go mod tidy && docker build -t jan/response-api:latest .
+cd ../mcp-tools && go mod tidy && docker build -t jan/mcp-tools:latest .
+cd ../../keycloak && docker build -t jan/keycloak:latest .
+cd ..
+
+# Step 2: Load images into minikube
+minikube image load jan/llm-api:latest
+minikube image load jan/media-api:latest
+minikube image load jan/response-api:latest
+minikube image load jan/mcp-tools:latest
+minikube image load jan/keycloak:latest
+
+docker pull bitnami/postgresql:latest bitnami/redis:latest
+minikube image load bitnami/postgresql:latest bitnami/redis:latest
+
+# Step 3: Build Helm dependencies
+cd k8s/jan-server
+helm dependency build
+
+# Step 4: Install
+cd ..
 helm install jan-server ./jan-server \
   --namespace jan-server \
   --create-namespace
 
-# Install for production
+# Step 5: Create additional databases
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n jan-server --timeout=300s
+kubectl exec -n jan-server jan-server-postgresql-0 -- bash -c "PGPASSWORD=postgres psql -U postgres << 'EOF'
+CREATE USER media WITH PASSWORD 'media';
+CREATE DATABASE media_api OWNER media;
+CREATE USER keycloak WITH PASSWORD 'keycloak';
+CREATE DATABASE keycloak OWNER keycloak;
+EOF"
+```
+
+**For Production with Cloud Kubernetes**, use values-production.yaml:
+
+```bash
 helm install jan-server ./jan-server \
   --namespace jan-server \
   --create-namespace \
-  --values ./jan-server/values-production.yaml
+  --values ./jan-server/values-production.yaml \
+  --wait \
+  --timeout 15m
 ```
 
 ### Access Services
@@ -72,104 +114,187 @@ helm install jan-server ./jan-server \
 # Check deployment status
 kubectl get pods -n jan-server
 
-# Port forward to access services locally
-kubectl port-forward -n jan-server svc/jan-server-kong 8000:8000
+# Port forward to access services locally (in separate terminals)
+kubectl port-forward -n jan-server svc/jan-server-llm-api 8080:8080
+kubectl port-forward -n jan-server svc/jan-server-media-api 8285:8285
+kubectl port-forward -n jan-server svc/jan-server-response-api 8082:8082
 kubectl port-forward -n jan-server svc/jan-server-keycloak 8085:8085
 
-# Access via Kong API Gateway
-curl http://localhost:8000/api/llm/healthz
-curl http://localhost:8000/api/media/healthz
-curl http://localhost:8000/api/mcp/healthz
+# Test health endpoints
+curl http://localhost:8080/healthz
+curl http://localhost:8285/healthz
+curl http://localhost:8082/healthz
 
 # Access Keycloak Admin Console
+# Username: admin, Password: changeme
 open http://localhost:8085
 ```
+
+**Note:** Kong is available but may show restarts due to memory constraints in minikube. For production, increase Kong's memory limits or access services directly.
 
 ## 📦 Components
 
 ### Core Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| LLM API | 8080 | Core LLM orchestration service |
-| Media API | 8285 | Media upload and management |
-| MCP Tools | 8091 | Model Context Protocol tools |
-| Kong | 8000 | Unified API Gateway |
-| Keycloak | 8085 | Authentication server |
+| Service | Port | Description | Status |
+|---------|------|-------------|--------|
+| LLM API | 8080 | Core LLM orchestration service | ✅ Working |
+| Media API | 8285 | Media upload and management | ✅ Working |
+| Response API | 8280 | Response generation service | ✅ Working |
+| MCP Tools | 8091 | Model Context Protocol tools | ✅ Working |
+| Keycloak | 8085 | Authentication server | ✅ Working |
+| Kong | 8000 | Unified API Gateway | ⚠️ Optional |
 
 ### Supporting Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| PostgreSQL | 5432 | Primary database |
-| Redis | 6379 | Caching and sessions |
-| SearXNG | 8080 | Meta search engine |
-| Vector Store | 3015 | File search database |
-| SandboxFusion | 8080 | Code interpreter |
+| Service | Port | Description | Status |
+|---------|------|-------------|--------|
+| PostgreSQL | 5432 | Primary database (3 databases) | ✅ Working |
+| Redis | 6379 | Caching and sessions | ✅ Working |
+| SearXNG | 8080 | Meta search engine | ✅ Working |
+| SandboxFusion | 8080 | Code interpreter | ✅ Working |
+| Vector Store | 3015 | File search database | 🔴 Disabled by default |
 
 ## 🔧 Configuration
 
 ### Values Files
 
-- `values.yaml` - Default values (suitable for development)
-- `values-production.yaml` - Production configuration
+- `values.yaml` - Default values (for minikube/development with imagePullPolicy: Never)
+- `values-production.yaml` - Production configuration (for cloud with IfNotPresent)
 - `values-development.yaml` - Minimal resource allocation
 
 ### Key Configuration Areas
 
-#### 1. Database Credentials
+#### 1. Image Pull Policy (Important for Minikube)
 
+For minikube with locally built images:
+```yaml
+llmApi:
+  image:
+    pullPolicy: Never  # Use local images only
+
+postgresql:
+  image:
+    tag: "latest"
+    pullPolicy: Never  # Use local Bitnami images
+
+redis:
+  image:
+    tag: "latest"
+    pullPolicy: Never  # Use local Bitnami images
+```
+
+For production with image registries:
+```yaml
+llmApi:
+  image:
+    pullPolicy: IfNotPresent  # Pull if not present
+```
+
+#### 2. Database Configuration
+
+PostgreSQL creates the primary database automatically. Additional databases are created manually:
 ```yaml
 postgresql:
   auth:
-    password: "CHANGE_ME"  # Change in production!
+    username: jan_user
+    password: jan_password  # Change in production!
+    database: jan_llm_api
+    postgresPassword: postgres  # Change in production!
 ```
 
-#### 2. S3 Storage (Media API)
+**Note:** Media API and Keycloak databases must be created manually after deployment (see SETUP.md).
 
+#### 3. Environment Variables
+
+**LLM API** key settings:
+```yaml
+llmApi:
+  env:
+    JAN_DEFAULT_NODE_SETUP: "false"  # Disable if no Jan provider available
+    DATABASE_URL: "postgres://..."   # Auto-configured via secret
+    KEYCLOAK_BASE_URL: "http://..."  # Auto-configured
+    BACKEND_CLIENT_ID: "llm-api"
+    TARGET_CLIENT_ID: "jan-client"
+```
+
+**Response API** key settings:
+```yaml
+responseApi:
+  env:
+    SERVICE_NAME: "response-api"
+    HTTP_PORT: "8082"
+    LLM_API_URL: "http://jan-server-llm-api:8080"
+    MCP_TOOLS_URL: "http://jan-server-mcp-tools:8091"
+    MAX_TOOL_EXECUTION_DEPTH: "8"
+    TOOL_EXECUTION_TIMEOUT: "45s"
+    AUTO_MIGRATE: "true"
+```
+
+**Media API** key settings:
+```yaml
+mediaApi:
+  env:
+    MEDIA_API_PORT: "8285"
+    MEDIA_MAX_BYTES: "20971520"  # 20MB
+    MEDIA_PROXY_DOWNLOAD: "true"
+    MEDIA_RETENTION_DAYS: "30"
+```
+
+#### 4. S3 Storage (Media API)
+
+**Required** for media-api to function:
 ```yaml
 mediaApi:
   secrets:
+    serviceKey: "changeme-media-key"  # Required!
+    apiKey: "changeme-media-key"      # Required!
     s3Endpoint: "https://s3.amazonaws.com"
-    s3Bucket: "your-bucket"
-    s3AccessKey: "YOUR_KEY"
-    s3SecretKey: "YOUR_SECRET"
+    s3Bucket: "your-bucket"  # Required!
+    s3AccessKey: "YOUR_KEY"   # Required!
+    s3SecretKey: "YOUR_SECRET"  # Required!
 ```
 
-#### 3. Keycloak Admin
+#### 5. Keycloak Admin
 
 ```yaml
 keycloak:
   admin:
     username: admin
-    password: "CHANGE_ME"  # Change in production!
+    password: "changeme"  # Change in production!
+  database:
+    password: keycloak  # Change in production!
 ```
 
-#### 4. Resource Limits
+#### 6. Resource Limits
 
+Adjust based on your environment:
 ```yaml
 llmApi:
   resources:
     requests:
+      memory: 256Mi  # Minimum for minikube
+      cpu: 250m
+    limits:
       memory: 512Mi
       cpu: 500m
-    limits:
-      memory: 1Gi
-      cpu: 1000m
+
+# For production, increase limits:
+# memory: 1Gi, cpu: 1000m
 ```
 
-#### 5. Autoscaling
+#### 7. Autoscaling (Disabled by default)
 
 ```yaml
 llmApi:
   autoscaling:
-    enabled: true
-    minReplicas: 3
+    enabled: false  # Enable for production
+    minReplicas: 2
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
 ```
 
-#### 6. Ingress Configuration
+#### 8. Ingress Configuration
 
 ```yaml
 llmApi:
@@ -189,74 +314,95 @@ llmApi:
 
 ## 🌐 Deployment Scenarios
 
-### Development (Minikube/Kind)
+### Development (Minikube) - Verified Working 
 
 ```bash
 # Start minikube with enough resources
-minikube start --cpus=4 --memory=8192
+minikube start --cpus=4 --memory=8192 --driver=docker
 
-# Install with development values
-helm install jan-server ./jan-server \
-  --namespace jan-server-dev \
-  --create-namespace \
-  --values ./jan-server/values-development.yaml
-
-# Access via port-forward
-kubectl port-forward -n jan-server-dev svc/jan-server-kong 8000:8000
-```
-
-### Cloud (AWS/GCP/Azure)
-
-```bash
-# Create production values
-cat > my-values.yaml <<EOF
-global:
-  storageClass: "gp3"  # AWS EBS
-
-kong:
-  service:
-    type: LoadBalancer
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-
-llmApi:
-  replicaCount: 3
-  autoscaling:
-    enabled: true
-  ingress:
-    enabled: true
-    className: "nginx"
-    hosts:
-      - host: api.yourdomain.com
-EOF
+# Build and load images (see SETUP.md for complete steps)
+# ... build services and docker images ...
+minikube image load jan/llm-api:latest
+minikube image load jan/media-api:latest
+minikube image load jan/response-api:latest
+minikube image load jan/mcp-tools:latest
+minikube image load jan/keycloak:latest
 
 # Install
+cd k8s
 helm install jan-server ./jan-server \
   --namespace jan-server \
-  --create-namespace \
-  --values my-values.yaml
+  --create-namespace
+
+# Create databases
+kubectl exec -n jan-server jan-server-postgresql-0 -- bash -c "PGPASSWORD=postgres psql -U postgres << 'EOF'
+CREATE USER media WITH PASSWORD 'media';
+CREATE DATABASE media_api OWNER media;
+CREATE USER keycloak WITH PASSWORD 'keycloak';
+CREATE DATABASE keycloak OWNER keycloak;
+EOF"
+
+# Access via port-forward
+kubectl port-forward -n jan-server svc/jan-server-llm-api 8080:8080
 ```
 
-### On-Premises
+### Docker Desktop Kubernetes
 
 ```bash
-# Use NodePort for external access
-cat > on-prem-values.yaml <<EOF
-kong:
-  service:
-    type: NodePort
-    nodePort: 30000
+# Build images (same as minikube)
+# Images are automatically available in Docker Desktop's Kubernetes
 
-postgresql:
-  primary:
-    persistence:
-      storageClass: "local-storage"
-EOF
-
+# Install with IfNotPresent pull policy
 helm install jan-server ./jan-server \
   --namespace jan-server \
   --create-namespace \
-  --values on-prem-values.yaml
+  --set llmApi.image.pullPolicy=IfNotPresent \
+  --set mediaApi.image.pullPolicy=IfNotPresent \
+  --set mcpTools.image.pullPolicy=IfNotPresent \
+  --set keycloak.image.pullPolicy=IfNotPresent
+```
+
+### Cloud Kubernetes (AKS/EKS/GKE)
+
+```bash
+# Option 1: Use cloud-managed databases (recommended)
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --set postgresql.enabled=false \
+  --set redis.enabled=false \
+  --set global.postgresql.host=your-managed-postgres.cloud \
+  --set global.redis.host=your-managed-redis.cloud \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set ingress.hosts[0].host=jan.yourdomain.com \
+  --set llmApi.autoscaling.enabled=true \
+  --set llmApi.replicaCount=3
+
+# Option 2: Use in-cluster databases with persistent storage
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --set postgresql.persistence.enabled=true \
+  --set postgresql.persistence.size=50Gi \
+  --set postgresql.persistence.storageClass=gp3 \
+  --set redis.master.persistence.enabled=true \
+  --set ingress.enabled=true \
+  --set llmApi.autoscaling.enabled=true
+```
+
+### Production On-Premises
+
+```bash
+# Use production values template
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --values ./jan-server/values-production.yaml \
+  --set postgresql.enabled=false \
+  --set redis.enabled=false \
+  --set global.postgresql.host=postgres.internal \
+  --set global.redis.host=redis.internal
 ```
 
 ## 🔒 Security Best Practices
@@ -429,7 +575,7 @@ kubectl get pods -n jan-server -l app.kubernetes.io/name=postgresql
 
 # Test connection
 kubectl run -n jan-server psql-test --rm -it \
-  --image=postgres:16 \
+  --image=postgres:18 \
   -- psql -h jan-server-postgresql -U jan_user -d jan_llm_api
 ```
 

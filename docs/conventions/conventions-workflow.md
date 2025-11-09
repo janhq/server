@@ -196,16 +196,16 @@ make setup  # Runs both wire and swagger generation
 ### Secrets Management
 
 **DO:**
-- ✅ Store secrets in environment variables
-- ✅ Use `.env` files locally (add to `.gitignore`)
-- ✅ Use secret managers in production (AWS Secrets Manager, etc.)
-- ✅ Rotate secrets regularly
+-  Store secrets in environment variables
+-  Use `.env` files locally (add to `.gitignore`)
+-  Use secret managers in production (AWS Secrets Manager, etc.)
+-  Rotate secrets regularly
 
 **DON'T:**
-- ❌ Commit secrets to git
-- ❌ Log secrets or API keys
-- ❌ Hardcode secrets in code
-- ❌ Include secrets in error messages
+-  Commit secrets to git
+-  Log secrets or API keys
+-  Hardcode secrets in code
+-  Include secrets in error messages
 
 ### API Key Encryption
 
@@ -217,10 +217,10 @@ apikey.KeyHash = crypto.HashAPIKey(plaintext, os.Getenv("APIKEY_SECRET"))
 ### Logging Security
 
 ```go
-// ❌ Bad: Leaks sensitive data
+//  Bad: Leaks sensitive data
 logger.Log(ctx, "info", "API key created", apiKey.PlainText)
 
-// ✅ Good: Only log public information
+//  Good: Only log public information
 logger.Log(ctx, "info", "API key created", apiKey.PublicID)
 ```
 
@@ -272,15 +272,15 @@ logger.Log(ctx, logger.LevelInfo, "processing request")
 ### What to Log
 
 **DO log:**
-- ✅ Business events (user created, payment processed)
-- ✅ External API calls (success/failure)
-- ✅ Performance metrics
-- ✅ Error conditions with context
+-  Business events (user created, payment processed)
+-  External API calls (success/failure)
+-  Performance metrics
+-  Error conditions with context
 
 **DON'T log:**
-- ❌ Sensitive data (passwords, tokens, PII)
-- ❌ Every database query (too verbose)
-- ❌ Request/response bodies (unless debugging)
+-  Sensitive data (passwords, tokens, PII)
+-  Every database query (too verbose)
+-  Request/response bodies (unless debugging)
 
 ---
 
@@ -329,16 +329,16 @@ logger.Log(ctx, logger.LevelInfo, "processing request")
 ### Review Comments Style
 
 ```go
-// ✅ Good: Specific and actionable
+//  Good: Specific and actionable
 "This could cause an N+1 query. Consider using Preload() instead."
 
-// ✅ Good: Explains why
+//  Good: Explains why
 "We should use *bool here because GORM skips zero values (false) with .Save()"
 
-// ❌ Bad: Vague
+//  Bad: Vague
 "This doesn't look right"
 
-// ❌ Bad: No context
+//  Bad: No context
 "Change this"
 ```
 

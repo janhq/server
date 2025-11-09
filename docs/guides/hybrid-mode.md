@@ -16,22 +16,22 @@ Hybrid mode allows you to run services natively (outside Docker) while keeping i
 
 ### Benefits
 
-✅ **Faster Development**
+ **Faster Development**
 - Instant code changes (no Docker rebuild)
 - Native debugging tools
 - Hot reloading
 
-✅ **Better IDE Integration**
+ **Better IDE Integration**
 - Native breakpoints
 - Real-time code analysis
 - Better autocomplete
 
-✅ **Easier Debugging**
+ **Easier Debugging**
 - Direct console output
 - Native debugger (delve)
 - Full stack traces
 
-✅ **Full Infrastructure**
+ **Full Infrastructure**
 - PostgreSQL in Docker
 - Keycloak in Docker
 - Kong in Docker
@@ -200,10 +200,13 @@ VECTOR_STORE_URL=http://localhost:3015
 SANDBOXFUSION_URL=http://localhost:3010
 
 # Service ports
-HTTP_PORT=8080              # API port
+HTTP_PORT=8080              # LLM API port
 MCP_TOOLS_HTTP_PORT=8091    # MCP port
 MEDIA_API_PORT=8285         # Media API port
+
+# Media API
 MEDIA_SERVICE_KEY=changeme-media-key
+MEDIA_API_KEY=changeme-media-key
 
 # Logging (console for native)
 LOG_LEVEL=debug
@@ -212,11 +215,18 @@ LOG_FORMAT=console
 # Auto-migrate
 AUTO_MIGRATE=true
 
-# Media storage defaults
+# Media storage (S3 configuration)
 MEDIA_S3_ENDPOINT=https://s3.menlo.ai
+MEDIA_S3_REGION=us-west-2
 MEDIA_S3_BUCKET=platform-dev
 MEDIA_S3_ACCESS_KEY=XXXXX
 MEDIA_S3_SECRET_KEY=YYYY
+MEDIA_S3_USE_PATH_STYLE=true
+MEDIA_S3_PRESIGN_TTL=5m
+MEDIA_MAX_BYTES=20971520
+MEDIA_PROXY_DOWNLOAD=true
+MEDIA_RETENTION_DAYS=30
+MEDIA_REMOTE_FETCH_TIMEOUT=15s
 ```
 
 ### Loading Environment
@@ -531,4 +541,4 @@ Connect with your favorite GUI:
 
 ---
 
-**Happy Hybrid Development! 🚀**
+**Happy Hybrid Development! **

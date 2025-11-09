@@ -46,17 +46,17 @@ Key requests inside the collection:
 ### Test Results
 
 All 28 assertions across 11 requests should pass:
-- ✅ Guest authentication and token generation
-- ✅ MCP search with domain filtering
-- ✅ MCP search in offline mode
-- ✅ List all MCP tools
-- ✅ Google search via MCP (with fallback support)
-- ✅ Web scraping via MCP
-- ✅ File search indexing
-- ✅ File search querying  
-- ✅ SandboxFusion Python code execution
-- ✅ Direct SearXNG HTML search
-- ✅ Direct SearXNG text scraping
+-  Guest authentication and token generation
+-  MCP search with domain filtering
+-  MCP search in offline mode
+-  List all MCP tools
+-  Google search via MCP (with fallback support)
+-  Web scraping via MCP
+-  File search indexing
+-  File search querying  
+-  SandboxFusion Python code execution
+-  Direct SearXNG HTML search
+-  Direct SearXNG text scraping
 
 ## 3. Manual CURL Checks
 

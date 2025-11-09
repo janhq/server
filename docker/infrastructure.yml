@@ -15,7 +15,7 @@ networks:
 services:
   # PostgreSQL Database for LLM API
   api-db:
-    image: postgres:16
+    image: postgres:18
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-jan_user}
@@ -24,7 +24,8 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - api-db-data:/var/lib/postgresql/data
+      - api-db-data:/var/lib/postgresql
+      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U jan_user"]
       interval: 10s
@@ -34,7 +35,7 @@ services:
 
   # PostgreSQL Database for Keycloak
   keycloak-db:
-    image: postgres:16
+    image: postgres:18
     restart: unless-stopped
     environment:
       POSTGRES_USER: keycloak
@@ -43,7 +44,7 @@ services:
     ports:
       - "${KEYCLOAK_DB_PORT:-5433}:5432"
     volumes:
-      - keycloak-db-data:/var/lib/postgresql/data
+      - keycloak-db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keycloak"]
       interval: 10s
@@ -76,7 +77,7 @@ services:
     ports:
       - "${KEYCLOAK_HTTP_PORT:-8085}:${KEYCLOAK_HTTP_PORT:-8085}"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:${KEYCLOAK_HTTP_PORT:-8085}"]
+      test: ["CMD", "bash", "-c", "test -x /opt/keycloak/bin/kc.sh"]
       interval: 10s
       timeout: 5s
       retries: 10

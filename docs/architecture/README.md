@@ -37,7 +37,7 @@ The system is organized into several layers:
 | Services        | Go 1.21+ (Gin framework)       |
 | MCP Server      | mark3labs/mcp-go v0.7.0        |
 | ORM             | GORM                           |
-| Database        | PostgreSQL 16                  |
+| Database        | PostgreSQL 18                  |
 | Auth            | Keycloak (OpenID Connect)      |
 | Inference       | vLLM (OpenAI-compatible)       |
 | Observability   | OpenTelemetry Collector        |
@@ -45,9 +45,13 @@ The system is organized into several layers:
 | Tracing         | Jaeger 1.51                    |
 | Dashboards      | Grafana 10.2                   |
 
-## Deployment Profiles
+## Deployment Options
 
-Docker Compose services are organized by profiles for flexible deployment:
+The system supports multiple deployment strategies:
+
+### Docker Compose (Development)
+
+Docker Compose services are organized by profiles for flexible development:
 
 - **Infrastructure only**: `make up` (api-db, keycloak-db, keycloak)
 - **With LLM API**: `make up-llm-api` (+ llm-api service)
@@ -56,6 +60,19 @@ Docker Compose services are organized by profiles for flexible deployment:
 - **GPU inference**: `make up-gpu` (+ vllm with GPU)
 - **CPU inference**: `make up-cpu` (+ vllm CPU-only)
 - **Monitoring stack**: `make monitor-up` (prometheus, jaeger, grafana, otel-collector)
+
+### Kubernetes (Production)
+
+Production deployments use Helm charts with flexible configuration:
+
+- **Development**: Minikube with local images (`imagePullPolicy: Never`)
+- **Cloud**: AKS/EKS/GKE with autoscaling and managed databases
+- **On-Premises**: Custom Kubernetes clusters with external databases
+
+**Deployment guides:**
+- [Kubernetes Setup Guide](../../k8s/SETUP.md) - Step-by-step minikube setup
+- [Kubernetes Configuration](../../k8s/README.md) - Helm chart reference
+- [Deployment Guide](../guides/deployment.md) - All deployment strategies
 
 ## References
 

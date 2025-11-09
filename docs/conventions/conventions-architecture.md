@@ -16,21 +16,21 @@ cmd/
   gormgen/        # GORM code generator
 config/           # Version + environment variables
 internal/
-  domain/         # ✅ Business entities + core logic (no HTTP/DB/Cache/MQ)
+  domain/         #  Business entities + core logic (no HTTP/DB/Cache/MQ)
     apikey/
     auth/
     model/
     billing/
     query/
     user/
-  infrastructure/ # ✅ External concerns (DB, cache, Kafka, OpenAI, etc.)
+  infrastructure/ #  External concerns (DB, cache, Kafka, OpenAI, etc.)
     database/
       dbschema/   # Table definitions
       gormgen/    # Generated type-safe queries
       repository/ # Data access implementations
     cache/
     messagequeue/
-  interfaces/     # ✅ Delivery mechanisms (HTTP, cron, consumers)
+  interfaces/     #  Delivery mechanisms (HTTP, cron, consumers)
     httpserver/
       handlers/   # Optional: Reusable helpers across routes (avoid unnecessary wrappers)
       requests/   # Request DTOs
@@ -70,10 +70,10 @@ Infrastructure (Repos/Cache/MQ)
 ```
 
 **Rules:**
-- ✅ Interfaces can depend on Domain
-- ✅ Domain can depend on Infrastructure interfaces (injected)
-- ❌ Domain CANNOT import Infrastructure implementations
-- ❌ Infrastructure CANNOT import Interfaces
+-  Interfaces can depend on Domain
+-  Domain can depend on Infrastructure interfaces (injected)
+-  Domain CANNOT import Infrastructure implementations
+-  Infrastructure CANNOT import Interfaces
 
 ---
 
@@ -135,11 +135,11 @@ internal/interfaces/httpserver/
 ### Variables & Functions
 
 ```go
-// ✅ Good
+//  Good
 var userCount int
 func getUserByID(id string) (*User, error) { }
 
-// ❌ Bad: unnecessary abbreviations
+//  Bad: unnecessary abbreviations
 var usrCnt int
 func getUsrByID(id string) (*User, error) { }
 ```
@@ -147,26 +147,26 @@ func getUsrByID(id string) (*User, error) { }
 ### Types & Interfaces
 
 ```go
-// ✅ Good: exported types are PascalCase
+//  Good: exported types are PascalCase
 type User struct { }
 
-// ⚠️ Service interfaces often unnecessary - use concrete types
+//  Service interfaces often unnecessary - use concrete types
 type UserService struct { }  // Concrete type (preferred)
 
-// ✅ Good: no stuttering
+//  Good: no stuttering
 type User struct {
     ID   string  // Not UserID
     Name string  // Not UserName
 }
 
-// ❌ Bad: unnecessary prefixes
+//  Bad: unnecessary prefixes
 type IUserService interface { }
 ```
 
 ### Constants
 
 ```go
-// ✅ Good: PascalCase for exported, camelCase for unexported
+//  Good: PascalCase for exported, camelCase for unexported
 const (
     ErrorTypeNotFound ErrorType = "NOT_FOUND"
     defaultTimeout = 30 * time.Second
@@ -186,16 +186,16 @@ type User struct {
 ### Files & Directories
 
 - **Files:** `lowercase.go` or use underscores sparingly
-  - ✅ `userservice.go` (preferred)
-  - ⚠️ `user_service.go` (acceptable)
+  -  `userservice.go` (preferred)
+  -  `user_service.go` (acceptable)
   
 - **Directories:** `lowercase` (no underscores)
-  - ✅ `httpserver`, `eventconsumers`
-  - ❌ `http_server`, `event_consumers`
+  -  `httpserver`, `eventconsumers`
+  -  `http_server`, `event_consumers`
   
 - **Package names:** Single word, lowercase, no underscores
-  - ✅ `package userrepo`
-  - ❌ `package user_repo`
+  -  `package userrepo`
+  -  `package user_repo`
 
 ---
 
@@ -226,14 +226,14 @@ import (
 
 ### What Goes in Domain
 
-✅ **Belongs in Domain:**
+ **Belongs in Domain:**
 - Entity definitions
 - Business rules & validation
 - Entity methods (e.g., `Normalize()`, `Validate()`)
 - Service orchestration
 - Domain events
 
-❌ **Does NOT belong in Domain:**
+ **Does NOT belong in Domain:**
 - HTTP handlers
 - Database queries
 - Cache operations
@@ -242,14 +242,14 @@ import (
 
 ### What Goes in Infrastructure
 
-✅ **Belongs in Infrastructure:**
+ **Belongs in Infrastructure:**
 - Database schemas (`dbschema`)
 - Repository implementations
 - Cache implementations
 - Message queue publishers/consumers
 - External service clients (OpenAI, Stripe, etc.)
 
-❌ **Does NOT belong in Infrastructure:**
+ **Does NOT belong in Infrastructure:**
 - Business logic
 - Validation rules
 - HTTP routing
@@ -257,14 +257,14 @@ import (
 
 ### What Goes in Interfaces
 
-✅ **Belongs in Interfaces:**
+ **Belongs in Interfaces:**
 - HTTP routes & handlers
 - Request/Response DTOs
 - Middlewares
 - Cron jobs
 - Event consumers
 
-❌ **Does NOT belong in Interfaces:**
+ **Does NOT belong in Interfaces:**
 - Direct database access
 - Business logic
 - Data validation (beyond input validation)
@@ -276,7 +276,7 @@ import (
 ### Use Concrete Types (Default)
 
 ```go
-// ✅ Preferred: concrete type
+//  Preferred: concrete type
 type UserService struct {
     repo  *userrepo.UserRepository
     cache *usercache.UserCache
@@ -291,7 +291,7 @@ Only create interfaces when:
 3. Plugin architecture needed
 
 ```go
-// ✅ Good use case: multiple implementations
+//  Good use case: multiple implementations
 type CacheRepository interface {
     Get(ctx context.Context, key string) (interface{}, error)
     Set(ctx context.Context, key string, value interface{}) error
@@ -304,25 +304,25 @@ type RedisCache struct { }
 type MemoryCache struct { }
 ```
 
-❌ **Don't create interfaces "just in case"** - YAGNI principle applies.
+ **Don't create interfaces "just in case"** - YAGNI principle applies.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### ❌ God Objects
+###  God Objects
 
 ```go
-// ❌ Bad: one service doing everything
+//  Bad: one service doing everything
 type UserService struct {
     // 50 methods doing unrelated things
 }
 ```
 
-### ❌ Anemic Domain Models
+###  Anemic Domain Models
 
 ```go
-// ❌ Bad: entity with no behavior
+//  Bad: entity with no behavior
 type User struct {
     Name string
 }
@@ -331,7 +331,7 @@ type User struct {
 func (s *UserService) ValidateName(name string) error { }
 ```
 
-✅ **Better:** Put validation on entity
+ **Better:** Put validation on entity
 ```go
 type User struct {
     Name string
@@ -343,19 +343,19 @@ func (u *User) Normalize() error {
 }
 ```
 
-### ❌ Leaky Abstractions
+###  Leaky Abstractions
 
 ```go
-// ❌ Bad: DB concerns in domain
+//  Bad: DB concerns in domain
 func (s *UserService) Create(ctx context.Context, user *User) error {
     db.Table("users").Create(user)  // DB leaking into domain!
 }
 ```
 
-### ❌ Unnecessary Wrappers
+###  Unnecessary Wrappers
 
 ```go
-// ❌ Bad: wrapper adds no value
+//  Bad: wrapper adds no value
 func (h *UserHandler) GetUser(c *gin.Context) {
     h.getUserHandler(c)  // Just calls another function!
 }

@@ -114,9 +114,66 @@ Tests conversation management API:
 - Update conversation
 - Delete conversation
 
+**Environment Variables**:
+```bash
+kong_url=http://localhost:8000
+llm_api_url=http://localhost:8000/llm
+keycloak_base_url=http://localhost:8085
+keycloak_admin=admin
+keycloak_admin_password=admin
+realm=jan
+client_id_public=llm-api
+```
+
 **Run**:
 ```bash
 make test-conversations
+```
+
+### Response API Tests (`test-response`)
+
+**File**: `tests/automation/responses-postman-scripts.json`
+
+Tests response API functionality:
+
+- Response creation
+- Response retrieval
+- Response streaming
+- Error handling
+
+**Environment Variables**:
+```bash
+response_api_url=http://localhost:8000/responses
+llm_api_url=http://localhost:8000/llm
+mcp_tools_url=http://localhost:8000/mcp
+```
+
+**Run**:
+```bash
+make test-response
+```
+
+### Media API Tests (`test-media`)
+
+**File**: `tests/automation/media-postman-scripts.json`
+
+Tests media upload and management:
+
+- File upload
+- File retrieval
+- File deletion
+- Presigned URLs
+- Size limits
+
+**Environment Variables**:
+```bash
+media_api_url=http://localhost:8000/media
+media_service_key=changeme-media-key
+```
+
+**Run**:
+```bash
+make test-media
 ```
 
 ### MCP Integration Tests (`test-mcp-integration`)
@@ -144,9 +201,40 @@ Tests MCP (Model Context Protocol) tools:
 **Environment Variables**:
 ```bash
 kong_url=http://localhost:8000
-llm_api_url=http://localhost:8080
-mcp_tools_url=http://localhost:8091
+llm_api_url=http://localhost:8000/llm
+mcp_tools_url=http://localhost:8000/mcp
 searxng_url=http://localhost:8086
+```
+
+**Run**:
+```bash
+make test-mcp-integration
+```
+
+### Gateway End-to-End Tests (`test-e2e`)
+
+**File**: `tests/automation/test-all.postman.json`
+
+Tests complete flows through Kong Gateway:
+
+- Gateway routing
+- Service integration
+- Authentication flow
+- Cross-service communication
+
+**Environment Variables**:
+```bash
+gateway_url=http://localhost:8000
+llm_api_url=http://localhost:8000/llm
+media_api_url=http://localhost:8000/media
+response_api_url=http://localhost:8000/responses
+mcp_tools_url=http://localhost:8000/mcp
+media_service_key=changeme-media-key
+```
+
+**Run**:
+```bash
+make test-e2e
 ```
 
 **Run**:
@@ -233,7 +321,7 @@ test-myfeature:
 	@$(NEWMAN) run tests/automation/myfeature-postman-scripts.json \
 		--env-var "api_url=http://localhost:8080" \
 		--reporters cli
-	@echo "✅ My feature tests passed"
+	@echo " My feature tests passed"
 ```
 
 ### Adding Go Unit Tests
@@ -419,4 +507,4 @@ make test-coverage
 
 ---
 
-**Happy Testing! ✅**
+**Happy Testing! **

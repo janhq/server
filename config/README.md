@@ -67,12 +67,12 @@ make env-switch ENV=testing       # Integration testing
 
 ### URL Patterns by Environment
 
-| Environment | Database | Keycloak | MCP Tools |
-|-------------|----------|----------|-----------|
-| **Development** | `api-db:5432` | `keycloak:8085` | `searxng:8080` |
-| **Hybrid** | `localhost:5432` | `localhost:8085` | `localhost:8086` |
-| **Testing** | `localhost:5432` | `localhost:8085` | `localhost:8086` |
-| **Production** | External DB URL | External Keycloak | External URLs |
+| Environment | Database | Keycloak | MCP Tools | Media API |
+|-------------|----------|----------|-----------|-----------|
+| **Development** | `api-db:5432` | `keycloak:8085` | `searxng:8080` | Docker internal |
+| **Hybrid** | `localhost:5432` | `localhost:8085` | `localhost:8086` | `localhost:8285` |
+| **Testing** | `localhost:5432` | `localhost:8085` | `localhost:8086` | `localhost:8285` |
+| **Production** | External DB URL | External Keycloak | External URLs | External URL |
 
 ### Required Secrets
 

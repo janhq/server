@@ -106,7 +106,7 @@
                   "    console.log('Conversation title:', response.title);",
                   "});",
                   "",
-                  "console.log('✅ Step 3 Complete: Conversation Created with Title');"
+                  "console.log(' Step 3 Complete: Conversation Created with Title');"
                 ],
                 "type": "text/javascript"
               }
@@ -156,10 +156,10 @@
                   "    pm.expect(response.id).to.equal(pm.collectionVariables.get('conversationId1'));",
                   "    pm.expect(response.title).to.exist;",
                   "    pm.expect(response.title).to.equal('Test Runner Conversation');",
-                  "    console.log('✅ Verified title:', response.title);",
+                  "    console.log(' Verified title:', response.title);",
                   "});",
                   "",
-                  "console.log('✅ Step 4 Complete: Title Verified');"
+                  "console.log(' Step 4 Complete: Title Verified');"
                 ],
                 "type": "text/javascript"
               }

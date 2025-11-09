@@ -52,17 +52,31 @@ spec:
           value: {{ .Values.llmApi.env.AUTO_MIGRATE | quote }}
         - name: OTEL_ENABLED
           value: {{ .Values.llmApi.env.OTEL_ENABLED | quote }}
-        - name: DB_DSN
+        - name: JAN_DEFAULT_NODE_SETUP
+          value: {{ .Values.llmApi.env.JAN_DEFAULT_NODE_SETUP | quote }}
+        - name: JAN_DEFAULT_NODE_URL
+          value: {{ .Values.llmApi.env.JAN_DEFAULT_NODE_URL | quote }}
+        - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-llm-api-secret
-              key: db-dsn
+              key: database-url
         - name: KEYCLOAK_BASE_URL
-          value: "http://{{ include "jan-server.fullname" . }}-keycloak:{{ .Values.keycloak.service.port }}"
+          value: {{ tpl .Values.llmApi.env.KEYCLOAK_BASE_URL . | quote }}
+        - name: KEYCLOAK_REALM
+          value: {{ .Values.llmApi.env.KEYCLOAK_REALM | quote }}
+        - name: BACKEND_CLIENT_ID
+          value: {{ .Values.llmApi.env.BACKEND_CLIENT_ID | quote }}
+        - name: BACKEND_CLIENT_SECRET
+          value: {{ .Values.llmApi.env.BACKEND_CLIENT_SECRET | quote }}
+        - name: TARGET_CLIENT_ID
+          value: {{ .Values.llmApi.env.TARGET_CLIENT_ID | quote }}
+        - name: AUDIENCE
+          value: {{ .Values.llmApi.env.AUDIENCE | quote }}
         - name: JWKS_URL
-          value: "http://{{ include "jan-server.fullname" . }}-keycloak:{{ .Values.keycloak.service.port }}/realms/jan/protocol/openid-connect/certs"
+          value: {{ tpl .Values.llmApi.env.JWKS_URL . | quote }}
         - name: ISSUER
-          value: "http://{{ include "jan-server.fullname" . }}-keycloak:{{ .Values.keycloak.service.port }}/realms/jan"
+          value: {{ tpl .Values.llmApi.env.ISSUER . | quote }}
         livenessProbe:
           httpGet:
             path: /healthz

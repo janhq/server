@@ -127,26 +127,24 @@ cat << 'EOF'
 
 Next Steps:
 -----------
-1. Start infrastructure:
-   make up-infra              # Start postgres, keycloak, kong
-   
-2. Start API:
-   make up-api                # Start llm-api service
-   
-3. Start MCP tools (optional):
-   make up-mcp                # Start all MCP services
-   
-4. Run tests:
-   make test-all              # Run all integration tests
-   
-5. Hybrid development (optional):
-   make down-api              # Stop API in Docker
-   ./scripts/hybrid-run-api.sh  # Run API natively
+Option A: Local vLLM (recommended for full stack):
+1. Edit .env and set HF_TOKEN (required for vLLM model downloads).
+2. Start everything:        make up-full
+3. Run integration tests:   make test-all
 
-For more information:
-   make help                  # Show all available commands
-   cat README.md              # Read the documentation
+Option B: Remote provider only:
+1. Comment HF_TOKEN in .env and adjust services/llm-api/config/providers.yml to point at your remote provider.
+2. Start infra + API:       make up-infra && make up-api
+3. (Optional) start MCP:    make up-mcp
+4. Run tests:               make test-all
+
+Hybrid development (optional):
+   make down-api; ./scripts/hybrid-run-api.sh
+
+More info:
+   make help
+   cat README.md
 
 EOF
 
-print_success "Happy coding! 🚀"
+print_success "Happy coding! "
