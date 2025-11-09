@@ -2,6 +2,10 @@
 
 Welcome! This guide will help you get Jan Server up and running in minutes.
 
+> **Note:** This guide covers Docker Compose setup for local development. For Kubernetes deployment (production/staging), see:
+> - [Kubernetes Setup Guide](../../k8s/SETUP.md) - Complete step-by-step Kubernetes deployment
+> - [Deployment Guide](../guides/deployment.md) - All deployment options (Kubernetes, Docker Compose, Hybrid)
+
 ## Prerequisites
 
 Before you begin, ensure you have:

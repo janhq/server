@@ -4,9 +4,11 @@ Welcome to the Jan Server documentation! This guide will help you find what you 
 
 ## 🚀 New to Jan Server?
 
-Start here: **[Getting Started Guide](getting-started/README.md)**
+**Choose your deployment:**
+- **Docker Compose (Local Development)**: [Getting Started Guide](getting-started/README.md)
+- **Kubernetes (Production/Staging)**: [Kubernetes Setup Guide](../k8s/SETUP.md)
 
-Quick commands:
+Quick Docker Compose setup:
 ```bash
 make setup && make up-full
 ```
@@ -37,6 +39,7 @@ Services will be available at: http://localhost:8000
 - 🔄 [Hybrid Mode](guides/hybrid-mode.md) - Hybrid development setup
 - 📊 [Monitoring](guides/monitoring.md) - Observability and monitoring
 - 🧱 [Service Template](guides/services-template.md) - Clone the Go microservice scaffold
+- 🚀 [Deployment](guides/deployment.md) - Kubernetes, Docker Compose, and hybrid deployments
 
 ### For API Consumers
 - 📡 [LLM API](api/llm-api/) - Chat completions and conversations

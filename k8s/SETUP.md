@@ -4,11 +4,38 @@ This guide walks through setting up a Kubernetes cluster and deploying Jan Serve
 
 ## Prerequisites
 
-- Docker Desktop (with Kubernetes enabled) OR minikube
+- Docker Desktop OR minikube
 - kubectl CLI
 - Helm 3.8+
+- Go 1.23+ (for building services)
 
-## Option 1: Docker Desktop Kubernetes (Recommended for Windows)
+## Option 1: Minikube (Recommended for Development)
+
+### Install Minikube
+
+```powershell
+# Using Chocolatey
+choco install minikube
+
+# Or download from: https://minikube.sigs.k8s.io/docs/start/
+```
+
+### Start Minikube
+
+```powershell
+# Start with sufficient resources
+minikube start --cpus=4 --memory=8192 --driver=docker
+```
+
+### Verify Installation
+
+```powershell
+kubectl cluster-info
+kubectl get nodes
+minikube status
+```
+
+## Option 2: Docker Desktop Kubernetes
 
 ### Enable Kubernetes in Docker Desktop
 
@@ -30,44 +57,79 @@ You should see:
 Kubernetes control plane is running at https://kubernetes.docker.internal:6443
 ```
 
-## Option 2: Minikube
+## Building and Deploying Jan Server
 
-### Install Minikube
-
-```powershell
-# Using Chocolatey
-choco install minikube
-
-# Or download from: https://minikube.sigs.k8s.io/docs/start/
-```
-
-### Start Minikube
+### Step 1: Fix Go Modules
 
 ```powershell
-# Start with sufficient resources
-minikube start --cpus=4 --memory=8192 --driver=hyperv
+cd d:\Working\Menlo\jan-server
 
-# Or use Docker driver
-minikube start --cpus=4 --memory=8192 --driver=docker
+# Fix go modules for all services
+cd services\llm-api
+go mod tidy
+
+cd ..\media-api
+go mod tidy
+
+cd ..\mcp-tools
+go mod tidy
+
+cd ..\..
 ```
 
-### Verify Installation
+### Step 2: Build Docker Images
 
 ```powershell
-kubectl cluster-info
-kubectl get nodes
+cd d:\Working\Menlo\jan-server
+
+# Build LLM API
+cd services\llm-api
+docker build -t jan/llm-api:latest .
+
+# Build Media API
+cd ..\media-api
+docker build -t jan/media-api:latest .
+
+# Build MCP Tools
+cd ..\mcp-tools
+docker build -t jan/mcp-tools:latest .
+
+# Build Keycloak
+cd ..\..\keycloak
+docker build -t jan/keycloak:latest .
+
+cd ..
 ```
 
-## Deploying Jan Server with Helm
+### Step 3: Load Images into Minikube (Minikube Only)
 
-### Step 1: Add Bitnami Repository
+If using minikube, load the images into the cluster:
+
+```powershell
+# Load custom images
+minikube image load jan/llm-api:latest
+minikube image load jan/media-api:latest
+minikube image load jan/mcp-tools:latest
+minikube image load jan/keycloak:latest
+
+# Pull and load Bitnami images
+docker pull bitnami/postgresql:latest
+docker pull bitnami/redis:latest
+minikube image load bitnami/postgresql:latest
+minikube image load bitnami/redis:latest
+
+# Verify images are loaded
+minikube image ls | Select-String "jan/|bitnami"
+```
+
+### Step 4: Add Bitnami Repository
 
 ```powershell
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```
 
-### Step 2: Build Chart Dependencies
+### Step 5: Build Chart Dependencies
 
 ```powershell
 cd d:\Working\Menlo\jan-server\k8s\jan-server
@@ -76,20 +138,35 @@ helm dependency build
 
 This downloads PostgreSQL and Redis charts from Bitnami.
 
-### Step 3: Install Jan Server
+### Step 6: Install Jan Server
 
 ```powershell
 cd d:\Working\Menlo\jan-server\k8s
 
-# Install with default values (development)
+# Install with default values
 helm install jan-server ./jan-server `
   --namespace jan-server `
-  --create-namespace `
-  --wait `
-  --timeout 10m
+  --create-namespace
 ```
 
-### Step 4: Verify Deployment
+### Step 7: Create Additional Databases
+
+PostgreSQL needs additional databases for media-api and keycloak:
+
+```powershell
+# Wait for PostgreSQL to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n jan-server --timeout=300s
+
+# Create databases
+kubectl exec -n jan-server jan-server-postgresql-0 -- bash -c "PGPASSWORD=postgres psql -U postgres << 'EOF'
+CREATE USER media WITH PASSWORD 'media';
+CREATE DATABASE media_api OWNER media;
+CREATE USER keycloak WITH PASSWORD 'keycloak';
+CREATE DATABASE keycloak OWNER keycloak;
+EOF"
+```
+
+### Step 8: Verify Deployment
 
 ```powershell
 # Check all resources
@@ -102,22 +179,24 @@ kubectl get pods -n jan-server
 kubectl get svc -n jan-server
 ```
 
-Wait until all pods show `Running` status:
+Wait until all pods show `Running` status (this may take 2-5 minutes):
 ```
 NAME                                    READY   STATUS    RESTARTS   AGE
-jan-server-keycloak-xxx                 1/1     Running   0          2m
-jan-server-kong-xxx                     1/1     Running   0          2m
-jan-server-llm-api-xxx                  1/1     Running   0          2m
-jan-server-media-api-xxx                1/1     Running   0          2m
-jan-server-mcp-tools-xxx                1/1     Running   0          2m
-jan-server-postgresql-0                 1/1     Running   0          2m
-jan-server-redis-master-0               1/1     Running   0          2m
-jan-server-searxng-xxx                  1/1     Running   0          2m
-jan-server-vector-store-xxx             1/1     Running   0          2m
-jan-server-sandboxfusion-xxx            1/1     Running   0          2m
+jan-server-keycloak-xxx                 1/1     Running   0          3m
+jan-server-kong-xxx                     1/1     Running   0          3m
+jan-server-llm-api-xxx                  1/1     Running   0          3m
+jan-server-media-api-xxx                1/1     Running   0          3m
+jan-server-mcp-tools-xxx                1/1     Running   0          3m
+jan-server-postgresql-0                 1/1     Running   0          3m
+jan-server-redis-master-0               1/1     Running   0          3m
+jan-server-redis-replicas-0             1/1     Running   0          3m
+jan-server-searxng-xxx                  1/1     Running   0          3m
+jan-server-sandboxfusion-xxx            1/1     Running   0          3m
 ```
 
-### Step 5: Access Services via Port-Forward
+**Note:** `vector-store` is disabled by default. Kong may show restarts due to low memory limits (this is expected).
+
+### Step 9: Access Services via Port-Forward
 
 Open multiple PowerShell terminals and run:
 
