@@ -51,19 +51,30 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```
 
+**Important:** If you don't have a Kubernetes cluster yet, see [SETUP.md](./SETUP.md) for detailed instructions on setting up Docker Desktop Kubernetes or minikube.
+
 ### Install Jan Server
 
 ```bash
-# Install with default values (development)
-helm install jan-server ./jan-server \
-  --namespace jan-server \
-  --create-namespace
+# Step 1: Build chart dependencies
+cd jan-server
+helm dependency build
 
-# Install for production
+# Step 2: Install with default values (development)
+cd ..
 helm install jan-server ./jan-server \
   --namespace jan-server \
   --create-namespace \
-  --values ./jan-server/values-production.yaml
+  --wait \
+  --timeout 10m
+
+# For production, use values-production.yaml
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --values ./jan-server/values-production.yaml \
+  --wait \
+  --timeout 15m
 ```
 
 ### Access Services

@@ -55,7 +55,9 @@ keycloak:
     username: admin
     password: "CHANGE_ME_ADMIN_PASSWORD"
   database:
+    username: keycloak
     password: "CHANGE_ME_KC_DB_PASSWORD"
+    name: keycloak
   resources:
     requests:
       memory: 1Gi

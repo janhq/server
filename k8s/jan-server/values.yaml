@@ -27,6 +27,11 @@ serviceAccount:
 ## ============================================================================
 postgresql:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: "latest"
+    pullPolicy: Never
   auth:
     username: jan_user
     password: jan_password
@@ -43,31 +48,29 @@ postgresql:
       limits:
         memory: 512Mi
         cpu: 500m
-    initdb:
-      scripts:
-        init.sql: |
-          \connect postgres
-
-          DO
-          $do$
-          BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'media') THEN
-              CREATE ROLE media LOGIN PASSWORD 'media';
-            END IF;
-          END
-          $do$;
-
-          SELECT 'CREATE DATABASE media_api OWNER media'
-          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'media_api')
-          \gexec
-
-          GRANT ALL PRIVILEGES ON DATABASE media_api TO media;
+    livenessProbe:
+      enabled: true
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 6
+    readinessProbe:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 6
 
 ## ============================================================================
 ## Redis (for SearXNG and caching)
 ## ============================================================================
 redis:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnami/redis
+    tag: "latest"
+    pullPolicy: Never
   auth:
     enabled: false
   master:
@@ -92,7 +95,7 @@ keycloak:
     registry: docker.io
     repository: jan/keycloak
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Never
   
   service:
     type: ClusterIP
@@ -124,14 +127,14 @@ keycloak:
     - name: KC_DB_URL_HOST
       value: "{{ .Release.Name }}-postgresql"
     - name: KC_DB_USERNAME
-      value: keycloak
+      value: jan_user
     - name: KC_DB_PASSWORD
       valueFrom:
         secretKeyRef:
           name: "{{ .Release.Name }}-keycloak-secret"
           key: password
     - name: KC_DB_URL_DATABASE
-      value: keycloak
+      value: jan_llm_api
     - name: KC_FEATURES
       value: token-exchange
     - name: KC_HTTP_PORT
@@ -151,7 +154,9 @@ keycloak:
     password: changeme  # Override in production
   
   database:
-    password: keycloak  # Override in production
+    username: jan_user
+    password: jan_password  # Using jan_user credentials
+    name: jan_llm_api
 
 ## ============================================================================
 ## Kong API Gateway
@@ -204,7 +209,7 @@ llmApi:
     registry: docker.io
     repository: jan/llm-api
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Never
   
   service:
     type: ClusterIP
@@ -243,12 +248,20 @@ llmApi:
     LOG_FORMAT: json
     AUTO_MIGRATE: "true"
     OTEL_ENABLED: "false"
-    JAN_DEFAULT_NODE_SETUP: "true"
+    JAN_DEFAULT_NODE_SETUP: "false"
     JAN_DEFAULT_NODE_URL: "http://localhost:8001/v1"
+    KEYCLOAK_BASE_URL: "http://{{ .Release.Name }}-keycloak:8085"
+    KEYCLOAK_REALM: "jan"
+    BACKEND_CLIENT_ID: "llm-api"
+    BACKEND_CLIENT_SECRET: "llm-api-secret"
+    TARGET_CLIENT_ID: "jan-client"
+    AUDIENCE: "jan-client"
+    JWKS_URL: "http://{{ .Release.Name }}-keycloak:8085/realms/jan/protocol/openid-connect/certs"
+    ISSUER: "http://{{ .Release.Name }}-keycloak:8085/realms/jan"
   
   secrets:
     # Database connection
-    dbDsn: "postgres://jan_user:jan_password@{{ .Release.Name }}-postgresql:5432/jan_llm_api?sslmode=disable"
+    databaseUrl: "postgres://jan_user:jan_password@{{ .Release.Name }}-postgresql:5432/jan_llm_api?sslmode=disable"
 
 ## ============================================================================
 ## Media API Service
@@ -261,7 +274,7 @@ mediaApi:
     registry: docker.io
     repository: jan/media-api
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Never
   
   service:
     type: ClusterIP
@@ -304,8 +317,8 @@ mediaApi:
     MEDIA_S3_REGION: "us-west-2"
   
   secrets:
-    # Database connection
-    databaseUrl: "postgres://media:media@{{ .Release.Name }}-postgresql:5432/media_api?sslmode=disable"
+    # Database connection - using jan_user and jan_llm_api database
+    databaseUrl: "postgres://jan_user:jan_password@{{ .Release.Name }}-postgresql:5432/jan_llm_api?sslmode=disable"
     # S3 credentials
     serviceKey: changeme-media-key
     s3Endpoint: https://s3.menlo.ai
@@ -324,7 +337,7 @@ mcpTools:
     registry: docker.io
     repository: jan/mcp-tools
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Never
   
   service:
     type: ClusterIP
@@ -397,7 +410,7 @@ searxng:
 ## Vector Store Service
 ## ============================================================================
 vectorStore:
-  enabled: true
+  enabled: false
   replicaCount: 1
   
   image:

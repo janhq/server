@@ -33,15 +33,32 @@ spec:
           containerPort: {{ .Values.keycloak.service.targetPort }}
           protocol: TCP
         env:
-        {{- range .Values.keycloak.env }}
-        - name: {{ .name }}
-          {{- if .value }}
-          value: {{ tpl .value $ | quote }}
-          {{- else if .valueFrom }}
+        - name: KC_DB
+          value: "postgres"
+        - name: KC_DB_URL_HOST
+          value: "{{ include "jan-server.fullname" . }}-postgresql"
+        - name: KC_DB_USERNAME
+          value: "{{ .Values.keycloak.database.username }}"
+        - name: KC_DB_PASSWORD
           valueFrom:
-            {{- toYaml .valueFrom | nindent 12 }}
-          {{- end }}
-        {{- end }}
+            secretKeyRef:
+              name: {{ include "jan-server.fullname" . }}-keycloak-secret
+              key: password
+        - name: KC_DB_URL_DATABASE
+          value: "{{ .Values.keycloak.database.name }}"
+        - name: KC_FEATURES
+          value: "token-exchange"
+        - name: KC_HTTP_PORT
+          value: "8085"
+        - name: KC_HOSTNAME_STRICT_HTTPS
+          value: "false"
+        - name: KEYCLOAK_ADMIN
+          value: "{{ .Values.keycloak.admin.username }}"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "jan-server.fullname" . }}-keycloak-secret
+              key: admin-password
         livenessProbe:
           httpGet:
             path: /
