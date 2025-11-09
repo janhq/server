@@ -23,7 +23,11 @@ type Application struct {
 
 func init() {
 	logger.GetLogger()
-	config.Load()
+	_, err := config.Load()
+	if err != nil {
+		log := logger.GetLogger()
+		log.Fatal().Err(err).Msg("failed to load config")
+	}
 }
 
 // @title Jan Server LLM API

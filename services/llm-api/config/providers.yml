@@ -1,14 +1,30 @@
 providers:
   default:
-    - name: Local vLLM Provider
-      type: jan
-      url: ${VLLM_PROVIDER_URL}
-      api_key: ${VLLM_INTERNAL_KEY}
-      description: Default access to vLLM Provider
+    # - name: Local vLLM Provider
+    #   type: vllm
+    #   url: ${VLLM_PROVIDER_URL}
+    #   api_key: ${VLLM_INTERNAL_KEY}
+    #   description: Default access to vLLM Provider
+    #   auto_enable_new_models: true
+    #   sync_models: true
+    #   metadata:
+    #     environment: local-gpu
+    #     # Provider capabilities - Override defaults with JSON structure
+    #     image_input: '{"supported":true,"url":true,"base64":true,"schema":"..."}'
+    #     file_attachment: '{"supported":false,"url":false,"base64":false,"file_upload":false}'
+        
+    - name: Internal Jan v2
+      type: vllm
+      url: http://10.200.108.153:9000/v1
+      api_key: none
+      description: Internal Jan v2 instance
       auto_enable_new_models: true
       sync_models: true
       metadata:
-        environment: local-gpu
+        environment: internal
+        image_input: '{"supported":true,"url":true,"base64":true,"schema":"messages[].content[].type=image_url; supports https:// or data:image/...;base64,..."}'
+        file_attachment: '{"supported":true,"url":true,"base64":true,"file_upload":true,"schema":"messages[].content[].type=input_file; supports url, inline base64, or file_id"}'
+      
     - name: External Gemini
       type: gemini
       url: https://generativelanguage.googleapis.com/v1beta/openai
@@ -16,6 +32,11 @@ providers:
       description: Shared Gemini workspace
       auto_enable_new_models: true
       sync_models: true
+      # Note: Gemini capabilities loaded from providers_metadata_default.yml
+      # Override if needed:
+      # metadata:
+      #   image_input: '{"supported":true,"url":false,"base64":true,"schema":"Gemini inline_data format"}'
+      
   production:
     # - name: External OpenAI
     #   type: openai
@@ -23,6 +44,12 @@ providers:
     #   api_key: ${OPENAI_API_KEY}
     #   description: Shared OpenAI workspace
     #   auto_enable_new_models: false
+    #   metadata:
+    #     # OpenAI capabilities loaded from providers_metadata_default.yml by default
+    #     # Override example - disable URL support:
+    #     image_input: '{"supported":true,"url":false,"base64":true,"schema":"Base64 only"}'
+    #     file_attachment: '{"supported":true,"url":false,"base64":false,"file_upload":true}'
+    
     - name: External Gemini
       type: gemini
       url: https://generativelanguage.googleapis.com/v1beta/openai

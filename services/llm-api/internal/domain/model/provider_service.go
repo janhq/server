@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -110,6 +111,7 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 	}
 
 	metadata := sanitizeMetadata(input.Metadata)
+	metadata = setDefaultCapabilities(kind, metadata)
 
 	provider := &Provider{
 		PublicID:        publicID,
@@ -310,7 +312,9 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		}
 	}
 	if input.Metadata != nil {
-		provider.Metadata = sanitizeMetadata(*input.Metadata)
+		sanitized := sanitizeMetadata(*input.Metadata)
+		// Apply default capabilities for missing keys (don't override user-provided values)
+		provider.Metadata = setDefaultCapabilities(provider.Kind, sanitized)
 	}
 	if input.Active != nil {
 		provider.Active = *input.Active
@@ -375,4 +379,31 @@ func sanitizeMetadata(metadata map[string]string) map[string]string {
 		return nil
 	}
 	return result
+}
+
+// setDefaultCapabilities sets default capability metadata based on provider kind
+// if not already present in the metadata map
+func setDefaultCapabilities(kind ProviderKind, metadata map[string]string) map[string]string {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+
+	// Get default capabilities from the loaded defaults (providers_metadata_default.yml)
+	defaults := GetDefaultCapabilities(kind)
+
+	// Set image_input capability if not already configured
+	if _, exists := metadata[MetadataKeyImageInput]; !exists {
+		if imageInputJSON, err := json.Marshal(defaults.ImageInput); err == nil {
+			metadata[MetadataKeyImageInput] = string(imageInputJSON)
+		}
+	}
+
+	// Set file_attachment capability if not already configured
+	if _, exists := metadata[MetadataKeyFileAttachment]; !exists {
+		if fileAttachmentJSON, err := json.Marshal(defaults.FileAttachment); err == nil {
+			metadata[MetadataKeyFileAttachment] = string(fileAttachmentJSON)
+		}
+	}
+
+	return metadata
 }
