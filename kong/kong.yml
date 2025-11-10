@@ -1,6 +1,29 @@
 _format_version: "3.0"
 _transform: true
 
+consumers:
+  - username: kong-anon-jwt
+    custom_id: anon-jwt
+    tags: [anonymous, auth, fallback]
+  - username: keycloak-issuer
+    custom_id: keycloak-jwt
+    tags: [auth, jwt, keycloak]
+
+jwt_secrets:
+  - consumer: keycloak-issuer
+    algorithm: RS256
+    key: http://localhost:8085/realms/jan
+    rsa_public_key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAks4bK7EqsKVvrW6F8gRD
+      izRuGFzhfZVdHImVbmwavyK+yGrxVR5BOfbAYZy6/LnLei3aCmYbwKNgV+BU8Lch
+      +USX/BPpHswRXqf/GcBcdwAhqxAtwoKFG8KwTORP/RZGbVxOMS9D9T6iHPQmT7Md
+      4FyvHwTx7BwPx5oMIEOnur+NNaTsECN3cGR21SAnCtNCl188D3ubTsjUwERp6B4E
+      p2sVXsTDzT0ZOYbmmZiZJ59Fvk+0UNMn2uQyAj+j7lv15g6GtNSlG1DBnRKEVbOz
+      C50TfRUcCpQTrS8FkTTS0Pc/9MCOCHy9YDDDhdEuI5dvo9y9QUTIHPx4AhSubE0C
+      bwIDAQAB
+      -----END PUBLIC KEY-----
+
 # Note: API key authentication moved to service level (llm-api)
 # Kong in DB-less mode cannot manage consumers/credentials dynamically
 # API keys are validated by llm-api service via Keycloak
@@ -31,64 +54,6 @@ services:
     retries: 3
     tags: [llm, api]
     routes:
-      - name: llm-auth-public
-        paths:
-          - /auth/guest-login
-          - /auth/refresh-token
-          - /auth/logout
-          - /auth/validate-api-key
-        strip_path: false
-        methods: [GET, POST, OPTIONS]
-        tags: [llm, auth, public]
-        plugins:
-          - name: cors
-            tags: [llm, cors, public]
-            config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
-              methods: ["GET", "POST", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
-              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
-              credentials: true
-              max_age: 3600
-      - name: llm-auth-protected
-        paths:
-          - /auth
-        strip_path: false
-        tags: [llm, auth, protected]
-        plugins:
-          - name: jwt
-            tags: [llm, auth, jwt]
-            config:
-              secret_is_base64: false
-              run_on_preflight: false
-          - name: keycloak-apikey
-            tags: [llm, auth, apikey]
-            config:
-              validation_url: "http://llm-api:8080/auth/validate-api-key"
-              validation_timeout: 5000
-              hide_credentials: true
-              run_on_preflight: false
-          - name: request-termination
-            tags: [llm, auth, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
-          - name: rate-limiting
-            tags: [llm, auth, rate]
-            config:
-              minute: 60
-              policy: local
-              limit_by: ip
-              fault_tolerant: true
-          - name: cors
-            tags: [llm, cors, protected]
-            config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
-              methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
-              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
-              credentials: true
-              max_age: 3600
       - name: llm-api-proxy
         paths:
           - /llm
@@ -99,8 +64,12 @@ services:
           - name: jwt
             tags: [llm, api, jwt]
             config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
               secret_is_base64: false
               run_on_preflight: false
+              anonymous: kong-anon-jwt
           - name: keycloak-apikey
             tags: [llm, api, apikey]
             config:
@@ -108,11 +77,6 @@ services:
               validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-          - name: request-termination
-            tags: [llm, api, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [llm, api, rate]
             config:
@@ -139,8 +103,12 @@ services:
           - name: jwt
             tags: [llm, api, jwt]
             config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
               secret_is_base64: false
               run_on_preflight: false
+              anonymous: kong-anon-jwt
           - name: keycloak-apikey
             tags: [llm, api, apikey]
             config:
@@ -148,11 +116,6 @@ services:
               validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-          - name: request-termination
-            tags: [llm, api, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [llm, api, rate]
             config:
@@ -205,8 +168,12 @@ services:
           - name: jwt
             tags: [media, jwt]
             config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
               secret_is_base64: false
               run_on_preflight: false
+              anonymous: kong-anon-jwt
           - name: keycloak-apikey
             tags: [media, apikey]
             config:
@@ -214,11 +181,6 @@ services:
               validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-          - name: request-termination
-            tags: [media, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [media, rate]
             config:
@@ -236,6 +198,72 @@ services:
               credentials: true
               max_age: 3600
 
+  - name: llm-auth-svc
+    url: http://llm-api:8080
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    tags: [llm, auth]
+    routes:
+      - name: llm-auth-public
+        paths:
+          - /llm/auth/guest-login
+          - /llm/auth/refresh-token
+          - /llm/auth/logout
+          - /llm/auth/validate-api-key
+        strip_path: false
+        methods: [GET, POST, OPTIONS]
+        tags: [llm, auth, public]
+        plugins:
+          - name: cors
+            tags: [llm, cors, public]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
+      - name: llm-auth-protected
+        paths:
+          - /llm/auth
+          - /auth
+        strip_path: false
+        tags: [llm, auth, protected]
+        plugins:
+          - name: jwt
+            tags: [llm, auth, jwt]
+            config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              secret_is_base64: false
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: keycloak-apikey
+            tags: [llm, auth, apikey]
+            config:
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
+              hide_credentials: true
+              run_on_preflight: false
+          - name: rate-limiting
+            tags: [llm, auth, rate]
+            config:
+              minute: 60
+              policy: local
+              limit_by: ip
+              fault_tolerant: true
+          - name: cors
+            tags: [llm, cors, protected]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
   - name: response-api-svc
     url: http://response-api:8082
     connect_timeout: 60000
@@ -253,8 +281,12 @@ services:
           - name: jwt
             tags: [response, jwt]
             config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
               secret_is_base64: false
               run_on_preflight: false
+              anonymous: kong-anon-jwt
           - name: keycloak-apikey
             tags: [response, apikey]
             config:
@@ -262,11 +294,6 @@ services:
               validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-          - name: request-termination
-            tags: [response, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [response, rate]
             config:
@@ -302,8 +329,12 @@ services:
           - name: jwt
             tags: [mcp, jwt]
             config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
               secret_is_base64: false
               run_on_preflight: false
+              anonymous: kong-anon-jwt
           - name: keycloak-apikey
             tags: [mcp, apikey]
             config:
@@ -311,11 +342,6 @@ services:
               validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-          - name: request-termination
-            tags: [mcp, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [mcp, rate]
             config:
@@ -351,8 +377,12 @@ services:
           - name: jwt
             tags: [mcp, health, jwt]
             config:
+              key_claim_name: iss
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
               secret_is_base64: false
               run_on_preflight: false
+              anonymous: kong-anon-jwt
           - name: keycloak-apikey
             tags: [mcp, health, apikey]
             config:
@@ -360,11 +390,6 @@ services:
               validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-          - name: request-termination
-            tags: [mcp, health, fallback]
-            config:
-              status_code: 401
-              message: "Unauthorized: Valid JWT or API key required"
           - name: cors
             tags: [mcp, health, cors]
             config:
@@ -374,3 +399,5 @@ services:
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
+
+

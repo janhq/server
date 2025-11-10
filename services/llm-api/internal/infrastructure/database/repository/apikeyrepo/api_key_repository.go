@@ -69,12 +69,16 @@ func (r *Repository) CountActiveByUser(ctx context.Context, userID uint) (int64,
 }
 
 func (r *Repository) MarkRevoked(ctx context.Context, id string, revokedAt time.Time) error {
-	return platformerrors.AsError(
-		ctx,
-		platformerrors.LayerRepository,
-		r.db.WithContext(ctx).Model(&dbschema.APIKey{}).
-			Where("id = ?", id).
-			Update("revoked_at", revokedAt).Error,
-		"failed to revoke api key",
-	)
+	updateErr := r.db.WithContext(ctx).Model(&dbschema.APIKey{}).
+		Where("id = ?", id).
+		Update("revoked_at", revokedAt).Error
+	if updateErr != nil {
+		return platformerrors.AsError(
+			ctx,
+			platformerrors.LayerRepository,
+			updateErr,
+			"failed to revoke api key",
+		)
+	}
+	return nil
 }

@@ -11,7 +11,7 @@ services:
       DB_DSN: ${DB_DSN:-postgres://jan_user:jan_password@api-db:5432/jan_llm_api?sslmode=disable}
       KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8085}
       JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
-      ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
+      ISSUER: ${ISSUER:-http://keycloak:8085/realms/jan}
       AUDIENCE: ${AUDIENCE:-jan-client}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
@@ -66,12 +66,14 @@ services:
       MEDIA_REMOTE_FETCH_TIMEOUT: ${MEDIA_REMOTE_FETCH_TIMEOUT:-15s}
       AUTH_ENABLED: "true"
       AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
-      AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
+      AUTH_AUDIENCE: ${AUDIENCE:-}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
     ports:
       - "${MEDIA_API_PORT:-8285}:${MEDIA_API_PORT:-8285}"
     depends_on:
       api-db:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     volumes:
       - ../services/media-api/config:/app/config:ro

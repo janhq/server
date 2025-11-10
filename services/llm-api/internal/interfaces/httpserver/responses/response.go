@@ -14,6 +14,7 @@ import (
 type ErrorResponse struct {
 	Code          string `json:"code"` // UUID from PlatformError
 	Error         string `json:"error"`
+	Message       string `json:"message,omitempty"`
 	ErrorInstance error  `json:"-"`
 	RequestID     string `json:"request_id,omitempty"`
 }
@@ -21,6 +22,9 @@ type ErrorResponse struct {
 func NewInternalServerError(reqCtx *gin.Context, errResp ErrorResponse) {
 	if errResp.ErrorInstance != nil {
 		reqCtx.Error(errResp.ErrorInstance)
+	}
+	if errResp.Message == "" {
+		errResp.Message = errResp.Error
 	}
 	reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, errResp)
 }
@@ -36,6 +40,7 @@ func HandleError(reqCtx *gin.Context, err error, message string) {
 		errResp := ErrorResponse{
 			Code:          domainErr.GetUUID(),
 			Error:         message,
+			Message:       message,
 			ErrorInstance: domainErr,
 			RequestID:     domainErr.GetRequestID(),
 		}
@@ -46,6 +51,7 @@ func HandleError(reqCtx *gin.Context, err error, message string) {
 		// assign generic error response for non-domain errors
 		errResp := ErrorResponse{
 			Error:         message,
+			Message:       message,
 			ErrorInstance: err,
 		}
 		reqCtx.AbortWithStatusJSON(http.StatusInternalServerError, errResp)
@@ -60,6 +66,7 @@ func HandleErrorWithStatus(reqCtx *gin.Context, statusCode int, err error, messa
 		errResp := ErrorResponse{
 			Code:          domainErr.GetUUID(),
 			Error:         message,
+			Message:       message,
 			ErrorInstance: domainErr,
 			RequestID:     domainErr.GetRequestID(),
 		}
@@ -70,6 +77,7 @@ func HandleErrorWithStatus(reqCtx *gin.Context, statusCode int, err error, messa
 		// assign generic error response for non-domain errors
 		errResp := ErrorResponse{
 			Error:         message,
+			Message:       message,
 			ErrorInstance: err,
 		}
 		reqCtx.AbortWithStatusJSON(statusCode, errResp)
@@ -89,6 +97,7 @@ func HandleNewError(reqCtx *gin.Context, errorType platformerrors.ErrorType, mes
 	errResp := ErrorResponse{
 		Code:          err.GetUUID(),
 		Error:         message,
+		Message:       message,
 		ErrorInstance: err,
 		RequestID:     err.GetRequestID(),
 	}

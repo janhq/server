@@ -63,14 +63,58 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, v.jwks.Keyfunc,
-			jwt.WithAudience(v.cfg.AuthAudience),
-			jwt.WithIssuer(v.cfg.AuthIssuer),
+		opts := []jwt.ParserOption{
 			jwt.WithValidMethods([]string{"RS256", "RS384", "RS512"}),
-		)
+		}
+		token, err := jwt.Parse(tokenString, v.jwks.Keyfunc, opts...)
 		if err != nil || !token.Valid {
 			abortUnauthorized(c, "invalid token")
 			return
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			abortUnauthorized(c, "invalid token claims")
+			return
+		}
+
+		if issuer := strings.TrimSpace(v.cfg.AuthIssuer); issuer != "" {
+			allowedIssuers := map[string]struct{}{}
+			allowedIssuers[issuer] = struct{}{}
+			allowedIssuers["http://localhost:8085/realms/jan"] = struct{}{}
+			allowedIssuers["http://keycloak:8085/realms/jan"] = struct{}{}
+			issuerClaim, _ := claims["iss"].(string)
+			if _, ok := allowedIssuers[issuerClaim]; !ok {
+				abortUnauthorized(c, "invalid token issuer")
+				return
+			}
+		}
+
+		if audience := strings.TrimSpace(v.cfg.AuthAudience); audience != "" {
+			audClaim, ok := claims["aud"]
+			if ok {
+				switch aud := audClaim.(type) {
+				case string:
+					if aud != audience {
+						abortUnauthorized(c, "invalid token audience")
+						return
+					}
+				case []any:
+					found := false
+					for _, item := range aud {
+						if s, isStr := item.(string); isStr && s == audience {
+							found = true
+							break
+						}
+					}
+					if !found {
+						abortUnauthorized(c, "invalid token audience")
+						return
+					}
+				default:
+					abortUnauthorized(c, "invalid token audience")
+					return
+				}
+			}
 		}
 
 		c.Set("auth_token", token)

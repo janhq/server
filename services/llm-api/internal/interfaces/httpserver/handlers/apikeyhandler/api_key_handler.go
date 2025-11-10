@@ -134,7 +134,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.RevokeKey(c.Request.Context(), user.ID, keyID); err != nil {
+	if err := h.service.RevokeKey(c.Request.Context(), user, keyID); err != nil {
 		if errors.Is(err, apikey.ErrNotFound) {
 			responses.HandleErrorWithStatus(c, http.StatusNotFound, err, "api key not found")
 			return

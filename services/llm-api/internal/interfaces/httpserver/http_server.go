@@ -87,11 +87,21 @@ func (httpServer *HttpServer) Run() error {
 		middleware.CORSMiddleware(),
 	)
 
+	// /llm prefixed routes (mirror behaviour for Kong proxy paths)
+	llmRoot := httpServer.engine.Group("/llm")
+	llmProtected := llmRoot.Group("/")
+	llmProtected.Use(
+		middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.infra.Logger, httpServer.config.Issuer),
+		middleware.CORSMiddleware(),
+	)
+
 	// Register auth routes (passes both public and protected routers)
 	httpServer.authRoute.RegisterRouter(root, protected)
+	httpServer.authRoute.RegisterRouter(llmRoot, llmProtected)
 
 	// Register v1 routes (with auth middleware)
 	httpServer.v1Route.RegisterRouter(protected)
+	httpServer.v1Route.RegisterRouter(llmProtected)
 
 	if err := httpServer.engine.Run(fmt.Sprintf(":%d", httpServer.config.HTTPPort)); err != nil {
 		return err

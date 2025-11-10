@@ -5,7 +5,7 @@ type AuthMethod string
 
 const (
 	AuthMethodJWT    AuthMethod = "jwt"
-	AuthMethodAPIKey AuthMethod = "api_key"
+	AuthMethodAPIKey AuthMethod = "apikey"
 )
 
 // Principal captures normalized caller identity independent of auth mechanism.

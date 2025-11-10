@@ -80,6 +80,44 @@
       ]
     },
     {
+      "name": "Model Catalogue",
+      "description": "Capture a usable model id for the chat steps.",
+      "item": [
+        {
+          "name": "List Available Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{llm_api_url}}/v1/models",
+            "description": "Use the guest token to fetch available models and keep the first id handy."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = pm.response.json();",
+                  "pm.test('models request succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(payload.data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "const defaultModel = payload.data[0];",
+                  "pm.collectionVariables.set('model_id', defaultModel.id);",
+                  "console.log('Saved conversation model_id:', defaultModel.id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Basic Conversation Flow",
       "item": [
         {
@@ -203,7 +241,6 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! This is test message #1.\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{conversationId1}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
-
             },
             "url": "{{llm_api_url}}/v1/chat/completions"
           },
@@ -391,7 +428,7 @@
     },
     {
       "key": "model_id",
-      "value": "qwen/qwen2.5-0.5b-instruct",
+      "value": "",
       "type": "string"
     },
     {

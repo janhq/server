@@ -131,12 +131,16 @@ func (s *Service) ListKeys(ctx context.Context, userID uint) ([]APIKey, error) {
 }
 
 // RevokeKey marks the API key as revoked and removes it from Keycloak.
-func (s *Service) RevokeKey(ctx context.Context, userID uint, keyID string) error {
+func (s *Service) RevokeKey(ctx context.Context, usr *user.User, keyID string) error {
+	if usr == nil {
+		return fmt.Errorf("user is required")
+	}
+
 	key, err := s.repo.FindByID(ctx, keyID)
 	if err != nil {
 		return err
 	}
-	if key == nil || key.UserID != userID {
+	if key == nil || key.UserID != usr.ID {
 		return ErrNotFound
 	}
 
@@ -145,13 +149,21 @@ func (s *Service) RevokeKey(ctx context.Context, userID uint, keyID string) erro
 		return fmt.Errorf("mark revoked: %w", err)
 	}
 
-	// Remove API key hash from Keycloak user attributes
-	// We need to get the user subject from the database
-	// For now, we'll try to remove it by keyID
 	if s.keycloak != nil {
-		// Get user by ID to get subject
-		// This is a simplification - you might want to store subject in the key record
-		s.logger.Info().Str("key_id", keyID).Msg("api key revoked, keycloak cleanup may be needed")
+		if usr.Subject != "" {
+			if err := s.keycloak.RemoveAPIKeyHash(ctx, usr.Subject, key.ID); err != nil {
+				s.logger.Warn().
+					Err(err).
+					Str("key_id", key.ID).
+					Str("user_subject", usr.Subject).
+					Msg("failed to remove api key hash from keycloak")
+			}
+		} else {
+			s.logger.Warn().
+				Str("key_id", key.ID).
+				Uint("user_id", usr.ID).
+				Msg("api key revoked but user subject missing; unable to remove from keycloak")
+		}
 	}
 
 	return nil

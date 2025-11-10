@@ -34,7 +34,7 @@
     },
     {
       "key": "default_model_id",
-      "value": "Qwen/Qwen2.5-0.5B-Instruct"
+      "value": ""
     }
   ],
   "item": [
@@ -106,7 +106,10 @@
                   "  pm.response.to.have.status(200);",
                   "  pm.expect(payload.data).to.be.an('array').that.is.not.empty;",
                   "});",
-                  "const firstModel = payload.data && payload.data[0] ? payload.data[0] : { id: \"Qwen/Qwen2.5-0.5B-Instruct\" };",
+                  "const firstModel = payload.data[0];",
+                  "pm.test('first model exposes id', function () {",
+                  "  pm.expect(firstModel).to.have.property('id');",
+                  "});",
                   "pm.collectionVariables.set('default_model_id', firstModel.id);"
                 ]
               }
@@ -118,12 +121,17 @@
     {
       "name": "2. Health & Service Checks",
       "item": [
-        {
-          "name": "Response API Health",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{response_api_url}}/healthz"
+      {
+        "name": "Response API Health",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{guest_access_token}}"
+            }
+          ],
+          "url": "{{response_api_url}}/healthz"
           },
           "event": [
             {

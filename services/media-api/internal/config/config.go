@@ -60,9 +60,6 @@ func Load() (*Config, error) {
 		if strings.TrimSpace(cfg.AuthIssuer) == "" {
 			return nil, fmt.Errorf("AUTH_ISSUER is required when AUTH_ENABLED is true")
 		}
-		if strings.TrimSpace(cfg.AuthAudience) == "" {
-			return nil, fmt.Errorf("AUTH_AUDIENCE is required when AUTH_ENABLED is true")
-		}
 		if strings.TrimSpace(cfg.AuthJWKSURL) == "" {
 			return nil, fmt.Errorf("AUTH_JWKS_URL is required when AUTH_ENABLED is true")
 		}

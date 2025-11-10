@@ -67,6 +67,22 @@ func setPrincipal(c *gin.Context, principal domain.Principal) {
 	c.Set(principalContextKey, principal)
 	c.Request.Header.Set("X-Principal-Id", principal.ID)
 	c.Request.Header.Set("X-Auth-Method", string(principal.AuthMethod))
+	if principal.ID != "" {
+		c.Request.Header.Set("X-User-ID", principal.ID)
+		c.Writer.Header().Set("X-User-ID", principal.ID)
+	}
+	if principal.Subject != "" {
+		c.Request.Header.Set("X-User-Subject", principal.Subject)
+		c.Writer.Header().Set("X-User-Subject", principal.Subject)
+	}
+	if principal.Username != "" {
+		c.Request.Header.Set("X-User-Username", principal.Username)
+		c.Writer.Header().Set("X-User-Username", principal.Username)
+	}
+	if principal.Email != "" {
+		c.Request.Header.Set("X-User-Email", principal.Email)
+		c.Writer.Header().Set("X-User-Email", principal.Email)
+	}
 	if len(principal.Scopes) > 0 {
 		c.Request.Header.Set("X-Scopes", strings.Join(principal.Scopes, " "))
 	}
@@ -80,8 +96,12 @@ func setPrincipal(c *gin.Context, principal domain.Principal) {
 func principalFromAPIKey(c *gin.Context, fallbackIssuer string) (domain.Principal, bool) {
 	headers := c.Request.Header
 
-	// Check if there's actually an API key credential present
-	// Kong sets X-Credential-Identifier only when a real API key is used
+	// Prefer gateway injected headers (custom plugin) if available
+	if principal, ok := principalFromGatewayHeaders(headers, fallbackIssuer); ok {
+		return principal, true
+	}
+
+	// Fallback to classic Kong consumer headers
 	if headers.Get("X-Credential-Identifier") == "" {
 		return domain.Principal{}, false
 	}
@@ -94,13 +114,11 @@ func principalFromAPIKey(c *gin.Context, fallbackIssuer string) (domain.Principa
 	username := headers.Get("X-Consumer-Username")
 	customID := headers.Get("X-Consumer-Custom-ID")
 
-	principalID := customID
+	principalID := firstNonEmpty(customID, username, consumerID)
 	if principalID == "" {
-		principalID = username
+		return domain.Principal{}, false
 	}
-	if principalID == "" {
-		principalID = consumerID
-	}
+
 	scopes := parseScopes(headers.Get("X-Consumer-Groups"))
 	credentials := map[string]string{
 		"consumer_id":        consumerID,
@@ -113,6 +131,7 @@ func principalFromAPIKey(c *gin.Context, fallbackIssuer string) (domain.Principa
 	if route := headers.Get("X-Route-Id"); route != "" {
 		credentials["route_id"] = route
 	}
+
 	return domain.Principal{
 		ID:          principalID,
 		AuthMethod:  domain.AuthMethodAPIKey,
@@ -234,6 +253,66 @@ func mergeScopes(primary, secondary []string) []string {
 		}
 	}
 	return out
+}
+
+func principalFromGatewayHeaders(headers http.Header, fallbackIssuer string) (domain.Principal, bool) {
+	userID := strings.TrimSpace(headers.Get("X-User-ID"))
+	subject := strings.TrimSpace(headers.Get("X-User-Subject"))
+	authMethod := strings.TrimSpace(headers.Get("X-Auth-Method"))
+
+	if userID == "" && subject == "" && !strings.EqualFold(authMethod, string(domain.AuthMethodAPIKey)) {
+		return domain.Principal{}, false
+	}
+
+	principalID := firstNonEmpty(
+		userID,
+		subject,
+		headers.Get("X-Consumer-Custom-ID"),
+		headers.Get("X-Consumer-ID"),
+	)
+	if principalID == "" {
+		return domain.Principal{}, false
+	}
+
+	credentials := map[string]string{}
+	if userID != "" {
+		credentials["gateway_user_id"] = userID
+	}
+	if subject != "" {
+		credentials["gateway_subject"] = subject
+	}
+	if consumerID := headers.Get("X-Consumer-ID"); consumerID != "" {
+		credentials["consumer_id"] = consumerID
+	}
+	if consumerCustomID := headers.Get("X-Consumer-Custom-ID"); consumerCustomID != "" {
+		credentials["consumer_custom_id"] = consumerCustomID
+	}
+	if consumerUsername := headers.Get("X-Consumer-Username"); consumerUsername != "" {
+		credentials["consumer_username"] = consumerUsername
+	}
+	if credID := headers.Get("X-Credential-Identifier"); credID != "" {
+		credentials["credential_identifier"] = credID
+	}
+
+	return domain.Principal{
+		ID:          principalID,
+		AuthMethod:  domain.AuthMethodAPIKey,
+		Subject:     firstNonEmpty(subject, principalID),
+		Issuer:      fallbackIssuer,
+		Username:    firstNonEmpty(headers.Get("X-User-Username"), headers.Get("X-Consumer-Username")),
+		Email:       headers.Get("X-User-Email"),
+		Scopes:      parseScopes(headers.Get("X-Consumer-Groups")),
+		Credentials: credentials,
+	}, true
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func parseScopes(raw string) []string {

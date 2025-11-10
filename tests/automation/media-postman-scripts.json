@@ -7,10 +7,62 @@
   },
   "item": [
     {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Request Guest Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{llm_api_url}}/auth/guest-login",
+              "host": [
+                "{{llm_api_url}}"
+              ],
+              "path": [
+                "auth",
+                "guest-login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('guest token issued', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(data.access_token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.collectionVariables.set('media_access_token', data.access_token);",
+                  "pm.collectionVariables.set('media_user_id', data.user_id || '');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Health Check",
       "request": {
         "method": "GET",
         "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
           {
             "key": "X-Media-Service-Key",
             "value": "{{media_service_key}}",
@@ -51,6 +103,10 @@
       "request": {
         "method": "POST",
         "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
           {
             "key": "Content-Type",
             "value": "application/json"
@@ -125,6 +181,10 @@
       "request": {
         "method": "POST",
         "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
           {
             "key": "Content-Type",
             "value": "application/json"
@@ -211,6 +271,10 @@
         "method": "POST",
         "header": [
           {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
+          {
             "key": "Content-Type",
             "value": "application/json"
           },
@@ -283,6 +347,10 @@
         "method": "POST",
         "header": [
           {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
+          {
             "key": "Content-Type",
             "value": "application/json"
           },
@@ -337,6 +405,10 @@
       "request": {
         "method": "POST",
         "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
           {
             "key": "Content-Type",
             "value": "application/json"
@@ -407,6 +479,10 @@
         "method": "GET",
         "header": [
           {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
+          {
             "key": "X-Media-Service-Key",
             "value": "{{media_service_key}}"
           }
@@ -465,6 +541,10 @@
         "method": "GET",
         "header": [
           {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
+          {
             "key": "X-Media-Service-Key",
             "value": "{{media_service_key}}"
           }
@@ -506,6 +586,10 @@
       "request": {
         "method": "POST",
         "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
           {
             "key": "Content-Type",
             "value": "application/json"
@@ -596,6 +680,10 @@
       "request": {
         "method": "POST",
         "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
           {
             "key": "Content-Type",
             "value": "application/json"
@@ -688,6 +776,18 @@
     {
       "key": "presigned_upload_url",
       "value": ""
+    },
+    {
+      "key": "media_access_token",
+      "value": ""
+    },
+    {
+      "key": "media_user_id",
+      "value": ""
+    },
+    {
+      "key": "llm_api_url",
+      "value": "http://localhost:8000/llm"
     }
   ]
 }
