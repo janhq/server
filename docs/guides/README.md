@@ -104,11 +104,11 @@ See [Monitoring Guide](monitoring.md) for details.
 ## Getting Help
 
 Each guide includes:
-- ✅ Step-by-step instructions
-- ✅ Code examples
-- ✅ Common pitfalls
-- ✅ Troubleshooting tips
-- ✅ Related resources
+-  Step-by-step instructions
+-  Code examples
+-  Common pitfalls
+-  Troubleshooting tips
+-  Related resources
 
 ### Need More Help?
 

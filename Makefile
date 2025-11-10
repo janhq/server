@@ -52,6 +52,7 @@
 #   make test-auth                   - Run authentication tests
 #   make test-conversations          - Run conversation API tests
 #   make test-response               - Run response API tests
+#   make test-media                  - Run media API tests
 #   make test-mcp-integration        - Run MCP integration tests
 #
 # Build & Code Quality:
@@ -104,6 +105,7 @@ NEWMAN = newman
 NEWMAN_AUTH_COLLECTION = tests/automation/auth-postman-scripts.json
 NEWMAN_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.json
 NEWMAN_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
+NEWMAN_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
 NEWMAN_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
 NEWMAN_E2E_COLLECTION = tests/automation/test-all.postman.json
 
@@ -151,7 +153,7 @@ endif
 install-deps:
 	@echo "Installing development dependencies..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
-	@echo "✅ Development dependencies installed"
+	@echo " Development dependencies installed"
 
 # --- Environment Management ---
 
@@ -235,14 +237,14 @@ network-create:
 		docker network create jan-server_default
 	@docker network inspect jan-server_mcp-network >/dev/null 2>&1 || \
 		docker network create jan-server_mcp-network
-	@echo "✅ Docker networks created"
+	@echo " Docker networks created"
 
 network-list:
 	@docker network ls | grep jan-server
 
 network-clean:
 	@docker network rm jan-server_default jan-server_mcp-network 2>/dev/null || true
-	@echo "✅ Docker networks removed"
+	@echo " Docker networks removed"
 
 # --- Volume Management ---
 
@@ -252,10 +254,10 @@ volumes-list:
 	@docker volume ls | grep jan-server
 
 volumes-clean:
-	@echo "⚠️  WARNING: This will delete all data!"
+	@echo "  WARNING: This will delete all data!"
 	@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
 	@docker volume ls -q | grep jan-server | xargs -r docker volume rm
-	@echo "✅ Volumes removed"
+	@echo " Volumes removed"
 
 # ============================================================================================================
 # SECTION 3: BUILD TARGETS
@@ -270,29 +272,29 @@ build-api: build-llm-api build-media-api
 build-llm-api:
 	@echo "Building LLM API..."
 	@cd services/llm-api && go build -o bin/llm-api .
-	@echo "✅ LLM API built: services/llm-api/bin/llm-api"
+	@echo " LLM API built: services/llm-api/bin/llm-api"
 
 build-media-api:
 	@echo "Building Media API..."
 	@cd services/media-api && go build -o bin/media-api .
-	@echo "✅ Media API built: services/media-api/bin/media-api"
+	@echo " Media API built: services/media-api/bin/media-api"
 
 build-mcp:
 	@echo "Building MCP Tools..."
 	@cd services/mcp-tools && go build -o bin/mcp-tools .
-	@echo "✅ MCP Tools built: services/mcp-tools/bin/mcp-tools"
+	@echo " MCP Tools built: services/mcp-tools/bin/mcp-tools"
 
 build-all:
 	@echo "Building all Docker images..."
 	$(COMPOSE) --profile full build
-	@echo "✅ All services built"
+	@echo " All services built"
 
 clean-build:
 	@echo "Cleaning build artifacts..."
 	@rm -rf services/llm-api/bin
 	@rm -rf services/media-api/bin
 	@rm -rf services/mcp-tools/bin
-	@echo "✅ Build artifacts cleaned"
+	@echo " Build artifacts cleaned"
 
 # --- Swagger Documentation ---
 
@@ -317,7 +319,7 @@ swagger-llm-api:
 		--output ./docs/swagger \
 		--parseDependency \
 		--parseInternal
-	@echo "✅ llm-api swagger generated at services/llm-api/docs/swagger"
+	@echo " llm-api swagger generated at services/llm-api/docs/swagger"
 
 swagger-media-api:
 	@echo "Generating Swagger for media-api service..."
@@ -327,7 +329,7 @@ swagger-media-api:
 		--output ./docs/swagger \
 		--parseDependency \
 		--parseInternal
-	@echo "✅ media-api swagger generated at services/media-api/docs/swagger"
+	@echo " media-api swagger generated at services/media-api/docs/swagger"
 
 swagger-mcp-tools:
 	@echo "Generating Swagger for mcp-tools service..."
@@ -337,7 +339,7 @@ swagger-mcp-tools:
 		--output ./docs/swagger \
 		--parseDependency \
 		--parseInternal
-	@echo "✅ mcp-tools swagger generated at services/mcp-tools/docs/swagger"
+	@echo " mcp-tools swagger generated at services/mcp-tools/docs/swagger"
 
 swagger-combine:
 	@echo "Merging LLM API and MCP Tools swagger specs..."
@@ -345,12 +347,12 @@ swagger-combine:
 		-llm-api services/llm-api/docs/swagger/swagger.json \
 		-mcp-tools services/mcp-tools/docs/swagger/swagger.json \
 		-output services/llm-api/docs/swagger/swagger-combined.json
-	@echo "✅ Combined swagger created for unified API documentation"
+	@echo " Combined swagger created for unified API documentation"
 
 swagger-install:
 	@echo "Installing swagger tools..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
-	@echo "✅ swag installed successfully"
+	@echo " swag installed successfully"
 
 # --- Code Quality ---
 
@@ -359,17 +361,17 @@ swagger-install:
 fmt:
 	@echo "Formatting Go code..."
 	@gofmt -w $$(go list -f '{{.Dir}}' ./...)
-	@echo "✅ Code formatted"
+	@echo " Code formatted"
 
 lint:
 	@echo "Running linter..."
 	@go vet ./...
-	@echo "✅ Linting complete"
+	@echo " Linting complete"
 
 vet:
 	@echo "Running go vet..."
 	@go vet ./...
-	@echo "✅ Vet complete"
+	@echo " Vet complete"
 
 # ============================================================================================================
 # SECTION 4: SERVICE MANAGEMENT
@@ -382,7 +384,7 @@ vet:
 up-infra:
 	@echo "Starting infrastructure services..."
 	$(COMPOSE) --profile infra up -d
-	@echo "✅ Infrastructure services started"
+	@echo " Infrastructure services started"
 	@echo ""
 	@echo "Services:"
 	@echo "  - PostgreSQL: localhost:5432"
@@ -405,7 +407,7 @@ logs-infra:
 up-api:
 	@echo "Starting LLM API..."
 	$(COMPOSE) --profile api up -d
-	@echo "✅ API services started:"
+	@echo " API services started:"
 	@echo "   - LLM API:   http://localhost:8080"
 	@echo "   - Media API: http://localhost:8285"
 
@@ -428,7 +430,7 @@ logs-media-api:
 up-mcp:
 	@echo "Starting MCP services..."
 	$(COMPOSE) --profile mcp up -d
-	@echo "✅ MCP services started"
+	@echo " MCP services started"
 	@echo ""
 	@echo "Services:"
 	@echo "  - MCP Tools:      http://localhost:8091"
@@ -455,7 +457,7 @@ logs-mcp:
 up-vllm-gpu:
 	@echo "Starting vLLM GPU inference..."
 	$(COMPOSE) --profile gpu up -d
-	@echo "✅ vLLM GPU started at http://localhost:8001"
+	@echo " vLLM GPU started at http://localhost:8001"
 	@echo ""
 	@echo "Test inference:"
 	@echo "  curl http://localhost:8001/v1/models"
@@ -463,7 +465,7 @@ up-vllm-gpu:
 up-vllm-cpu:
 	@echo "Starting vLLM CPU inference..."
 	$(COMPOSE) --profile cpu up -d
-	@echo "✅ vLLM CPU started at http://localhost:8001"
+	@echo " vLLM CPU started at http://localhost:8001"
 	@echo ""
 	@echo "Test inference:"
 	@echo "  curl http://localhost:8001/v1/models"
@@ -539,7 +541,7 @@ endif
 up-full:
 	@echo "Starting full stack..."
 	$(COMPOSE) --profile full up -d
-	@echo "✅ Full stack started"
+	@echo " Full stack started"
 	@echo ""
 	@echo "Infrastructure:"
 	@echo "  - PostgreSQL: localhost:5432"
@@ -563,7 +565,7 @@ restart-full:
 stop:
 	@echo "Stopping all services (containers will be preserved)..."
 	$(COMPOSE) --profile full stop
-	@echo "✅ All services stopped (containers preserved)"
+	@echo " All services stopped (containers preserved)"
 	@echo ""
 	@echo "To restart: make up-full"
 	@echo "To remove containers: make down"
@@ -571,7 +573,7 @@ stop:
 down:
 	@echo "Stopping and removing all containers (volumes will be preserved)..."
 	$(COMPOSE) --profile full down
-	@echo "✅ All containers stopped and removed (volumes preserved)"
+	@echo " All containers stopped and removed (volumes preserved)"
 	@echo ""
 	@echo "To restart: make up-full"
 	@echo "To clean volumes: make down-clean"
@@ -579,7 +581,7 @@ down:
 down-clean:
 	@echo "Stopping and removing all containers and volumes..."
 	$(COMPOSE) --profile full down -v
-	@echo "✅ All containers and volumes removed (full cleanup)"
+	@echo " All containers and volumes removed (full cleanup)"
 	@echo ""
 	@echo "To restart: make up-full"
 
@@ -601,7 +603,7 @@ ifeq ($(OS),Windows_NT)
 else
 	@sleep 3
 endif
-	@echo "✅ Kong restarted"
+	@echo " Kong restarted"
 
 restart-keycloak:
 	$(COMPOSE) restart keycloak
@@ -616,17 +618,17 @@ restart-postgres:
 .PHONY: db-reset db-migrate db-console db-backup db-restore db-dump
 
 db-reset:
-	@echo "⚠️  WARNING: This will delete all database data!"
+	@echo "  WARNING: This will delete all database data!"
 	@echo "Stopping and removing API database..."
 	$(COMPOSE) stop api-db
 	$(COMPOSE) rm -f api-db
 	@docker volume rm jan-server_api-db-data || true
-	@echo "✅ Database reset complete. Run 'make up-api' to restart."
+	@echo " Database reset complete. Run 'make up-api' to restart."
 
 db-migrate:
 	@echo "Running database migrations..."
 	$(COMPOSE) exec llm-api /app/llm-api migrate
-	@echo "✅ Migrations complete"
+	@echo " Migrations complete"
 
 db-console:
 	@echo "Opening database console..."
@@ -636,16 +638,16 @@ db-backup:
 	@echo "Backing up database..."
 	@mkdir -p backups
 	@$(COMPOSE) exec -T api-db pg_dump -U jan_user jan_llm_api > backups/db_backup_$$(date +%Y%m%d_%H%M%S).sql
-	@echo "✅ Database backed up to backups/"
+	@echo " Database backed up to backups/"
 
 db-restore:
 	@if [ -z "$(FILE)" ]; then \
-		echo "❌ FILE variable required. Usage: make db-restore FILE=backups/db_backup.sql"; \
+		echo " FILE variable required. Usage: make db-restore FILE=backups/db_backup.sql"; \
 		exit 1; \
 	fi
 	@echo "Restoring database from $(FILE)..."
 	@cat $(FILE) | $(COMPOSE) exec -T api-db psql -U jan_user -d jan_llm_api
-	@echo "✅ Database restored"
+	@echo " Database restored"
 
 db-dump:
 	@echo "Dumping database schema..."
@@ -660,7 +662,7 @@ db-dump:
 monitor-up:
 	@echo "Starting observability stack..."
 	$(MONITOR_COMPOSE) up -d
-	@echo "✅ Monitoring stack started"
+	@echo " Monitoring stack started"
 	@echo ""
 	@echo "Dashboards:"
 	@echo "  - Grafana:    http://localhost:3001 (admin/admin)"
@@ -670,7 +672,7 @@ monitor-up:
 monitor-down:
 	@echo "Stopping monitoring stack..."
 	$(MONITOR_COMPOSE) down
-	@echo "✅ Monitoring stack stopped"
+	@echo " Monitoring stack stopped"
 
 monitor-logs:
 	$(MONITOR_COMPOSE) logs -f
@@ -678,7 +680,7 @@ monitor-logs:
 monitor-clean:
 	@echo "Stopping monitoring stack and removing volumes..."
 	$(MONITOR_COMPOSE) down -v
-	@echo "✅ Monitoring stack cleaned"
+	@echo " Monitoring stack cleaned"
 
 # ============================================================================================================
 # SECTION 7: TESTING
@@ -691,31 +693,31 @@ monitor-clean:
 test:
 	@echo "Running unit tests..."
 	@go test ./...
-	@echo "✅ Unit tests passed"
+	@echo " Unit tests passed"
 
 test-api:
 	@echo "Running LLM API tests..."
 	@cd services/llm-api && go test ./...
-	@echo "✅ LLM API tests passed"
+	@echo " LLM API tests passed"
 
 test-mcp:
 	@echo "Running MCP Tools tests..."
 	@cd services/mcp-tools && go test ./...
-	@echo "✅ MCP Tools tests passed"
+	@echo " MCP Tools tests passed"
 
 test-coverage:
 	@echo "Running tests with coverage..."
 	@go test -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
-	@echo "✅ Coverage report generated: coverage.html"
+	@echo " Coverage report generated: coverage.html"
 
 # --- Integration Tests (Newman) ---
 
-.PHONY: test-all test-auth test-conversations test-response test-mcp-integration test-e2e newman-debug
+.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-e2e newman-debug
 
-test-all: test-auth test-conversations test-response test-mcp-integration test-e2e
+test-all: test-auth test-conversations test-response test-media test-mcp-integration test-e2e
 	@echo ""
-	@echo "✅ All integration tests passed!"
+	@echo " All integration tests passed!"
 
 test-auth:
 	@echo "Running authentication tests..."
@@ -729,7 +731,7 @@ test-auth:
 		--env-var "client_id_public=llm-api" \
 		--verbose \
 		--reporters cli
-	@echo "✅ Authentication tests passed"
+	@echo " Authentication tests passed"
 
 test-conversations:
 	@echo "Running conversation API tests..."
@@ -743,7 +745,7 @@ test-conversations:
 		--env-var "client_id_public=llm-api" \
 		--verbose \
 		--reporters cli
-	@echo "✅ Conversation API tests passed"
+	@echo " Conversation API tests passed"
 
 test-response:
 	@echo "Running response API tests..."
@@ -753,7 +755,16 @@ test-response:
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--verbose \
 		--reporters cli
-	@echo "✅ Response API tests passed"
+	@echo " Response API tests passed"
+
+test-media:
+	@echo "Running media API tests..."
+	@$(NEWMAN) run $(NEWMAN_MEDIA_COLLECTION) \
+		--env-var "media_api_url=http://localhost:8000/media" \
+		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
+		--verbose \
+		--reporters cli
+	@echo " Media API tests passed"
 
 test-mcp-integration:
 	@echo "Running MCP integration tests..."
@@ -764,7 +775,7 @@ test-mcp-integration:
 		--env-var "searxng_url=http://localhost:8086" \
 		--verbose \
 		--reporters cli
-	@echo "✅ MCP integration tests passed"
+	@echo " MCP integration tests passed"
 
 test-e2e:
 	@echo "Running gateway end-to-end tests..."
@@ -824,29 +835,29 @@ else
 	@sleep 10
 endif
 	@$(MAKE) health-check
-	@echo "✅ Test environment ready"
+	@echo " Test environment ready"
 
 test-teardown:
 	@echo "Tearing down test environment..."
 	@$(MAKE) down
-	@echo "✅ Test environment stopped"
+	@echo " Test environment stopped"
 
 test-clean: test-teardown
 	@rm -f newman.json coverage.out coverage.html
-	@echo "✅ Test artifacts cleaned"
+	@echo " Test artifacts cleaned"
 
 # --- CI/CD Helpers ---
 
 .PHONY: ci-test ci-lint ci-build
 
 ci-test: test test-all
-	@echo "✅ All CI tests passed"
+	@echo " All CI tests passed"
 
 ci-lint: lint vet
-	@echo "✅ CI linting passed"
+	@echo " CI linting passed"
 
 ci-build: build-all
-	@echo "✅ CI build complete"
+	@echo " CI build complete"
 
 # ============================================================================================================
 # SECTION 8: HYBRID DEVELOPMENT
@@ -859,7 +870,7 @@ ci-build: build-all
 hybrid-infra-up:
 	@echo "Starting infrastructure for hybrid mode..."
 	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
-	@echo "✅ Infrastructure ready for hybrid development"
+	@echo " Infrastructure ready for hybrid development"
 	@echo ""
 	@echo "Infrastructure services running in Docker:"
 	@echo "  - PostgreSQL: localhost:5432"
@@ -876,7 +887,7 @@ hybrid-infra-down:
 hybrid-mcp-up:
 	@echo "Starting MCP infrastructure for hybrid mode..."
 	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
-	@echo "✅ MCP infrastructure ready"
+	@echo " MCP infrastructure ready"
 	@echo ""
 	@echo "MCP services running in Docker:"
 	@echo "  - SearXNG:        http://localhost:8086"
@@ -973,7 +984,7 @@ hybrid-dev-api:
 	@echo "Starting infrastructure for hybrid mode..."
 	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
 	@echo ""
-	@echo "✅ Ready for API development!"
+	@echo " Ready for API development!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Start API: make hybrid-run-api"
@@ -986,7 +997,7 @@ hybrid-dev-mcp:
 	@echo "Starting MCP infrastructure for hybrid mode..."
 	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo ""
-	@echo "✅ Ready for MCP development!"
+	@echo " Ready for MCP development!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Start MCP: make hybrid-run-mcp"
@@ -999,7 +1010,7 @@ hybrid-dev-full:
 	@echo "Starting MCP infrastructure for hybrid mode..."
 	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
 	@echo ""
-	@echo "✅ Ready for full hybrid development!"
+	@echo " Ready for full hybrid development!"
 	@echo ""
 	@echo "Run services:"
 	@echo "  - API:   make hybrid-run-api"
@@ -1010,7 +1021,7 @@ hybrid-stop:
 	@echo "Stopping hybrid infrastructure..."
 	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
 	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
-	@echo "✅ Hybrid infrastructure stopped"
+	@echo " Hybrid infrastructure stopped"
 
 # --- Debugging ---
 
@@ -1039,7 +1050,7 @@ hybrid-debug-mcp:
 .PHONY: dev-reset dev-clean dev-status
 
 dev-reset:
-	@echo "⚠️  Resetting development environment..."
+	@echo "  Resetting development environment..."
 	@$(MAKE) down
 	@$(MAKE) volumes-clean
 	@$(MAKE) network-clean
@@ -1047,7 +1058,7 @@ dev-reset:
 	@echo ""
 	@$(MAKE) setup
 	@$(MAKE) network-create
-	@echo "✅ Development environment reset complete"
+	@echo " Development environment reset complete"
 
 dev-clean:
 	@echo "Cleaning development artifacts..."
@@ -1057,7 +1068,7 @@ dev-clean:
 	@rm -rf services/media-api/docs/swagger
 	@rm -rf services/mcp-tools/docs/swagger
 	@find . -name "*.log" -type f -delete
-	@echo "✅ Development artifacts cleaned"
+	@echo " Development artifacts cleaned"
 
 dev-status:
 	@echo "=== Docker Services ==="
@@ -1085,7 +1096,7 @@ curl-health:
 
 curl-chat:
 	@if [ -z "$$TOKEN" ]; then \
-		echo "❌ TOKEN environment variable required"; \
+		echo " TOKEN environment variable required"; \
 		echo "Usage: TOKEN=your_token make curl-chat"; \
 		exit 1; \
 	fi
@@ -1113,7 +1124,7 @@ docker-images:
 docker-prune:
 	@echo "Cleaning up Docker system..."
 	@docker system prune -f
-	@echo "✅ Docker system cleaned"
+	@echo " Docker system cleaned"
 
 docker-stats:
 	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
@@ -1151,14 +1162,14 @@ perf-load:
 generate:
 	@echo "Running go generate..."
 	@go generate ./...
-	@echo "✅ Code generation complete"
+	@echo " Code generation complete"
 
 generate-mocks:
 	@echo "Generating mocks..."
 	@echo "Install mockgen: go install go.uber.org/mock/mockgen@latest"
 	@cd services/llm-api && go generate ./...
 	@cd services/mcp-tools && go generate ./...
-	@echo "✅ Mocks generated"
+	@echo " Mocks generated"
 
 # --- Documentation ---
 
@@ -1172,14 +1183,14 @@ docs-serve:
 docs-build:
 	@echo "Building documentation..."
 	@$(MAKE) swagger
-	@echo "✅ Documentation built"
+	@echo " Documentation built"
 
 # --- Git Utilities ---
 
 .PHONY: git-clean git-status
 
 git-clean:
-	@echo "⚠️  This will delete all git-ignored files"
+	@echo "  This will delete all git-ignored files"
 	@git clean -fdX
 
 git-status:
@@ -1240,7 +1251,7 @@ run-all-tests:
 	@echo "=== Step 2: Integration Tests ==="
 	@$(MAKE) test-all
 	@echo ""
-	@echo "✅ All tests completed!"
+	@echo " All tests completed!"
 
 # ============================================================================================================
 # SECTION 10: HEALTH CHECKS
@@ -1298,9 +1309,9 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host 'OK Kong: healthy' } else { Write-Host 'ERROR Kong: unhealthy' } } catch { Write-Host 'ERROR Kong: unhealthy' } }"
 	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host 'OK PostgreSQL: healthy' } else { Write-Host 'ERROR PostgreSQL: unhealthy' } } catch { Write-Host 'ERROR PostgreSQL: unhealthy' }"
 else
-	@curl -sf http://localhost:8085 >/dev/null && echo "✅ Keycloak: healthy" || echo "❌ Keycloak: unhealthy"
-	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "✅ Kong: healthy" || echo "❌ Kong: unhealthy")
-	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "✅ PostgreSQL: healthy" || echo "❌ PostgreSQL: unhealthy"
+	@curl -sf http://localhost:8085 >/dev/null && echo " Keycloak: healthy" || echo " Keycloak: unhealthy"
+	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo " Kong: healthy" || echo " Kong: unhealthy")
+	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo " PostgreSQL: healthy" || echo " PostgreSQL: unhealthy"
 endif
 
 health-api:
@@ -1320,10 +1331,10 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3015/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK Vector Store: healthy' } catch { Write-Host 'ERROR Vector Store: unhealthy' }"
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3010 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host 'OK SandboxFusion: healthy' } catch { Write-Host 'ERROR SandboxFusion: unhealthy' }"
 else
-	@curl -sf http://localhost:8091/healthz >/dev/null && echo "✅ MCP Tools: healthy" || echo "❌ MCP Tools: unhealthy"
-	@curl -sf http://localhost:8086 >/dev/null && echo "✅ SearXNG: healthy" || echo "❌ SearXNG: unhealthy"
-	@curl -sf http://localhost:3015/healthz >/dev/null && echo "✅ Vector Store: healthy" || echo "❌ Vector Store: unhealthy"
-	@curl -sf http://localhost:3010 >/dev/null && echo "✅ SandboxFusion: healthy" || echo "❌ SandboxFusion: unhealthy"
+	@curl -sf http://localhost:8091/healthz >/dev/null && echo " MCP Tools: healthy" || echo " MCP Tools: unhealthy"
+	@curl -sf http://localhost:8086 >/dev/null && echo " SearXNG: healthy" || echo " SearXNG: unhealthy"
+	@curl -sf http://localhost:3015/healthz >/dev/null && echo " Vector Store: healthy" || echo " Vector Store: unhealthy"
+	@curl -sf http://localhost:3010 >/dev/null && echo " SandboxFusion: healthy" || echo " SandboxFusion: unhealthy"
 endif
 
 # ============================================================================================================

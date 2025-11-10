@@ -148,26 +148,25 @@ Write-Host @"
 
 Next Steps:
 -----------
-1. Start infrastructure:
-   make up-infra              # Start postgres, keycloak, kong
-   
-2. Start API:
-   make up-api                # Start llm-api service
-   
-3. Start MCP tools (optional):
-   make up-mcp                # Start all MCP services
-   
-4. Run tests:
-   make test-all              # Run all integration tests
-   
-5. Hybrid development (optional):
-   make down-api              # Stop API in Docker
-   .\scripts\hybrid-run-api.ps1  # Run API natively
+Option A: Local vLLM (full stack):
+ 1. Edit .env and set HF_TOKEN (required for bundled vLLM downloads).
+ 2. Start everything:        make up-full
+ 3. Run integration tests:   make test-all
 
-For more information:
-   make help                  # Show all available commands
-   Get-Content README.md      # Read the documentation
+Option B: Remote provider only:
+ 1. Comment HF_TOKEN in .env and update services/llm-api/config/providers.yml to point at your remote provider.
+ 2. Start infra + API:       make up-infra && make up-api
+ 3. (Optional) MCP tools:    make up-mcp
+ 4. Run tests:               make test-all
+
+Hybrid development (optional):
+   make down-api
+   .\scripts\hybrid-run-api.ps1
+
+More info:
+   make help
+   Get-Content README.md
 
 "@
 
-Print-Success "Happy coding! 🚀"
+Print-Success "Happy coding! "

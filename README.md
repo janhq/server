@@ -31,19 +31,19 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 
 ## Features
 
-- ✅ OpenAI-compatible chat completions API
-- ✅ MCP tools (google_search, web scraping)
-- ✅ Conversation & message management
-- ✅ Guest & user authentication (Keycloak)
-- ✅ API gateway routing (Kong)
-- ✅ Distributed tracing (Jaeger)
-- ✅ Metrics & dashboards (Prometheus + Grafana)
-- ✅ Hybrid development mode
-- ✅ Comprehensive testing suite
+-  OpenAI-compatible chat completions API
+-  MCP tools (google_search, web scraping)
+-  Conversation & message management
+-  Guest & user authentication (Keycloak)
+-  API gateway routing (Kong)
+-  Distributed tracing (Jaeger)
+-  Metrics & dashboards (Prometheus + Grafana)
+-  Hybrid development mode
+-  Comprehensive testing suite
 
 ## Documentation
 
-- 🚀 [**Getting Started**](docs/getting-started/) - Setup & first steps
+-  [**Getting Started**](docs/getting-started/) - Setup & first steps
 - 📖 [**Guides**](docs/guides/) - Development, testing, deployment
 - 📡 [**API Reference**](docs/api/) - Endpoint documentation
 - 🏗️ [**Architecture**](docs/architecture/) - System design

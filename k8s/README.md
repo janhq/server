@@ -35,7 +35,7 @@ This directory contains Helm charts for deploying the entire Jan Server stack:
 └──────────────┘   └──────────────┘
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -129,20 +129,20 @@ open http://localhost:8085
 
 | Service | Port | Description | Status |
 |---------|------|-------------|--------|
-| LLM API | 8080 | Core LLM orchestration service | ✅ Working |
-| Media API | 8285 | Media upload and management | ✅ Working |
-| MCP Tools | 8091 | Model Context Protocol tools | ✅ Working |
-| Keycloak | 8085 | Authentication server | ✅ Working |
-| Kong | 8000 | Unified API Gateway | ⚠️ Optional |
+| LLM API | 8080 | Core LLM orchestration service |  Working |
+| Media API | 8285 | Media upload and management |  Working |
+| MCP Tools | 8091 | Model Context Protocol tools |  Working |
+| Keycloak | 8085 | Authentication server |  Working |
+| Kong | 8000 | Unified API Gateway |  Optional |
 
 ### Supporting Services
 
 | Service | Port | Description | Status |
 |---------|------|-------------|--------|
-| PostgreSQL | 5432 | Primary database (3 databases) | ✅ Working |
-| Redis | 6379 | Caching and sessions | ✅ Working |
-| SearXNG | 8080 | Meta search engine | ✅ Working |
-| SandboxFusion | 8080 | Code interpreter | ✅ Working |
+| PostgreSQL | 5432 | Primary database (3 databases) |  Working |
+| Redis | 6379 | Caching and sessions |  Working |
+| SearXNG | 8080 | Meta search engine |  Working |
+| SandboxFusion | 8080 | Code interpreter |  Working |
 | Vector Store | 3015 | File search database | 🔴 Disabled by default |
 
 ## 🔧 Configuration
@@ -279,7 +279,7 @@ llmApi:
 
 ## 🌐 Deployment Scenarios
 
-### Development (Minikube) - Verified Working ✅
+### Development (Minikube) - Verified Working 
 
 ```bash
 # Start minikube with enough resources

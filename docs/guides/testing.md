@@ -233,7 +233,7 @@ test-myfeature:
 	@$(NEWMAN) run tests/automation/myfeature-postman-scripts.json \
 		--env-var "api_url=http://localhost:8080" \
 		--reporters cli
-	@echo "✅ My feature tests passed"
+	@echo " My feature tests passed"
 ```
 
 ### Adding Go Unit Tests
@@ -419,4 +419,4 @@ make test-coverage
 
 ---
 
-**Happy Testing! ✅**
+**Happy Testing! **

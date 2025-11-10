@@ -19,7 +19,7 @@ set -euo pipefail
 
 # Prerequisite checks
 if ! command -v swag >/dev/null 2>&1; then
-  echo "❌ 'swag' CLI not installed. Install with: go install github.com/swaggo/swag/cmd/swag@latest" >&2
+  echo " 'swag' CLI not installed. Install with: go install github.com/swaggo/swag/cmd/swag@latest" >&2
   exit 1
 fi
 
@@ -67,7 +67,7 @@ swag init \
   --parseInternal
 
 if [ -f "./docs/swagger/swagger.json" ]; then
-  echo -e "${GREEN}✅ media-api swagger generated successfully${NC}"
+  echo -e "${GREEN} media-api swagger generated successfully${NC}"
 else
   echo -e "${YELLOW}⚠ media-api swagger.json not found${NC}"
   missing_any=1
@@ -91,7 +91,7 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}✅ Swagger generation complete!${NC}"
+echo -e "${GREEN} Swagger generation complete!${NC}"
 echo ""
 echo "Generated files:"
 echo "  - $LLM_API_DIR/docs/swagger/swagger.json (LLM API service)"

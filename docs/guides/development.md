@@ -338,7 +338,7 @@ make docker-prune
 make network-clean
 make network-create
 
-# Remove volumes (⚠️ DELETES DATA)
+# Remove volumes ( DELETES DATA)
 make volumes-clean
 ```
 
@@ -428,4 +428,4 @@ make docker-prune
 
 ---
 
-**Happy Coding! 🚀**
+**Happy Coding! **

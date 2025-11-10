@@ -1,6 +1,6 @@
 # Quick Reference: Make Commands
 
-## 🚀 New Quick Start Commands
+##  New Quick Start Commands
 
 ```bash
 # Start LLM API natively (uses .env configuration)

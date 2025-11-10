@@ -288,10 +288,10 @@ The bridge supports these MCP protocol methods:
 
 | Method | Description | Status |
 |--------|-------------|--------|
-| `initialize` | Initialize MCP session | ✅ Supported |
-| `tools/list` | List available tools | ✅ Supported |
-| `tools/call` | Execute a tool | ✅ Supported |
-| `ping` | Health check | ✅ Supported |
+| `initialize` | Initialize MCP session |  Supported |
+| `tools/list` | List available tools |  Supported |
+| `tools/call` | Execute a tool |  Supported |
+| `ping` | Health check |  Supported |
 | `prompts/list` | List prompts | 🚧 TODO |
 | `prompts/call` | Execute prompt | 🚧 TODO |
 | `resources/list` | List resources | 🚧 TODO |

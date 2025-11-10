@@ -13,7 +13,7 @@ Complete guide for developing Jan Server with Visual Studio Code.
 - [Troubleshooting](#-troubleshooting)
 - [Configuration Reference](#-configuration-reference)
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -39,10 +39,10 @@ Complete guide for developing Jan Server with Visual Studio Code.
 4. Set breakpoints and debug!
 
 **What happens:**
-- ✅ All infrastructure starts automatically in Docker
-- ✅ Only the service you're debugging runs locally
-- ✅ Hot reload works automatically
-- ✅ Breakpoints work as expected
+-  All infrastructure starts automatically in Docker
+-  Only the service you're debugging runs locally
+-  Hot reload works automatically
+-  Breakpoints work as expected
 
 ## 🐛 Debug Configurations
 
@@ -277,10 +277,10 @@ JAN_DEFAULT_NODE_SETUP=false
 ```
 
 **Benefits:**
-- ✅ Multiple providers (vLLM + Gemini + OpenAI, etc.)
-- ✅ Per-provider configuration in YAML
-- ✅ Environment-specific sets (default, production, testing)
-- ✅ Proper provider names in API responses
+-  Multiple providers (vLLM + Gemini + OpenAI, etc.)
+-  Per-provider configuration in YAML
+-  Environment-specific sets (default, production, testing)
+-  Proper provider names in API responses
 
 **providers.yml structure:**
 ```yaml
@@ -316,7 +316,7 @@ providers:
             "id": "qwen/qwen2.5-0.5b-instruct",
             "object": "model",
             "created": 1762597603,
-            "owned_by": "Local vLLM Provider"  // ✅ Correct name from YAML
+            "owned_by": "Local vLLM Provider"  //  Correct name from YAML
         }
     ]
 }
@@ -332,10 +332,10 @@ JAN_DEFAULT_NODE_API_KEY=changeme
 ```
 
 **Limitations:**
-- ❌ Only one provider
-- ❌ Hardcoded name "vLLM Provider"
-- ❌ No per-environment configuration
-- ⚠️ **Deprecated** - use YAML config instead
+-  Only one provider
+-  Hardcoded name "vLLM Provider"
+-  No per-environment configuration
+-  **Deprecated** - use YAML config instead
 
 ### Switching Providers
 
@@ -531,7 +531,7 @@ make db-backup
 **Symptom:**
 ```json
 {
-    "owned_by": "vLLM Provider"  // ❌ Not from providers.yml
+    "owned_by": "vLLM Provider"  //  Not from providers.yml
 }
 ```
 
@@ -539,10 +539,10 @@ make db-backup
 
 Check `.env` file:
 ```properties
-# ❌ Wrong (legacy mode)
+#  Wrong (legacy mode)
 JAN_DEFAULT_NODE_SETUP=true
 
-# ✅ Correct (YAML mode)
+#  Correct (YAML mode)
 JAN_PROVIDER_CONFIGS=true
 JAN_PROVIDER_CONFIGS_FILE=config/providers.yml
 JAN_PROVIDER_CONFIG_SET=default
@@ -582,10 +582,10 @@ Verify `launch.json` has localhost overrides:
 
 Check `launch.json`:
 ```json
-// ❌ Wrong (variable doesn't exist)
+//  Wrong (variable doesn't exist)
 "OTEL_ENABLED": "false"
 
-// ✅ Correct (set endpoint to empty)
+//  Correct (set endpoint to empty)
 "OTEL_EXPORTER_OTLP_ENDPOINT": ""
 ```
 

@@ -31,17 +31,17 @@ This conventions guide is split into focused files for better readability:
 - **Routes**: Handle HTTP, call services directly
 - **Handlers**: Optional utilities for reusable cross-route helpers
 
-### Database ⚠️ CRITICAL
+### Database  CRITICAL
 - **GORM gen**: Type-safe queries in `dbschema/`
 - **Zero-value bug**: Use `*bool`/`*float64` for fields that can be false/0
 - **After schema changes**: `go run cmd/gormgen/gormgen.go`
 
 ```go
-// ❌ Bad: Can't set Enabled=false or Amount=0
+//  Bad: Can't set Enabled=false or Amount=0
 Enabled bool
 Amount  float64
 
-// ✅ Good: Use pointers
+//  Good: Use pointers
 Enabled *bool
 Amount  *float64
 

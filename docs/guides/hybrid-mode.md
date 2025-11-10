@@ -16,22 +16,22 @@ Hybrid mode allows you to run services natively (outside Docker) while keeping i
 
 ### Benefits
 
-✅ **Faster Development**
+ **Faster Development**
 - Instant code changes (no Docker rebuild)
 - Native debugging tools
 - Hot reloading
 
-✅ **Better IDE Integration**
+ **Better IDE Integration**
 - Native breakpoints
 - Real-time code analysis
 - Better autocomplete
 
-✅ **Easier Debugging**
+ **Easier Debugging**
 - Direct console output
 - Native debugger (delve)
 - Full stack traces
 
-✅ **Full Infrastructure**
+ **Full Infrastructure**
 - PostgreSQL in Docker
 - Keycloak in Docker
 - Kong in Docker
@@ -531,4 +531,4 @@ Connect with your favorite GUI:
 
 ---
 
-**Happy Hybrid Development! 🚀**
+**Happy Hybrid Development! **

@@ -19,21 +19,21 @@
 
 ## Database Patterns
 
-### GORM Zero-Value Handling ⚠️ CRITICAL
+### GORM Zero-Value Handling  CRITICAL
 
 **Problem:** GORM's `.Save()` silently skips fields with zero values (`false`, `0`, `0.0`) to avoid overwriting database data with uninitialized struct fields.
 
 **Solution:** Use pointer types for fields that may legitimately be set to zero values.
 
 ```go
-// ❌ Bad: Cannot set Enabled to false or Amount to 0.0
+//  Bad: Cannot set Enabled to false or Amount to 0.0
 type User struct {
     BaseModel
     Enabled bool    `gorm:"not null;default:true"`
     Amount  float64 `gorm:"not null"`
 }
 
-// ✅ Good: Use pointers for zero-affected fields
+//  Good: Use pointers for zero-affected fields
 type User struct {
     BaseModel
     Enabled *bool    `gorm:"not null;default:true"`
@@ -68,12 +68,12 @@ func (u *User) EtoD() *user.User {
 ```
 
 **When to use pointers:**
-- ✅ Boolean fields that need to be `false` (e.g., `Enabled`, `Active`, `IsPrivate`)
-- ✅ Numeric fields that can be `0` or `0.0` (e.g., `Amount`, `Credits`)
-- ❌ Fields that are always non-zero (e.g., IDs, timestamps)
-- ❌ Counters that only increment (e.g., `ViewCount`)
+-  Boolean fields that need to be `false` (e.g., `Enabled`, `Active`, `IsPrivate`)
+-  Numeric fields that can be `0` or `0.0` (e.g., `Amount`, `Credits`)
+-  Fields that are always non-zero (e.g., IDs, timestamps)
+-  Counters that only increment (e.g., `ViewCount`)
 
-**Why this works:** `*bool` zero value is `nil`, so `&false` is NOT a zero value → GORM updates it ✅
+**Why this works:** `*bool` zero value is `nil`, so `&false` is NOT a zero value → GORM updates it 
 
 **Common scenarios fixed:**
 - Disabling API keys (`Enabled = false`)
@@ -271,7 +271,7 @@ go run cmd/gormgen/gormgen.go
 
 **Type-safe queries:**
 ```go
-// ✅ Good: Compile-time safe
+//  Good: Compile-time safe
 o := query.Use(db).Organization
 orgs, err := o.WithContext(ctx).
     Where(o.Active.Is(true)).
@@ -279,7 +279,7 @@ orgs, err := o.WithContext(ctx).
     Limit(100).
     Find()
 
-// ❌ Bad: String-based (not type-safe)
+//  Bad: String-based (not type-safe)
 db.Where("active = ?", true).
    Order("created_at DESC").
    Find(&orgs)
@@ -500,16 +500,16 @@ func (r *OrganizationRoute) Create(c *gin.Context) {
 ### Avoid N+1 Queries
 
 ```go
-// ❌ Bad: N+1 query problem
+//  Bad: N+1 query problem
 users, _ := db.Find(&users)
 for _, user := range users {
     db.First(&profile, "user_id = ?", user.ID)  // Query per user!
 }
 
-// ✅ Good: Preload relationships
+//  Good: Preload relationships
 db.Preload("Profile").Find(&users)
 
-// ✅ Good: Use joins for filtering
+//  Good: Use joins for filtering
 db.Joins("JOIN profiles ON profiles.user_id = users.id").
    Where("profiles.verified = ?", true).
    Find(&users)
@@ -518,14 +518,14 @@ db.Joins("JOIN profiles ON profiles.user_id = users.id").
 ### Cursor-Based Pagination
 
 ```go
-// ✅ Good: Cursor-based (scales well)
+//  Good: Cursor-based (scales well)
 u := query.Use(db).User
 users, err := u.WithContext(ctx).
     Where(u.ID.Gt(lastID)).  // lastID from previous page
     Limit(pageSize).
     Find()
 
-// ⚠️ Acceptable for small datasets: Offset pagination
+//  Acceptable for small datasets: Offset pagination
 users, err := u.WithContext(ctx).
     Offset(page * pageSize).
     Limit(pageSize).
@@ -582,10 +582,10 @@ resp, err := httpClient.Get(ctx, url)
 ### Batch Operations
 
 ```go
-// ✅ Good: Batch insert
+//  Good: Batch insert
 db.CreateInBatches(users, 100)  // Insert in batches of 100
 
-// ✅ Good: Bulk update with IN clause
+//  Good: Bulk update with IN clause
 u := query.Use(db).User
 u.WithContext(ctx).
   Where(u.ID.In(ids...)).
