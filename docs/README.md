@@ -1,128 +1,64 @@
-# Jan Server Documentation
+# Documentation Hub
 
-Welcome to the Jan Server documentation! This guide will help you find what you need.
+Welcome to the Jan Server documentation. Use this page as a map to the rest of the guides.
 
-> 📍 **New here?** Start with the [Complete Documentation Index & Navigation Guide](INDEX.md) for easy navigation!  
-> ✅ **Want quality info?** Check out the [Documentation Checklist](DOCUMENTATION_CHECKLIST.md) for what's verified.
+> New to the project? Start with the [Documentation Index](INDEX.md).  
+> Need to know what was reviewed? See the [Documentation Checklist](DOCUMENTATION_CHECKLIST.md).
 
-##  New to Jan Server?
-
-**Choose your deployment:**
-- **Docker Compose (Local Development)**: [Getting Started Guide](getting-started/README.md)
-- **Kubernetes (Production/Staging)**: [Kubernetes Setup Guide](../k8s/SETUP.md)
-
-Quick Docker Compose setup:
-```bash
-make setup && make up-full
-```
-
-Services will be available at: http://localhost:8000
-
-## 📚 Documentation Structure
+## Structure
 
 | Section | Description | Key Files |
 |---------|-------------|-----------|
-| **[Getting Started](getting-started/)** | Quick setup and first steps | [Quick Start](getting-started/README.md) |
-| **[Guides](guides/)** | Development, deployment, monitoring | [Development](guides/development.md), [Testing](guides/testing.md), [Deployment](guides/deployment.md) |
-| **[API Reference](api/)** | Complete API documentation | [LLM API](api/llm-api/), [Media API](api/media-api/), [Response API](api/response-api/), [MCP Tools](api/mcp-tools/) |
-| **[Architecture](architecture/)** | System design and technical details | [System Design](architecture/system-design.md) |
-| **[Conventions](conventions/)** | Code standards and best practices | [Code Conventions](conventions/CONVENTIONS.md) |
-| **[Audit Summary](AUDIT_SUMMARY.md)** | Documentation review and updates | [Nov 2025 Audit](AUDIT_SUMMARY.md) |
+| **Getting Started** | Five minute setup for Docker Compose | [getting-started/README.md](getting-started/README.md) |
+| **Guides** | Development, deployment, monitoring, IDE, troubleshooting | [guides/](guides/) |
+| **API Reference** | LLM, Response, Media, MCP Tools APIs | [api/README.md](api/README.md) |
+| **Services** | Responsibilities, ports, dependencies | [services.md](services.md) |
+| **Architecture** | System design, security, observability, data flow | [architecture/](architecture/) |
+| **Conventions** | Code standards and workflows | [conventions/CONVENTIONS.md](conventions/CONVENTIONS.md) |
+| **Audits** | Latest documentation review | [AUDIT_SUMMARY.md](AUDIT_SUMMARY.md) |
 
-## 📖 Quick Links
+## Quick Links
 
-### For New Users
-- 🆕 [Quick Start](getting-started/README.md) - Get up and running in 5 minutes
-- 📡 [API Overview](api/README.md) - Understanding the APIs
-- 🔐 [Authentication](api/llm-api/authentication.md) - How to authenticate
+### New users
+- [Quick Start](getting-started/README.md)
+- [API Overview](api/README.md)
+- [Authentication](api/llm-api/README.md#authentication)
 
-### For Developers
-- 💻 [Development Guide](guides/development.md) - Local development workflow
-- 🧪 [Testing Guide](guides/testing.md) - Unit and integration tests
-- 🔄 [Hybrid Mode](guides/hybrid-mode.md) - Native + Docker development
-- 📊 [Monitoring Guide](guides/monitoring.md) - Observability and tracing
-- 🧱 [Service Template](guides/services-template.md) - Create new microservices
-- 🐛 [Troubleshooting](guides/troubleshooting.md) - Common issues and solutions
-- 🖥️ [IDE Setup](guides/ide/) - VS Code debugging and configuration
+### Developers
+- [Development Guide](guides/development.md)
+- [Testing Guide](guides/testing.md)
+- [Hybrid Mode](guides/hybrid-mode.md)
+- [Service Template](guides/services-template.md)
+- [IDE Setup](guides/ide/vscode.md)
 
-### For API Consumers
-- 📡 **[API Overview](api/)** - All 4 APIs (LLM, Media, Response, MCP)
-- 🔤 **[LLM API](api/llm-api/)** - Chat completions, conversations, models
-- 🎬 **[Response API](api/response-api/)** - Multi-step tool orchestration
-- 🖼️ **[Media API](api/media-api/)** - Media upload and `jan_*` ID resolution
-- � **[MCP Tools](api/mcp-tools/)** - Web search, scraping, code execution
-- � **[Code Examples](api/#sdk--client-libraries)** - Python, JavaScript examples
+### API consumers
+- [LLM API](api/llm-api/README.md)
+- [Response API](api/response-api/README.md)
+- [Media API](api/media-api/README.md)
+- [MCP Tools](api/mcp-tools/README.md)
+- [LLM Examples](api/llm-api/examples.md)
 
-### For Operators & DevOps
-- 🚀 [Deployment Guide](guides/deployment.md) - Docker Compose, Kubernetes, Hybrid
-- ☸️ [Kubernetes Setup](../k8s/SETUP.md) - Step-by-step K8s deployment
-- 📊 [Monitoring Guide](guides/monitoring.md) - Prometheus, Grafana, Jaeger
-- 🔐 [Security](../SECURITY.md) - Secrets management and best practices
-- 🐛 [Troubleshooting](guides/troubleshooting.md) - Common issues and debugging
-- 🔒 [Security Model](architecture/security.md) - Security considerations
-- 📈 [Observability](architecture/observability.md) - Monitoring stack
+### Operators
+- [Deployment Guide](guides/deployment.md)
+- [Kubernetes Setup](../k8s/SETUP.md)
+- [Monitoring Guide](guides/monitoring.md)
+- [Troubleshooting](guides/troubleshooting.md)
+- [Security Policy](../SECURITY.md)
+- [Architecture Security](architecture/security.md)
+- [Observability](architecture/observability.md)
 
-## 🆘 Need Help?
+## Need help?
 
 | Issue | Resource |
 |-------|----------|
-| **Service won't start** | [Troubleshooting Guide](guides/troubleshooting.md) |
-| **API errors** | [API Documentation](api/README.md) |
-| **Authentication issues** | [Auth Guide](api/llm-api/authentication.md) |
-| **Performance problems** | [Monitoring Guide](guides/monitoring.md) |
+| Services fail to start | [Troubleshooting Guide](guides/troubleshooting.md) |
+| API errors | [API Reference](api/README.md) |
+| Auth problems | [LLM API Auth](api/llm-api/README.md#authentication) |
+| Performance issues | [Monitoring Guide](guides/monitoring.md) |
 
-## 🗂️ Common Tasks
+## Contributing and Updates
+- Contribution process: [../CONTRIBUTING.md](../CONTRIBUTING.md)
+- Security process: [../SECURITY.md](../SECURITY.md)
+- Release notes: [../CHANGELOG.md](../CHANGELOG.md)
 
-### Setup & Installation
-```bash
-# Initial setup
-make setup
-
-# Start full stack
-make up-full
-
-# Start with monitoring
-make up-full && make monitor-up
-```
-
-### Development
-```bash
-# Build LLM API
-make build-llm-api
-
-# Run tests
-make test
-
-# Generate API docs
-make swag
-```
-
-### Monitoring
-```bash
-# Start monitoring stack
-make monitor-up
-
-# View dashboards
-# Grafana: http://localhost:3001 (admin/admin)
-# Prometheus: http://localhost:9090
-# Jaeger: http://localhost:16686
-```
-
-## 📝 Contributing
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
-
-## 📋 Conventions
-
-All code follows the conventions documented in [conventions/](conventions/):
-- [Architecture Conventions](conventions/architecture.md)
-- [Code Patterns](conventions/patterns.md)
-- [Workflow](conventions/workflow.md)
-
-## 🔄 What's New
-
-See [CHANGELOG.md](../CHANGELOG.md) for version history and changes.
-
----
-
-**Can't find what you're looking for?** Check the full documentation structure above or search within specific sections.
+Still lost? Jump to the [Documentation Index](INDEX.md) or search within this directory.

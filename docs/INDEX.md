@@ -44,6 +44,8 @@ Development & Contributions
 │   └── VS Code Debugging & Configuration
 ├── [Service Creation](guides/services-template.md)
 │   └── Build a new microservice
+├── [Service Overview](services.md)
+│   └── Ports, dependencies, and data flow
 ├── [Troubleshooting](guides/troubleshooting.md)
 │   └── Common issues & solutions
 ├── [Conventions](conventions/CONVENTIONS.md)
@@ -62,7 +64,8 @@ API Documentation
 │   ├── Chat Completions (OpenAI-compatible)
 │   ├── Conversation Management
 │   ├── Model Listing
-│   └── Streaming Responses
+│   ├── Streaming Responses
+│   └── Examples (api/llm-api/examples.md)
 ├── [Response API Reference](api/response-api/README.md)
 │   ├── Multi-Step Tool Execution
 │   ├── Tool Orchestration

@@ -20,6 +20,7 @@ OpenAI-compatible API for chat completions, conversations, and models.
 - **[Chat Completions](llm-api/#chat-completions)** - Main completion endpoint
 - **[Conversations](llm-api/#conversations)** - Conversation CRUD operations
 - **[With Media](llm-api/#with-media-visual-input)** - Media references using `jan_*` IDs
+- **[Examples](llm-api/examples.md)** - cURL, Python, and JavaScript snippets
 
 ### 2. Response API (Port 8082)
 Multi-step tool orchestration for complex workflows.
