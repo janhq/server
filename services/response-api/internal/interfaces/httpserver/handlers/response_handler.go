@@ -141,7 +141,7 @@ func (h *ResponseHandler) Delete(c *gin.Context) {
 // @Tags Responses
 // @Produce json
 // @Param response_id path string true "Response ID"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {array} response.ConversationItem
 // @Router /v1/responses/{response_id}/input_items [get]
 func (h *ResponseHandler) ListInputItems(c *gin.Context) {
 	id := c.Param("response_id")
@@ -150,6 +150,7 @@ func (h *ResponseHandler) ListInputItems(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Return items array directly, wrapped in data object for consistency
 	c.JSON(http.StatusOK, gin.H{"data": items})
 }
 

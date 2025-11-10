@@ -53,18 +53,35 @@ func (s *ServiceImpl) Create(ctx context.Context, params CreateParams) (*Respons
 	var conv *conversation.Conversation
 	var err error
 
-	if params.ConversationID != nil && strings.TrimSpace(*params.ConversationID) != "" {
-		conv, err = s.conversations.FindByPublicID(ctx, *params.ConversationID)
+	// If PreviousResponseID is provided, load that response's conversation for context
+	if params.PreviousResponseID != nil && strings.TrimSpace(*params.PreviousResponseID) != "" {
+		prevResp, err := s.responses.FindByPublicID(ctx, *params.PreviousResponseID)
 		if err != nil {
-			return nil, fmt.Errorf("fetch conversation: %w", err)
+			s.log.Warn().Err(err).Str("previous_response_id", *params.PreviousResponseID).Msg("failed to load previous response, continuing without context")
+		} else if prevResp.ConversationPublicID != nil {
+			// Use the previous response's conversation to maintain context
+			conv, err = s.conversations.FindByPublicID(ctx, *prevResp.ConversationPublicID)
+			if err != nil {
+				s.log.Warn().Err(err).Str("conversation_id", *prevResp.ConversationPublicID).Msg("failed to load conversation, creating new one")
+			}
 		}
-	} else {
-		conv = &conversation.Conversation{
-			PublicID: newPublicID("conv"),
-			UserID:   params.UserID,
-		}
-		if err := s.conversations.Create(ctx, conv); err != nil {
-			return nil, fmt.Errorf("create conversation: %w", err)
+	}
+
+	// If we still don't have a conversation, check for explicit conversation_id or create new
+	if conv == nil {
+		if params.ConversationID != nil && strings.TrimSpace(*params.ConversationID) != "" {
+			conv, err = s.conversations.FindByPublicID(ctx, *params.ConversationID)
+			if err != nil {
+				return nil, fmt.Errorf("fetch conversation: %w", err)
+			}
+		} else {
+			conv = &conversation.Conversation{
+				PublicID: newPublicID("conv"),
+				UserID:   params.UserID,
+			}
+			if err := s.conversations.Create(ctx, conv); err != nil {
+				return nil, fmt.Errorf("create conversation: %w", err)
+			}
 		}
 	}
 

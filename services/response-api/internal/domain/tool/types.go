@@ -3,6 +3,7 @@ package tool
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"jan-server/services/response-api/internal/domain/llm"
@@ -91,8 +92,19 @@ func (t MCPTool) ToLLMTool() llm.ToolDefinition {
 func ParseToolCall(call llm.ToolCall) (Call, error) {
 	var args map[string]interface{}
 	if len(call.Function.Arguments) > 0 {
+		// First, try to unmarshal directly as JSON object
 		if err := json.Unmarshal(call.Function.Arguments, &args); err != nil {
-			return Call{}, err
+			// If that fails, the Arguments might be a JSON string (double-encoded)
+			// Try to unmarshal as string first, then parse that string as JSON
+			var argsStr string
+			if strErr := json.Unmarshal(call.Function.Arguments, &argsStr); strErr != nil {
+				// Neither direct object nor string worked, return original error
+				return Call{}, err
+			}
+			// Now parse the string as JSON
+			if parseErr := json.Unmarshal([]byte(argsStr), &args); parseErr != nil {
+				return Call{}, fmt.Errorf("parse arguments string: %w", parseErr)
+			}
 		}
 	}
 	return Call{
