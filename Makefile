@@ -51,6 +51,7 @@
 #   make test-all                    - Run all integration tests
 #   make test-auth                   - Run authentication tests
 #   make test-conversations          - Run conversation API tests
+#   make test-response               - Run response API tests
 #   make test-mcp-integration        - Run MCP integration tests
 #
 # Build & Code Quality:
@@ -102,6 +103,7 @@ MONITOR_COMPOSE = docker compose -f docker/observability.yml
 NEWMAN = newman
 NEWMAN_AUTH_COLLECTION = tests/automation/auth-postman-scripts.json
 NEWMAN_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.json
+NEWMAN_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
 NEWMAN_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
 NEWMAN_E2E_COLLECTION = tests/automation/test-all.postman.json
 
@@ -709,9 +711,9 @@ test-coverage:
 
 # --- Integration Tests (Newman) ---
 
-.PHONY: test-all test-auth test-conversations test-mcp-integration test-e2e newman-debug
+.PHONY: test-all test-auth test-conversations test-response test-mcp-integration test-e2e newman-debug
 
-test-all: test-auth test-conversations test-mcp-integration test-e2e
+test-all: test-auth test-conversations test-response test-mcp-integration test-e2e
 	@echo ""
 	@echo "✅ All integration tests passed!"
 
@@ -725,6 +727,7 @@ test-auth:
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=llm-api" \
+		--verbose \
 		--reporters cli
 	@echo "✅ Authentication tests passed"
 
@@ -738,8 +741,19 @@ test-conversations:
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=llm-api" \
+		--verbose \
 		--reporters cli
 	@echo "✅ Conversation API tests passed"
+
+test-response:
+	@echo "Running response API tests..."
+	@$(NEWMAN) run $(NEWMAN_RESPONSES_COLLECTION) \
+		--env-var "response_api_url=http://localhost:8000/responses" \
+		--env-var "llm_api_url=http://localhost:8000/llm" \
+		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
+		--verbose \
+		--reporters cli
+	@echo "✅ Response API tests passed"
 
 test-mcp-integration:
 	@echo "Running MCP integration tests..."
@@ -761,6 +775,7 @@ test-e2e:
 		--env-var "response_api_url=http://localhost:8000/responses" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
+		--verbose \
 		--reporters cli
 	@echo "�o. Gateway end-to-end tests passed"
 

@@ -24,7 +24,8 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - api-db-data:/var/lib/postgresql/data
+      - api-db-data:/var/lib/postgresql
+      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U jan_user"]
       interval: 10s
@@ -43,7 +44,7 @@ services:
     ports:
       - "${KEYCLOAK_DB_PORT:-5433}:5432"
     volumes:
-      - keycloak-db-data:/var/lib/postgresql/data
+      - keycloak-db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keycloak"]
       interval: 10s
