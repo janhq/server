@@ -1,0 +1,2931 @@
+basePath: /
+definitions:
+  chatrequests.ChatCompletionRequest:
+    properties:
+      chat_template_kwargs:
+        additionalProperties: {}
+        description: |-
+          ChatTemplateKwargs provides a way to add non-standard parameters to the request body.
+          Additional kwargs to pass to the template renderer. Will be accessible by the chat template.
+          Such as think mode for qwen3. "chat_template_kwargs": {"enable_thinking": false}
+          https://qwen.readthedocs.io/en/latest/deployment/vllm.html#thinking-non-thinking-modes
+        type: object
+      conversation:
+        allOf:
+        - $ref: '#/definitions/chatrequests.ConversationReference'
+        description: |-
+          Conversation can be either a string (conversation ID) or a conversation object
+          Items from this conversation are prepended to Messages for this response request.
+          Input items and output items from this response are automatically added to this conversation after completion.
+      frequency_penalty:
+        type: number
+      function_call:
+        description: 'Deprecated: use ToolChoice instead.'
+      functions:
+        description: 'Deprecated: use Tools instead.'
+        items:
+          $ref: '#/definitions/openai.FunctionDefinition'
+        type: array
+      guided_choice:
+        description: |-
+          GuidedChoice is a vLLM-specific extension that restricts the model's output
+          to one of the predefined string choices provided in this field. This feature
+          is used to constrain the model's responses to a controlled set of options,
+          ensuring predictable and consistent outputs in scenarios where specific
+          choices are required.
+        items:
+          type: string
+        type: array
+      logit_bias:
+        additionalProperties:
+          type: integer
+        description: |-
+          LogitBias is must be a token id string (specified by their token ID in the tokenizer), not a word string.
+          incorrect: `"logit_bias":{"You": 6}`, correct: `"logit_bias":{"1639": 6}`
+          refs: https://platform.openai.com/docs/api-reference/chat/create#chat/create-logit_bias
+        type: object
+      logprobs:
+        description: |-
+          LogProbs indicates whether to return log probabilities of the output tokens or not.
+          If true, returns the log probabilities of each output token returned in the content of message.
+          This option is currently not available on the gpt-4-vision-preview model.
+        type: boolean
+      max_completion_tokens:
+        description: |-
+          MaxCompletionTokens An upper bound for the number of tokens that can be generated for a completion,
+          including visible output tokens and reasoning tokens https://platform.openai.com/docs/guides/reasoning
+        type: integer
+      max_tokens:
+        description: |-
+          MaxTokens The maximum number of tokens that can be generated in the chat completion.
+          This value can be used to control costs for text generated via API.
+          Deprecated: use MaxCompletionTokens. Not compatible with o1-series models.
+          refs: https://platform.openai.com/docs/api-reference/chat/create#chat-create-max_tokens
+        type: integer
+      messages:
+        items:
+          $ref: '#/definitions/openai.ChatCompletionMessage'
+        type: array
+      metadata:
+        additionalProperties:
+          type: string
+        description: Metadata to store with the completion.
+        type: object
+      model:
+        type: string
+      "n":
+        type: integer
+      parallel_tool_calls:
+        description: 'Disable the default behavior of parallel tool calls by setting
+          it: false.'
+      prediction:
+        allOf:
+        - $ref: '#/definitions/openai.Prediction'
+        description: Configuration for a predicted output.
+      presence_penalty:
+        type: number
+      reasoning_effort:
+        description: Controls effort on reasoning for reasoning models. It can be
+          set to "low", "medium", or "high".
+        type: string
+      response_format:
+        $ref: '#/definitions/openai.ChatCompletionResponseFormat'
+      safety_identifier:
+        description: |-
+          A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies.
+          The IDs should be a string that uniquely identifies each user.
+          We recommend hashing their username or email address, in order to avoid sending us any identifying information.
+          https://platform.openai.com/docs/api-reference/chat/create#chat_create-safety_identifier
+        type: string
+      seed:
+        type: integer
+      service_tier:
+        allOf:
+        - $ref: '#/definitions/openai.ServiceTier'
+        description: Specifies the latency tier to use for processing the request.
+      stop:
+        items:
+          type: string
+        type: array
+      store:
+        description: Store controls whether the latest input and generated response
+          should be persisted
+        type: boolean
+      store_reasoning:
+        description: StoreReasoning controls whether reasoning content (if present)
+          should also be persisted
+        type: boolean
+      stream:
+        type: boolean
+      stream_options:
+        allOf:
+        - $ref: '#/definitions/openai.StreamOptions'
+        description: 'Options for streaming response. Only set this when you set stream:
+          true.'
+      temperature:
+        type: number
+      tool_choice:
+        description: This can be either a string or an ToolChoice object.
+      tools:
+        items:
+          $ref: '#/definitions/openai.Tool'
+        type: array
+      top_logprobs:
+        description: |-
+          TopLogProbs is an integer between 0 and 5 specifying the number of most likely tokens to return at each
+          token position, each with an associated log probability.
+          logprobs must be set to true if this parameter is used.
+        type: integer
+      top_p:
+        type: number
+      user:
+        type: string
+      verbosity:
+        description: |-
+          Verbosity determines how many output tokens are generated. Lowering the number of
+          tokens reduces overall latency. It can be set to "low", "medium", or "high".
+          Note: This field is only confirmed to work with gpt-5, gpt-5-mini and gpt-5-nano.
+          Also, it is not in the API reference of chat completion at the time of writing,
+          though it is supported by the API.
+        type: string
+    type: object
+  chatrequests.ConversationReference:
+    type: object
+  chatresponses.ChatCompletionResponse:
+    properties:
+      choices:
+        items:
+          $ref: '#/definitions/openai.ChatCompletionChoice'
+        type: array
+      conversation:
+        $ref: '#/definitions/chatresponses.ConversationContext'
+      created:
+        type: integer
+      id:
+        type: string
+      model:
+        type: string
+      object:
+        type: string
+      prompt_filter_results:
+        items:
+          $ref: '#/definitions/openai.PromptFilterResult'
+        type: array
+      service_tier:
+        $ref: '#/definitions/openai.ServiceTier'
+      system_fingerprint:
+        type: string
+      usage:
+        $ref: '#/definitions/openai.Usage'
+    type: object
+  chatresponses.ConversationContext:
+    properties:
+      id:
+        description: The unique ID of the conversation
+        type: string
+      title:
+        description: The title of the conversation (optional)
+        type: string
+    type: object
+  conversation.Annotation:
+    properties:
+      bounding_box:
+        allOf:
+        - $ref: '#/definitions/conversation.BBox'
+        description: Bounding box for image/PDF annotations
+      confidence:
+        description: Citation confidence score (0.0-1.0)
+        type: number
+      container_id:
+        description: Document container reference
+        type: string
+      end_index:
+        description: End position in text
+        type: integer
+      file_id:
+        description: For file citations
+        type: string
+      filename:
+        description: File name for citations
+        type: string
+      index:
+        description: Citation index
+        type: integer
+      page_number:
+        description: Page reference for documents
+        type: integer
+      quote:
+        description: Actual quoted text from source
+        type: string
+      start_index:
+        description: Start position in text
+        type: integer
+      text:
+        description: Display text
+        type: string
+      type:
+        description: '"file_citation", "url_citation", "file_path", etc.'
+        type: string
+      url:
+        description: For URL citations
+        type: string
+    type: object
+  conversation.AudioContent:
+    properties:
+      data:
+        description: Base64 encoded audio data
+        type: string
+      format:
+        description: 'Audio format: mp3, wav, pcm16, etc.'
+        type: string
+      id:
+        type: string
+      transcript:
+        description: Text transcription of audio
+        type: string
+    type: object
+  conversation.BBox:
+    properties:
+      height:
+        type: number
+      width:
+        type: number
+      x:
+        type: number
+      "y":
+        type: number
+    type: object
+  conversation.CodeContent:
+    properties:
+      code:
+        description: Code content
+        type: string
+      error:
+        description: Execution error
+        type: string
+      execution_id:
+        description: Execution session ID
+        type: string
+      exit_code:
+        description: Process exit code
+        type: integer
+      language:
+        description: Programming language
+        type: string
+      metadata:
+        additionalProperties: {}
+        description: Additional metadata
+        type: object
+      output:
+        description: Execution output
+        type: string
+    type: object
+  conversation.ComputerAction:
+    properties:
+      action:
+        description: 'Action type: "click", "type", "key", "scroll", "move", etc.'
+        type: string
+      coordinates:
+        allOf:
+        - $ref: '#/definitions/conversation.Coordinates'
+        description: Screen coordinates for mouse actions
+      key:
+        description: Key for keyboard actions
+        type: string
+      metadata:
+        additionalProperties: {}
+        description: Additional action metadata
+        type: object
+      scroll_delta:
+        allOf:
+        - $ref: '#/definitions/conversation.ScrollDelta'
+        description: Scroll amount
+      text:
+        description: Text for typing actions
+        type: string
+    type: object
+  conversation.Content:
+    properties:
+      audio:
+        allOf:
+        - $ref: '#/definitions/conversation.AudioContent'
+        description: Audio content for speech
+      code:
+        allOf:
+        - $ref: '#/definitions/conversation.CodeContent'
+        description: Code block with execution metadata
+      computer_action:
+        allOf:
+        - $ref: '#/definitions/conversation.ComputerAction'
+        description: Computer interaction details
+      computer_screenshot:
+        allOf:
+        - $ref: '#/definitions/conversation.ScreenshotContent'
+        description: Screenshot from computer use
+      file:
+        allOf:
+        - $ref: '#/definitions/conversation.FileContent'
+        description: File content
+      finish_reason:
+        description: Finish reason
+        type: string
+      function_call:
+        allOf:
+        - $ref: '#/definitions/conversation.FunctionCall'
+        description: Function call content (deprecated, use tool_calls)
+      function_call_output:
+        allOf:
+        - $ref: '#/definitions/conversation.FunctionCallOut'
+        description: Function call output
+      image:
+        allOf:
+        - $ref: '#/definitions/conversation.ImageContent'
+        description: Image content
+      input_audio:
+        allOf:
+        - $ref: '#/definitions/conversation.InputAudio'
+        description: User audio input
+      input_text:
+        description: User input text (simple)
+        type: string
+      output_text:
+        allOf:
+        - $ref: '#/definitions/conversation.OutputText'
+        description: AI output text (with annotations)
+      reasoning_content:
+        description: AI reasoning content
+        type: string
+      refusal:
+        description: Model refusal message
+        type: string
+      summary_text:
+        description: Summary content
+        type: string
+      text:
+        allOf:
+        - $ref: '#/definitions/conversation.Text'
+        description: Generic text content
+      thinking:
+        description: Internal reasoning (o1 models)
+        type: string
+      tool_call_id:
+        description: Tool call ID (for tool responses)
+        type: string
+      tool_calls:
+        description: Tool calls (for assistant messages)
+        items:
+          $ref: '#/definitions/conversation.ToolCall'
+        type: array
+      type:
+        type: string
+    type: object
+  conversation.Coordinates:
+    properties:
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
+  conversation.FileContent:
+    properties:
+      file_id:
+        type: string
+      mime_type:
+        type: string
+      name:
+        type: string
+      size:
+        type: integer
+    type: object
+  conversation.FunctionCall:
+    properties:
+      arguments:
+        description: JSON-encoded arguments
+        type: string
+      id:
+        description: Call ID
+        type: string
+      name:
+        description: Function name
+        type: string
+    type: object
+  conversation.FunctionCallOut:
+    properties:
+      call_id:
+        description: ID of the function call this responds to
+        type: string
+      output:
+        description: String output from the function
+        type: string
+    type: object
+  conversation.ImageContent:
+    properties:
+      detail:
+        description: '"low", "high", "auto"'
+        type: string
+      file_id:
+        type: string
+      url:
+        type: string
+    type: object
+  conversation.IncompleteDetails:
+    properties:
+      error:
+        description: Error message if applicable
+        type: string
+      reason:
+        description: '"max_tokens", "content_filter", "tool_calls", etc.'
+        type: string
+    type: object
+  conversation.InputAudio:
+    properties:
+      data:
+        description: Base64 encoded audio data
+        type: string
+      format:
+        description: 'Audio format: mp3, wav, pcm16, etc.'
+        type: string
+      transcript:
+        description: Optional text transcription
+        type: string
+    type: object
+  conversation.Item:
+    properties:
+      branch:
+        description: Branch identifier (MAIN, EDIT_1, etc.)
+        type: string
+      completed_at:
+        type: string
+      content:
+        items:
+          $ref: '#/definitions/conversation.Content'
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      incomplete_at:
+        type: string
+      incomplete_details:
+        $ref: '#/definitions/conversation.IncompleteDetails'
+      object:
+        description: Always "conversation.item" for OpenAI compatibility
+        type: string
+      rated_at:
+        description: When rating was given
+        type: string
+      rating:
+        allOf:
+        - $ref: '#/definitions/conversation.ItemRating'
+        description: User feedback/rating
+      rating_comment:
+        description: Optional comment with rating
+        type: string
+      role:
+        $ref: '#/definitions/conversation.ItemRole'
+      sequence_number:
+        description: Order within branch
+        type: integer
+      status:
+        $ref: '#/definitions/conversation.ItemStatus'
+      type:
+        $ref: '#/definitions/conversation.ItemType'
+    type: object
+  conversation.ItemRating:
+    enum:
+    - like
+    - unlike
+    type: string
+    x-enum-comments:
+      ItemRatingLike: Positive feedback (like)
+      ItemRatingUnlike: Negative feedback (unlike)
+    x-enum-descriptions:
+    - Positive feedback (like)
+    - Negative feedback (unlike)
+    x-enum-varnames:
+    - ItemRatingLike
+    - ItemRatingUnlike
+  conversation.ItemRole:
+    enum:
+    - system
+    - user
+    - assistant
+    - tool
+    - developer
+    - critic
+    - discriminator
+    - unknown
+    type: string
+    x-enum-comments:
+      ItemRoleCritic: For critique/evaluation workflows
+      ItemRoleDeveloper: System-level instructions (OpenAI replacement for system)
+      ItemRoleDiscriminator: For adversarial/validation workflows
+      ItemRoleUnknown: Fallback for unrecognized roles
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - ""
+    - System-level instructions (OpenAI replacement for system)
+    - For critique/evaluation workflows
+    - For adversarial/validation workflows
+    - Fallback for unrecognized roles
+    x-enum-varnames:
+    - ItemRoleSystem
+    - ItemRoleUser
+    - ItemRoleAssistant
+    - ItemRoleTool
+    - ItemRoleDeveloper
+    - ItemRoleCritic
+    - ItemRoleDiscriminator
+    - ItemRoleUnknown
+  conversation.ItemStatus:
+    enum:
+    - incomplete
+    - in_progress
+    - completed
+    - failed
+    - cancelled
+    - searching
+    - generating
+    - calling
+    - streaming
+    - rate_limited
+    type: string
+    x-enum-comments:
+      ItemStatusCalling: Function/tool call in progress
+      ItemStatusCancelled: Cancelled by user or system
+      ItemStatusCompleted: Successfully finished
+      ItemStatusFailed: Failed with error
+      ItemStatusGenerating: Image generation in progress
+      ItemStatusInProgress: Currently processing
+      ItemStatusIncomplete: Not started or partially complete (OpenAI uses this instead
+        of "pending")
+      ItemStatusRateLimited: Rate limit hit
+      ItemStatusSearching: File/web search in progress
+      ItemStatusStreaming: Streaming response in progress
+    x-enum-descriptions:
+    - Not started or partially complete (OpenAI uses this instead of "pending")
+    - Currently processing
+    - Successfully finished
+    - Failed with error
+    - Cancelled by user or system
+    - File/web search in progress
+    - Image generation in progress
+    - Function/tool call in progress
+    - Streaming response in progress
+    - Rate limit hit
+    x-enum-varnames:
+    - ItemStatusIncomplete
+    - ItemStatusInProgress
+    - ItemStatusCompleted
+    - ItemStatusFailed
+    - ItemStatusCancelled
+    - ItemStatusSearching
+    - ItemStatusGenerating
+    - ItemStatusCalling
+    - ItemStatusStreaming
+    - ItemStatusRateLimited
+  conversation.ItemType:
+    enum:
+    - message
+    - function_call
+    - function_call_output
+    - reasoning
+    - file_search
+    - web_search
+    - code_interpreter
+    - computer_use
+    - custom_tool_call
+    - mcp_item
+    - image_generation
+    type: string
+    x-enum-comments:
+      ItemTypeCodeInterpreter: Code execution
+      ItemTypeComputerUse: Computer interaction
+      ItemTypeCustomToolCall: Custom tool invocations
+      ItemTypeFileSearch: RAG/retrieval operations
+      ItemTypeImageGeneration: DALL-E image generation
+      ItemTypeMCPItem: Model Context Protocol items
+      ItemTypeReasoning: For o1/reasoning models
+      ItemTypeWebSearch: Web browsing operations
+    x-enum-descriptions:
+    - ""
+    - ""
+    - ""
+    - For o1/reasoning models
+    - RAG/retrieval operations
+    - Web browsing operations
+    - Code execution
+    - Computer interaction
+    - Custom tool invocations
+    - Model Context Protocol items
+    - DALL-E image generation
+    x-enum-varnames:
+    - ItemTypeMessage
+    - ItemTypeFunctionCall
+    - ItemTypeFunctionCallOut
+    - ItemTypeReasoning
+    - ItemTypeFileSearch
+    - ItemTypeWebSearch
+    - ItemTypeCodeInterpreter
+    - ItemTypeComputerUse
+    - ItemTypeCustomToolCall
+    - ItemTypeMCPItem
+    - ItemTypeImageGeneration
+  conversation.LogProb:
+    properties:
+      bytes:
+        items:
+          type: integer
+        type: array
+      logprob:
+        type: number
+      token:
+        type: string
+      top_logprobs:
+        items:
+          $ref: '#/definitions/conversation.TopLogProb'
+        type: array
+    type: object
+  conversation.OutputText:
+    properties:
+      annotations:
+        description: Required for OpenAI compatibility
+        items:
+          $ref: '#/definitions/conversation.Annotation'
+        type: array
+      logprobs:
+        description: Token probabilities
+        items:
+          $ref: '#/definitions/conversation.LogProb'
+        type: array
+      text:
+        type: string
+    type: object
+  conversation.ScreenshotContent:
+    properties:
+      description:
+        description: Optional description
+        type: string
+      height:
+        description: Image height in pixels
+        type: integer
+      image_data:
+        description: Base64 encoded image data
+        type: string
+      image_url:
+        description: URL to screenshot image
+        type: string
+      timestamp:
+        description: Unix timestamp when screenshot was taken
+        type: integer
+      width:
+        description: Image width in pixels
+        type: integer
+    type: object
+  conversation.ScrollDelta:
+    properties:
+      x:
+        type: integer
+      "y":
+        type: integer
+    type: object
+  conversation.Text:
+    properties:
+      annotations:
+        items:
+          $ref: '#/definitions/conversation.Annotation'
+        type: array
+      text:
+        description: Changed from "value" to match OpenAI spec
+        type: string
+    type: object
+  conversation.ToolCall:
+    properties:
+      function:
+        $ref: '#/definitions/conversation.FunctionCall'
+      id:
+        type: string
+      type:
+        description: '"function", "file_search", "code_interpreter"'
+        type: string
+    type: object
+  conversation.TopLogProb:
+    properties:
+      bytes:
+        items:
+          type: integer
+        type: array
+      logprob:
+        type: number
+      token:
+        type: string
+    type: object
+  conversationrequests.CreateConversationRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/conversation.Item'
+        type: array
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      referrer:
+        type: string
+      title:
+        type: string
+    type: object
+  conversationrequests.CreateItemsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/conversation.Item'
+        type: array
+    required:
+    - items
+    type: object
+  conversationrequests.UpdateConversationRequest:
+    properties:
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      referrer:
+        type: string
+      title:
+        type: string
+    type: object
+  conversationresponses.ConversationDeletedResponse:
+    properties:
+      deleted:
+        type: boolean
+      id:
+        type: string
+      object:
+        type: string
+    type: object
+  conversationresponses.ConversationItemCreatedResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/conversation.Item'
+        type: array
+      first_id:
+        type: string
+      has_more:
+        type: boolean
+      last_id:
+        type: string
+      object:
+        type: string
+    type: object
+  conversationresponses.ConversationListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/conversationresponses.ConversationResponse'
+        type: array
+      first_id:
+        type: string
+      has_more:
+        type: boolean
+      last_id:
+        type: string
+      object:
+        type: string
+      total:
+        type: integer
+    type: object
+  conversationresponses.ConversationResponse:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      object:
+        type: string
+      referrer:
+        type: string
+      title:
+        type: string
+    type: object
+  conversationresponses.ItemListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/conversation.Item'
+        type: array
+      first_id:
+        type: string
+      has_more:
+        type: boolean
+      last_id:
+        type: string
+      object:
+        type: string
+    type: object
+  conversationresponses.ItemResponse:
+    properties:
+      branch:
+        description: Branch identifier (MAIN, EDIT_1, etc.)
+        type: string
+      completed_at:
+        type: string
+      content:
+        items:
+          $ref: '#/definitions/conversation.Content'
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      incomplete_at:
+        type: string
+      incomplete_details:
+        $ref: '#/definitions/conversation.IncompleteDetails'
+      object:
+        description: Always "conversation.item" for OpenAI compatibility
+        type: string
+      rated_at:
+        description: When rating was given
+        type: string
+      rating:
+        allOf:
+        - $ref: '#/definitions/conversation.ItemRating'
+        description: User feedback/rating
+      rating_comment:
+        description: Optional comment with rating
+        type: string
+      role:
+        $ref: '#/definitions/conversation.ItemRole'
+      sequence_number:
+        description: Order within branch
+        type: integer
+      status:
+        $ref: '#/definitions/conversation.ItemStatus'
+      type:
+        $ref: '#/definitions/conversation.ItemType'
+    type: object
+  model.Architecture:
+    properties:
+      input_modalities:
+        items:
+          type: string
+        type: array
+      instruct_type:
+        description: nullable
+        type: string
+      modality:
+        description: '"text+image->text"'
+        type: string
+      output_modalities:
+        items:
+          type: string
+        type: array
+      tokenizer:
+        description: '"GPT" / "SentencePiece" / etc.'
+        type: string
+    type: object
+  model.ModelCatalogStatus:
+    enum:
+    - init
+    - filled
+    - updated
+    type: string
+    x-enum-comments:
+      ModelCatalogStatusFilled: may update from Provider like OpenRouter
+      ModelCatalogStatusInit: default status when creating entry
+      ModelCatalogStatusUpdated: manually updated by admin (cannot be auto-updated
+        anymore
+    x-enum-descriptions:
+    - default status when creating entry
+    - may update from Provider like OpenRouter
+    - manually updated by admin (cannot be auto-updated anymore
+    x-enum-varnames:
+    - ModelCatalogStatusInit
+    - ModelCatalogStatusFilled
+    - ModelCatalogStatusUpdated
+  model.PriceLine:
+    properties:
+      amount_micro_usd:
+        description: e.g., 15000 -> $0.0150
+        type: integer
+      currency:
+        description: '"USD" (fixed if you only bill in USD)'
+        type: string
+      unit:
+        $ref: '#/definitions/model.PriceUnit'
+    type: object
+  model.PriceUnit:
+    enum:
+    - per_1k_prompt_tokens
+    - per_1k_completion_tokens
+    - per_request
+    - per_image
+    - per_web_search
+    - per_internal_reasoning
+    type: string
+    x-enum-varnames:
+    - Per1KPromptTokens
+    - Per1KCompletionTokens
+    - PerRequest
+    - PerImage
+    - PerWebSearch
+    - PerInternalReasoning
+  model.Pricing:
+    properties:
+      lines:
+        description: 'flexible: add/remove units without schema churn'
+        items:
+          $ref: '#/definitions/model.PriceLine'
+        type: array
+    type: object
+  model.SupportedParameters:
+    properties:
+      default:
+        additionalProperties:
+          type: number
+        description: temperature/top_p/frequency_penalty, null allowed
+        type: object
+      names:
+        description: e.g., ["include_reasoning","max_tokens",...]
+        items:
+          type: string
+        type: array
+    type: object
+  model.TokenLimits:
+    properties:
+      context_length:
+        description: e.g., 400000
+        type: integer
+      max_completion_tokens:
+        description: e.g., 128000
+        type: integer
+    type: object
+  modelresponses.BulkOperationResponse:
+    properties:
+      failed_count:
+        type: integer
+      failed_models:
+        items:
+          type: string
+        type: array
+      skipped_count:
+        type: integer
+      total_checked:
+        type: integer
+      updated_count:
+        type: integer
+    type: object
+  modelresponses.ModelCatalogResponse:
+    properties:
+      active:
+        type: boolean
+      architecture:
+        $ref: '#/definitions/model.Architecture'
+      created_at:
+        type: integer
+      extras:
+        additionalProperties: {}
+        type: object
+      id:
+        type: string
+      is_moderated:
+        type: boolean
+      last_synced_at:
+        type: integer
+      notes:
+        type: string
+      status:
+        $ref: '#/definitions/model.ModelCatalogStatus'
+      supported_parameters:
+        $ref: '#/definitions/model.SupportedParameters'
+      tags:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: integer
+    type: object
+  modelresponses.ModelResponse:
+    properties:
+      created:
+        type: integer
+      id:
+        type: string
+      object:
+        type: string
+      owned_by:
+        type: string
+    type: object
+  modelresponses.ModelResponseList:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/modelresponses.ModelResponse'
+        type: array
+      object:
+        type: string
+    type: object
+  modelresponses.ModelResponseWithProvider:
+    properties:
+      created:
+        type: integer
+      id:
+        type: string
+      object:
+        type: string
+      owned_by:
+        type: string
+      provider_id:
+        type: string
+      provider_name:
+        type: string
+      provider_vendor:
+        type: string
+    type: object
+  modelresponses.ModelWithProviderResponseList:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/modelresponses.ModelResponseWithProvider'
+        type: array
+      object:
+        type: string
+    type: object
+  modelresponses.ProviderModelResponse:
+    properties:
+      active:
+        type: boolean
+      created_at:
+        type: integer
+      display_name:
+        type: string
+      family:
+        type: string
+      id:
+        type: string
+      model_catalog_id:
+        type: string
+      model_public_id:
+        type: string
+      pricing:
+        $ref: '#/definitions/model.Pricing'
+      provider_id:
+        type: string
+      provider_original_model_id:
+        type: string
+      provider_vendor:
+        type: string
+      supports_audio:
+        type: boolean
+      supports_embeddings:
+        type: boolean
+      supports_images:
+        type: boolean
+      supports_reasoning:
+        type: boolean
+      supports_video:
+        type: boolean
+      token_limits:
+        $ref: '#/definitions/model.TokenLimits'
+      updated_at:
+        type: integer
+    type: object
+  modelresponses.ProviderResponse:
+    properties:
+      active:
+        type: boolean
+      base_url:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      vendor:
+        type: string
+    type: object
+  modelresponses.ProviderResponseList:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/modelresponses.ProviderResponse'
+        type: array
+      object:
+        type: string
+    type: object
+  modelresponses.ProviderWithModelCountResponse:
+    properties:
+      active:
+        type: boolean
+      base_url:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      model_active_count:
+        type: integer
+      model_count:
+        type: integer
+      name:
+        type: string
+      vendor:
+        type: string
+    type: object
+  modelresponses.ProviderWithModelsResponse:
+    properties:
+      active:
+        type: boolean
+      base_url:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      models:
+        items:
+          $ref: '#/definitions/modelresponses.ModelResponse'
+        type: array
+      name:
+        type: string
+      vendor:
+        type: string
+    type: object
+  openai.ChatCompletionChoice:
+    properties:
+      content_filter_results:
+        $ref: '#/definitions/openai.ContentFilterResults'
+      finish_reason:
+        allOf:
+        - $ref: '#/definitions/openai.FinishReason'
+        description: |-
+          FinishReason
+          stop: API returned complete message,
+          or a message terminated by one of the stop sequences provided via the stop parameter
+          length: Incomplete model output due to max_tokens parameter or token limit
+          function_call: The model decided to call a function
+          content_filter: Omitted content due to a flag from our content filters
+          null: API response still in progress or incomplete
+      index:
+        type: integer
+      logprobs:
+        $ref: '#/definitions/openai.LogProbs'
+      message:
+        $ref: '#/definitions/openai.ChatCompletionMessage'
+    type: object
+  openai.ChatCompletionMessage:
+    properties:
+      content:
+        type: string
+      function_call:
+        $ref: '#/definitions/openai.FunctionCall'
+      multiContent:
+        items:
+          $ref: '#/definitions/openai.ChatMessagePart'
+        type: array
+      name:
+        description: |-
+          This property isn't in the official documentation, but it's in
+          the documentation for the official library for python:
+          - https://github.com/openai/openai-python/blob/main/chatml.md
+          - https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
+        type: string
+      reasoning_content:
+        description: |-
+          This property is used for the "reasoning" feature supported by deepseek-reasoner
+          which is not in the official documentation.
+          the doc from deepseek:
+          - https://api-docs.deepseek.com/api/create-chat-completion#responses
+        type: string
+      refusal:
+        type: string
+      role:
+        type: string
+      tool_call_id:
+        description: For Role=tool prompts this should be set to the ID given in the
+          assistant's prior request to call a tool.
+        type: string
+      tool_calls:
+        description: For Role=assistant prompts this may be set to the tool calls
+          generated by the model, such as function calls.
+        items:
+          $ref: '#/definitions/openai.ToolCall'
+        type: array
+    type: object
+  openai.ChatCompletionResponseFormat:
+    properties:
+      json_schema:
+        $ref: '#/definitions/openai.ChatCompletionResponseFormatJSONSchema'
+      type:
+        $ref: '#/definitions/openai.ChatCompletionResponseFormatType'
+    type: object
+  openai.ChatCompletionResponseFormatJSONSchema:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      schema: {}
+      strict:
+        type: boolean
+    type: object
+  openai.ChatCompletionResponseFormatType:
+    enum:
+    - json_object
+    - json_schema
+    - text
+    type: string
+    x-enum-varnames:
+    - ChatCompletionResponseFormatTypeJSONObject
+    - ChatCompletionResponseFormatTypeJSONSchema
+    - ChatCompletionResponseFormatTypeText
+  openai.ChatMessageImageURL:
+    properties:
+      detail:
+        $ref: '#/definitions/openai.ImageURLDetail'
+      url:
+        type: string
+    type: object
+  openai.ChatMessagePart:
+    properties:
+      image_url:
+        $ref: '#/definitions/openai.ChatMessageImageURL'
+      text:
+        type: string
+      type:
+        $ref: '#/definitions/openai.ChatMessagePartType'
+    type: object
+  openai.ChatMessagePartType:
+    enum:
+    - text
+    - image_url
+    type: string
+    x-enum-varnames:
+    - ChatMessagePartTypeText
+    - ChatMessagePartTypeImageURL
+  openai.CompletionTokensDetails:
+    properties:
+      accepted_prediction_tokens:
+        type: integer
+      audio_tokens:
+        type: integer
+      reasoning_tokens:
+        type: integer
+      rejected_prediction_tokens:
+        type: integer
+    type: object
+  openai.ContentFilterResults:
+    properties:
+      hate:
+        $ref: '#/definitions/openai.Hate'
+      jailbreak:
+        $ref: '#/definitions/openai.JailBreak'
+      profanity:
+        $ref: '#/definitions/openai.Profanity'
+      self_harm:
+        $ref: '#/definitions/openai.SelfHarm'
+      sexual:
+        $ref: '#/definitions/openai.Sexual'
+      violence:
+        $ref: '#/definitions/openai.Violence'
+    type: object
+  openai.FinishReason:
+    enum:
+    - stop
+    - length
+    - function_call
+    - tool_calls
+    - content_filter
+    - "null"
+    type: string
+    x-enum-varnames:
+    - FinishReasonStop
+    - FinishReasonLength
+    - FinishReasonFunctionCall
+    - FinishReasonToolCalls
+    - FinishReasonContentFilter
+    - FinishReasonNull
+  openai.FunctionCall:
+    properties:
+      arguments:
+        description: call function with arguments in JSON format
+        type: string
+      name:
+        type: string
+    type: object
+  openai.FunctionDefinition:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      parameters:
+        description: |-
+          Parameters is an object describing the function.
+          You can pass json.RawMessage to describe the schema,
+          or you can pass in a struct which serializes to the proper JSON schema.
+          The jsonschema package is provided for convenience, but you should
+          consider another specialized library if you require more complex schemas.
+      strict:
+        type: boolean
+    type: object
+  openai.Hate:
+    properties:
+      filtered:
+        type: boolean
+      severity:
+        type: string
+    type: object
+  openai.ImageURLDetail:
+    enum:
+    - high
+    - low
+    - auto
+    type: string
+    x-enum-varnames:
+    - ImageURLDetailHigh
+    - ImageURLDetailLow
+    - ImageURLDetailAuto
+  openai.JailBreak:
+    properties:
+      detected:
+        type: boolean
+      filtered:
+        type: boolean
+    type: object
+  openai.LogProb:
+    properties:
+      bytes:
+        description: Omitting the field if it is null
+        items:
+          type: integer
+        type: array
+      logprob:
+        type: number
+      token:
+        type: string
+      top_logprobs:
+        description: |-
+          TopLogProbs is a list of the most likely tokens and their log probability, at this token position.
+          In rare cases, there may be fewer than the number of requested top_logprobs returned.
+        items:
+          $ref: '#/definitions/openai.TopLogProbs'
+        type: array
+    type: object
+  openai.LogProbs:
+    properties:
+      content:
+        description: Content is a list of message content tokens with log probability
+          information.
+        items:
+          $ref: '#/definitions/openai.LogProb'
+        type: array
+    type: object
+  openai.Prediction:
+    properties:
+      content:
+        type: string
+      type:
+        type: string
+    type: object
+  openai.Profanity:
+    properties:
+      detected:
+        type: boolean
+      filtered:
+        type: boolean
+    type: object
+  openai.PromptFilterResult:
+    properties:
+      content_filter_results:
+        $ref: '#/definitions/openai.ContentFilterResults'
+      index:
+        type: integer
+    type: object
+  openai.PromptTokensDetails:
+    properties:
+      audio_tokens:
+        type: integer
+      cached_tokens:
+        type: integer
+    type: object
+  openai.SelfHarm:
+    properties:
+      filtered:
+        type: boolean
+      severity:
+        type: string
+    type: object
+  openai.ServiceTier:
+    enum:
+    - auto
+    - default
+    - flex
+    - priority
+    type: string
+    x-enum-varnames:
+    - ServiceTierAuto
+    - ServiceTierDefault
+    - ServiceTierFlex
+    - ServiceTierPriority
+  openai.Sexual:
+    properties:
+      filtered:
+        type: boolean
+      severity:
+        type: string
+    type: object
+  openai.StreamOptions:
+    properties:
+      include_usage:
+        description: |-
+          If set, an additional chunk will be streamed before the data: [DONE] message.
+          The usage field on this chunk shows the token usage statistics for the entire request,
+          and the choices field will always be an empty array.
+          All other chunks will also include a usage field, but with a null value.
+        type: boolean
+    type: object
+  openai.Tool:
+    properties:
+      function:
+        $ref: '#/definitions/openai.FunctionDefinition'
+      type:
+        $ref: '#/definitions/openai.ToolType'
+    type: object
+  openai.ToolCall:
+    properties:
+      function:
+        $ref: '#/definitions/openai.FunctionCall'
+      id:
+        type: string
+      index:
+        description: Index is not nil only in chat completion chunk object
+        type: integer
+      type:
+        $ref: '#/definitions/openai.ToolType'
+    type: object
+  openai.ToolType:
+    enum:
+    - function
+    type: string
+    x-enum-varnames:
+    - ToolTypeFunction
+  openai.TopLogProbs:
+    properties:
+      bytes:
+        items:
+          type: integer
+        type: array
+      logprob:
+        type: number
+      token:
+        type: string
+    type: object
+  openai.Usage:
+    properties:
+      completion_tokens:
+        type: integer
+      completion_tokens_details:
+        $ref: '#/definitions/openai.CompletionTokensDetails'
+      prompt_tokens:
+        type: integer
+      prompt_tokens_details:
+        $ref: '#/definitions/openai.PromptTokensDetails'
+      total_tokens:
+        type: integer
+    type: object
+  openai.Violence:
+    properties:
+      filtered:
+        type: boolean
+      severity:
+        type: string
+    type: object
+  requestmodels.AddProviderRequest:
+    properties:
+      active:
+        type: boolean
+      api_key:
+        type: string
+      base_url:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      vendor:
+        type: string
+    required:
+    - base_url
+    - name
+    - vendor
+    type: object
+  requestmodels.BulkEnableModelsRequest:
+    properties:
+      enable:
+        description: 'Required: true to enable, false to disable'
+        type: boolean
+      except_models:
+        description: List of model keys to exclude
+        items:
+          type: string
+        type: array
+      provider_id:
+        description: 'Optional: filter by provider'
+        minLength: 1
+        type: string
+    required:
+    - enable
+    type: object
+  requestmodels.BulkToggleCatalogsRequest:
+    properties:
+      catalog_ids:
+        description: 'Optional: specific catalog public IDs. If empty, applies to
+          all catalogs'
+        items:
+          type: string
+        type: array
+      enable:
+        description: 'Required: true to enable, false to disable'
+        type: boolean
+      except_models:
+        description: List of model keys to exclude from the operation
+        items:
+          type: string
+        type: array
+    required:
+    - enable
+    type: object
+  requestmodels.UpdateModelCatalogRequest:
+    properties:
+      architecture:
+        $ref: '#/definitions/model.Architecture'
+      extras:
+        additionalProperties: {}
+        type: object
+      is_moderated:
+        type: boolean
+      notes:
+        type: string
+      supported_parameters:
+        $ref: '#/definitions/model.SupportedParameters'
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  requestmodels.UpdateProviderModelRequest:
+    properties:
+      active:
+        type: boolean
+      display_name:
+        type: string
+      family:
+        type: string
+      pricing:
+        $ref: '#/definitions/model.Pricing'
+      supports_audio:
+        type: boolean
+      supports_embeddings:
+        type: boolean
+      supports_images:
+        type: boolean
+      supports_reasoning:
+        type: boolean
+      supports_video:
+        type: boolean
+      token_limits:
+        $ref: '#/definitions/model.TokenLimits'
+    type: object
+  requestmodels.UpdateProviderRequest:
+    properties:
+      active:
+        type: boolean
+      api_key:
+        type: string
+      base_url:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+    type: object
+  responses.ErrorResponse:
+    properties:
+      code:
+        description: UUID from PlatformError
+        type: string
+      error:
+        type: string
+      request_id:
+        type: string
+    type: object
+info:
+  contact:
+    name: Jan Server Team
+    url: https://github.com/janhq/jan-server
+  description: OpenAI-compatible LLM API platform with enterprise authentication,
+    conversation management, and streaming support.
+  title: Jan Server LLM API
+  version: "2.0"
+paths:
+  /auth/guest-login:
+    post:
+      consumes:
+      - application/json
+      description: Creates a temporary guest user account and returns JWT tokens.
+        Guest users have limited access and can be upgraded to full accounts later.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Guest user created with access and refresh tokens
+          schema:
+            type: object
+        "500":
+          description: Internal server error - failed to create guest user
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Create guest user account
+      tags:
+      - Authentication API
+  /auth/logout:
+    get:
+      consumes:
+      - application/json
+      description: Revokes the current access token and clears authentication cookies.
+        After logout, the user must re-authenticate.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully logged out
+          schema:
+            type: object
+        "401":
+          description: Unauthorized - invalid token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - Authentication API
+  /auth/me:
+    get:
+      consumes:
+      - application/json
+      description: Returns the authenticated user's profile information including
+        user ID, email, roles, and guest status.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile information
+          schema:
+            type: object
+        "401":
+          description: Unauthorized - invalid or expired token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user information
+      tags:
+      - Authentication API
+  /auth/refresh-token:
+    get:
+      consumes:
+      - application/json
+      description: Exchanges a valid refresh token for a new access token. Refresh
+        token must be provided in Authorization header or refresh_token cookie.
+      parameters:
+      - description: Bearer refresh_token
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New access token and refresh token
+          schema:
+            type: object
+        "401":
+          description: Unauthorized - invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Authentication API
+  /auth/upgrade:
+    post:
+      consumes:
+      - application/json
+      description: Converts a guest user account to a permanent account with email/password
+        credentials. Guest flag is removed and user gains full access.
+      parameters:
+      - description: Upgrade request with email and password
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account upgraded successfully with new tokens
+          schema:
+            type: object
+        "400":
+          description: Invalid request - missing email or password
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - not a guest user or invalid token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upgrade guest to permanent account
+      tags:
+      - Authentication API
+  /v1/admin/models/catalogs:
+    get:
+      description: Retrieves a paginated list of model catalogs with optional filtering
+        and searching
+      parameters:
+      - description: 'Number of records to return (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Number of records to skip for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: 'Sort order: asc or desc (default: desc)'
+        in: query
+        name: order
+        type: string
+      - description: 'Filter by status: init, filled, updated'
+        in: query
+        name: status
+        type: string
+      - description: Filter by moderation status
+        in: query
+        name: is_moderated
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of model catalogs
+          schema:
+            $ref: '#/definitions/modelresponses.ModelCatalogResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all model catalogs
+      tags:
+      - Admin Model API
+  /v1/admin/models/catalogs/{model_public_id}:
+    get:
+      description: Retrieves detailed information about a model catalog entry by its
+        public ID (supports IDs with slashes)
+      parameters:
+      - description: Model Catalog Public ID (can contain slashes)
+        in: path
+        name: model_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Model catalog details
+          schema:
+            $ref: '#/definitions/modelresponses.ModelCatalogResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Model catalog not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a model catalog entry
+      tags:
+      - Admin Model API
+    patch:
+      consumes:
+      - application/json
+      description: Updates metadata for a model catalog entry. Marks it as manually
+        updated to prevent auto-sync overwrites.
+      parameters:
+      - description: Model Catalog Public ID (can contain slashes)
+        in: path
+        name: model_public_id
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/requestmodels.UpdateModelCatalogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated model catalog
+          schema:
+            $ref: '#/definitions/modelresponses.ModelCatalogResponse'
+        "400":
+          description: Invalid request payload
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Model catalog not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a model catalog entry
+      tags:
+      - Admin Model API
+  /v1/admin/models/catalogs/bulk-toggle:
+    post:
+      consumes:
+      - application/json
+      description: Enable or disable provider models for specific catalogs or ALL
+        catalogs, with optional exception list. Supports "enable/disable all except"
+        patterns globally or scoped to catalogs.
+      parameters:
+      - description: Bulk toggle request. If catalog_ids is empty, applies to ALL
+          catalogs. Use except_models to exclude specific models.
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requestmodels.BulkToggleCatalogsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bulk operation result with counts and status
+          schema:
+            $ref: '#/definitions/modelresponses.BulkOperationResponse'
+        "400":
+          description: Invalid request - exceeds limits or validation error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: One or more catalog IDs not found (when catalog_ids provided)
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error during bulk operation
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Bulk enable/disable provider models by catalog IDs or all catalogs
+      tags:
+      - Admin Model API
+  /v1/admin/models/provider-models:
+    get:
+      description: Retrieves a paginated list of provider models with optional filtering
+      parameters:
+      - description: 'Number of records to return (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Number of records to skip for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: 'Sort order: asc or desc (default: desc)'
+        in: query
+        name: order
+        type: string
+      - description: Filter by provider public ID
+        in: query
+        name: provider_id
+        type: string
+      - description: Filter by model key
+        in: query
+        name: model_key
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: boolean
+      - description: Filter by image support
+        in: query
+        name: supports_images
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of provider models
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderModelResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all provider models
+      tags:
+      - Admin Model API
+  /v1/admin/models/provider-models/{provider_model_public_id}:
+    get:
+      description: Retrieves detailed information about a provider model by its public
+        ID
+      parameters:
+      - description: Provider Model Public ID
+        in: path
+        name: provider_model_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Provider model details
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderModelResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Provider model not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a provider model
+      tags:
+      - Admin Model API
+    patch:
+      consumes:
+      - application/json
+      description: Updates configuration for a provider model including pricing, limits,
+        and feature flags
+      parameters:
+      - description: Provider Model Public ID
+        in: path
+        name: provider_model_public_id
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/requestmodels.UpdateProviderModelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated provider model
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderModelResponse'
+        "400":
+          description: Invalid request payload
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Provider model not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a provider model
+      tags:
+      - Admin Model API
+  /v1/admin/models/provider-models/bulk-toggle:
+    post:
+      consumes:
+      - application/json
+      description: 'Enables or disables provider models with flexible patterns: enable
+        all, disable all, enable all except, or disable all except. Optionally filter
+        by provider.'
+      parameters:
+      - description: Bulk toggle payload with enable flag, optional provider filter,
+          and exception list
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/requestmodels.BulkEnableModelsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bulk operation result with counts and status
+          schema:
+            $ref: '#/definitions/modelresponses.BulkOperationResponse'
+        "400":
+          description: Invalid request payload
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Bulk enable or disable provider models
+      tags:
+      - Admin Model API
+  /v1/admin/providers:
+    get:
+      description: Retrieves all providers with their model counts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of providers with model counts
+          schema:
+            items:
+              $ref: '#/definitions/modelresponses.ProviderWithModelCountResponse'
+            type: array
+        "500":
+          description: Failed to retrieve providers
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all providers
+      tags:
+      - Admin Provider API
+    post:
+      consumes:
+      - application/json
+      description: Registers a new provider and synchronizes its available models.
+      parameters:
+      - description: Provider registration payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/requestmodels.AddProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Registered provider with synced models
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderWithModelsResponse'
+        "400":
+          description: Invalid request payload
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to register provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Register a provider
+      tags:
+      - Admin Provider API
+  /v1/admin/providers/{provider_public_id}:
+    patch:
+      consumes:
+      - application/json
+      description: Updates an existing provider's configuration
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      - description: Provider update payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/requestmodels.UpdateProviderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated provider
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderResponse'
+        "400":
+          description: Invalid request payload
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to update provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a provider
+      tags:
+      - Admin Provider API
+  /v1/chat/completions:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Generates a model response for the given chat conversation. This is a standard chat completion API that supports both streaming and non-streaming modes without conversation persistence.
+
+        **Streaming Mode (stream=true):**
+        - Returns Server-Sent Events (SSE) with real-time streaming
+        - Streams completion chunks directly from the inference model
+        - Final event contains "[DONE]" marker
+
+        **Non-Streaming Mode (stream=false or omitted):**
+        - Returns single JSON response with complete completion
+        - Standard OpenAI ChatCompletionResponse format
+
+        **Storage Options:**
+        - `store=true`: Persist the latest input message and assistant response to the active conversation
+        - `store_reasoning=true`: Additionally persist reasoning content provided by the model
+        - When `store` is omitted or false, the conversation remains read-only
+
+        **Features:**
+        - Supports all OpenAI ChatCompletionRequest parameters
+        - Optional conversation context for conversation persistence
+        - User authentication required
+        - Direct inference model integration
+      parameters:
+      - description: Chat completion request with streaming options and optional conversation
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chatrequests.ChatCompletionRequest'
+      produces:
+      - application/json
+      - text/event-stream
+      responses:
+        "200":
+          description: 'Successful streaming response (when stream=true) - SSE format
+            with data: {json} events'
+          schema:
+            type: string
+        "400":
+          description: Invalid request payload, empty messages, or inference failure
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a chat completion
+      tags:
+      - Chat Completions API
+  /v1/conversations:
+    get:
+      description: List conversations for the authenticated user with optional referrer
+        filtering.
+      parameters:
+      - description: Referrer filter
+        in: query
+        name: referrer
+        type: string
+      - description: Maximum number of conversations to return
+        in: query
+        name: limit
+        type: integer
+      - description: Return conversations created after the given numeric ID
+        in: query
+        name: after
+        type: string
+      - description: Sort order (asc or desc)
+        in: query
+        name: order
+        type: string
+      - description: Set to 'all' to list conversations across the workspace (requires
+          elevated permissions)
+        in: query
+        name: scope
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved conversations
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationListResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List conversations
+      tags:
+      - Conversations API
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Create a new conversation to store and retrieve conversation state across Response API calls
+
+        **Features:**
+        - Create conversation with optional metadata (max 16 key-value pairs)
+        - Add up to 20 initial items to the conversation
+        - Returns conversation ID with `conv_` prefix
+        - Supports OpenAI Conversations API format
+
+        **Metadata Constraints:**
+        - Maximum 16 key-value pairs
+        - Keys: max 64 characters
+        - Values: max 512 characters
+      parameters:
+      - description: Create conversation request with optional items and metadata
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationrequests.CreateConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully created conversation
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationResponse'
+        "400":
+          description: Invalid request - validation failed or too many items
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - conversation creation failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a conversation
+      tags:
+      - Conversations API
+  /v1/conversations/{conv_public_id}:
+    delete:
+      description: |-
+        Delete a conversation (soft delete). Items in the conversation will not be deleted but will be inaccessible.
+
+        **Features:**
+        - Soft delete (conversation marked as deleted, not physically removed)
+        - Items remain in database but become inaccessible
+        - Automatic ownership verification
+        - Returns deletion confirmation with conversation ID
+
+        **Response:**
+        - `id`: Deleted conversation ID
+        - `object`: Always "conversation.deleted"
+        - `deleted`: Always true
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully deleted conversation
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationDeletedResponse'
+        "400":
+          description: Invalid conversation ID format
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - deletion failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a conversation
+      tags:
+      - Conversations API
+    get:
+      description: |-
+        Retrieve a conversation by ID with ownership verification
+
+        **Features:**
+        - Retrieves conversation metadata including creation timestamp
+        - Automatic ownership verification (user can only access their own conversations)
+        - Returns OpenAI-compatible conversation object
+
+        **Response Fields:**
+        - `id`: Conversation ID with `conv_` prefix
+        - `object`: Always "conversation"
+        - `created_at`: Unix timestamp
+        - `metadata`: User-defined key-value pairs
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved conversation
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationResponse'
+        "400":
+          description: Invalid conversation ID format
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a conversation
+      tags:
+      - Conversations API
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Update a conversation's metadata while preserving existing items
+
+        **Features:**
+        - Update metadata key-value pairs
+        - Replaces entire metadata object (not merged)
+        - Items remain unchanged
+        - Automatic ownership verification
+
+        **Metadata Constraints:**
+        - Maximum 16 key-value pairs
+        - Keys: max 64 characters
+        - Values: max 512 characters
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Update conversation request with new metadata
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationrequests.UpdateConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully updated conversation
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationResponse'
+        "400":
+          description: Invalid request - validation failed or invalid metadata
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - update failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a conversation
+      tags:
+      - Conversations API
+  /v1/conversations/{conv_public_id}/items:
+    get:
+      description: |-
+        List all items in a conversation with cursor-based pagination support
+
+        **Features:**
+        - Cursor-based pagination using item IDs
+        - Configurable page size (1-100 items, default 20)
+        - Sort order control (ascending or descending)
+        - Optional include parameter for additional fields
+        - Returns paginated list with navigation cursors
+
+        **Pagination:**
+        - Use `after` cursor from previous response for next page
+        - `has_more` indicates if more items are available
+        - `first_id` and `last_id` provide cursor references
+
+        **Query Parameters:**
+        - `limit`: Number of items (1-100, default 20)
+        - `order`: Sort order ("asc" or "desc", default "desc")
+        - `after`: Item ID cursor for pagination
+        - `include`: Additional fields to include (optional)
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Item ID cursor to list items after (pagination)
+        in: query
+        name: after
+        type: string
+      - default: 20
+        description: Number of items to return (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - default: desc
+        description: 'Sort order: asc or desc'
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      - collectionFormat: csv
+        description: Additional fields to include in response
+        in: query
+        items:
+          type: string
+        name: include
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved items list
+          schema:
+            $ref: '#/definitions/conversationresponses.ItemListResponse'
+        "400":
+          description: Invalid request - invalid parameters or conversation ID
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - listing failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List conversation items
+      tags:
+      - Conversations API
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Add items to a conversation. You may add up to 20 items at a time.
+
+        **Features:**
+        - Bulk item creation (max 20 items per request)
+        - Automatic item ID generation with `msg_` prefix
+        - Items added to conversation's active branch (default: MAIN)
+        - Returns list of created items with generated IDs
+
+        **Item Types:**
+        - `message`: User or assistant messages
+        - `tool_call`: Tool/function call items
+        - `tool_response`: Tool/function response items
+        - Other OpenAI-compatible item types
+
+        **Constraints:**
+        - Maximum 20 items per request
+        - Each item must have valid type and content
+        - Items are immutable after creation
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Additional fields to include in response
+        in: query
+        items:
+          type: string
+        name: include
+        type: array
+      - description: Create items request with array of items
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationrequests.CreateItemsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully created items
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationItemCreatedResponse'
+        "400":
+          description: Invalid request - too many items, invalid format, or validation
+            failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - item creation failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create conversation items
+      tags:
+      - Conversations API
+  /v1/conversations/{conv_public_id}/items/{item_id}:
+    delete:
+      description: |-
+        Delete an item from a conversation. The item will be removed from the conversation.
+
+        **Features:**
+        - Remove specific item from conversation
+        - Automatic ownership verification
+        - Returns updated conversation object after deletion
+        - Items are permanently removed (not soft delete)
+
+        **Important:**
+        - Deleting an item may affect conversation flow
+        - Item IDs are not reused after deletion
+        - Other items in conversation remain unchanged
+        - Consider creating a new branch instead of deleting items
+
+        **Response:**
+        Returns the conversation object (not the deleted item)
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Item ID to delete (format: msg_xxxxx)'
+        in: path
+        name: item_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully deleted item, returns conversation
+          schema:
+            $ref: '#/definitions/conversationresponses.ConversationResponse'
+        "400":
+          description: Invalid conversation ID or item ID format
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation or item not found, or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - deletion failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a conversation item
+      tags:
+      - Conversations API
+    get:
+      description: |-
+        Retrieve a single item from a conversation by item ID
+
+        **Features:**
+        - Retrieve specific item by ID
+        - Returns complete item with all content
+        - Automatic ownership verification via conversation
+        - Optional include parameter for additional fields
+
+        **Response Fields:**
+        - `id`: Item ID with `msg_` prefix
+        - `type`: Item type (message, tool_call, etc.)
+        - `role`: Role for message items (user, assistant)
+        - `content`: Item content array
+        - `status`: Item status (completed, incomplete, etc.)
+        - `created_at`: Unix timestamp
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Item ID (format: msg_xxxxx)'
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Additional fields to include in response
+        in: query
+        items:
+          type: string
+        name: include
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved item
+          schema:
+            $ref: '#/definitions/conversationresponses.ItemResponse'
+        "400":
+          description: Invalid conversation ID or item ID format
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation or item not found, or access denied
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a conversation item
+      tags:
+      - Conversations API
+  /v1/healthz:
+    get:
+      description: Returns the health status of the API server. Used by orchestrators
+        and monitoring systems.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Health status OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check endpoint
+      tags:
+      - Server API
+  /v1/models:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of available models that can be used for chat
+        completions or other tasks. Returns either simple model list or detailed list
+        with provider metadata based on X-PROVIDER-DATA header.
+      parameters:
+      - description: Set to 'true' to include provider metadata in response
+        enum:
+        - "true"
+        - "false"
+        in: header
+        name: X-PROVIDER-DATA
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of models with provider metadata (when X-PROVIDER-DATA=true)
+          schema:
+            $ref: '#/definitions/modelresponses.ModelWithProviderResponseList'
+        "404":
+          description: Models or providers not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to retrieve models
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List available models
+      tags:
+      - Chat Completions API
+  /v1/models/catalogs/{model_public_id}:
+    get:
+      description: Retrieves detailed information about a model catalog entry by its
+        public ID (supports IDs with slashes like openrouter/nova-lite-v1)
+      parameters:
+      - description: Model Catalog Public ID (can contain slashes)
+        in: path
+        name: model_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Model catalog details
+          schema:
+            $ref: '#/definitions/modelresponses.ModelCatalogResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Model catalog not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a model catalog entry
+      tags:
+      - Model API
+  /v1/models/providers:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of available model providers that can be used
+        for inference.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of providers
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderResponseList'
+        "500":
+          description: Failed to retrieve providers
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List model providers
+      tags:
+      - Model API
+  /v1/readyz:
+    get:
+      description: Returns the readiness status of the API server. Indicates if the
+        service is ready to accept traffic.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Readiness status ready
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Readiness check endpoint
+      tags:
+      - Server API
+  /v1/version:
+    get:
+      description: Returns the current build version of the API server and environment
+        reload timestamp.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Version information including version number and environment
+            reload timestamp
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get API build version
+      tags:
+      - Server API
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

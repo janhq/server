@@ -1,0 +1,48 @@
+# Hybrid Development Mode Configuration
+# For running services natively (outside Docker) with infrastructure in Docker
+# This file overrides the profiles from infrastructure.yml and services-mcp.yml
+
+services:
+  # Keycloak DB for hybrid mode - override profile
+  keycloak-db:
+    profiles: ["hybrid"]
+
+  # PostgreSQL accessible from host - override profile
+  api-db:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles: ["hybrid"]
+
+  # Keycloak accessible from host - override profile
+  keycloak:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles: ["hybrid"]
+
+  # Kong accessible from host (optional in hybrid mode) - override profile
+  kong:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Point Kong to API running on host
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong-hybrid.yml
+      KONG_LOG_LEVEL: info
+    volumes:
+      - ../kong/kong-hybrid.yml:/kong/kong-hybrid.yml:ro
+    profiles: ["hybrid-kong"]
+
+  # MCP infrastructure for hybrid mode - override profiles
+  redis-searxng:
+    profiles: ["hybrid-mcp"]
+
+  searxng:
+    profiles: ["hybrid-mcp"]
+
+  vector-store:
+    profiles: ["hybrid-mcp"]
+
+  sandboxfusion:
+    profiles: ["hybrid-mcp"]
+
+# Note: Networks are defined in infrastructure.yml and shared across all compose files

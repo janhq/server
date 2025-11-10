@@ -7,8 +7,20 @@
 *.bak
 # Environment files (containing secrets, API keys, credentials)
 .env
-*.env
 .env.*
+*.env
+!*.env.example
+!config/*.env.example
+
+# Production and secrets (never commit these!)
+config/production.env
+config/secrets.env
+config/*.local.env
+
+# Kubernetes secret overrides (never commit these!)
+k8s/**/values-*.local.yaml
+k8s/**/secrets.yaml
+k8s/**/*-secret.yaml.local
 
 # Local configuration that shouldn't be shared
 *.local
@@ -17,10 +29,7 @@
 # Visual Studio Code editor settings and workspace files
 
 # Visual Studio Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+.vscode
 
 !.vscode/extensions.json
 !.vscode/*.code-snippets
@@ -108,7 +117,6 @@ downloads/
 
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 
@@ -237,8 +245,6 @@ vendor/
 *.out
 go.work
 
-go.sum
-
 ### Typescript ###
 # typescript specific files
 
@@ -246,10 +252,22 @@ go.sum
 node_modules/
 dist/
 
-# helm
-charts/jan-server/charts/*.tgz
-
-# Migration
-apps/jan-api-gateway/application/cmd/codegen/dbmigration/tmp/*
-
 .DS_Store
+cmd/server/__debug_bin*
+
+# Downloaded models (large files - root directory only)
+/models/
+
+# API Keys and credentials (catch-all)
+**/credentials.json
+**/service-account.json
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/secrets/
+**/.secrets/
+
+# Docker and Kubernetes secrets
+docker-compose.override.yml
+docker-compose.*.local.yml

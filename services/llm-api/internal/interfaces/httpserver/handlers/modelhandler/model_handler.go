@@ -1,0 +1,155 @@
+package modelhandler
+
+import (
+	"context"
+	"sort"
+	"strings"
+
+	domainmodel "jan-server/services/llm-api/internal/domain/model"
+)
+
+type ModelHandler struct {
+	provider             *domainmodel.ProviderService
+	providerModelService *domainmodel.ProviderModelService
+}
+
+func NewModelHandler(
+	provider *domainmodel.ProviderService,
+	providerModelService *domainmodel.ProviderModelService,
+) *ModelHandler {
+	return &ModelHandler{
+		provider:             provider,
+		providerModelService: providerModelService,
+	}
+}
+
+func (modelHandler *ModelHandler) BuildAccessibleProviderModels(ctx context.Context) (*domainmodel.AccessibleModels, error) {
+	providers, err := modelHandler.provider.FindAllActiveProviders(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	providerIDs := make([]uint, 0, len(providers))
+	for _, provider := range providers {
+		if provider == nil {
+			continue
+		}
+		providerIDs = append(providerIDs, provider.ID)
+	}
+
+	providerModels, err := modelHandler.providerModelService.ListActiveProviderByIDs(ctx, providerIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &domainmodel.AccessibleModels{
+		Providers:      providers,
+		ProviderModels: providerModels,
+	}
+	return result, nil
+}
+
+type modelAggregate struct {
+	response      domainmodel.ProviderModel
+	providerKind  domainmodel.ProviderKind
+	hasPricing    bool
+	cheapestPrice domainmodel.MicroUSD
+}
+
+func (modelHandler *ModelHandler) MergeModels(
+	providerModels []*domainmodel.ProviderModel,
+	providerByID map[uint]*domainmodel.Provider,
+) []*domainmodel.ProviderModel {
+	aggregated := map[string]modelAggregate{}
+
+	for _, pm := range providerModels {
+		if pm == nil {
+			continue
+		}
+		provider := providerByID[pm.ProviderID]
+		if provider == nil {
+			continue
+		}
+		cheapestPrice, hasPricing := lowestPricingAmount(pm.Pricing)
+		incoming := modelAggregate{
+			response:      *pm,
+			providerKind:  provider.Kind,
+			hasPricing:    hasPricing,
+			cheapestPrice: cheapestPrice,
+		}
+
+		if existing, ok := aggregated[strings.ToLower(pm.ModelPublicID)]; ok {
+			if !shouldReplaceModel(existing, incoming) {
+				continue
+			}
+		}
+
+		aggregated[pm.ModelPublicID] = incoming
+	}
+
+	candidates := make([]modelAggregate, 0, len(aggregated))
+	for _, model := range aggregated {
+		candidates = append(candidates, model)
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		// Jan models first, then by ID
+		iIsJan := candidates[i].providerKind == domainmodel.ProviderJan
+		jIsJan := candidates[j].providerKind == domainmodel.ProviderJan
+		if iIsJan && !jIsJan {
+			return true
+		} else if !iIsJan && jIsJan {
+			return false
+		}
+		return candidates[i].response.ID < candidates[j].response.ID
+	})
+
+	result := make([]*domainmodel.ProviderModel, len(candidates))
+	for idx, candidate := range candidates {
+		result[idx] = &candidate.response
+	}
+
+	return result
+}
+
+func lowestPricingAmount(pricing domainmodel.Pricing) (domainmodel.MicroUSD, bool) {
+	if len(pricing.Lines) == 0 {
+		return 0, false
+	}
+	lowest := pricing.Lines[0].Amount
+	for _, line := range pricing.Lines[1:] {
+		if line.Amount < lowest {
+			lowest = line.Amount
+		}
+	}
+	return lowest, true
+}
+
+func shouldReplaceModel(existing, incoming modelAggregate) bool {
+	if incoming.hasPricing && existing.hasPricing {
+		if incoming.cheapestPrice < existing.cheapestPrice {
+			return true
+		}
+		if incoming.cheapestPrice > existing.cheapestPrice {
+			return false
+		}
+	}
+
+	if incoming.hasPricing && !existing.hasPricing {
+		return true
+	}
+	if !incoming.hasPricing && existing.hasPricing {
+		return false
+	}
+
+	incomingIsJan := incoming.providerKind == domainmodel.ProviderJan
+	existingIsJan := existing.providerKind == domainmodel.ProviderJan
+	if incomingIsJan && !existingIsJan {
+		return true
+	}
+	if existingIsJan && !incomingIsJan {
+		return false
+	}
+
+	return false
+}

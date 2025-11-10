@@ -1,0 +1,112 @@
+# LLM API Service
+
+services:
+  llm-api:
+    build: ../services/llm-api
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../.env}
+    environment:
+      HTTP_PORT: ${HTTP_PORT:-8080}
+      DB_DSN: ${DB_DSN:-postgres://jan_user:jan_password@api-db:5432/jan_llm_api?sslmode=disable}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8085}
+      JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
+      ISSUER: ${ISSUER:-http://localhost:8090/realms/jan}
+      AUDIENCE: ${AUDIENCE:-jan-client}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-llm-api}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4317}
+      MEDIA_RESOLVE_URL: ${MEDIA_RESOLVE_URL:-http://media-api:8285/v1/media/resolve}
+      MEDIA_SERVICE_KEY: ${MEDIA_SERVICE_KEY:-changeme-media-key}
+      MEDIA_RESOLVE_TIMEOUT: ${MEDIA_RESOLVE_TIMEOUT:-5s}
+    ports:
+      - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
+    depends_on:
+      api-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      vllm-jan-gpu:
+        condition: service_healthy
+    volumes:
+      - ../services/llm-api/config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${HTTP_PORT:-8080}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ["api", "full"]
+
+  media-api:
+    build: ../services/media-api
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../.env}
+    environment:
+      MEDIA_API_PORT: ${MEDIA_API_PORT:-8285}
+      MEDIA_DATABASE_URL: ${MEDIA_DATABASE_URL:-postgres://media:media@api-db:5432/media_api?sslmode=disable}
+      MEDIA_SERVICE_KEY: ${MEDIA_SERVICE_KEY:-changeme-media-key}
+      MEDIA_API_KEY: ${MEDIA_API_KEY:-changeme-media-key}
+      MEDIA_S3_ENDPOINT: ${MEDIA_S3_ENDPOINT:-https://s3.menlo.ai}
+      MEDIA_S3_PUBLIC_ENDPOINT: ${MEDIA_S3_PUBLIC_ENDPOINT:-}
+      MEDIA_S3_REGION: ${MEDIA_S3_REGION:-us-west-2}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-platform-dev}
+      MEDIA_S3_ACCESS_KEY: ${MEDIA_S3_ACCESS_KEY:-XXXXX}
+      MEDIA_S3_SECRET_KEY: ${MEDIA_S3_SECRET_KEY:-YYYY}
+      MEDIA_S3_USE_PATH_STYLE: ${MEDIA_S3_USE_PATH_STYLE:-true}
+      MEDIA_S3_PRESIGN_TTL: ${MEDIA_S3_PRESIGN_TTL:-5m}
+      MEDIA_MAX_BYTES: ${MEDIA_MAX_BYTES:-20971520}
+      MEDIA_PROXY_DOWNLOAD: ${MEDIA_PROXY_DOWNLOAD:-true}
+      MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
+      MEDIA_REMOTE_FETCH_TIMEOUT: ${MEDIA_REMOTE_FETCH_TIMEOUT:-15s}
+    ports:
+      - "${MEDIA_API_PORT:-8285}:${MEDIA_API_PORT:-8285}"
+    depends_on:
+      api-db:
+        condition: service_healthy
+    volumes:
+      - ../services/media-api/config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${MEDIA_API_PORT:-8285}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ["api", "full"]
+
+  response-api:
+    build: ../services/response-api
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../.env}
+    environment:
+      HTTP_PORT: ${RESPONSE_API_PORT:-8082}
+      RESPONSE_DATABASE_URL: ${RESPONSE_DATABASE_URL:-postgres://response_api:response_api@api-db:5432/response_api?sslmode=disable}
+      LLM_API_URL: ${LLM_API_URL:-http://llm-api:8080}
+      MCP_TOOLS_URL: ${MCP_TOOLS_URL:-http://mcp-tools:8091}
+      MAX_TOOL_EXECUTION_DEPTH: ${MAX_TOOL_EXECUTION_DEPTH:-8}
+      TOOL_EXECUTION_TIMEOUT: ${TOOL_EXECUTION_TIMEOUT:-45s}
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
+      AUTH_ISSUER: ${ISSUER:-http://localhost:8090/realms/jan}
+      AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
+      AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ENABLE_TRACING: ${OTEL_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4317}
+    ports:
+      - "${RESPONSE_API_PORT:-8082}:${RESPONSE_API_PORT:-8082}"
+    depends_on:
+      api-db:
+        condition: service_healthy
+      llm-api:
+        condition: service_healthy
+      mcp-tools:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${RESPONSE_API_PORT:-8082}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ["api", "full"]
