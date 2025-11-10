@@ -89,4 +89,3 @@ Do **not** commit real keys or tokens. Place new variables in `.env.template` an
 ## Code of Conduct
 Be respectful, stay constructive, and follow project maintainers' guidance. By participating you agree to uphold the community standards.
 
-Happy hacking!
