@@ -7,12 +7,20 @@
 *.bak
 # Environment files (containing secrets, API keys, credentials)
 .env
+.env.*
 *.env
-.env.
+!*.env.example
+!config/*.env.example
 
 # Production and secrets (never commit these!)
 config/production.env
 config/secrets.env
+config/*.local.env
+
+# Kubernetes secret overrides (never commit these!)
+k8s/**/values-*.local.yaml
+k8s/**/secrets.yaml
+k8s/**/*-secret.yaml.local
 
 # Local configuration that shouldn't be shared
 *.local
@@ -249,3 +257,17 @@ cmd/server/__debug_bin*
 
 # Downloaded models (large files - root directory only)
 /models/
+
+# API Keys and credentials (catch-all)
+**/credentials.json
+**/service-account.json
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/secrets/
+**/.secrets/
+
+# Docker and Kubernetes secrets
+docker-compose.override.yml
+docker-compose.*.local.yml
