@@ -129,8 +129,8 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	keyID := c.Param("id")
-	if keyID == "" {
-		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "api key id required")
+	if keyID == "" || keyID == "null" {
+		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "api key id required and must be valid UUID")
 		return
 	}
 
@@ -139,12 +139,33 @@ func (h *Handler) Delete(c *gin.Context) {
 			responses.HandleErrorWithStatus(c, http.StatusNotFound, err, "api key not found")
 			return
 		}
-		h.logger.Error().Err(err).Msg("failed to revoke api key")
+		h.logger.Error().Err(err).Str("key_id", keyID).Msg("failed to revoke api key")
 		responses.HandleError(c, err, "failed to revoke api key")
 		return
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// Validate validates an API key and returns user information (for Kong plugin)
+func (h *Handler) Validate(c *gin.Context) {
+	var req struct {
+		APIKey string `json:"api_key" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.HandleErrorWithStatus(c, http.StatusBadRequest, err, "invalid request payload")
+		return
+	}
+
+	userInfo, err := h.service.ValidateAPIKey(c.Request.Context(), req.APIKey)
+	if err != nil {
+		h.logger.Debug().Err(err).Msg("api key validation failed")
+		responses.HandleErrorWithStatus(c, http.StatusUnauthorized, err, "invalid api key")
+		return
+	}
+
+	c.JSON(http.StatusOK, userInfo)
 }
 
 func keyStatus(key *apikey.APIKey) string {

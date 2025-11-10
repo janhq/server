@@ -6,6 +6,88 @@ This document outlines the implementation plan for adding JWT and API key authen
 
 ---
 
+## ✅ Current Implementation Status (Updated: 2025-11-10)
+
+### Completed Features:
+
+1. **✅ JWT Authentication via Kong**
+   - Kong `jwt` plugin configured on all protected routes
+   - JWKS fetching from Keycloak (manual configuration)
+   - JWT validation at gateway level before reaching services
+   - User context headers injected (X-User-ID, X-User-Subject, etc.)
+
+2. **✅ API Key Authentication**
+   - **Custom Kong Lua plugin**: `keycloak-apikey` (priority 1002)
+   - **Validation flow**: Kong → HTTP POST to LLM-API `/auth/validate-api-key` → Keycloak hash lookup
+   - **Key format**: `sk_` prefix + 32 random characters (industry standard)
+   - **Storage**: SHA-256 hash in Keycloak user attributes + metadata in PostgreSQL
+   - **Database migration**: `api_keys` table added to `000001_init_schema.up.sql`
+   - **Endpoints implemented**:
+     - `POST /auth/api-keys` - Create new API key (requires JWT)
+     - `GET /auth/api-keys` - List user's API keys (requires JWT)
+     - `DELETE /auth/api-keys/{id}` - Revoke API key (requires JWT)
+     - `POST /auth/validate-api-key` - Validation endpoint for Kong (public)
+
+3. **✅ Kong DB-less Mode Maintained**
+   - No dynamic consumer creation required
+   - API keys validated via HTTP callout to service
+   - Declarative configuration in `kong.yml`
+
+4. **✅ OR Logic Authentication**
+   - Routes accept JWT **OR** API key (not both required)
+   - `request-termination` plugin fallback for auth failures
+   - Returns 401 when neither JWT nor API key is valid
+
+5. **✅ Security Hardening**
+   - Removed obsolete `KongCredentialID` field from API key models
+   - Fixed null UUID validation in API key deletion
+   - Fixed Keycloak username read-only error in user upgrade
+   - API key secrets never stored in plaintext
+   - Keys shown only once at creation time
+
+6. **✅ Kong Custom Plugin Loading**
+   - Plugin path: `/opt/kong-plugins/kong/plugins/keycloak-apikey/`
+   - Files: `handler.lua`, `schema.lua`, `README.md`
+   - Successfully loaded and registered with Kong
+   - Volume mounted in Docker Compose
+
+7. **✅ Documentation**
+   - Implementation guide created
+   - Kong plugin README with configuration examples
+   - Quick reference for API key management
+   - Kong plugins development guide
+
+### Pending Tasks:
+
+1. **⏳ Automated Testing**
+   - Update Postman collection with comprehensive API key tests
+   - Test JWT + API key both work independently
+   - Test invalid/revoked key rejection
+   - Test no auth = 401
+   - Add tests for auth method headers (X-Auth-Method: jwt vs apikey)
+
+2. **⏳ JWKS Configuration**
+   - Document JWKS endpoint configuration for Kong
+   - Add JWKS refresh mechanism (currently manual restart)
+   - Test key rotation scenarios
+
+3. **⏳ Rate Limiting**
+   - Per-consumer rate limiting (currently per-IP)
+   - Different limits for guest vs registered users
+   - API key-specific rate limits
+
+4. **⏳ Observability**
+   - Metrics for auth method usage (JWT vs API key)
+   - Auth failure reasons tracking
+   - API key usage analytics
+
+5. **⏳ API Key Lifecycle Management**
+   - Cleanup job for expired keys
+   - Last used timestamp updates
+   - Key rotation/regeneration endpoint
+
+---
+
 ## 🔄 Implementation Approach Update (Post-Review)
 
 **Key Changes from Initial Plan:**
@@ -151,7 +233,125 @@ plugins:
 
 ---
 
-## 🔒 Admin API Security
+## � API Key Implementation Architecture (Current)
+
+**Overview**: Custom Kong plugin validates API keys via HTTP callout to LLM-API service, which checks Keycloak user attributes.
+
+### Architecture Flow:
+
+```
+Client Request with X-API-Key: sk_xxxxx
+    ↓
+Kong Gateway (port 8000)
+    ↓
+keycloak-apikey plugin (priority 1002)
+    ├─ Extract X-API-Key header
+    ├─ Validate sk_ prefix
+    └─ HTTP POST to http://llm-api:8080/auth/validate-api-key
+        ↓
+LLM-API Service
+    ├─ SHA-256 hash the key
+    ├─ Query Keycloak user attributes
+    ├─ Find user with matching hash
+    ├─ Check expiration & revocation
+    └─ Return user info (id, email, subject)
+        ↓
+Kong Plugin
+    ├─ Inject headers: X-User-ID, X-User-Subject, X-User-Email
+    ├─ Set X-Auth-Method: apikey
+    ├─ Call kong.client.authenticate() for rate limiting
+    └─ Forward request to upstream service
+```
+
+### Database Schema:
+
+**PostgreSQL (`llm_api.api_keys` table)**:
+```sql
+CREATE TABLE llm_api.api_keys (
+    id UUID PRIMARY KEY,
+    user_id INTEGER REFERENCES llm_api.users(id),
+    name VARCHAR(128),
+    prefix VARCHAR(32),      -- First chars for display (e.g., "sk_1234")
+    suffix VARCHAR(8),       -- Last chars for display (e.g., "abcd")
+    hash VARCHAR(128),       -- SHA-256 hash stored locally
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+);
+```
+
+**Keycloak User Attributes**:
+```json
+{
+  "attributes": {
+    "api_keys": [
+      "key-uuid-1:sha256-hash-1",
+      "key-uuid-2:sha256-hash-2"
+    ]
+  }
+}
+```
+
+### Key Features:
+
+1. **Industry Standard Format**: `sk_` prefix (like OpenAI, Anthropic, Stripe)
+2. **Security**: SHA-256 hash stored, plaintext never persisted
+3. **One-time Display**: Key shown only at creation time
+4. **Keycloak Integration**: Hash stored in user attributes for validation
+5. **Kong Plugin**: Custom Lua plugin for gateway-level validation
+6. **No Kong Consumers**: DB-less mode maintained, no dynamic consumer creation
+7. **Metadata Storage**: PostgreSQL stores prefix/suffix/timestamps for UI display
+8. **Dual Storage**: Hash in Keycloak (validation) + metadata in PostgreSQL (management)
+
+### API Endpoints:
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/auth/api-keys` | POST | JWT | Create new API key |
+| `/auth/api-keys` | GET | JWT | List user's API keys (no secrets) |
+| `/auth/api-keys/{id}` | DELETE | JWT | Revoke API key |
+| `/auth/validate-api-key` | POST | None | Kong plugin validation endpoint |
+
+### Kong Plugin Configuration:
+
+```yaml
+routes:
+  - name: protected-route
+    plugins:
+      - name: jwt                    # Priority 1005
+        config:
+          secret_is_base64: false
+          run_on_preflight: false
+      
+      - name: keycloak-apikey       # Priority 1002 (custom)
+        config:
+          validation_url: "http://llm-api:8080/auth/validate-api-key"
+          validation_timeout: 5000
+          hide_credentials: true
+          run_on_preflight: false
+      
+      - name: request-termination   # Fallback
+        config:
+          status_code: 401
+          message: "Unauthorized: Valid JWT or API key required"
+```
+
+### Security Considerations:
+
+1. **Hash Algorithm**: SHA-256 (one-way, collision-resistant)
+2. **Key Length**: 32 random characters = 192 bits entropy
+3. **Validation Timeout**: 5 seconds max for HTTP callout
+4. **Rate Limiting**: Per-IP at Kong, per-user at service level
+5. **Credential Hiding**: X-API-Key header stripped before forwarding
+6. **Revocation**: Immediate (checked on every request)
+7. **Expiration**: Enforced at validation time
+8. **No Bearer Token**: API keys use `X-API-Key` header (not Authorization)
+
+---
+
+## �🔒 Admin API Security
 
 1. **Kong Admin API Access Control**:
    - Restrict to localhost only (firewall rules)

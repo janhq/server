@@ -167,10 +167,11 @@ func (c *Client) UpgradeUser(ctx context.Context, userID string, payload Upgrade
 	}
 	attributes["guest"] = []string{"false"}
 
+	// Note: username is read-only by default in Keycloak after user creation
+	// Only update email, firstName, and attributes to avoid "error-user-attribute-read-only"
 	update := map[string]any{
 		"attributes": attributes,
 		"email":      payload.Email,
-		"username":   payload.Username,
 		"firstName":  payload.FullName,
 		"enabled":    true,
 	}
@@ -592,4 +593,240 @@ func extractIDFromLocation(location string) string {
 		return ""
 	}
 	return location[idx+1:]
+}
+
+// StoreAPIKeyHash stores an API key hash in Keycloak user attributes
+func (c *Client) StoreAPIKeyHash(ctx context.Context, userID, keyID, keyHash string) error {
+	serviceToken, err := c.serviceAccountToken(ctx)
+	if err != nil {
+		return fmt.Errorf("get service token: %w", err)
+	}
+
+	adminToken := c.adminAccessToken(ctx, serviceToken.AccessToken)
+
+	// Get existing user
+	existing, err := c.getUser(ctx, adminToken, userID)
+	if err != nil {
+		return fmt.Errorf("get user: %w", err)
+	}
+
+	// Parse existing attributes
+	attributes := map[string][]string{}
+	if raw, ok := existing["attributes"].(map[string]any); ok {
+		for key, value := range raw {
+			switch v := value.(type) {
+			case []any:
+				var out []string
+				for _, item := range v {
+					if s, ok := item.(string); ok {
+						out = append(out, s)
+					}
+				}
+				if len(out) > 0 {
+					attributes[key] = out
+				}
+			}
+		}
+	}
+
+	// Add API key entry in format: keyID:hash
+	keyEntry := fmt.Sprintf("%s:%s", keyID, keyHash)
+	apiKeys := attributes["api_keys"]
+	apiKeys = append(apiKeys, keyEntry)
+	attributes["api_keys"] = apiKeys
+
+	// Update user attributes
+	update := map[string]any{
+		"attributes": attributes,
+	}
+
+	body, err := json.Marshal(update)
+	if err != nil {
+		return fmt.Errorf("marshal update: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.adminEndpoint("/users/"+url.PathEscape(userID)), bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("update user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("update user failed: %s", strings.TrimSpace(string(payload)))
+	}
+
+	return nil
+}
+
+// RemoveAPIKeyHash removes an API key hash from Keycloak user attributes
+func (c *Client) RemoveAPIKeyHash(ctx context.Context, userID, keyID string) error {
+	serviceToken, err := c.serviceAccountToken(ctx)
+	if err != nil {
+		return fmt.Errorf("get service token: %w", err)
+	}
+
+	adminToken := c.adminAccessToken(ctx, serviceToken.AccessToken)
+
+	// Get existing user
+	existing, err := c.getUser(ctx, adminToken, userID)
+	if err != nil {
+		return fmt.Errorf("get user: %w", err)
+	}
+
+	// Parse existing attributes
+	attributes := map[string][]string{}
+	if raw, ok := existing["attributes"].(map[string]any); ok {
+		for key, value := range raw {
+			switch v := value.(type) {
+			case []any:
+				var out []string
+				for _, item := range v {
+					if s, ok := item.(string); ok {
+						out = append(out, s)
+					}
+				}
+				if len(out) > 0 {
+					attributes[key] = out
+				}
+			}
+		}
+	}
+
+	// Remove API key entry by keyID
+	apiKeys := attributes["api_keys"]
+	filtered := []string{}
+	for _, entry := range apiKeys {
+		if !strings.HasPrefix(entry, keyID+":") {
+			filtered = append(filtered, entry)
+		}
+	}
+	attributes["api_keys"] = filtered
+
+	// Update user attributes
+	update := map[string]any{
+		"attributes": attributes,
+	}
+
+	body, err := json.Marshal(update)
+	if err != nil {
+		return fmt.Errorf("marshal update: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.adminEndpoint("/users/"+url.PathEscape(userID)), bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("update user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("update user failed: %s", strings.TrimSpace(string(payload)))
+	}
+
+	return nil
+}
+
+// APIKeyUserInfo represents validated user information from API key
+type APIKeyUserInfo struct {
+	UserID    string   `json:"user_id"`
+	Subject   string   `json:"subject"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email"`
+	FirstName string   `json:"first_name"`
+	LastName  string   `json:"last_name"`
+	Roles     []string `json:"roles"`
+}
+
+// ValidateAPIKeyHash validates an API key hash and returns user information
+func (c *Client) ValidateAPIKeyHash(ctx context.Context, keyHash string) (*APIKeyUserInfo, error) {
+	serviceToken, err := c.serviceAccountToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get service token: %w", err)
+	}
+
+	adminToken := c.adminAccessToken(ctx, serviceToken.AccessToken)
+
+	// Search for users with this API key hash in attributes
+	// Note: Keycloak doesn't support searching in custom attributes directly,
+	// so we need to get all users and filter (or use a more efficient approach with a separate index)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint("/users?max=10000"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("get users: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("get users failed: status %d", resp.StatusCode)
+	}
+
+	var users []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("decode users: %w", err)
+	}
+
+	// Find user with matching API key hash
+	for _, user := range users {
+		if attrs, ok := user["attributes"].(map[string]any); ok {
+			if apiKeysRaw, ok := attrs["api_keys"]; ok {
+				var apiKeys []string
+				switch v := apiKeysRaw.(type) {
+				case []any:
+					for _, item := range v {
+						if s, ok := item.(string); ok {
+							apiKeys = append(apiKeys, s)
+						}
+					}
+				}
+
+				// Check if any API key entry matches the hash
+				for _, entry := range apiKeys {
+					parts := strings.SplitN(entry, ":", 2)
+					if len(parts) == 2 && parts[1] == keyHash {
+						// Found matching user
+						userInfo := &APIKeyUserInfo{
+							UserID:    getString(user, "id"),
+							Subject:   getString(user, "id"),
+							Username:  getString(user, "username"),
+							Email:     getString(user, "email"),
+							FirstName: getString(user, "firstName"),
+							LastName:  getString(user, "lastName"),
+						}
+						return userInfo, nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("invalid api key")
+}
+
+func getString(m map[string]any, key string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
 }

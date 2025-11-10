@@ -2,7 +2,7 @@
   "info": {
     "name": "jan-server Auth & LLM API Flows",
     "_postman_id": "e3b5366c-069a-4d2a-8491-ae9916bd3df1",
-    "description": "Automated smoke tests verifying jan-server guest authentication, Keycloak JWT login, and LLM API interactions. Adjust the collection variables to match your environment (e.g. direct service ports vs. Kong) before running with newman.",
+    "description": "Automated tests for jan-server authentication flows: JWT (guest/registered), API keys (create/validate/revoke), and Kong gateway validation. Tests both Kong gateway (port 8000) and direct service access patterns.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -837,10 +837,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"name\": \"Automation Key {{ $timestamp }}\"}"
+              "raw": "{\n  \"name\": \"Automation Test Key\",\n  \"expires_in_days\": 90\n}"
             },
-            "url": "{{llm_api_url}}/auth/api-keys",
-            "description": "Create a new API key for the authenticated user."
+            "url": "{{kong_url}}/auth/api-keys",
+            "description": "Create a new API key for the authenticated user via Kong gateway."
           },
           "event": [
             {
@@ -853,6 +853,15 @@
                   "    pm.response.to.have.status(201);",
                   "    pm.expect(body).to.have.property('id');",
                   "    pm.expect(body).to.have.property('key').that.is.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('key has sk_ prefix', function () {",
+                  "    pm.expect(body.key).to.match(/^sk_/);",
+                  "});",
+                  "pm.test('key metadata returned', function () {",
+                  "    pm.expect(body).to.have.property('name', 'Automation Test Key');",
+                  "    pm.expect(body).to.have.property('prefix');",
+                  "    pm.expect(body).to.have.property('suffix');",
+                  "    pm.expect(body).to.have.property('expires_at');",
                   "});",
                   "pm.collectionVariables.set('api_key_id', body.id);",
                   "pm.collectionVariables.set('api_key_secret', body.key);"
@@ -871,8 +880,8 @@
                 "value": "Bearer {{user_access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/auth/api-keys",
-            "description": "List active API keys for the user."
+            "url": "{{kong_url}}/auth/api-keys",
+            "description": "List active API keys for the authenticated user."
           },
           "event": [
             {
@@ -883,7 +892,157 @@
                   "const responseData = pm.response.json();",
                   "pm.test('list returns items', function () {",
                   "    pm.response.to.have.status(200);",
-                  "    pm.expect(responseData).to.have.property('items');",
+                  "    pm.expect(responseData).to.have.property('items').that.is.an('array');",
+                  "});",
+                  "pm.test('created key appears in list', function () {",
+                  "    const keyId = pm.collectionVariables.get('api_key_id');",
+                  "    const found = responseData.items.find(k => k.id === keyId);",
+                  "    pm.expect(found, 'created key not found in list').to.exist;",
+                  "    pm.expect(found.name).to.eql('Automation Test Key');",
+                  "});",
+                  "pm.test('key secrets not exposed in list', function () {",
+                  "    responseData.items.forEach(k => {",
+                  "        pm.expect(k).to.not.have.property('key');",
+                  "        pm.expect(k).to.not.have.property('hash');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Use API Key - List Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key_secret}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/models",
+            "description": "Validate API key works to access protected endpoints via Kong."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('api key authenticates successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('models data returned', function () {",
+                  "    pm.expect(data).to.have.property('data').that.is.an('array');",
+                  "});",
+                  "pm.test('auth method header is apikey', function () {",
+                  "    const authMethod = pm.response.headers.get('X-Auth-Method');",
+                  "    pm.expect((authMethod || '').toLowerCase()).to.eql('apikey');",
+                  "});",
+                  "pm.test('user context headers injected', function () {",
+                  "    pm.expect(pm.response.headers.get('X-User-ID')).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Use API Key - Chat Completion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key_secret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Say OK.\"}\n  ],\n  \"max_tokens\": 10\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions",
+            "description": "Test API key authentication for chat completion endpoint."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('chat completion with api key succeeds', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('completion returns choices', function () {",
+                  "    pm.expect(data).to.have.property('choices').that.is.an('array').and.not.empty;",
+                  "});",
+                  "pm.test('auth method is apikey', function () {",
+                  "    const authMethod = pm.response.headers.get('X-Auth-Method');",
+                  "    pm.expect((authMethod || '').toLowerCase()).to.eql('apikey');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Test Invalid API Key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "sk_invalid_key_123456789"
+              }
+            ],
+            "url": "{{kong_url}}/v1/models",
+            "description": "Verify invalid API key is rejected by Kong."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid api key rejected', function () {",
+                  "    pm.expect(pm.response.code).to.eql(401);",
+                  "});",
+                  "pm.test('error message indicates auth failure', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Test No Authentication",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{kong_url}}/v1/models",
+            "description": "Verify request without JWT or API key is rejected."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no auth credentials rejected', function () {",
+                  "    pm.expect(pm.response.code).to.eql(401);",
+                  "});",
+                  "pm.test('unauthorized message returned', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('message');",
                   "});"
                 ]
               }
@@ -900,7 +1059,7 @@
                 "value": "Bearer {{user_access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/auth/api-keys/{{api_key_id}}",
+            "url": "{{kong_url}}/auth/api-keys/{{api_key_id}}",
             "description": "Revoke the previously created API key."
           },
           "event": [
@@ -910,7 +1069,34 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('api key revoked', function () {",
-                  "    pm.response.to.have.status(204);",
+                  "    pm.expect(pm.response.code).to.eql(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Revoked Key Rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key_secret}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/models",
+            "description": "Confirm revoked API key no longer works."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('revoked api key rejected', function () {",
+                  "    pm.expect(pm.response.code).to.eql(401);",
                   "});"
                 ]
               }
@@ -1039,10 +1225,16 @@
   ],
   "variable": [
     {
-      "key": "llm_api_url",
-      "value": "http://localhost:8080",
+      "key": "kong_url",
+      "value": "http://localhost:8000",
       "type": "string",
-      "description": "Base URL for the llm-api service (default http://localhost:8080 when hitting the service directly; switch to http://localhost:8000 when routing via Kong)."
+      "description": "Kong Gateway URL (recommended for production-like testing). All requests go through Kong for authentication validation."
+    },
+    {
+      "key": "llm_api_url",
+      "value": "http://localhost:8000",
+      "type": "string",
+      "description": "LLM API URL - defaults to Kong gateway (port 8000). Can be changed to http://localhost:8080 for direct service testing (bypasses Kong auth)."
     },
     {
       "key": "keycloak_base_url",

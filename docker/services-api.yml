@@ -11,7 +11,7 @@ services:
       DB_DSN: ${DB_DSN:-postgres://jan_user:jan_password@api-db:5432/jan_llm_api?sslmode=disable}
       KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8085}
       JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
-      ISSUER: ${ISSUER:-http://localhost:8090/realms/jan}
+      ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
       AUDIENCE: ${AUDIENCE:-jan-client}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
@@ -32,7 +32,7 @@ services:
       api-db:
         condition: service_healthy
       keycloak:
-        condition: service_started
+        condition: service_healthy
       # vllm-jan-gpu:
       #   condition: service_healthy
     volumes:
@@ -65,7 +65,7 @@ services:
       MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
       MEDIA_REMOTE_FETCH_TIMEOUT: ${MEDIA_REMOTE_FETCH_TIMEOUT:-15s}
       AUTH_ENABLED: "true"
-      AUTH_ISSUER: ${ISSUER:-http://localhost:8090/realms/jan}
+      AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
       AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
     ports:
@@ -95,7 +95,7 @@ services:
       MAX_TOOL_EXECUTION_DEPTH: ${MAX_TOOL_EXECUTION_DEPTH:-8}
       TOOL_EXECUTION_TIMEOUT: ${TOOL_EXECUTION_TIMEOUT:-45s}
       AUTH_ENABLED: "true"
-      AUTH_ISSUER: ${ISSUER:-http://localhost:8090/realms/jan}
+      AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
       AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
       LOG_LEVEL: ${LOG_LEVEL:-info}

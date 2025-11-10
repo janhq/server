@@ -28,8 +28,11 @@ services:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /kong/kong-hybrid.yml
       KONG_LOG_LEVEL: info
+      KONG_PLUGINS: bundled,keycloak-apikey
+      KONG_LUA_PACKAGE_PATH: /opt/kong-plugins/?.lua;/opt/kong-plugins/?/init.lua;;
     volumes:
       - ../kong/kong-hybrid.yml:/kong/kong-hybrid.yml:ro
+      - ../kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
     profiles: ["hybrid-kong"]
 
   # MCP infrastructure for hybrid mode - override profiles

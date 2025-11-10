@@ -138,8 +138,8 @@ var InfrastructureProvider = wire.NewSet(
 	// Logger
 	logger.GetLogger,
 
-	// Kong
-	ProvideKongClient,
+	// Kong client removed - API keys now managed via Keycloak
+	// ProvideKongClient,
 
 	// Keycloak
 	ProvideKeycloakClient,

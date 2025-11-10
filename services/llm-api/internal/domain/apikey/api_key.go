@@ -7,18 +7,17 @@ import (
 
 // APIKey represents persistent metadata for an API key.
 type APIKey struct {
-	ID               string
-	UserID           uint
-	Name             string
-	Prefix           string
-	Suffix           string
-	Hash             string
-	KongCredentialID string
-	ExpiresAt        time.Time
-	RevokedAt        *time.Time
-	LastUsedAt       *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID         string
+	UserID     uint
+	Name       string
+	Prefix     string
+	Suffix     string
+	Hash       string
+	ExpiresAt  time.Time
+	RevokedAt  *time.Time
+	LastUsedAt *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // Repository defines storage operations for API keys.

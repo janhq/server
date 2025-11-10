@@ -1,13 +1,9 @@
 _format_version: "3.0"
 _transform: true
 
-consumers:
-  - username: kong-anon-jwt
-    custom_id: anon-jwt
-    tags: [anonymous, auth, jwt]
-  - username: kong-anon-key
-    custom_id: anon-key
-    tags: [anonymous, auth, apikey]
+# Note: API key authentication moved to service level (llm-api)
+# Kong in DB-less mode cannot manage consumers/credentials dynamically
+# API keys are validated by llm-api service via Keycloak
 
 plugins:
   - name: rate-limiting
@@ -40,6 +36,7 @@ services:
           - /auth/guest-login
           - /auth/refresh-token
           - /auth/logout
+          - /auth/validate-api-key
         strip_path: false
         methods: [GET, POST, OPTIONS]
         tags: [llm, auth, public]
@@ -64,23 +61,24 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [llm, auth, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [llm, auth, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [llm, auth, rate]
             config:
               minute: 60
               policy: local
-              limit_by: consumer
+              limit_by: ip
               fault_tolerant: true
           - name: cors
             tags: [llm, cors, protected]
@@ -103,17 +101,18 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [llm, api, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [llm, api, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [llm, api, rate]
             config:
@@ -142,23 +141,24 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [llm, api, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [llm, api, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [llm, api, rate]
             config:
               minute: 120
               policy: local
-              limit_by: consumer
+              limit_by: ip
               fault_tolerant: true
           - name: cors
             tags: [llm, api, cors]
@@ -207,23 +207,24 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [media, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [media, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [media, rate]
             config:
               minute: 60
               policy: local
-              limit_by: consumer
+              limit_by: ip
               fault_tolerant: true
           - name: cors
             tags: [media, cors]
@@ -254,23 +255,24 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [response, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [response, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [response, rate]
             config:
               minute: 100
               policy: local
-              limit_by: consumer
+              limit_by: ip
               fault_tolerant: true
           - name: cors
             tags: [response, cors]
@@ -302,23 +304,24 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [mcp, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [mcp, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: rate-limiting
             tags: [mcp, rate]
             config:
               minute: 200
               policy: local
-              limit_by: consumer
+              limit_by: ip
               fault_tolerant: true
           - name: cors
             tags: [mcp, cors]
@@ -350,17 +353,18 @@ services:
             config:
               secret_is_base64: false
               run_on_preflight: false
-              anonymous: kong-anon-jwt
-          - name: key-auth
+          - name: keycloak-apikey
             tags: [mcp, health, apikey]
             config:
-              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
-              key_in_header: true
-              key_in_query: false
-              key_in_body: false
+              validation_url: "http://llm-api:8080/auth/validate-api-key"
+              validation_timeout: 5000
               hide_credentials: true
               run_on_preflight: false
-              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [mcp, health, fallback]
+            config:
+              status_code: 401
+              message: "Unauthorized: Valid JWT or API key required"
           - name: cors
             tags: [mcp, health, cors]
             config:

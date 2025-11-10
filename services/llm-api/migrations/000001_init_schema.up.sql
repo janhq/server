@@ -213,6 +213,29 @@ CREATE INDEX idx_conversation_items_response_id ON llm_api.conversation_items(re
 CREATE INDEX idx_conversation_items_deleted_at ON llm_api.conversation_items(deleted_at);
 
 -- ============================================================================
+-- API KEYS
+-- ============================================================================
+CREATE TABLE llm_api.api_keys (
+    id UUID PRIMARY KEY DEFAULT llm_api.uuid_generate_v4(),
+    user_id INTEGER NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    prefix VARCHAR(32) NOT NULL,
+    suffix VARCHAR(8) NOT NULL,
+    hash VARCHAR(128) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_api_keys_user FOREIGN KEY (user_id) REFERENCES llm_api.users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_api_keys_user_id ON llm_api.api_keys(user_id);
+CREATE INDEX idx_api_keys_expires_at ON llm_api.api_keys(expires_at);
+CREATE INDEX idx_api_keys_prefix ON llm_api.api_keys(prefix);
+CREATE INDEX idx_api_keys_user_id_revoked_at ON llm_api.api_keys(user_id, revoked_at);
+
+-- ============================================================================
 -- TRIGGERS
 -- ============================================================================
 
@@ -263,5 +286,10 @@ CREATE TRIGGER conversation_branches_updated_at
 
 CREATE TRIGGER conversation_items_updated_at
     BEFORE UPDATE ON llm_api.conversation_items
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER api_keys_updated_at
+    BEFORE UPDATE ON llm_api.api_keys
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

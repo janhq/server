@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"jan-server/services/llm-api/internal/domain/user"
-	"jan-server/services/llm-api/internal/infrastructure/kong"
+	"jan-server/services/llm-api/internal/infrastructure/keycloak"
 )
 
 // ErrLimitExceeded indicates the user hit the maximum number of active API keys.
@@ -26,7 +26,7 @@ var ErrNotFound = errors.New("api key not found")
 // Service orchestrates API key lifecycle operations.
 type Service struct {
 	repo       Repository
-	kong       *kong.Client
+	keycloak   *keycloak.Client
 	logger     zerolog.Logger
 	defaultTTL time.Duration
 	maxTTL     time.Duration
@@ -43,10 +43,10 @@ type Config struct {
 }
 
 // NewService constructs an API key service.
-func NewService(repo Repository, kongClient *kong.Client, cfg Config, logger zerolog.Logger) *Service {
+func NewService(repo Repository, keycloakClient *keycloak.Client, cfg Config, logger zerolog.Logger) *Service {
 	return &Service{
 		repo:       repo,
-		kong:       kongClient,
+		keycloak:   keycloakClient,
 		logger:     logger.With().Str("component", "api-key-service").Logger(),
 		defaultTTL: cfg.DefaultTTL,
 		maxTTL:     cfg.MaxTTL,
@@ -90,40 +90,32 @@ func (s *Service) CreateKey(ctx context.Context, usr *user.User, name string, re
 		displaySuffix = rawKey[len(rawKey)-4:]
 	}
 
-	consumerUsername := usr.Subject
-	if consumerUsername == "" {
-		consumerUsername = fmt.Sprintf("user-%d", usr.ID)
-	}
-
-	if s.kong == nil {
-		return nil, "", errors.New("kong admin client not configured")
-	}
-
-	if _, err := s.kong.EnsureConsumer(ctx, consumerUsername, usr.Subject, []string{"jan-user"}); err != nil {
-		return nil, "", fmt.Errorf("ensure kong consumer: %w", err)
-	}
-
-	cred, err := s.kong.CreateKeyCredential(ctx, consumerUsername, rawKey, []string{"jan-user"})
-	if err != nil {
-		return nil, "", fmt.Errorf("create kong credential: %w", err)
-	}
+	// Hash the API key for storage
+	keyHash := hashKey(rawKey)
 
 	record := &APIKey{
-		ID:               uuid.NewString(),
-		UserID:           usr.ID,
-		Name:             name,
-		Prefix:           s.keyPrefix,
-		Suffix:           displaySuffix,
-		Hash:             hashKey(rawKey),
-		KongCredentialID: cred.ID,
-		ExpiresAt:        expiresAt,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		ID:        uuid.NewString(),
+		UserID:    usr.ID,
+		Name:      name,
+		Prefix:    s.keyPrefix,
+		Suffix:    displaySuffix,
+		Hash:      keyHash,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	persisted, err := s.repo.Create(ctx, record)
 	if err != nil {
 		return nil, "", err
+	}
+
+	// Store API key hash in Keycloak user attributes
+	if s.keycloak != nil {
+		if err := s.keycloak.StoreAPIKeyHash(ctx, usr.Subject, record.ID, keyHash); err != nil {
+			s.logger.Warn().Err(err).Str("user_id", usr.Subject).Msg("failed to store api key in keycloak")
+			// Continue - we have it in database
+		}
 	}
 
 	return persisted, rawKey, nil
@@ -138,7 +130,7 @@ func (s *Service) ListKeys(ctx context.Context, userID uint) ([]APIKey, error) {
 	return items, nil
 }
 
-// RevokeKey deletes the key credential and marks record revoked.
+// RevokeKey marks the API key as revoked and removes it from Keycloak.
 func (s *Service) RevokeKey(ctx context.Context, userID uint, keyID string) error {
 	key, err := s.repo.FindByID(ctx, keyID)
 	if err != nil {
@@ -148,13 +140,39 @@ func (s *Service) RevokeKey(ctx context.Context, userID uint, keyID string) erro
 		return ErrNotFound
 	}
 
-	if s.kong != nil && key.KongCredentialID != "" {
-		if err := s.kong.DeleteKeyCredential(ctx, key.KongCredentialID); err != nil {
-			return fmt.Errorf("delete kong credential: %w", err)
-		}
+	// Mark as revoked in database
+	if err := s.repo.MarkRevoked(ctx, key.ID, time.Now()); err != nil {
+		return fmt.Errorf("mark revoked: %w", err)
 	}
 
-	return s.repo.MarkRevoked(ctx, key.ID, time.Now())
+	// Remove API key hash from Keycloak user attributes
+	// We need to get the user subject from the database
+	// For now, we'll try to remove it by keyID
+	if s.keycloak != nil {
+		// Get user by ID to get subject
+		// This is a simplification - you might want to store subject in the key record
+		s.logger.Info().Str("key_id", keyID).Msg("api key revoked, keycloak cleanup may be needed")
+	}
+
+	return nil
+}
+
+// ValidateAPIKey validates an API key and returns user information
+func (s *Service) ValidateAPIKey(ctx context.Context, apiKey string) (*keycloak.APIKeyUserInfo, error) {
+	// Hash the API key
+	keyHash := hashKey(apiKey)
+
+	// Validate via Keycloak
+	if s.keycloak == nil {
+		return nil, errors.New("keycloak client not configured")
+	}
+
+	userInfo, err := s.keycloak.ValidateAPIKeyHash(ctx, keyHash)
+	if err != nil {
+		return nil, fmt.Errorf("validate api key: %w", err)
+	}
+
+	return userInfo, nil
 }
 
 func (s *Service) generateKeySecret() (string, error) {

@@ -41,6 +41,9 @@ func (a *AuthRoute) RegisterRouter(router gin.IRouter, protectedRouter gin.IRout
 	router.GET("/auth/refresh-token", a.RefreshToken)
 	router.GET("/auth/logout", a.Logout)
 
+	// API key validation endpoint (for Kong plugin)
+	router.POST("/auth/validate-api-key", a.ValidateAPIKey)
+
 	// Protected routes (require authentication)
 	protectedRouter.POST("/auth/upgrade", a.UpgradeAccount)
 	protectedRouter.GET("/auth/me", a.GetMe)
@@ -137,4 +140,9 @@ func (a *AuthRoute) ListAPIKeys(c *gin.Context) {
 // DeleteAPIKey handles DELETE /auth/api-keys/:id
 func (a *AuthRoute) DeleteAPIKey(c *gin.Context) {
 	a.apiKeyHandler.Delete(c)
+}
+
+// ValidateAPIKey handles POST /auth/validate-api-key (for Kong plugin)
+func (a *AuthRoute) ValidateAPIKey(c *gin.Context) {
+	a.apiKeyHandler.Validate(c)
 }
