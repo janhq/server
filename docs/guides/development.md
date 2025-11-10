@@ -42,10 +42,13 @@ make health-check
 After starting services:
 
 - **LLM API**: http://localhost:8080
+- **Media API**: http://localhost:8285
 - **Keycloak**: http://localhost:8085 (admin/admin)
 - **Kong Gateway**: http://localhost:8000
 - **MCP Tools**: http://localhost:8091
 - **SearXNG**: http://localhost:8086
+- **Vector Store**: http://localhost:3015
+- **SandboxFusion**: http://localhost:3010
 - **Grafana**: http://localhost:3001 (admin/admin) - if monitoring enabled
 
 ## Project Structure
@@ -54,6 +57,8 @@ After starting services:
 jan-server/
 ├── services/
 │   ├── llm-api/           # Main LLM API service (Go)
+│   ├── media-api/         # Media upload and management (Go)
+│   ├── response-api/      # Response API service (Go)
 │   └── mcp-tools/         # MCP tools integration service (Go)
 ├── scripts/
 │   ├── lib/               # Helper scripts (bash & PowerShell)
@@ -207,6 +212,15 @@ DB_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api
 KEYCLOAK_BASE_URL=http://localhost:8085
 JWKS_URL=http://localhost:8085/realms/jan/protocol/openid-connect/certs
 ISSUER=http://localhost:8090/realms/jan
+AUDIENCE=jan-client
+REFRESH_JWKS_INTERVAL=5m
+```
+
+#### API Services
+```bash
+HTTP_PORT=8080                    # LLM API port
+MCP_TOOLS_HTTP_PORT=8091          # MCP Tools port
+MEDIA_API_PORT=8285               # Media API port
 ```
 
 #### MCP Services
@@ -214,6 +228,14 @@ ISSUER=http://localhost:8090/realms/jan
 SEARXNG_URL=http://localhost:8086
 VECTOR_STORE_URL=http://localhost:3015
 SANDBOXFUSION_URL=http://localhost:3010
+```
+
+#### Logging & Observability
+```bash
+LOG_LEVEL=debug                   # debug, info, warn, error
+LOG_FORMAT=console                # console or json
+OTEL_ENABLED=false                # OpenTelemetry tracing
+AUTO_MIGRATE=true                 # Auto-run database migrations
 ```
 
 ## Testing
@@ -244,7 +266,10 @@ make test-all
 # Run specific test suites
 make test-auth              # OAuth/OIDC authentication
 make test-conversations     # Conversation CRUD operations
+make test-response          # Response API tests
+make test-media             # Media API tests
 make test-mcp-integration   # MCP tools functionality
+make test-e2e               # Gateway end-to-end tests
 ```
 
 ### CI/CD

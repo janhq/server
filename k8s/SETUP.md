@@ -90,6 +90,10 @@ docker build -t jan/llm-api:latest .
 cd ..\media-api
 docker build -t jan/media-api:latest .
 
+# Build Response API
+cd ..\response-api
+docker build -t jan/response-api:latest .
+
 # Build MCP Tools
 cd ..\mcp-tools
 docker build -t jan/mcp-tools:latest .
@@ -109,6 +113,7 @@ If using minikube, load the images into the cluster:
 # Load custom images
 minikube image load jan/llm-api:latest
 minikube image load jan/media-api:latest
+minikube image load jan/response-api:latest
 minikube image load jan/mcp-tools:latest
 minikube image load jan/keycloak:latest
 
@@ -186,6 +191,7 @@ jan-server-keycloak-xxx                 1/1     Running   0          3m
 jan-server-kong-xxx                     1/1     Running   0          3m
 jan-server-llm-api-xxx                  1/1     Running   0          3m
 jan-server-media-api-xxx                1/1     Running   0          3m
+jan-server-response-api-xxx             1/1     Running   0          3m
 jan-server-mcp-tools-xxx                1/1     Running   0          3m
 jan-server-postgresql-0                 1/1     Running   0          3m
 jan-server-redis-master-0               1/1     Running   0          3m
@@ -210,15 +216,17 @@ kubectl port-forward -n jan-server svc/jan-server-keycloak 8085:8085
 # Optional: Direct service access
 kubectl port-forward -n jan-server svc/jan-server-llm-api 8080:8080
 kubectl port-forward -n jan-server svc/jan-server-media-api 8285:8285
+kubectl port-forward -n jan-server svc/jan-server-response-api 8280:8280
 kubectl port-forward -n jan-server svc/jan-server-mcp-tools 8091:8091
 ```
 
-### Step 6: Test API Endpoints
+### Step 10: Test API Endpoints
 
 ```powershell
 # Test via Kong API Gateway
 curl http://localhost:8000/api/llm/healthz
 curl http://localhost:8000/api/media/healthz
+curl http://localhost:8000/api/responses/healthz
 curl http://localhost:8000/api/mcp/healthz
 
 # Access Keycloak Admin

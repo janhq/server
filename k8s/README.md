@@ -61,12 +61,13 @@ helm repo update
 # Step 1: Build Go services and Docker images
 cd services/llm-api && go mod tidy && docker build -t jan/llm-api:latest .
 cd ../media-api && go mod tidy && docker build -t jan/media-api:latest .
+cd ../response-api && go mod tidy && docker build -t jan/response-api:latest .
 cd ../mcp-tools && go mod tidy && docker build -t jan/mcp-tools:latest .
 cd ../../keycloak && docker build -t jan/keycloak:latest .
 cd ..
 
 # Step 2: Load images into minikube
-minikube image load jan/llm-api:latest jan/media-api:latest jan/mcp-tools:latest jan/keycloak:latest
+minikube image load jan/llm-api:latest jan/media-api:latest jan/response-api:latest jan/mcp-tools:latest jan/keycloak:latest
 docker pull bitnami/postgresql:latest bitnami/redis:latest
 minikube image load bitnami/postgresql:latest bitnami/redis:latest
 
@@ -110,11 +111,13 @@ kubectl get pods -n jan-server
 # Port forward to access services locally (in separate terminals)
 kubectl port-forward -n jan-server svc/jan-server-llm-api 8080:8080
 kubectl port-forward -n jan-server svc/jan-server-media-api 8285:8285
+kubectl port-forward -n jan-server svc/jan-server-response-api 8280:8280
 kubectl port-forward -n jan-server svc/jan-server-keycloak 8085:8085
 
 # Test health endpoints
 curl http://localhost:8080/healthz
 curl http://localhost:8285/healthz
+curl http://localhost:8280/healthz
 
 # Access Keycloak Admin Console
 # Username: admin, Password: changeme
@@ -129,20 +132,21 @@ open http://localhost:8085
 
 | Service | Port | Description | Status |
 |---------|------|-------------|--------|
-| LLM API | 8080 | Core LLM orchestration service |  Working |
-| Media API | 8285 | Media upload and management |  Working |
-| MCP Tools | 8091 | Model Context Protocol tools |  Working |
-| Keycloak | 8085 | Authentication server |  Working |
-| Kong | 8000 | Unified API Gateway |  Optional |
+| LLM API | 8080 | Core LLM orchestration service | ✅ Working |
+| Media API | 8285 | Media upload and management | ✅ Working |
+| Response API | 8280 | Response generation service | ✅ Working |
+| MCP Tools | 8091 | Model Context Protocol tools | ✅ Working |
+| Keycloak | 8085 | Authentication server | ✅ Working |
+| Kong | 8000 | Unified API Gateway | ⚠️ Optional |
 
 ### Supporting Services
 
 | Service | Port | Description | Status |
 |---------|------|-------------|--------|
-| PostgreSQL | 5432 | Primary database (3 databases) |  Working |
-| Redis | 6379 | Caching and sessions |  Working |
-| SearXNG | 8080 | Meta search engine |  Working |
-| SandboxFusion | 8080 | Code interpreter |  Working |
+| PostgreSQL | 5432 | Primary database (3 databases) | ✅ Working |
+| Redis | 6379 | Caching and sessions | ✅ Working |
+| SearXNG | 8080 | Meta search engine | ✅ Working |
+| SandboxFusion | 8080 | Code interpreter | ✅ Working |
 | Vector Store | 3015 | File search database | 🔴 Disabled by default |
 
 ## 🔧 Configuration
