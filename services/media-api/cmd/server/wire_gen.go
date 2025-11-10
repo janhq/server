@@ -14,6 +14,7 @@ import (
 	logger2 "gorm.io/gorm/logger"
 	"jan-server/services/media-api/internal/config"
 	media2 "jan-server/services/media-api/internal/domain/media"
+	"jan-server/services/media-api/internal/infrastructure/auth"
 	"jan-server/services/media-api/internal/infrastructure/database"
 	"jan-server/services/media-api/internal/infrastructure/logger"
 	"jan-server/services/media-api/internal/infrastructure/repository/media"
@@ -41,7 +42,11 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 		return nil, err
 	}
 	service := media2.NewService(configConfig, repository, s3Storage, zerologLogger)
-	httpServer := httpserver.New(configConfig, zerologLogger, service)
+	validator, err := auth.NewValidator(ctx, configConfig, zerologLogger)
+	if err != nil {
+		return nil, err
+	}
+	httpServer := httpserver.New(configConfig, zerologLogger, service, validator)
 	application := NewApplication(httpServer, zerologLogger)
 	return application, nil
 }

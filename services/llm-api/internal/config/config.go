@@ -40,9 +40,15 @@ type Config struct {
 	Issuer              string        `env:"ISSUER,notEmpty"`
 	Audience            string        `env:"AUDIENCE,notEmpty"`
 	RefreshJWKSInterval time.Duration `env:"JWKS_REFRESH_INTERVAL" envDefault:"5m"`
+	AuthClockSkew       time.Duration `env:"AUTH_CLOCK_SKEW" envDefault:"60s"`
 
 	// API Keys
-	APIKeySecret []byte `env:"APIKEY_SECRET"`
+	APIKeySecret       []byte        `env:"APIKEY_SECRET"`
+	APIKeyDefaultTTL   time.Duration `env:"API_KEY_DEFAULT_TTL" envDefault:"2160h"` // 90 days
+	APIKeyMaxTTL       time.Duration `env:"API_KEY_MAX_TTL" envDefault:"2160h"`
+	APIKeyMaxPerUser   int           `env:"API_KEY_MAX_PER_USER" envDefault:"5"`
+	APIKeyPrefix       string        `env:"API_KEY_PREFIX" envDefault:"sk_live"`
+	KongAdminURL       string        `env:"KONG_ADMIN_URL" envDefault:"http://kong:8001"`
 
 	// PostgreSQL
 	DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN"`
@@ -77,8 +83,7 @@ type Config struct {
 	EnableSwagger bool `env:"ENABLE_SWAGGER" envDefault:"true"`
 
 	// Media integration
-	MediaResolveURL     string        `env:"MEDIA_RESOLVE_URL" envDefault:"http://media-api:8285/v1/media/resolve"`
-	MediaServiceKey     string        `env:"MEDIA_SERVICE_KEY"`
+	MediaResolveURL     string        `env:"MEDIA_RESOLVE_URL" envDefault:"http://kong:8000/media/v1/media/resolve"`
 	MediaResolveTimeout time.Duration `env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s"`
 
 	// Internal
@@ -93,7 +98,7 @@ func Load() (*Config, error) {
 	}
 
 	cfg.JanProviderConfigSet = strings.TrimSpace(cfg.JanProviderConfigSet)
-	if cfg.JanProviderConfigSet == "" {
+		if cfg.JanProviderConfigSet == "" {
 		cfg.JanProviderConfigSet = "default"
 	}
 
@@ -126,6 +131,31 @@ func Load() (*Config, error) {
 		if _, err := url.ParseRequestURI(cfg.OIDCDiscoveryURL); err != nil {
 			return nil, fmt.Errorf("invalid OIDC_DISCOVERY_URL: %w", err)
 		}
+	}
+
+	if strings.TrimSpace(cfg.KongAdminURL) == "" {
+		return nil, errors.New("KONG_ADMIN_URL is required")
+	}
+	if _, err := url.ParseRequestURI(cfg.KongAdminURL); err != nil {
+		return nil, fmt.Errorf("invalid KONG_ADMIN_URL: %w", err)
+	}
+
+	if cfg.APIKeyDefaultTTL <= 0 {
+		return nil, errors.New("API_KEY_DEFAULT_TTL must be > 0")
+	}
+	if cfg.APIKeyMaxTTL < cfg.APIKeyDefaultTTL {
+		return nil, errors.New("API_KEY_MAX_TTL must be >= API_KEY_DEFAULT_TTL")
+	}
+	if cfg.APIKeyMaxPerUser <= 0 {
+		cfg.APIKeyMaxPerUser = 5
+	}
+	cfg.APIKeyPrefix = strings.TrimSpace(cfg.APIKeyPrefix)
+	if cfg.APIKeyPrefix == "" {
+		cfg.APIKeyPrefix = "sk_live"
+	}
+
+	if cfg.AuthClockSkew < 0 {
+		cfg.AuthClockSkew = cfg.AuthClockSkew * -1
 	}
 
 	if _, err := url.ParseRequestURI(cfg.KeycloakBaseURL); err != nil {

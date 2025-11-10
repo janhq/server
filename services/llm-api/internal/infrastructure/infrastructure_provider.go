@@ -3,6 +3,11 @@ package infrastructure
 import (
 	"context"
 	"net/http"
+	"time"
+
+	"github.com/google/wire"
+	"github.com/rs/zerolog"
+	"gorm.io/gorm"
 
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/infrastructure/auth"
@@ -12,12 +17,9 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/transaction"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/keycloak"
+	"jan-server/services/llm-api/internal/infrastructure/kong"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
-
-	"github.com/google/wire"
-	"github.com/rs/zerolog"
-	"gorm.io/gorm"
 )
 
 // ProvideConfig loads and provides the application configuration
@@ -44,6 +46,12 @@ func ProvideKeycloakClient(cfg *config.Config, log zerolog.Logger) *keycloak.Cli
 	)
 }
 
+// ProvideKongClient returns a Kong Admin API client.
+func ProvideKongClient(cfg *config.Config, log zerolog.Logger) *kong.Client {
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	return kong.NewClient(cfg.KongAdminURL, httpClient, log)
+}
+
 // ProvideKeycloakValidator provides a JWT validator
 func ProvideKeycloakValidator(cfg *config.Config, log zerolog.Logger) (*auth.KeycloakValidator, error) {
 	jwksURL := cfg.JWKSURL
@@ -52,7 +60,9 @@ func ProvideKeycloakValidator(cfg *config.Config, log zerolog.Logger) (*auth.Key
 		jwksURL,
 		cfg.Issuer,
 		cfg.Audience,
+		cfg.TargetClientID,
 		cfg.RefreshJWKSInterval,
+		cfg.AuthClockSkew,
 		log,
 	)
 }
@@ -83,8 +93,8 @@ func ProvideTransactionDatabase(db *gorm.DB) *transaction.Database {
 }
 
 // ProvideMediaResolver wires the HTTP-based media placeholder resolver.
-func ProvideMediaResolver(cfg *config.Config, log zerolog.Logger) mediaresolver.Resolver {
-	return mediaresolver.NewResolver(cfg, log)
+func ProvideMediaResolver(cfg *config.Config, log zerolog.Logger, kc *keycloak.Client) mediaresolver.Resolver {
+	return mediaresolver.NewResolver(cfg, log, kc)
 }
 
 // Infrastructure holds all infrastructure dependencies
@@ -127,6 +137,9 @@ var InfrastructureProvider = wire.NewSet(
 
 	// Logger
 	logger.GetLogger,
+
+	// Kong
+	ProvideKongClient,
 
 	// Keycloak
 	ProvideKeycloakClient,

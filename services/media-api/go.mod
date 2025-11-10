@@ -3,6 +3,7 @@ module jan-server/services/media-api
 go 1.23.0
 
 require (
+	github.com/MicahParks/keyfunc/v2 v2.1.0
 	github.com/aws/aws-sdk-go-v2 v1.33.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.13
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.13
@@ -10,6 +11,7 @@ require (
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/gin-gonic/gin v1.10.0
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/wire v0.7.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9

@@ -7,9 +7,11 @@
 - Environment-driven config (`internal/config`) tailored for Menlo's S3 endpoint (`https://s3.menlo.ai`) and `platform-dev` bucket.
 - PostgreSQL metadata store with schema managed by GORM.
 - Automatic creation of the target database when using `postgres://` URLs.
-- API-key protected routes (`X-Media-Service-Key`) plus optional observability hooks.
+- Keycloak JWT-protected routes enforced at the edge with optional observability hooks.
 - Shared `utils/mediaid` package for consistent `jan_*` identifiers across services.
 - Returns presigned URLs immediately upon upload for instant client access.
+
+> All HTTP requests must include an `Authorization: Bearer <token>` header issued by Keycloak (guest tokens work for read flows; service workloads should use client credentials).
 
 ## Usage Flow
 
@@ -21,7 +23,7 @@ Client uploads an image directly through the media-api (via data URL or remote U
 
 ```bash
 curl -X POST http://localhost:8285/v1/media \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"source":{"type":"remote_url","url":"https://placekitten.com/512/512"},"user_id":"user123"}'
 
@@ -47,7 +49,7 @@ Client requests a presigned upload URL, uploads directly to S3, then uses the `j
 
 ```bash
 curl -X POST http://localhost:8285/v1/media/prepare-upload \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"mime_type":"image/jpeg","user_id":"user123"}'
 
@@ -108,7 +110,7 @@ Before forwarding to the LLM provider, the backend calls `/v1/media/resolve` to 
 
 ```bash
 curl -X POST http://localhost:8285/v1/media/resolve \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"payload":{"messages":[{"content":[{"type":"image_url","image_url":{"url":"data:image/jpeg;jan_01hqr8v9k2x3f4g5h6j7k8m9n0"}}]}]}}'
 
@@ -135,7 +137,6 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | --- | --- |
 | `MEDIA_API_PORT` | HTTP listen port (default `8285`). |
 | `MEDIA_DATABASE_URL` | Postgres DSN for metadata. |
-| `MEDIA_SERVICE_KEY` | Shared secret required via `X-Media-Service-Key`. |
 | `MEDIA_S3_ENDPOINT` | S3-compatible endpoint (`https://s3.menlo.ai`). |
 | `MEDIA_S3_PUBLIC_ENDPOINT` | Optional public endpoint used when returning presigned URLs (e.g., `http://localhost:9000`). |
 | `MEDIA_S3_ACCESS_KEY` / `MEDIA_S3_SECRET_KEY` | Credentials (`XXXXX` / `YYYY`). |
@@ -143,6 +144,10 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | `MEDIA_MAX_BYTES` | Max upload size (default 20 MB). |
 | `MEDIA_S3_PRESIGN_TTL` | Lifespan of presigned URLs (default 5 min). |
 | `MEDIA_RETENTION_DAYS` | Metadata retention window. |
+| `AUTH_ENABLED` | Set to `true` to enforce Keycloak-issued JWTs (required in shared environments). |
+| `AUTH_ISSUER` | Expected Keycloak issuer claim (e.g., `http://localhost:8085/realms/jan`). |
+| `AUTH_AUDIENCE` | Audience or client ID the token is minted for (e.g., `jan-client`). |
+| `AUTH_JWKS_URL` | JWKS endpoint used to validate signatures (e.g., `http://keycloak:8085/realms/jan/protocol/openid-connect/certs`). |
 
 > If the S3 bucket or credentials are omitted the service still starts, but media upload/resolve endpoints will respond with `media storage backend is not configured` until valid `MEDIA_S3_*` values are provided.
 
@@ -153,7 +158,7 @@ All env samples already contain the provided Menlo dev bucket configuration.
 ```bash
 cd services/media-api
 make run
-curl -H "X-Media-Service-Key: changeme-media-key" \
+curl -H "Authorization: Bearer <token>" \
   http://localhost:8285/healthz
 ```
 

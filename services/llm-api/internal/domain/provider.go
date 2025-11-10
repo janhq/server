@@ -1,11 +1,13 @@
 package domain
 
 import (
+	"github.com/google/wire"
+
+	"jan-server/services/llm-api/internal/config"
+	"jan-server/services/llm-api/internal/domain/apikey"
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/user"
-
-	"github.com/google/wire"
 )
 
 // ServiceProvider provides all domain services
@@ -20,4 +22,17 @@ var ServiceProvider = wire.NewSet(
 
 	// User domain
 	user.NewService,
+
+	// API keys
+	ProvideAPIKeyConfig,
+	apikey.NewService,
 )
+
+func ProvideAPIKeyConfig(cfg *config.Config) apikey.Config {
+	return apikey.Config{
+		DefaultTTL: cfg.APIKeyDefaultTTL,
+		MaxTTL:     cfg.APIKeyMaxTTL,
+		MaxPerUser: cfg.APIKeyMaxPerUser,
+		KeyPrefix:  cfg.APIKeyPrefix,
+	}
+}

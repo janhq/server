@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 
-	"jan-server/services/response-api/internal/config"
+	"jan-server/services/media-api/internal/config"
 )
 
 // Validator validates JWTs using JWKS.

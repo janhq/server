@@ -21,8 +21,6 @@ type Config struct {
 	DBMaxIdleConns     int           `env:"DB_MAX_IDLE_CONNS" envDefault:"5"`
 	DBMaxOpenConns     int           `env:"DB_MAX_OPEN_CONNS" envDefault:"15"`
 	DBConnLifetime     time.Duration `env:"DB_CONN_MAX_LIFETIME" envDefault:"30m"`
-	ServiceKey         string        `env:"MEDIA_SERVICE_KEY"`
-	APIKey             string        `env:"MEDIA_API_KEY"`
 	APIURL             string        `env:"MEDIA_API_URL"`
 	S3Endpoint         string        `env:"MEDIA_S3_ENDPOINT" envDefault:"https://s3.menlo.ai"`
 	S3PublicEndpoint   string        `env:"MEDIA_S3_PUBLIC_ENDPOINT"`
@@ -37,6 +35,10 @@ type Config struct {
 	RetentionDays      int           `env:"MEDIA_RETENTION_DAYS" envDefault:"30"`
 	RemoteFetchTimeout time.Duration `env:"MEDIA_REMOTE_FETCH_TIMEOUT" envDefault:"15s"`
 	GCSBucket          string        `env:"MEDIA_GCS_BUCKET"`
+	AuthEnabled        bool          `env:"AUTH_ENABLED" envDefault:"false"`
+	AuthIssuer         string        `env:"AUTH_ISSUER"`
+	AuthAudience       string        `env:"AUTH_AUDIENCE"`
+	AuthJWKSURL        string        `env:"AUTH_JWKS_URL"`
 }
 
 // Load parses environment variables into Config.
@@ -54,8 +56,16 @@ func Load() (*Config, error) {
 	if cfg.MaxMediaBytes <= 0 {
 		cfg.MaxMediaBytes = 20 * 1024 * 1024
 	}
-	if cfg.ServiceKey == "" {
-		cfg.ServiceKey = cfg.APIKey
+	if cfg.AuthEnabled {
+		if strings.TrimSpace(cfg.AuthIssuer) == "" {
+			return nil, fmt.Errorf("AUTH_ISSUER is required when AUTH_ENABLED is true")
+		}
+		if strings.TrimSpace(cfg.AuthAudience) == "" {
+			return nil, fmt.Errorf("AUTH_AUDIENCE is required when AUTH_ENABLED is true")
+		}
+		if strings.TrimSpace(cfg.AuthJWKSURL) == "" {
+			return nil, fmt.Errorf("AUTH_JWKS_URL is required when AUTH_ENABLED is true")
+		}
 	}
 	return cfg, nil
 }

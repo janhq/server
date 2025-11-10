@@ -3,9 +3,11 @@ module jan-server/services/mcp-tools
 go 1.23.2
 
 require (
+	github.com/MicahParks/keyfunc/v2 v2.1.0
 	github.com/caarlos0/env/v11 v11.0.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-resty/resty/v2 v2.11.0
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/mark3labs/mcp-go v0.43.0
 	github.com/rs/zerolog v1.33.0
 	github.com/swaggo/swag v1.16.6

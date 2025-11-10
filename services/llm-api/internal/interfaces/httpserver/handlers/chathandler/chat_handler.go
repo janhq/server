@@ -19,6 +19,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/observability"
 	conversationHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
 	chatrequests "jan-server/services/llm-api/internal/interfaces/httpserver/requests/chat"
 	"jan-server/services/llm-api/internal/utils/httpclients/chat"
 	"jan-server/services/llm-api/internal/utils/idgen"
@@ -158,7 +159,7 @@ func (h *ChatHandler) CreateChatCompletion(
 	request.Model = selectedProviderModel.ProviderOriginalModelID
 
 	// Resolve jan_* media placeholders (best-effort)
-	request.Messages = h.resolveMediaPlaceholders(ctx, request.Messages)
+	request.Messages = h.resolveMediaPlaceholders(ctx, reqCtx, request.Messages)
 
 	// Get chat completion client
 	chatClient, err := h.inferenceProvider.GetChatCompletionClient(ctx, selectedProvider)
@@ -337,9 +338,18 @@ func (h *ChatHandler) streamCompletion(
 	return resp, nil
 }
 
-func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
+func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.Context, messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
 	if h.mediaResolver == nil || len(messages) == 0 {
 		return messages
+	}
+
+	if reqCtx != nil {
+		if authHeader := strings.TrimSpace(reqCtx.GetHeader("Authorization")); authHeader != "" {
+			ctx = mediaresolver.ContextWithAuthorization(ctx, authHeader)
+		}
+		if principal, ok := middlewares.PrincipalFromContext(reqCtx); ok {
+			ctx = mediaresolver.ContextWithPrincipal(ctx, principal)
+		}
 	}
 
 	resolved, changed, err := h.mediaResolver.ResolveMessages(ctx, messages)

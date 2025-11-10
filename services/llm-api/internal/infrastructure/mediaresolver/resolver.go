@@ -15,6 +15,8 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 
 	"jan-server/services/llm-api/internal/config"
+	"jan-server/services/llm-api/internal/domain"
+	"jan-server/services/llm-api/internal/infrastructure/keycloak"
 )
 
 var placeholderPattern = regexp.MustCompile(`data:(image/[a-z0-9.+-]+);(jan_[A-Za-z0-9]+)`)
@@ -24,15 +26,23 @@ type Resolver interface {
 	ResolveMessages(ctx context.Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, bool, error)
 }
 
+type ctxKey string
+
+const (
+	ctxAuthorization ctxKey = "mediaresolver.authorization"
+	ctxPrincipal     ctxKey = "mediaresolver.principal"
+)
+
 type httpResolver struct {
-	endpoint   string
-	serviceKey string
-	client     *http.Client
-	log        zerolog.Logger
+	endpoint      string
+	client        *http.Client
+	log           zerolog.Logger
+	keycloak      *keycloak.Client
+	defaultIssuer string
 }
 
 // NewResolver constructs an HTTP-backed resolver. Returns nil when MEDIA_RESOLVE_URL is empty.
-func NewResolver(cfg *config.Config, log zerolog.Logger) Resolver {
+func NewResolver(cfg *config.Config, log zerolog.Logger, keycloakClient *keycloak.Client) Resolver {
 	if cfg == nil {
 		return nil
 	}
@@ -48,12 +58,11 @@ func NewResolver(cfg *config.Config, log zerolog.Logger) Resolver {
 	}
 
 	return &httpResolver{
-		endpoint:   endpoint,
-		serviceKey: strings.TrimSpace(cfg.MediaServiceKey),
-		client: &http.Client{
-			Timeout: timeout,
-		},
-		log: log.With().Str("component", "media-resolver").Logger(),
+		endpoint:      endpoint,
+		client:        &http.Client{Timeout: timeout},
+		log:           log.With().Str("component", "media-resolver").Logger(),
+		keycloak:      keycloakClient,
+		defaultIssuer: cfg.Issuer,
 	}
 }
 
@@ -78,8 +87,11 @@ func (r *httpResolver) ResolveMessages(ctx context.Context, messages []openai.Ch
 		return messages, false, fmt.Errorf("build media resolve request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if r.serviceKey != "" {
-		req.Header.Set("X-Media-Service-Key", r.serviceKey)
+	if authHeader := r.resolveAuthorization(ctx); authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+	if principal, ok := principalFromContext(ctx); ok && principal.ID != "" {
+		req.Header.Set("X-Principal-Id", principal.ID)
 	}
 
 	resp, err := r.client.Do(req)
@@ -147,4 +159,39 @@ func matchesPlaceholder(value string) bool {
 		return false
 	}
 	return placeholderPattern.MatchString(value)
+}
+
+func (r *httpResolver) resolveAuthorization(ctx context.Context) string {
+	if token, ok := ctx.Value(ctxAuthorization).(string); ok && strings.TrimSpace(token) != "" {
+		return token
+	}
+	principal, ok := principalFromContext(ctx)
+	if !ok || principal.Subject == "" || r.keycloak == nil {
+		return ""
+	}
+	tokenSet, err := r.keycloak.TokenForUser(ctx, principal.Subject)
+	if err != nil {
+		r.log.Warn().Err(err).Msg("failed to mint user token for media resolver")
+		return ""
+	}
+	return "Bearer " + tokenSet.AccessToken
+}
+
+func ContextWithAuthorization(ctx context.Context, token string) context.Context {
+	if strings.TrimSpace(token) == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, ctxAuthorization, token)
+}
+
+func ContextWithPrincipal(ctx context.Context, principal domain.Principal) context.Context {
+	return context.WithValue(ctx, ctxPrincipal, principal)
+}
+
+func principalFromContext(ctx context.Context) (domain.Principal, bool) {
+	if ctx == nil {
+		return domain.Principal{}, false
+	}
+	principal, ok := ctx.Value(ctxPrincipal).(domain.Principal)
+	return principal, ok
 }

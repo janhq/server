@@ -1,6 +1,11 @@
 package config
 
-import "github.com/caarlos0/env/v11"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/caarlos0/env/v11"
+)
 
 // Config holds all configuration for the MCP Tools service
 type Config struct {
@@ -16,6 +21,10 @@ type Config struct {
 	VectorStoreURL               string   `env:"VECTOR_STORE_URL" envDefault:"http://vector-store-mcp:3015"`
 	SandboxFusionURL             string   `env:"SANDBOX_FUSION_URL" envDefault:"http://sandbox-fusion:8080"`
 	SandboxFusionRequireApproval bool     `env:"SANDBOX_FUSION_REQUIRE_APPROVAL" envDefault:"false"`
+	AuthEnabled                  bool     `env:"AUTH_ENABLED" envDefault:"false"`
+	AuthIssuer                   string   `env:"AUTH_ISSUER"`
+	AuthAudience                 string   `env:"AUTH_AUDIENCE"`
+	AuthJWKSURL                  string   `env:"AUTH_JWKS_URL"`
 }
 
 // LoadConfig loads configuration from environment variables
@@ -23,6 +32,17 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
+	}
+	if cfg.AuthEnabled {
+		if strings.TrimSpace(cfg.AuthIssuer) == "" {
+			return nil, fmt.Errorf("AUTH_ISSUER is required when AUTH_ENABLED is true")
+		}
+		if strings.TrimSpace(cfg.AuthAudience) == "" {
+			return nil, fmt.Errorf("AUTH_AUDIENCE is required when AUTH_ENABLED is true")
+		}
+		if strings.TrimSpace(cfg.AuthJWKSURL) == "" {
+			return nil, fmt.Errorf("AUTH_JWKS_URL is required when AUTH_ENABLED is true")
+		}
 	}
 	return cfg, nil
 }

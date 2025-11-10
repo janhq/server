@@ -3,7 +3,6 @@ package authhandler
 import (
 	"github.com/gin-gonic/gin"
 
-	"jan-server/services/llm-api/internal/domain"
 	"jan-server/services/llm-api/internal/domain/user"
 	middleware "jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
@@ -37,11 +36,6 @@ func (h *AuthHandler) ensureAppUser() gin.HandlerFunc {
 		if !ok {
 			responses.HandleNewError(c, platformerrors.ErrorTypeUnauthorized, "authentication required", "5e1d3524-929e-4c7a-9bb7-0a8b74fa6f10")
 			c.Abort()
-			return
-		}
-
-		if principal.AuthMethod != domain.AuthMethodJWT {
-			c.Next()
 			return
 		}
 

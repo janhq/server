@@ -281,6 +281,18 @@ func (c *Client) adminUserToken(ctx context.Context) (*TokenSet, error) {
 	return &token, nil
 }
 
+// TokenForUser exchanges admin privileges for a user-scoped token.
+func (c *Client) TokenForUser(ctx context.Context, userID string) (*TokenSet, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user id required")
+	}
+	adminToken, err := c.adminUserToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.exchangeForUser(ctx, adminToken.AccessToken, userID)
+}
+
 func (c *Client) adminAccessToken(ctx context.Context, serviceToken string) string {
 	if c.adminUsername == "" || c.adminPassword == "" {
 		return serviceToken

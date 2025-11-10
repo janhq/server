@@ -17,7 +17,7 @@ The Media API handles media ingestion, storage, and resolution with S3 integrati
 - **Deduplication** - Prevents duplicate storage via content hash
 - **Multiple Input Methods** - Support for remote URLs, data URLs, and direct uploads
 - **PostgreSQL Metadata** - Persistent metadata storage
-- **API Key Authentication** - Service key-based security
+- **Keycloak JWT Authentication** - Bearer-only security for all endpoints
 
 ## Service Ports & Configuration
 
@@ -32,8 +32,10 @@ The Media API handles media ingestion, storage, and resolution with S3 integrati
 ```bash
 MEDIA_API_PORT=8285                                    # HTTP listen port
 MEDIA_DATABASE_URL=postgres://media:password@api-db:5432/media_api?sslmode=disable
-MEDIA_SERVICE_KEY=changeme-media-key                  # Service authentication key
-MEDIA_API_KEY=changeme-api-key                        # API authentication key
+AUTH_ENABLED=true                                     # Enforce JWT validation
+AUTH_ISSUER=http://localhost:8085/realms/jan          # Keycloak issuer
+AUTH_AUDIENCE=jan-client                              # Expected audience/client ID
+AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
 
 # S3 Configuration (Menlo S3)
 MEDIA_S3_ENDPOINT=https://s3.menlo.ai                # S3 endpoint
@@ -57,11 +59,7 @@ MEDIA_REMOTE_FETCH_TIMEOUT=15s                       # Remote fetch timeout
 
 ## Authentication
 
-All endpoints require the `X-Media-Service-Key` header:
-
-```bash
--H "X-Media-Service-Key: changeme-media-key"
-```
+All endpoints require an `Authorization: Bearer <token>` header issued by Keycloak (guest tokens work for GET/resolve flows; service workloads should use dedicated clients).
 
 ## Main Endpoints
 
@@ -74,7 +72,7 @@ Upload media directly or from remote URL.
 ```bash
 # Upload from remote URL
 curl -X POST http://localhost:8285/v1/media \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "source": {
@@ -86,7 +84,7 @@ curl -X POST http://localhost:8285/v1/media \
 
 # Upload from data URL (base64 image)
 curl -X POST http://localhost:8285/v1/media \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "source": {
@@ -116,7 +114,7 @@ Get a presigned URL for client-side S3 upload.
 
 ```bash
 curl -X POST http://localhost:8285/v1/media/prepare-upload \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "content_type": "image/jpeg",
@@ -149,7 +147,7 @@ Resolve `jan_*` IDs to presigned URLs.
 
 ```bash
 curl -X POST http://localhost:8285/v1/media/resolve \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "ids": [
@@ -179,7 +177,7 @@ curl -X POST http://localhost:8285/v1/media/resolve \
 Retrieve media metadata and presigned URL.
 
 ```bash
-curl -H "X-Media-Service-Key: changeme-media-key" \
+curl -H "Authorization: Bearer <token>" \
   http://localhost:8285/v1/media/jan_01hqr8v9k2x3f4g5h6j7k8m9n0
 ```
 
@@ -302,7 +300,7 @@ Client ← Media API (jan_id)
 | Status | Error | Cause |
 |--------|-------|-------|
 | 400 | Invalid request | Malformed parameters |
-| 401 | Unauthorized | Missing/invalid service key |
+| 401 | Unauthorized | Missing/invalid bearer token |
 | 404 | Not found | Media ID doesn't exist |
 | 413 | Payload too large | Exceeds max file size |
 | 500 | S3 error | Storage operation failed |

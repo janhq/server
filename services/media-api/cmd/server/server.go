@@ -13,6 +13,7 @@ import (
 
 	"jan-server/services/media-api/internal/config"
 	domain "jan-server/services/media-api/internal/domain/media"
+	"jan-server/services/media-api/internal/infrastructure/auth"
 	"jan-server/services/media-api/internal/infrastructure/database"
 	"jan-server/services/media-api/internal/infrastructure/logger"
 	"jan-server/services/media-api/internal/infrastructure/observability"
@@ -92,7 +93,12 @@ func main() {
 	mediaRepository := repo.NewRepository(db)
 	mediaService := domain.NewService(cfg, mediaRepository, storageClient, log)
 
-	httpServer := httpserver.New(cfg, log, mediaService)
+	authValidator, err := auth.NewValidator(ctx, cfg, log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to initialize auth validator")
+	}
+
+	httpServer := httpserver.New(cfg, log, mediaService, authValidator)
 	app := NewApplication(httpServer, log)
 
 	if err := app.Start(ctx); err != nil {

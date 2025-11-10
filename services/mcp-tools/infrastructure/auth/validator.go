@@ -11,22 +11,19 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 
-	"jan-server/services/response-api/internal/config"
+	"jan-server/services/mcp-tools/infrastructure/config"
 )
 
-// Validator validates JWTs using JWKS.
 type Validator struct {
 	cfg  *config.Config
 	log  zerolog.Logger
 	jwks *keyfunc.JWKS
 }
 
-// NewValidator initializes JWKS fetching when auth is enabled.
 func NewValidator(ctx context.Context, cfg *config.Config, log zerolog.Logger) (*Validator, error) {
 	if !cfg.AuthEnabled {
 		return &Validator{cfg: cfg, log: log}, nil
 	}
-
 	options := keyfunc.Options{
 		Ctx:               ctx,
 		RefreshInterval:   time.Hour,
@@ -35,12 +32,10 @@ func NewValidator(ctx context.Context, cfg *config.Config, log zerolog.Logger) (
 			log.Error().Err(err).Msg("jwks refresh error")
 		},
 	}
-
 	jwks, err := keyfunc.Get(cfg.AuthJWKSURL, options)
 	if err != nil {
 		return nil, err
 	}
-
 	return &Validator{
 		cfg:  cfg,
 		log:  log,
@@ -48,7 +43,6 @@ func NewValidator(ctx context.Context, cfg *config.Config, log zerolog.Logger) (
 	}, nil
 }
 
-// Middleware enforces JWT auth when enabled.
 func (v *Validator) Middleware() gin.HandlerFunc {
 	if v == nil || !v.cfg.AuthEnabled {
 		return func(c *gin.Context) {
@@ -78,7 +72,6 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 	}
 }
 
-// Ready indicates if the validator is prepared.
 func (v *Validator) Ready() bool {
 	if v == nil || !v.cfg.AuthEnabled {
 		return true

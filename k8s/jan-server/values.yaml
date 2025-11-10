@@ -92,10 +92,10 @@ keycloak:
   replicaCount: 1
   
   image:
-    registry: docker.io
-    repository: jan/keycloak
-    tag: "latest"
-    pullPolicy: Never
+    registry: quay.io
+    repository: keycloak/keycloak
+    tag: "24.0.5"
+    pullPolicy: IfNotPresent
   
   service:
     type: ClusterIP
@@ -315,13 +315,15 @@ mediaApi:
     MEDIA_S3_PRESIGN_TTL: "5m"
     MEDIA_S3_USE_PATH_STYLE: "true"
     MEDIA_S3_REGION: "us-west-2"
+    AUTH_ENABLED: "true"
+    AUTH_ISSUER: "http://localhost:8085/realms/jan"
+    AUTH_AUDIENCE: "jan-client"
+    AUTH_JWKS_URL: "http://keycloak:8085/realms/jan/protocol/openid-connect/certs"
   
   secrets:
     # Database connection - using jan_user and jan_llm_api database
     databaseUrl: "postgres://jan_user:jan_password@{{ .Release.Name }}-postgresql:5432/jan_llm_api?sslmode=disable"
     # S3 credentials
-    serviceKey: changeme-media-key
-    apiKey: changeme-media-key
     s3Endpoint: https://s3.menlo.ai
     s3Bucket: platform-dev
     s3AccessKey: XXXXX

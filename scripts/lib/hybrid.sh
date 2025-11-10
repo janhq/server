@@ -26,8 +26,6 @@ EOF
         media-api|media)
             cat << 'EOF'
 export MEDIA_DATABASE_URL="postgres://media:media@localhost:5432/media_api?sslmode=disable"
-export MEDIA_SERVICE_KEY="changeme-media-key"
-export MEDIA_API_KEY="changeme-media-key"
 export MEDIA_API_PORT="8285"
 export MEDIA_API_URL="http://localhost:8285"
 export MEDIA_S3_ENDPOINT="https://s3.menlo.ai"
@@ -41,6 +39,10 @@ export MEDIA_MAX_BYTES="20971520"
 export MEDIA_PROXY_DOWNLOAD="true"
 export MEDIA_RETENTION_DAYS="30"
 export MEDIA_REMOTE_FETCH_TIMEOUT="15s"
+export AUTH_ENABLED="true"
+export AUTH_ISSUER="http://localhost:8085/realms/jan"
+export AUTH_AUDIENCE="jan-client"
+export AUTH_JWKS_URL="http://localhost:8085/realms/jan/protocol/openid-connect/certs"
 EOF
             ;;
         mcp-tools|mcp)
@@ -90,8 +92,6 @@ load_hybrid_env() {
             ;;
         media-api|media)
             export MEDIA_DATABASE_URL="${MEDIA_DATABASE_URL:-postgres://media:media@localhost:5432/media_api?sslmode=disable}"
-            export MEDIA_SERVICE_KEY="${MEDIA_SERVICE_KEY:-changeme-media-key}"
-            export MEDIA_API_KEY="${MEDIA_API_KEY:-$MEDIA_SERVICE_KEY}"
             local media_port="${MEDIA_API_PORT:-8285}"
             export MEDIA_API_PORT="$media_port"
             export MEDIA_API_URL="${MEDIA_API_URL:-http://localhost:$media_port}"
@@ -107,6 +107,10 @@ load_hybrid_env() {
             export MEDIA_RETENTION_DAYS="${MEDIA_RETENTION_DAYS:-30}"
             export MEDIA_REMOTE_FETCH_TIMEOUT="${MEDIA_REMOTE_FETCH_TIMEOUT:-15s}"
             export LOG_LEVEL="${LOG_LEVEL:-debug}"
+            export AUTH_ENABLED="${AUTH_ENABLED:-true}"
+            export AUTH_ISSUER="${AUTH_ISSUER:-http://localhost:8085/realms/jan}"
+            export AUTH_AUDIENCE="${AUTH_AUDIENCE:-jan-client}"
+            export AUTH_JWKS_URL="${AUTH_JWKS_URL:-http://localhost:8085/realms/jan/protocol/openid-connect/certs}"
             ;;
         mcp-tools|mcp)
             export HTTP_PORT="8091"

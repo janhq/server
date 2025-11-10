@@ -62,10 +62,10 @@ cd services/mcp-tools && go mod tidy && cd ../..
 docker build -t jan/llm-api:latest -f services/llm-api/Dockerfile .
 docker build -t jan/media-api:latest -f services/media-api/Dockerfile .
 docker build -t jan/mcp-tools:latest -f services/mcp-tools/Dockerfile .
-docker build -t jan/keycloak:latest -f keycloak/Dockerfile keycloak
 
 # Load images into minikube
-minikube image load jan/llm-api:latest jan/media-api:latest jan/mcp-tools:latest jan/keycloak:latest
+minikube image load jan/llm-api:latest jan/media-api:latest jan/mcp-tools:latest
+minikube image load quay.io/keycloak/keycloak:24.0.5
 minikube image load bitnami/postgresql:latest bitnami/redis:latest
 
 # Deploy

@@ -57,21 +57,19 @@ spec:
           value: {{ .Values.mediaApi.env.MEDIA_S3_USE_PATH_STYLE | quote }}
         - name: MEDIA_S3_REGION
           value: {{ .Values.mediaApi.env.MEDIA_S3_REGION | quote }}
+        - name: AUTH_ENABLED
+          value: {{ .Values.mediaApi.env.AUTH_ENABLED | quote }}
+        - name: AUTH_ISSUER
+          value: {{ .Values.mediaApi.env.AUTH_ISSUER | quote }}
+        - name: AUTH_AUDIENCE
+          value: {{ .Values.mediaApi.env.AUTH_AUDIENCE | quote }}
+        - name: AUTH_JWKS_URL
+          value: {{ .Values.mediaApi.env.AUTH_JWKS_URL | quote }}
         - name: MEDIA_DATABASE_URL
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-media-api-secret
               key: database-url
-        - name: MEDIA_SERVICE_KEY
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "jan-server.fullname" . }}-media-api-secret
-              key: service-key
-        - name: MEDIA_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "jan-server.fullname" . }}-media-api-secret
-              key: api-key
         - name: MEDIA_S3_ENDPOINT
           valueFrom:
             secretKeyRef:

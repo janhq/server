@@ -87,7 +87,7 @@ Once running, you can access:
 | **API Gateway** | http://localhost:8000 | - |
 | **API Documentation** | http://localhost:8000/v1/swagger/ | - |
 | **LLM API** | http://localhost:8080 | - |
-| **Media API** | http://localhost:8285 | `X-Media-Service-Key: <key>` |
+| **Media API** | http://localhost:8285 | `Authorization: Bearer <token>` |
 | **Keycloak Console** | http://localhost:8085 | admin/admin |
 | **Grafana Dashboards** | http://localhost:3001 | admin/admin (after `make monitor-up`) |
 | **Prometheus** | http://localhost:9090 | - (after `make monitor-up`) |

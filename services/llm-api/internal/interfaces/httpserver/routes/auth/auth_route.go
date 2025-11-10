@@ -1,10 +1,11 @@
 package auth
 
 import (
+	"github.com/gin-gonic/gin"
+
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	guestauth "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
-
-	"github.com/gin-gonic/gin"
 )
 
 // AuthRoute handles authentication routes
@@ -12,6 +13,8 @@ type AuthRoute struct {
 	guestHandler   *guestauth.GuestHandler
 	upgradeHandler *guestauth.UpgradeHandler
 	tokenHandler   *authhandler.TokenHandler
+	apiKeyHandler  *apikeyhandler.Handler
+	authHandler    *authhandler.AuthHandler
 }
 
 // NewAuthRoute creates a new auth route
@@ -19,11 +22,15 @@ func NewAuthRoute(
 	guestHandler *guestauth.GuestHandler,
 	upgradeHandler *guestauth.UpgradeHandler,
 	tokenHandler *authhandler.TokenHandler,
+	apiKeyHandler *apikeyhandler.Handler,
+	authHandler *authhandler.AuthHandler,
 ) *AuthRoute {
 	return &AuthRoute{
 		guestHandler:   guestHandler,
 		upgradeHandler: upgradeHandler,
 		tokenHandler:   tokenHandler,
+		apiKeyHandler:  apiKeyHandler,
+		authHandler:    authHandler,
 	}
 }
 
@@ -37,6 +44,9 @@ func (a *AuthRoute) RegisterRouter(router gin.IRouter, protectedRouter gin.IRout
 	// Protected routes (require authentication)
 	protectedRouter.POST("/auth/upgrade", a.UpgradeAccount)
 	protectedRouter.GET("/auth/me", a.GetMe)
+	protectedRouter.POST("/auth/api-keys", a.authHandler.WithAppUserAuthChain(a.CreateAPIKey)...)
+	protectedRouter.GET("/auth/api-keys", a.authHandler.WithAppUserAuthChain(a.ListAPIKeys)...)
+	protectedRouter.DELETE("/auth/api-keys/:id", a.authHandler.WithAppUserAuthChain(a.DeleteAPIKey)...)
 }
 
 // CreateGuestLogin godoc
@@ -112,4 +122,19 @@ func (a *AuthRoute) UpgradeAccount(c *gin.Context) {
 // @Router /auth/me [get]
 func (a *AuthRoute) GetMe(c *gin.Context) {
 	a.tokenHandler.GetMe(c)
+}
+
+// CreateAPIKey handles POST /auth/api-keys
+func (a *AuthRoute) CreateAPIKey(c *gin.Context) {
+	a.apiKeyHandler.Create(c)
+}
+
+// ListAPIKeys handles GET /auth/api-keys
+func (a *AuthRoute) ListAPIKeys(c *gin.Context) {
+	a.apiKeyHandler.List(c)
+}
+
+// DeleteAPIKey handles DELETE /auth/api-keys/:id
+func (a *AuthRoute) DeleteAPIKey(c *gin.Context) {
+	a.apiKeyHandler.Delete(c)
 }

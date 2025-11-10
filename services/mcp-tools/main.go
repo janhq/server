@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 
 	domainsearch "jan-server/services/mcp-tools/domain/search"
+	"jan-server/services/mcp-tools/infrastructure/auth"
 	"jan-server/services/mcp-tools/infrastructure/config"
 	"jan-server/services/mcp-tools/infrastructure/logger"
 	"jan-server/services/mcp-tools/infrastructure/mcpprovider"
@@ -13,9 +18,6 @@ import (
 	vectorstoreclient "jan-server/services/mcp-tools/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/interfaces/httpserver/middlewares"
 	"jan-server/services/mcp-tools/interfaces/httpserver/routes"
-
-	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 )
 
 // @title Jan Server MCP Tools Service
@@ -79,11 +81,19 @@ func main() {
 
 	mcpRoute := routes.NewMCPRoute(serperMCP, providerMCP, sandboxMCP)
 
+	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize auth validator")
+	}
+
 	// Setup HTTP server
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middlewares.RequestLogger())
 	router.Use(middlewares.CORS())
+	if authValidator != nil {
+		router.Use(authValidator.Middleware())
+	}
 
 	// Health check
 	router.GET("/healthz", func(c *gin.Context) {
@@ -92,6 +102,13 @@ func main() {
 
 	router.GET("/readyz", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ready", "service": "mcp-tools"})
+	})
+	router.GET("/health/auth", func(c *gin.Context) {
+		if authValidator == nil || authValidator.Ready() {
+			c.JSON(200, gin.H{"status": "ready"})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "initializing"})
 	})
 
 	// Register MCP routes

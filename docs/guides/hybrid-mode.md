@@ -204,9 +204,11 @@ HTTP_PORT=8080              # LLM API port
 MCP_TOOLS_HTTP_PORT=8091    # MCP port
 MEDIA_API_PORT=8285         # Media API port
 
-# Media API
-MEDIA_SERVICE_KEY=changeme-media-key
-MEDIA_API_KEY=changeme-media-key
+# Media API Auth
+AUTH_ENABLED=true
+AUTH_ISSUER=http://localhost:8085/realms/jan
+AUTH_AUDIENCE=jan-client
+AUTH_JWKS_URL=http://localhost:8085/realms/jan/protocol/openid-connect/certs
 
 # Logging (console for native)
 LOG_LEVEL=debug

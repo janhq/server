@@ -1,6 +1,9 @@
 package routes
 
 import (
+	"github.com/google/wire"
+
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
@@ -15,14 +18,13 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/conversation"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	modelProvider "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
-
-	"github.com/google/wire"
 )
 
 var RouteProvider = wire.NewSet(
 	// Handlers
 	authhandler.NewAuthHandler,
 	authhandler.NewTokenHandler,
+	apikeyhandler.NewHandler,
 	chathandler.NewChatHandler,
 	conversationhandler.NewConversationHandler,
 	guestauth.NewGuestHandler,

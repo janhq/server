@@ -11,6 +11,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"jan-server/services/media-api/internal/config"
+	"jan-server/services/media-api/internal/infrastructure/auth"
 	domain "jan-server/services/media-api/internal/domain/media"
 	"jan-server/services/media-api/internal/infrastructure/database"
 	"jan-server/services/media-api/internal/infrastructure/logger"
@@ -32,6 +33,7 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 	wire.Build(
 		config.Load,
 		logger.New,
+		auth.NewValidator,
 		newDatabaseConfig,
 		newGormDB,
 		mediaSet,

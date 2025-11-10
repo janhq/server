@@ -65,7 +65,6 @@ OTEL_ENABLED=false                              # Enable OpenTelemetry
 OTEL_SERVICE_NAME=llm-api                       # Service name for tracing
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317  # Jaeger endpoint
 MEDIA_RESOLVE_URL=http://media-api:8285/v1/media/resolve
-MEDIA_SERVICE_KEY=changeme-media-key            # Media API service key
 MEDIA_RESOLVE_TIMEOUT=5s                        # Media resolution timeout
 ```
 

@@ -64,15 +64,14 @@ cd services/llm-api && go mod tidy && docker build -t jan/llm-api:latest .
 cd ../media-api && go mod tidy && docker build -t jan/media-api:latest .
 cd ../response-api && go mod tidy && docker build -t jan/response-api:latest .
 cd ../mcp-tools && go mod tidy && docker build -t jan/mcp-tools:latest .
-cd ../../keycloak && docker build -t jan/keycloak:latest .
-cd ..
+cd ../.. && docker pull quay.io/keycloak/keycloak:24.0.5
 
 # Step 2: Load images into minikube
 minikube image load jan/llm-api:latest
 minikube image load jan/media-api:latest
 minikube image load jan/response-api:latest
 minikube image load jan/mcp-tools:latest
-minikube image load jan/keycloak:latest
+minikube image load quay.io/keycloak/keycloak:24.0.5
 
 docker pull bitnami/postgresql:latest bitnami/redis:latest
 minikube image load bitnami/postgresql:latest bitnami/redis:latest
@@ -326,7 +325,7 @@ minikube image load jan/llm-api:latest
 minikube image load jan/media-api:latest
 minikube image load jan/response-api:latest
 minikube image load jan/mcp-tools:latest
-minikube image load jan/keycloak:latest
+minikube image load quay.io/keycloak/keycloak:24.0.5
 
 # Install
 cd k8s

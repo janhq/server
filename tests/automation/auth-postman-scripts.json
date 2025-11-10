@@ -37,10 +37,11 @@
       ]
     },
     {
-      "name": "Guest Login Flow",
+      "name": "Setup",
+      "description": "Bootstrap guest and registered user credentials for downstream tests.",
       "item": [
         {
-          "name": "Request Guest Token",
+          "name": "Seed Guest Token",
           "request": {
             "method": "POST",
             "header": [
@@ -82,68 +83,7 @@
           ]
         },
         {
-          "name": "Upgrade Guest Account",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let upgradeUsername = pm.collectionVariables.get('guest_upgrade_username');",
-                  "if (!upgradeUsername) {",
-                  "    const base = pm.collectionVariables.get('guest_username') || `guest-${Date.now()}`;",
-                  "    upgradeUsername = `${base}-upgraded`;",
-                  "    pm.collectionVariables.set('guest_upgrade_username', upgradeUsername);",
-                  "    pm.collectionVariables.set('guest_upgrade_email', `${upgradeUsername}@example.com`);",
-                  "}",
-                  "pm.variables.set('upgrade_username', upgradeUsername);",
-                  "pm.variables.set('upgrade_email', pm.collectionVariables.get('guest_upgrade_email'));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var data = pm.response.json();",
-                  "pm.test('upgrade accepted', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('upgrade response confirms status', function () {",
-                  "    pm.expect(data.status).to.eql('upgraded');",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{guest_access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{upgrade_username}}\",\n  \"email\": \"{{upgrade_email}}\",\n  \"full_name\": \"Guest Automation User\"\n}"
-            },
-            "url": "{{llm_api_url}}/auth/upgrade",
-            "description": "Upgrade the guest account to a named user."
-          }
-        }
-      ]
-    },
-    {
-      "name": "JWT Login Flow",
-      "item": [
-        {
-          "name": "Obtain Keycloak Admin Token",
+          "name": "Seed Obtain Keycloak Admin Token",
           "request": {
             "method": "POST",
             "header": [
@@ -197,7 +137,7 @@
           ]
         },
         {
-          "name": "Create Test User",
+          "name": "Seed Create Test User",
           "request": {
             "method": "POST",
             "header": [
@@ -223,18 +163,59 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('user created', function () {",
-                  "    pm.expect([201, 204]).to.include(pm.response.code);",
-                  "});",
+                  "const status = pm.response.code;",
                   "const location = pm.response.headers.get('Location');",
-                  "pm.test('location header exposes user id', function () {",
-                  "    pm.expect(location, 'Location header').to.be.a('string').and.not.empty;",
+                  "pm.test('user created or already exists', function () {",
+                  "    pm.expect([201, 204, 409]).to.include(status);",
                   "});",
-                  "if (location) {",
-                  "    const id = location.substring(location.lastIndexOf('/') + 1);",
-                  "    pm.collectionVariables.set('test_user_id', id);",
+                  "if (status === 201 || status === 204) {",
+                  "    pm.test('location header exposes user id', function () {",
+                  "        pm.expect(location, 'Location header').to.be.a('string').and.not.empty;",
+                  "    });",
+                  "    if (location) {",
+                  "        const id = location.substring(location.lastIndexOf('/') + 1);",
+                  "        pm.collectionVariables.set('test_user_id', id);",
+                  "    } else {",
+                  "        pm.expect.fail('Keycloak response missing user Location header');",
+                  "    }",
+                  "} else if (status === 409) {",
+                  "    const existingId = pm.collectionVariables.get('test_user_id');",
+                  "    if (existingId) {",
+                  "        console.warn('Test user already exists, reusing cached id');",
+                  "    } else {",
+                  "        console.warn('Test user already exists, fetching user id');",
+                  "        const username = pm.collectionVariables.get('test_user_username');",
+                  "        const realm = pm.collectionVariables.get('realm');",
+                  "        const baseUrl = pm.collectionVariables.get('keycloak_base_url');",
+                  "        const token = pm.collectionVariables.get('kc_admin_access_token');",
+                  "        if (!username || !realm || !baseUrl || !token) {",
+                  "            pm.expect.fail('missing context to look up existing user');",
+                  "        } else {",
+                  "            const lookupUrl = ${baseUrl}/admin/realms//users?username=;",
+                  "            pm.sendRequest({",
+                  "                url: lookupUrl,",
+                  "                method: 'GET',",
+                  "                header: [{ key: 'Authorization', value: Bearer  }]",
+                  "            }, function (err, res) {",
+                  "                if (err) {",
+                  "                    pm.expect.fail('failed to lookup existing user: ' + err.message);",
+                  "                    return;",
+                  "                }",
+                  "                if (!res || typeof res.json !== 'function') {",
+                  "                    pm.expect.fail('invalid lookup response');",
+                  "                    return;",
+                  "                }",
+                  "                const users = res.json();",
+                  "                if (Array.isArray(users) && users.length > 0 && users[0].id) {",
+                  "                    pm.collectionVariables.set('test_user_id', users[0].id);",
+                  "                } else {",
+                  "                    pm.expect.fail('existing user lookup returned empty result');",
+                  "                }",
+                  "            });",
+                  "        }",
+                  "    }",
                   "} else {",
-                  "    pm.expect.fail('Keycloak response missing user Location header');",
+                  "    pm.expect.fail('unexpected response status ' + status);",
                   "}"
                 ]
               }
@@ -242,7 +223,7 @@
           ]
         },
         {
-          "name": "Set Test User Password",
+          "name": "Seed Set Test User Password",
           "request": {
             "method": "PUT",
             "header": [
@@ -277,7 +258,7 @@
           ]
         },
         {
-          "name": "Obtain Registered User Token",
+          "name": "Seed Obtain Registered User Token",
           "request": {
             "method": "POST",
             "header": [
@@ -484,6 +465,445 @@
                   "    const principal = pm.response.headers.get('X-Principal-Id');",
                   "    pm.expect(principal).to.be.a('string').and.not.empty;",
                   "    pm.expect((pm.response.headers.get('X-Auth-Method') || '').toLowerCase()).to.eql('jwt');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Guest Login Flow",
+      "item": [
+        {
+          "name": "Request Guest Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{llm_api_url}}/auth/guest-login",
+            "description": "Provision a new guest and capture issued tokens."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('guest token issued', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(data).to.have.property('access_token');",
+                  "    pm.expect(data.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('guest_access_token', data.access_token);",
+                  "    pm.collectionVariables.set('guest_refresh_token', data.refresh_token || '');",
+                  "    pm.collectionVariables.set('guest_user_id', data.user_id || '');",
+                  "    pm.collectionVariables.set('guest_principal_id', data.principal_id || '');",
+                  "    pm.collectionVariables.set('guest_username', data.username || data.user_id || '');",
+                  "});",
+                  "pm.test('response includes expiry', function () {",
+                  "    pm.expect(data).to.have.property('expires_in');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upgrade Guest Account",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let upgradeUsername = pm.collectionVariables.get('guest_upgrade_username');",
+                  "if (!upgradeUsername) {",
+                  "    const base = pm.collectionVariables.get('guest_username') || `guest-${Date.now()}`;",
+                  "    upgradeUsername = `${base}-upgraded`;",
+                  "    pm.collectionVariables.set('guest_upgrade_username', upgradeUsername);",
+                  "    pm.collectionVariables.set('guest_upgrade_email', `${upgradeUsername}@example.com`);",
+                  "}",
+                  "pm.variables.set('upgrade_username', upgradeUsername);",
+                  "pm.variables.set('upgrade_email', pm.collectionVariables.get('guest_upgrade_email'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('upgrade accepted', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('upgrade response confirms status', function () {",
+                  "    pm.expect(data.status).to.eql('upgraded');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guest_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{upgrade_username}}\",\n  \"email\": \"{{upgrade_email}}\",\n  \"full_name\": \"Guest Automation User\"\n}"
+            },
+            "url": "{{llm_api_url}}/auth/upgrade",
+            "description": "Upgrade the guest account to a named user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "JWT Login Flow",
+      "item": [
+        {
+          "name": "Obtain Keycloak Admin Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "admin-cli"
+                },
+                {
+                  "key": "username",
+                  "value": "{{keycloak_admin}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{keycloak_admin_password}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_base_url}}/realms/master/protocol/openid-connect/token",
+            "description": "Retrieve a master realm admin token to manage users."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('admin token issued', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(data.access_token).to.be.a('string');",
+                  "    pm.collectionVariables.set('kc_admin_access_token', data.access_token);",
+                  "});",
+                  "pm.test('token type is bearer', function () {",
+                  "    pm.expect((data.token_type || '').toLowerCase()).to.eql('bearer');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Test User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{kc_admin_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{test_user_username}}\",\n  \"email\": \"{{test_user_email}}\",\n  \"enabled\": true,\n  \"attributes\": {\n    \"guest\": [\"false\"],\n    \"pid\": [\"{{test_user_pid}}\"]\n  }\n}"
+            },
+            "url": "{{keycloak_base_url}}/admin/realms/{{realm}}/users",
+            "description": "Create a dedicated automation user in the jan realm."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.code;",
+                  "const location = pm.response.headers.get('Location');",
+                  "pm.test('user created or already exists', function () {",
+                  "    pm.expect([201, 204, 409]).to.include(status);",
+                  "});",
+                  "if (status === 201 || status === 204) {",
+                  "    pm.test('location header exposes user id', function () {",
+                  "        pm.expect(location, 'Location header').to.be.a('string').and.not.empty;",
+                  "    });",
+                  "    if (location) {",
+                  "        const id = location.substring(location.lastIndexOf('/') + 1);",
+                  "        pm.collectionVariables.set('test_user_id', id);",
+                  "    } else {",
+                  "        pm.expect.fail('Keycloak response missing user Location header');",
+                  "    }",
+                  "} else if (status === 409) {",
+                  "    const existingId = pm.collectionVariables.get('test_user_id');",
+                  "    if (existingId) {",
+                  "        console.warn('Test user already exists, reusing cached id');",
+                  "    } else {",
+                  "        console.warn('Test user already exists, fetching user id');",
+                  "        const username = pm.collectionVariables.get('test_user_username');",
+                  "        const realm = pm.collectionVariables.get('realm');",
+                  "        const baseUrl = pm.collectionVariables.get('keycloak_base_url');",
+                  "        const token = pm.collectionVariables.get('kc_admin_access_token');",
+                  "        if (!username || !realm || !baseUrl || !token) {",
+                  "            pm.expect.fail('missing context to look up existing user');",
+                  "        } else {",
+                  "            const lookupUrl = ${baseUrl}/admin/realms//users?username=;",
+                  "            pm.sendRequest({",
+                  "                url: lookupUrl,",
+                  "                method: 'GET',",
+                  "                header: [{ key: 'Authorization', value: Bearer  }]",
+                  "            }, function (err, res) {",
+                  "                if (err) {",
+                  "                    pm.expect.fail('failed to lookup existing user: ' + err.message);",
+                  "                    return;",
+                  "                }",
+                  "                if (!res || typeof res.json !== 'function') {",
+                  "                    pm.expect.fail('invalid lookup response');",
+                  "                    return;",
+                  "                }",
+                  "                const users = res.json();",
+                  "                if (Array.isArray(users) && users.length > 0 && users[0].id) {",
+                  "                    pm.collectionVariables.set('test_user_id', users[0].id);",
+                  "                } else {",
+                  "                    pm.expect.fail('existing user lookup returned empty result');",
+                  "                }",
+                  "            });",
+                  "        }",
+                  "    }",
+                  "} else {",
+                  "    pm.expect.fail('unexpected response status ' + status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Test User Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{kc_admin_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"password\",\n  \"value\": \"{{test_user_password}}\",\n  \"temporary\": false\n}"
+            },
+            "url": "{{keycloak_base_url}}/admin/realms/{{realm}}/users/{{test_user_id}}/reset-password",
+            "description": "Assign a permanent password to the automation user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('password set', function () {",
+                  "    pm.expect(pm.response.code).to.eql(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtain Registered User Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id_public}}"
+                },
+                {
+                  "key": "username",
+                  "value": "{{test_user_username}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{test_user_password}}"
+                }
+              ]
+            },
+            "url": "{{keycloak_base_url}}/realms/{{realm}}/protocol/openid-connect/token",
+            "description": "Simulate a registered user authenticating via direct access grant."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('user token issued', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(data.access_token).to.be.a('string');",
+                  "    pm.collectionVariables.set('user_access_token', data.access_token);",
+                  "    pm.collectionVariables.set('user_refresh_token', data.refresh_token || '');",
+                  "});",
+                  "pm.test('token scoped for realm', function () {",
+                  "    pm.expect((data.token_type || '').toLowerCase()).to.eql('bearer');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "API Key Flow",
+      "item": [
+        {
+          "name": "Create API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Automation Key {{ $timestamp }}\"}"
+            },
+            "url": "{{llm_api_url}}/auth/api-keys",
+            "description": "Create a new API key for the authenticated user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('api key created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('key').that.is.a('string').and.not.empty;",
+                  "});",
+                  "pm.collectionVariables.set('api_key_id', body.id);",
+                  "pm.collectionVariables.set('api_key_secret', body.key);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List API Keys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": "{{llm_api_url}}/auth/api-keys",
+            "description": "List active API keys for the user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('list returns items', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(data).to.have.property('items');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete API Key",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": "{{llm_api_url}}/auth/api-keys/{{api_key_id}}",
+            "description": "Revoke the previously created API key."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('api key revoked', function () {",
+                  "    pm.response.to.have.status(204);",
                   "});"
                 ]
               }

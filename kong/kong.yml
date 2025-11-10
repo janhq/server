@@ -1,86 +1,375 @@
 _format_version: "3.0"
 _transform: true
 
+consumers:
+  - username: kong-anon-jwt
+    custom_id: anon-jwt
+    tags: [anonymous, auth, jwt]
+  - username: kong-anon-key
+    custom_id: anon-key
+    tags: [anonymous, auth, apikey]
+
+plugins:
+  - name: rate-limiting
+    tags: [global, security, rate]
+    config:
+      minute: 600
+      hour: 10000
+      policy: local
+      limit_by: ip
+      fault_tolerant: true
+  - name: request-transformer
+    tags: [global, security, transformer]
+    config:
+      add:
+        headers:
+          - "X-Gateway-Auth: kong"
+          - "X-Gateway-Version: 3.5"
+
 services:
   - name: llm-api-svc
-    url: http://host.docker.internal:8080
+    url: http://llm-api:8080
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    tags: [llm, api]
     routes:
+      - name: llm-auth-public
+        paths:
+          - /auth/guest-login
+          - /auth/refresh-token
+          - /auth/logout
+        strip_path: false
+        methods: [GET, POST, OPTIONS]
+        tags: [llm, auth, public]
+        plugins:
+          - name: cors
+            tags: [llm, cors, public]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
+      - name: llm-auth-protected
+        paths:
+          - /auth
+        strip_path: false
+        tags: [llm, auth, protected]
+        plugins:
+          - name: jwt
+            tags: [llm, auth, jwt]
+            config:
+              algorithm: RS256
+              key_claim_name: kid
+              secret_is_base64: false
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: key-auth
+            tags: [llm, auth, apikey]
+            config:
+              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
+              key_in_header: true
+              key_in_query: false
+              key_in_body: false
+              hide_credentials: true
+              run_on_preflight: false
+              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [llm, auth, enforcement]
+            consumer: kong-anon-key
+            config:
+              status_code: 401
+              message: "Authentication required: provide JWT or API key"
+          - name: rate-limiting
+            tags: [llm, auth, rate]
+            config:
+              minute: 60
+              policy: local
+              limit_by: consumer
+              fault_tolerant: true
+          - name: cors
+            tags: [llm, cors, protected]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
       - name: llm-api-proxy
-        paths: [/llm]
+        paths:
+          - /llm
         strip_path: true
         path_handling: v1
-        tags: [public, llm]
-    plugins:
-      - name: cors
-        config:
-          origins: ["http://localhost", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1"]
-          methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-          headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
-          credentials: true
-          exposed_headers: ["X-Request-Id"]
-          max_age: 3600
+        tags: [llm, api, protected]
+        plugins:
+          - name: jwt
+            tags: [llm, api, jwt]
+            config:
+              algorithm: RS256
+              key_claim_name: kid
+              secret_is_base64: false
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: key-auth
+            tags: [llm, api, apikey]
+            config:
+              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
+              key_in_header: true
+              key_in_query: false
+              key_in_body: false
+              hide_credentials: true
+              run_on_preflight: false
+              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [llm, api, enforcement]
+            consumer: kong-anon-key
+            config:
+              status_code: 401
+              message: "Authentication required: provide JWT or API key"
+          - name: rate-limiting
+            tags: [llm, api, rate]
+            config:
+              minute: 120
+              policy: local
+              limit_by: consumer
+              fault_tolerant: true
+          - name: cors
+            tags: [llm, api, cors]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
 
   - name: media-api-svc
-    url: http://host.docker.internal:8285
+    url: http://media-api:8285
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    tags: [media, api]
     routes:
       - name: media-api-proxy
         paths: [/media]
         strip_path: true
         path_handling: v1
-        tags: [public, media]
-    plugins:
-      - name: cors
-        config:
-          origins: ["http://localhost", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1"]
-          methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-          headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Media-Service-Key"]
-          credentials: true
-          exposed_headers: ["X-Request-Id"]
-          max_age: 3600
+        tags: [media, protected]
+        plugins:
+          - name: jwt
+            tags: [media, jwt]
+            config:
+              algorithm: RS256
+              key_claim_name: kid
+              secret_is_base64: false
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: key-auth
+            tags: [media, apikey]
+            config:
+              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
+              key_in_header: true
+              key_in_query: false
+              key_in_body: false
+              hide_credentials: true
+              run_on_preflight: false
+              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [media, enforcement]
+            consumer: kong-anon-key
+            config:
+              status_code: 401
+              message: "Authentication required: provide JWT or API key"
+          - name: rate-limiting
+            tags: [media, rate]
+            config:
+              minute: 60
+              policy: local
+              limit_by: consumer
+              fault_tolerant: true
+          - name: cors
+            tags: [media, cors]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
 
   - name: response-api-svc
-    url: http://host.docker.internal:8082
+    url: http://response-api:8082
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    tags: [response, api]
     routes:
       - name: response-api-proxy
         paths: [/responses]
         strip_path: true
         path_handling: v1
-        tags: [public, responses]
-    plugins:
-      - name: cors
-        config:
-          origins: ["http://localhost", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1"]
-          methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-          headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
-          credentials: true
-          exposed_headers: ["X-Request-Id"]
-          max_age: 3600
+        tags: [response, protected]
+        plugins:
+          - name: jwt
+            tags: [response, jwt]
+            config:
+              algorithm: RS256
+              key_claim_name: kid
+              secret_is_base64: false
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: key-auth
+            tags: [response, apikey]
+            config:
+              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
+              key_in_header: true
+              key_in_query: false
+              key_in_body: false
+              hide_credentials: true
+              run_on_preflight: false
+              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [response, enforcement]
+            consumer: kong-anon-key
+            config:
+              status_code: 401
+              message: "Authentication required: provide JWT or API key"
+          - name: rate-limiting
+            tags: [response, rate]
+            config:
+              minute: 100
+              policy: local
+              limit_by: consumer
+              fault_tolerant: true
+          - name: cors
+            tags: [response, cors]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
 
   - name: mcp-tools-rpc-svc
-    url: http://host.docker.internal:8091/v1/mcp
+    url: http://mcp-tools:8091/v1/mcp
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    tags: [mcp, rpc]
     routes:
       - name: mcp-tools-rpc
         paths: [/mcp]
-        methods: ["POST", "OPTIONS"]
         strip_path: true
+        methods: ["POST", "OPTIONS"]
         path_handling: v1
-        tags: [public, mcp]
-    plugins:
-      - name: cors
-        config:
-          origins: ["http://localhost", "http://localhost:3000", "http://localhost:8080", "http://127.0.0.1"]
-          methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-          headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id", "mcp-protocol-version"]
-          credentials: true
-          exposed_headers: ["X-Request-Id"]
-          max_age: 3600
+        tags: [mcp, protected]
+        plugins:
+          - name: jwt
+            tags: [mcp, jwt]
+            config:
+              algorithm: RS256
+              key_claim_name: kid
+              secret_is_base64: false
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: key-auth
+            tags: [mcp, apikey]
+            config:
+              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
+              key_in_header: true
+              key_in_query: false
+              key_in_body: false
+              hide_credentials: true
+              run_on_preflight: false
+              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [mcp, enforcement]
+            consumer: kong-anon-key
+            config:
+              status_code: 401
+              message: "Authentication required: provide JWT or API key"
+          - name: rate-limiting
+            tags: [mcp, rate]
+            config:
+              minute: 200
+              policy: local
+              limit_by: consumer
+              fault_tolerant: true
+          - name: cors
+            tags: [mcp, cors]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["POST", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600
 
   - name: mcp-tools-health-svc
-    url: http://host.docker.internal:8091
+    url: http://mcp-tools:8091
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    tags: [mcp, health]
     routes:
       - name: mcp-tools-health
-        paths: [/mcp]
-        methods: ["GET"]
+        paths: [/mcp/healthz, /mcp/readyz]
         strip_path: true
+        methods: ["GET"]
         path_handling: v1
-        tags: [public, mcp, health]
+        tags: [mcp, health, protected]
+        plugins:
+          - name: jwt
+            tags: [mcp, health, jwt]
+            config:
+              algorithm: RS256
+              key_claim_name: kid
+              secret_is_base64: false
+              claims_to_verify: ["exp", "nbf"]
+              maximum_expiration: 3600
+              run_on_preflight: false
+              anonymous: kong-anon-jwt
+          - name: key-auth
+            tags: [mcp, health, apikey]
+            config:
+              key_names: ["X-API-Key", "X-Api-Key", "Authorization"]
+              key_in_header: true
+              key_in_query: false
+              key_in_body: false
+              hide_credentials: true
+              run_on_preflight: false
+              anonymous: kong-anon-key
+          - name: request-termination
+            tags: [mcp, health, enforcement]
+            consumer: kong-anon-key
+            config:
+              status_code: 401
+              message: "Authentication required: provide JWT or API key"
+          - name: cors
+            tags: [mcp, health, cors]
+            config:
+              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              methods: ["GET", "OPTIONS"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "X-Request-Id"]
+              exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+              credentials: true
+              max_age: 3600

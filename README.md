@@ -21,6 +21,8 @@ make setup && make up-full
 - **API Documentation**: http://localhost:8000/v1/swagger/
 - **Keycloak Console**: http://localhost:8085 (admin/admin)
 
+> Keycloak now runs directly from the official `quay.io/keycloak/keycloak:24.0.5` image with our realm/import scripts bind-mounted at runtime—no bundled Keycloak source tree is required.
+
 **Full setup guide**: [Getting Started](docs/getting-started/README.md)
 
 ## What is Jan Server?
@@ -246,7 +248,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```bash
 # Upload media (remote URL)
 curl -X POST http://localhost:8285/v1/media \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "source": {
@@ -266,7 +268,7 @@ curl -X POST http://localhost:8285/v1/media \
 
 # Resolve jan_* ID to presigned URL
 curl -X POST http://localhost:8285/v1/media/resolve \
-  -H "X-Media-Service-Key: changeme-media-key" \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"ids": ["jan_01hqr8v9k2x3f4g5h6j7k8m9n0"]}'
 ```

@@ -18,6 +18,7 @@ import (
 type PrincipalClaims struct {
 	Subject           string
 	Issuer            string
+	Audience          []string
 	PreferredUsername string
 	Email             string
 	Name              string
@@ -28,17 +29,20 @@ type PrincipalClaims struct {
 	IssuedAt          time.Time
 	NotBefore         time.Time
 	TokenID           string
+	AuthorizedParty   string
 }
 
 // KeycloakValidator validates JWT tokens against Keycloak JWKS.
 type KeycloakValidator struct {
-	issuer       string
-	audience     string
-	jwksURL      string
-	logger       zerolog.Logger
-	refreshEvery time.Duration
-	jwks         atomic.Pointer[keyfunc.JWKS]
-	lastErr      atomic.Value // stores lastErrWrap
+	issuer          string
+	audience        string
+	authorizedParty string
+	jwksURL         string
+	logger          zerolog.Logger
+	refreshEvery    time.Duration
+	clockSkew       time.Duration
+	jwks            atomic.Pointer[keyfunc.JWKS]
+	lastErr         atomic.Value // stores lastErrWrap
 }
 
 // lastErrWrap is a sentinel wrapper to avoid storing bare nil in atomic.Value.
@@ -51,17 +55,28 @@ const (
 )
 
 // NewKeycloakValidator initialises JWKS fetching and returns a validator.
-func NewKeycloakValidator(ctx context.Context, jwksURL, issuer, audience string, refreshEvery time.Duration, logger zerolog.Logger) (*KeycloakValidator, error) {
+func NewKeycloakValidator(
+	ctx context.Context,
+	jwksURL,
+	issuer,
+	audience,
+	authorizedParty string,
+	refreshEvery,
+	clockSkew time.Duration,
+	logger zerolog.Logger,
+) (*KeycloakValidator, error) {
 	if jwksURL == "" {
 		return nil, errors.New("jwks url is required")
 	}
 
 	validator := &KeycloakValidator{
-		issuer:       issuer,
-		audience:     audience,
-		jwksURL:      jwksURL,
-		logger:       logger,
-		refreshEvery: refreshEvery,
+		issuer:          issuer,
+		audience:        audience,
+		authorizedParty: authorizedParty,
+		jwksURL:         jwksURL,
+		logger:          logger,
+		refreshEvery:    refreshEvery,
+		clockSkew:       clockSkew,
 	}
 	// Initialize with a non-nil wrapper value
 	validator.lastErr.Store(lastErrWrap{Err: nil})
@@ -161,18 +176,22 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		return nil, fmt.Errorf("issuer mismatch %s", iss)
 	}
 
+	var audiences []string
 	if audRaw, ok := mapClaims["aud"]; ok {
 		switch val := audRaw.(type) {
 		case string:
 			if val != v.audience {
 				return nil, fmt.Errorf("audience mismatch")
 			}
+			audiences = append(audiences, val)
 		case []interface{}:
 			found := false
 			for _, item := range val {
-				if s, ok := item.(string); ok && s == v.audience {
-					found = true
-					break
+				if s, ok := item.(string); ok {
+					if s == v.audience {
+						found = true
+					}
+					audiences = append(audiences, s)
 				}
 			}
 			if !found {
@@ -192,6 +211,10 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 	email, _ := mapClaims["email"].(string)
 	name, _ := mapClaims["name"].(string)
 	picture, _ := mapClaims["picture"].(string)
+	azp := claimString(mapClaims["azp"])
+	if v.authorizedParty != "" && azp != "" && azp != v.authorizedParty {
+		return nil, errors.New("authorized party mismatch")
+	}
 
 	var roles []string
 	if realmAccess, ok := mapClaims["realm_access"].(map[string]any); ok {
@@ -214,10 +237,10 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 	notBefore := jwtNumericTime(mapClaims["nbf"])
 
 	now := time.Now().UTC()
-	if !expires.IsZero() && now.After(expires) {
+	if !expires.IsZero() && now.After(expires.Add(v.clockSkew)) {
 		return nil, errors.New("token expired")
 	}
-	if !notBefore.IsZero() && now.Before(notBefore) {
+	if !notBefore.IsZero() && now.Add(v.clockSkew).Before(notBefore) {
 		return nil, errors.New("token not yet valid")
 	}
 
@@ -234,6 +257,8 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		IssuedAt:          issued,
 		NotBefore:         notBefore,
 		TokenID:           claimString(mapClaims["jti"]),
+		Audience:          audiences,
+		AuthorizedParty:   azp,
 	}, nil
 }
 

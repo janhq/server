@@ -7,17 +7,21 @@
 package main
 
 import (
+	"jan-server/services/llm-api/internal/domain"
+	"jan-server/services/llm-api/internal/domain/apikey"
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/user"
 	"jan-server/services/llm-api/internal/infrastructure"
 	"jan-server/services/llm-api/internal/infrastructure/crontab"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/apikeyrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/conversationrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/userrepo"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/interfaces/httpserver"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
@@ -69,7 +73,8 @@ func CreateApplication() (*Application, error) {
 	conversationRepository := conversationrepo.NewConversationGormRepository(database)
 	conversationService := conversation.NewConversationService(conversationRepository)
 	conversationHandler := conversationhandler.NewConversationHandler(conversationService)
-	resolver := infrastructure.ProvideMediaResolver(config, zerologLogger)
+	client := infrastructure.ProvideKeycloakClient(config, zerologLogger)
+	resolver := infrastructure.ProvideMediaResolver(config, zerologLogger, client)
 	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver)
 	chatCompletionRoute := chat.NewChatCompletionRoute(chatHandler, authHandler)
 	chatRoute := chat.NewChatRoute(chatCompletionRoute)
@@ -79,11 +84,15 @@ func CreateApplication() (*Application, error) {
 	adminProviderRoute := provider2.NewAdminProviderRoute(providerHandler)
 	adminRoute := admin.NewAdminRoute(adminModelRoute, adminProviderRoute)
 	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, adminRoute)
-	client := infrastructure.ProvideKeycloakClient(config, zerologLogger)
 	guestHandler := guestauth.NewGuestHandler(client, zerologLogger)
 	upgradeHandler := guestauth.NewUpgradeHandler(client, zerologLogger)
 	tokenHandler := authhandler.NewTokenHandler(client, zerologLogger)
-	authRoute := auth.NewAuthRoute(guestHandler, upgradeHandler, tokenHandler)
+	apikeyRepository := apikeyrepo.NewAPIKeyRepository(db)
+	kongClient := infrastructure.ProvideKongClient(config, zerologLogger)
+	apikeyConfig := domain.ProvideAPIKeyConfig(config)
+	apikeyService := apikey.NewService(apikeyRepository, kongClient, apikeyConfig, zerologLogger)
+	handler := apikeyhandler.NewHandler(apikeyService, zerologLogger)
+	authRoute := auth.NewAuthRoute(guestHandler, upgradeHandler, tokenHandler, handler, authHandler)
 	keycloakValidator, err := infrastructure.ProvideKeycloakValidator(config, zerologLogger)
 	if err != nil {
 		return nil, err

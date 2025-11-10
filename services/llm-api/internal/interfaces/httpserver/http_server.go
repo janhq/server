@@ -82,7 +82,10 @@ func (httpServer *HttpServer) Run() error {
 
 	// Protected routes (auth middleware applied)
 	protected := httpServer.engine.Group("/")
-	protected.Use(middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.infra.Logger), middleware.CORSMiddleware())
+	protected.Use(
+		middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.infra.Logger, httpServer.config.Issuer),
+		middleware.CORSMiddleware(),
+	)
 
 	// Register auth routes (passes both public and protected routers)
 	httpServer.authRoute.RegisterRouter(root, protected)

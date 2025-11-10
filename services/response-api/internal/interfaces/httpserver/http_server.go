@@ -25,6 +25,7 @@ type HttpServer struct {
 	log         zerolog.Logger
 	handlerProv *handlers.Provider
 	routeProv   *routes.Provider
+	auth        *auth.Validator
 }
 
 // New constructs the HTTP server with default middleware and routes.
@@ -42,7 +43,7 @@ func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service,
 	}
 	handlerProvider := handlers.NewProvider(responseService, log)
 	routeProvider := routes.NewProvider(handlerProvider)
-	registerCoreRoutes(engine, cfg, routeProvider)
+	registerCoreRoutes(engine, cfg, routeProvider, authValidator)
 
 	return &HttpServer{
 		cfg:         cfg,
@@ -50,6 +51,7 @@ func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service,
 		log:         log,
 		handlerProv: handlerProvider,
 		routeProv:   routeProvider,
+		auth:        authValidator,
 	}
 }
 
@@ -87,7 +89,7 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *routes.Provider) {
+func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *routes.Provider, authValidator *auth.Validator) {
 	engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": cfg.ServiceName,
@@ -101,6 +103,13 @@ func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *r
 
 	engine.GET("/readyz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	})
+	engine.GET("/health/auth", func(c *gin.Context) {
+		if authValidator == nil || authValidator.Ready() {
+			c.JSON(http.StatusOK, gin.H{"status": "ready"})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "initializing"})
 	})
 
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

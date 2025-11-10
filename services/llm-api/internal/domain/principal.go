@@ -10,15 +10,17 @@ const (
 
 // Principal captures normalized caller identity independent of auth mechanism.
 type Principal struct {
-	ID          string
-	AuthMethod  AuthMethod
-	Subject     string
-	Issuer      string
-	Username    string
-	Email       string
-	Name        string
-	Scopes      []string
-	Credentials map[string]string
+	ID              string
+	AuthMethod      AuthMethod
+	Subject         string
+	Issuer          string
+	AuthorizedParty string
+	Audience        []string
+	Username        string
+	Email           string
+	Name            string
+	Scopes          []string
+	Credentials     map[string]string
 }
 
 // HasScope checks if the principal possesses a scope.

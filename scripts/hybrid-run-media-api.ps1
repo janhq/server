@@ -37,8 +37,6 @@ if (Test-Path "config\hybrid.env") {
 }
 
 if (-not $env:MEDIA_DATABASE_URL) { $env:MEDIA_DATABASE_URL = "postgres://media:media@localhost:5432/media_api?sslmode=disable" }
-if (-not $env:MEDIA_SERVICE_KEY) { $env:MEDIA_SERVICE_KEY = "changeme-media-key" }
-if (-not $env:MEDIA_API_KEY) { $env:MEDIA_API_KEY = $env:MEDIA_SERVICE_KEY }
 if (-not $env:MEDIA_API_PORT) { $env:MEDIA_API_PORT = "8285" }
 if (-not $env:MEDIA_API_URL) { $env:MEDIA_API_URL = "http://localhost:$($env:MEDIA_API_PORT)" }
 if (-not $env:MEDIA_S3_ENDPOINT) { $env:MEDIA_S3_ENDPOINT = "https://s3.menlo.ai" }
@@ -52,6 +50,10 @@ if (-not $env:MEDIA_MAX_BYTES) { $env:MEDIA_MAX_BYTES = "20971520" }
 if (-not $env:MEDIA_PROXY_DOWNLOAD) { $env:MEDIA_PROXY_DOWNLOAD = "true" }
 if (-not $env:MEDIA_RETENTION_DAYS) { $env:MEDIA_RETENTION_DAYS = "30" }
 if (-not $env:MEDIA_REMOTE_FETCH_TIMEOUT) { $env:MEDIA_REMOTE_FETCH_TIMEOUT = "15s" }
+if (-not $env:AUTH_ENABLED) { $env:AUTH_ENABLED = "true" }
+if (-not $env:AUTH_ISSUER) { $env:AUTH_ISSUER = "http://localhost:8085/realms/jan" }
+if (-not $env:AUTH_AUDIENCE) { $env:AUTH_AUDIENCE = "jan-client" }
+if (-not $env:AUTH_JWKS_URL) { $env:AUTH_JWKS_URL = "http://localhost:8085/realms/jan/protocol/openid-connect/certs" }
 
 Push-Location "$ScriptDir\..\services\media-api"
 try {
