@@ -66,6 +66,20 @@ spec:
           value: {{ tpl .Values.responseApi.env.LLM_API_URL . | quote }}
         - name: MCP_TOOLS_URL
           value: {{ tpl .Values.responseApi.env.MCP_TOOLS_URL . | quote }}
+        - name: AUTH_ENABLED
+          value: "true"
+        - name: AUTH_ISSUER
+          value: {{ .Values.keycloak.issuer | quote }}
+        - name: AUTH_AUDIENCE
+          value: {{ .Values.keycloak.audience | default "jan-client" | quote }}
+        - name: AUTH_JWKS_URL
+          value: {{ tpl .Values.keycloak.jwksUrl . | quote }}
+        - name: MAX_TOOL_EXECUTION_DEPTH
+          value: {{ .Values.responseApi.env.MAX_TOOL_EXECUTION_DEPTH | default "8" | quote }}
+        - name: TOOL_EXECUTION_TIMEOUT
+          value: {{ .Values.responseApi.env.TOOL_EXECUTION_TIMEOUT | default "45s" | quote }}
+        - name: LOG_LEVEL
+          value: {{ .Values.responseApi.env.LOG_LEVEL | default "info" | quote }}
         livenessProbe:
           httpGet:
             path: /healthz

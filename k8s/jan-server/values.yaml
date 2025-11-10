@@ -157,6 +157,15 @@ keycloak:
     username: jan_user
     password: jan_password  # Using jan_user credentials
     name: jan_llm_api
+  
+  # Keycloak issuer URL for Kong JWT validation
+  issuer: "http://keycloak:8085/realms/jan"
+  
+  # Keycloak JWKS URL for JWT verification
+  jwksUrl: "http://keycloak:8085/realms/jan/protocol/openid-connect/certs"
+  
+  # Keycloak audience for JWT claims
+  audience: "jan-client"
 
 ## ============================================================================
 ## Kong API Gateway
@@ -186,6 +195,12 @@ kong:
           - path: /
             pathType: Prefix
     tls: []
+  
+  cors:
+    origins:
+      - "http://localhost"
+      - "http://localhost:3000"
+      - "http://127.0.0.1"
   
   resources:
     requests:
