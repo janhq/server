@@ -1795,7 +1795,145 @@
         ]
       }
     },
-    "/v1/llm/projects": {
+    "/v1/models": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Retrieves a list of available models that can be used for chat completions or other tasks. Returns either simple model list or detailed list with provider metadata based on X-PROVIDER-DATA header.",
+        "parameters": [
+          {
+            "description": "Set to 'true' to include provider metadata in response",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "in": "header",
+            "name": "X-PROVIDER-DATA",
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of models with provider metadata (when X-PROVIDER-DATA=true)",
+            "schema": {
+              "$ref": "#/definitions/modelresponses.ModelWithProviderResponseList"
+            }
+          },
+          "404": {
+            "description": "Models or providers not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve models",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List available models",
+        "tags": [
+          "Chat Completions API"
+        ]
+      }
+    },
+    "/v1/models/catalogs/{model_public_id}": {
+      "get": {
+        "description": "Retrieves detailed information about a model catalog entry by its public ID (supports IDs with slashes like openrouter/nova-lite-v1)",
+        "parameters": [
+          {
+            "description": "Model Catalog Public ID (can contain slashes)",
+            "in": "path",
+            "name": "model_public_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Model catalog details",
+            "schema": {
+              "$ref": "#/definitions/modelresponses.ModelCatalogResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Model catalog not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a model catalog entry",
+        "tags": [
+          "Model API"
+        ]
+      }
+    },
+    "/v1/models/providers": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Retrieves a list of available model providers that can be used for inference.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of providers",
+            "schema": {
+              "$ref": "#/definitions/modelresponses.ProviderResponseList"
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve providers",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List model providers",
+        "tags": [
+          "Model API"
+        ]
+      }
+    },
+    "/v1/projects": {
       "get": {
         "description": "List all projects for the authenticated user",
         "parameters": [
@@ -1907,7 +2045,7 @@
         ]
       }
     },
-    "/v1/llm/projects/{project_id}": {
+    "/v1/projects/{project_id}": {
       "delete": {
         "description": "Soft-delete a project",
         "parameters": [
@@ -2074,144 +2212,6 @@
         "summary": "Update project",
         "tags": [
           "Projects API"
-        ]
-      }
-    },
-    "/v1/models": {
-      "get": {
-        "consumes": [
-          "application/json"
-        ],
-        "description": "Retrieves a list of available models that can be used for chat completions or other tasks. Returns either simple model list or detailed list with provider metadata based on X-PROVIDER-DATA header.",
-        "parameters": [
-          {
-            "description": "Set to 'true' to include provider metadata in response",
-            "enum": [
-              "true",
-              "false"
-            ],
-            "in": "header",
-            "name": "X-PROVIDER-DATA",
-            "type": "string"
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "List of models with provider metadata (when X-PROVIDER-DATA=true)",
-            "schema": {
-              "$ref": "#/definitions/modelresponses.ModelWithProviderResponseList"
-            }
-          },
-          "404": {
-            "description": "Models or providers not found",
-            "schema": {
-              "$ref": "#/definitions/responses.ErrorResponse"
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve models",
-            "schema": {
-              "$ref": "#/definitions/responses.ErrorResponse"
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "List available models",
-        "tags": [
-          "Chat Completions API"
-        ]
-      }
-    },
-    "/v1/models/catalogs/{model_public_id}": {
-      "get": {
-        "description": "Retrieves detailed information about a model catalog entry by its public ID (supports IDs with slashes like openrouter/nova-lite-v1)",
-        "parameters": [
-          {
-            "description": "Model Catalog Public ID (can contain slashes)",
-            "in": "path",
-            "name": "model_public_id",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "Model catalog details",
-            "schema": {
-              "$ref": "#/definitions/modelresponses.ModelCatalogResponse"
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "schema": {
-              "$ref": "#/definitions/responses.ErrorResponse"
-            }
-          },
-          "404": {
-            "description": "Model catalog not found",
-            "schema": {
-              "$ref": "#/definitions/responses.ErrorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "schema": {
-              "$ref": "#/definitions/responses.ErrorResponse"
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Get a model catalog entry",
-        "tags": [
-          "Model API"
-        ]
-      }
-    },
-    "/v1/models/providers": {
-      "get": {
-        "consumes": [
-          "application/json"
-        ],
-        "description": "Retrieves a list of available model providers that can be used for inference.",
-        "produces": [
-          "application/json"
-        ],
-        "responses": {
-          "200": {
-            "description": "List of providers",
-            "schema": {
-              "$ref": "#/definitions/modelresponses.ProviderResponseList"
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve providers",
-            "schema": {
-              "$ref": "#/definitions/responses.ErrorResponse"
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "List model providers",
-        "tags": [
-          "Model API"
         ]
       }
     },
@@ -2975,10 +2975,6 @@
         "ItemRatingLike": "Positive feedback (like)",
         "ItemRatingUnlike": "Negative feedback (unlike)"
       },
-      "x-enum-descriptions": [
-        "Positive feedback (like)",
-        "Negative feedback (unlike)"
-      ],
       "x-enum-varnames": [
         "ItemRatingLike",
         "ItemRatingUnlike"
@@ -3002,16 +2998,6 @@
         "ItemRoleDiscriminator": "For adversarial/validation workflows",
         "ItemRoleUnknown": "Fallback for unrecognized roles"
       },
-      "x-enum-descriptions": [
-        "",
-        "",
-        "",
-        "",
-        "System-level instructions (OpenAI replacement for system)",
-        "For critique/evaluation workflows",
-        "For adversarial/validation workflows",
-        "Fallback for unrecognized roles"
-      ],
       "x-enum-varnames": [
         "ItemRoleSystem",
         "ItemRoleUser",
@@ -3049,18 +3035,6 @@
         "ItemStatusSearching": "File/web search in progress",
         "ItemStatusStreaming": "Streaming response in progress"
       },
-      "x-enum-descriptions": [
-        "Not started or partially complete (OpenAI uses this instead of \"pending\")",
-        "Currently processing",
-        "Successfully finished",
-        "Failed with error",
-        "Cancelled by user or system",
-        "File/web search in progress",
-        "Image generation in progress",
-        "Function/tool call in progress",
-        "Streaming response in progress",
-        "Rate limit hit"
-      ],
       "x-enum-varnames": [
         "ItemStatusIncomplete",
         "ItemStatusInProgress",
@@ -3099,19 +3073,6 @@
         "ItemTypeReasoning": "For o1/reasoning models",
         "ItemTypeWebSearch": "Web browsing operations"
       },
-      "x-enum-descriptions": [
-        "",
-        "",
-        "",
-        "For o1/reasoning models",
-        "RAG/retrieval operations",
-        "Web browsing operations",
-        "Code execution",
-        "Computer interaction",
-        "Custom tool invocations",
-        "Model Context Protocol items",
-        "DALL-E image generation"
-      ],
       "x-enum-varnames": [
         "ItemTypeMessage",
         "ItemTypeFunctionCall",
@@ -3528,11 +3489,6 @@
         "ModelCatalogStatusInit": "default status when creating entry",
         "ModelCatalogStatusUpdated": "manually updated by admin (cannot be auto-updated anymore"
       },
-      "x-enum-descriptions": [
-        "default status when creating entry",
-        "may update from Provider like OpenRouter",
-        "manually updated by admin (cannot be auto-updated anymore"
-      ],
       "x-enum-varnames": [
         "ModelCatalogStatusInit",
         "ModelCatalogStatusFilled",

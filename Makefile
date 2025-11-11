@@ -313,7 +313,7 @@ endif
 
 swagger-llm-api:
 	@echo "Generating Swagger for llm-api service..."
-	@cd services/llm-api && swag init \
+	@cd services/llm-api && go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
 		--dir ./cmd/server,./internal/interfaces/httpserver/routes \
 		--generalInfo server.go \
 		--output ./docs/swagger \
@@ -323,7 +323,7 @@ swagger-llm-api:
 
 swagger-media-api:
 	@echo "Generating Swagger for media-api service..."
-	@cd services/media-api && swag init \
+	@cd services/media-api && go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
 		--dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 \
 		--generalInfo server.go \
 		--output ./docs/swagger \
@@ -333,7 +333,7 @@ swagger-media-api:
 
 swagger-mcp-tools:
 	@echo "Generating Swagger for mcp-tools service..."
-	@cd services/mcp-tools && swag init \
+	@cd services/mcp-tools && go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
 		--dir . \
 		--generalInfo main.go \
 		--output ./docs/swagger \
@@ -343,7 +343,7 @@ swagger-mcp-tools:
 
 swagger-response-api:
 	@echo "Generating Swagger for response-api service..."
-	@cd services/response-api && swag init \
+	@cd services/response-api && go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
 		--dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 \
 		--generalInfo server.go \
 		--output ./docs/swagger \

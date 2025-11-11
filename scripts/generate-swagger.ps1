@@ -16,7 +16,7 @@ $MCP_TOOLS_DIR = Join-Path (Join-Path $ROOT_DIR "services") "mcp-tools"
 Write-Host "Generating swagger for llm-api service..." -ForegroundColor Blue
 Push-Location $LLM_API_DIR
 try {
-    & swag init --dir ./cmd/server,./internal/interfaces/httpserver/routes --generalInfo server.go --output ./docs/swagger --parseDependency --parseInternal
+    & go run github.com/swaggo/swag/cmd/swag@v1.8.12 init --dir ./cmd/server,./internal/interfaces/httpserver/routes --generalInfo server.go --output ./docs/swagger --parseDependency --parseInternal
 
     $llmApiSwagger = Join-Path (Join-Path (Join-Path $LLM_API_DIR "docs") "swagger") "swagger.json"
     if (Test-Path $llmApiSwagger) {
@@ -32,7 +32,7 @@ try {
 Write-Host "Generating swagger for mcp-tools service..." -ForegroundColor Blue
 Push-Location $MCP_TOOLS_DIR
 try {
-    & swag init --dir . --generalInfo main.go --output ./docs/swagger --parseDependency --parseInternal
+    & go run github.com/swaggo/swag/cmd/swag@v1.8.12 init --dir . --generalInfo main.go --output ./docs/swagger --parseDependency --parseInternal
 
     $mcpToolsSwagger = Join-Path (Join-Path (Join-Path $MCP_TOOLS_DIR "docs") "swagger") "swagger.json"
     if (Test-Path $mcpToolsSwagger) {
@@ -62,7 +62,7 @@ Write-Host ""
 Write-Host "Generating swagger for media-api service..." -ForegroundColor Blue
 Push-Location $MEDIA_API_DIR
 try {
-    & swag init --dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 --generalInfo server.go --output ./docs/swagger --parseDependency --parseInternal
+    & go run github.com/swaggo/swag/cmd/swag@v1.8.12 init --dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 --generalInfo server.go --output ./docs/swagger --parseDependency --parseInternal
 
     $mediaApiSwagger = Join-Path (Join-Path (Join-Path $MEDIA_API_DIR "docs") "swagger") "swagger.json"
     if (Test-Path $mediaApiSwagger) {

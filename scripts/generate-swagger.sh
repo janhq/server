@@ -17,12 +17,6 @@
 
 set -euo pipefail
 
-# Prerequisite checks
-if ! command -v swag >/dev/null 2>&1; then
-  echo " 'swag' CLI not installed. Install with: go install github.com/swaggo/swag/cmd/swag@latest" >&2
-  exit 1
-fi
-
 echo "🔧 Generating Swagger documentation for Jan Server..."
 
 # Colors for output
@@ -42,7 +36,7 @@ missing_any=0
 # Generate swagger for llm-api
 echo -e "${BLUE}📝 Generating swagger for llm-api service...${NC}"
 cd "$LLM_API_DIR"
-swag init \
+go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
   --dir ./cmd/server,./internal/interfaces/httpserver/routes \
   --generalInfo server.go \
   --output ./docs/swagger \
@@ -59,7 +53,7 @@ fi
 # Generate swagger for media-api
 echo -e "${BLUE}dY\"? Generating swagger for media-api service...${NC}"
 cd "$MEDIA_API_DIR"
-swag init \
+go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
   --dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 \
   --generalInfo server.go \
   --output ./docs/swagger \
@@ -76,7 +70,7 @@ fi
 # Generate swagger for mcp-tools
 echo -e "${BLUE}📝 Generating swagger for mcp-tools service...${NC}"
 cd "$MCP_TOOLS_DIR"
-swag init \
+go run github.com/swaggo/swag/cmd/swag@v1.8.12 init \
   --dir . \
   --generalInfo main.go \
   --output ./docs/swagger \

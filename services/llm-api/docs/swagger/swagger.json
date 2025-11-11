@@ -2914,10 +2914,6 @@
                 "ItemRatingLike": "Positive feedback (like)",
                 "ItemRatingUnlike": "Negative feedback (unlike)"
             },
-            "x-enum-descriptions": [
-                "Positive feedback (like)",
-                "Negative feedback (unlike)"
-            ],
             "x-enum-varnames": [
                 "ItemRatingLike",
                 "ItemRatingUnlike"
@@ -2941,16 +2937,6 @@
                 "ItemRoleDiscriminator": "For adversarial/validation workflows",
                 "ItemRoleUnknown": "Fallback for unrecognized roles"
             },
-            "x-enum-descriptions": [
-                "",
-                "",
-                "",
-                "",
-                "System-level instructions (OpenAI replacement for system)",
-                "For critique/evaluation workflows",
-                "For adversarial/validation workflows",
-                "Fallback for unrecognized roles"
-            ],
             "x-enum-varnames": [
                 "ItemRoleSystem",
                 "ItemRoleUser",
@@ -2988,18 +2974,6 @@
                 "ItemStatusSearching": "File/web search in progress",
                 "ItemStatusStreaming": "Streaming response in progress"
             },
-            "x-enum-descriptions": [
-                "Not started or partially complete (OpenAI uses this instead of \"pending\")",
-                "Currently processing",
-                "Successfully finished",
-                "Failed with error",
-                "Cancelled by user or system",
-                "File/web search in progress",
-                "Image generation in progress",
-                "Function/tool call in progress",
-                "Streaming response in progress",
-                "Rate limit hit"
-            ],
             "x-enum-varnames": [
                 "ItemStatusIncomplete",
                 "ItemStatusInProgress",
@@ -3038,19 +3012,6 @@
                 "ItemTypeReasoning": "For o1/reasoning models",
                 "ItemTypeWebSearch": "Web browsing operations"
             },
-            "x-enum-descriptions": [
-                "",
-                "",
-                "",
-                "For o1/reasoning models",
-                "RAG/retrieval operations",
-                "Web browsing operations",
-                "Code execution",
-                "Computer interaction",
-                "Custom tool invocations",
-                "Model Context Protocol items",
-                "DALL-E image generation"
-            ],
             "x-enum-varnames": [
                 "ItemTypeMessage",
                 "ItemTypeFunctionCall",
@@ -3467,11 +3428,6 @@
                 "ModelCatalogStatusInit": "default status when creating entry",
                 "ModelCatalogStatusUpdated": "manually updated by admin (cannot be auto-updated anymore"
             },
-            "x-enum-descriptions": [
-                "default status when creating entry",
-                "may update from Provider like OpenRouter",
-                "manually updated by admin (cannot be auto-updated anymore"
-            ],
             "x-enum-varnames": [
                 "ModelCatalogStatusInit",
                 "ModelCatalogStatusFilled",
