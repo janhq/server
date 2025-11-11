@@ -1516,6 +1516,75 @@ definitions:
       severity:
         type: string
     type: object
+  projectreq.CreateProjectRequest:
+    properties:
+      instruction:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  projectreq.UpdateProjectRequest:
+    properties:
+      instruction:
+        type: string
+      is_archived:
+        type: boolean
+      is_favorite:
+        type: boolean
+      name:
+        type: string
+    type: object
+  projectres.ProjectDeletedResponse:
+    properties:
+      deleted:
+        type: boolean
+      id:
+        type: string
+      object:
+        type: string
+    type: object
+  projectres.ProjectListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/projectres.ProjectResponse'
+        type: array
+      first_id:
+        type: string
+      has_more:
+        type: boolean
+      last_id:
+        type: string
+      next_cursor:
+        type: string
+      object:
+        type: string
+      total:
+        type: integer
+    type: object
+  projectres.ProjectResponse:
+    properties:
+      archived_at:
+        type: integer
+      created_at:
+        type: integer
+      id:
+        type: string
+      instruction:
+        type: string
+      is_archived:
+        type: boolean
+      is_favorite:
+        type: boolean
+      name:
+        type: string
+      object:
+        type: string
+      updated_at:
+        type: integer
+    type: object
   requestmodels.AddProviderRequest:
     properties:
       active:
@@ -1636,6 +1705,8 @@ definitions:
         type: string
       error:
         type: string
+      message:
+        type: string
       request_id:
         type: string
     type: object
@@ -1648,6 +1719,102 @@ info:
   title: Jan Server LLM API
   version: "2.0"
 paths:
+  /auth/api-keys:
+    get:
+      consumes:
+      - application/json
+      description: Returns all API keys created by the authenticated user. Key values
+        are not returned, only metadata.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of API keys with metadata
+          schema:
+            type: object
+        "401":
+          description: Unauthorized - invalid or expired token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List user's API keys
+      tags:
+      - Authentication API
+    post:
+      consumes:
+      - application/json
+      description: Creates a new API key for the authenticated user. API keys provide
+        programmatic access without requiring user credentials.
+      parameters:
+      - description: API key creation request with name and optional scopes
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: API key created successfully with key value
+          schema:
+            type: object
+        "400":
+          description: Invalid request - missing required fields
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - invalid or expired token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create API key
+      tags:
+      - Authentication API
+  /auth/api-keys/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Revokes and deletes an API key by ID. Deleted keys can no longer
+        be used for authentication.
+      parameters:
+      - description: API key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: API key deleted successfully
+        "401":
+          description: Unauthorized - invalid or expired token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: API key not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete API key
+      tags:
+      - Authentication API
   /auth/guest-login:
     post:
       consumes:
@@ -1784,6 +1951,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Upgrade guest to permanent account
+      tags:
+      - Authentication API
+  /auth/validate-api-key:
+    post:
+      consumes:
+      - application/json
+      description: Internal endpoint used by Kong API Gateway to validate API keys.
+        Not intended for direct client use.
+      parameters:
+      - description: API key validation request
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: API key is valid with user information
+          schema:
+            type: object
+        "401":
+          description: Invalid API key
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Validate API key (Kong Plugin)
       tags:
       - Authentication API
   /v1/admin/models/catalogs:
@@ -2889,6 +3087,186 @@ paths:
       summary: List model providers
       tags:
       - Model API
+  /v1/projects:
+    get:
+      description: List all projects for the authenticated user
+      parameters:
+      - description: Maximum number of projects to return
+        in: query
+        name: limit
+        type: integer
+      - description: Return projects after the given numeric ID
+        in: query
+        name: after
+        type: string
+      - description: Sort order (asc or desc)
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projectres.ProjectListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List projects
+      tags:
+      - Projects API
+    post:
+      consumes:
+      - application/json
+      description: Create a new project for grouping conversations
+      parameters:
+      - description: Create project request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/projectreq.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/projectres.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create project
+      tags:
+      - Projects API
+  /v1/projects/{project_id}:
+    delete:
+      description: Soft-delete a project
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projectres.ProjectDeletedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete project
+      tags:
+      - Projects API
+    get:
+      description: Get a single project by ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projectres.ProjectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project
+      tags:
+      - Projects API
+    patch:
+      consumes:
+      - application/json
+      description: Update project name, instruction, or archived status
+      parameters:
+      - description: Project ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: Update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/projectreq.UpdateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/projectres.ProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project
+      tags:
+      - Projects API
   /v1/readyz:
     get:
       description: Returns the readiness status of the API server. Indicates if the

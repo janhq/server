@@ -10,6 +10,8 @@ definitions:
         type: string
       mime:
         type: string
+      presigned_url:
+        type: string
     type: object
   handlers.resolveRequest:
     properties:
@@ -38,6 +40,15 @@ definitions:
     required:
     - source
     type: object
+  media.PrepareUploadRequest:
+    properties:
+      mime_type:
+        type: string
+      user_id:
+        type: string
+    required:
+    - mime_type
+    type: object
   media.Source:
     properties:
       data_url:
@@ -48,6 +59,18 @@ definitions:
         type: string
     required:
     - type
+    type: object
+  media.UploadPreparation:
+    properties:
+      expires_in:
+        description: seconds
+        type: integer
+      id:
+        type: string
+      mime_type:
+        type: string
+      upload_url:
+        type: string
     type: object
 info:
   contact: {}
@@ -109,6 +132,37 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Stream media bytes
+      tags:
+      - media
+  /v1/media/prepare-upload:
+    post:
+      consumes:
+      - application/json
+      description: Generates a presigned upload URL and reserves a jan_id. Client
+        uploads directly to S3 using the URL.
+      parameters:
+      - description: Upload preparation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/media.PrepareUploadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/media.UploadPreparation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Request presigned upload URL
       tags:
       - media
   /v1/media/resolve:

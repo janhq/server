@@ -27,8 +27,13 @@ import (
 
 // @title Response API
 // @version 1.0
-// @description Reference Go microservice skeleton for Jan Server
+// @description Orchestrates LLM responses with MCP tool integration, conversation context, and streaming support.
+// @contact.name Jan Server Team
+// @contact.url https://github.com/janhq/jan-server
 // @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 type Application struct {
 	httpServer *httpserver.HttpServer
 	log        zerolog.Logger

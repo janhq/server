@@ -127,22 +127,66 @@ func (a *AuthRoute) GetMe(c *gin.Context) {
 	a.tokenHandler.GetMe(c)
 }
 
-// CreateAPIKey handles POST /auth/api-keys
+// CreateAPIKey godoc
+// @Summary Create API key
+// @Description Creates a new API key for the authenticated user. API keys provide programmatic access without requiring user credentials.
+// @Tags Authentication API
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body object true "API key creation request with name and optional scopes"
+// @Success 201 {object} object "API key created successfully with key value"
+// @Failure 400 {object} responses.ErrorResponse "Invalid request - missing required fields"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized - invalid or expired token"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/api-keys [post]
 func (a *AuthRoute) CreateAPIKey(c *gin.Context) {
 	a.apiKeyHandler.Create(c)
 }
 
-// ListAPIKeys handles GET /auth/api-keys
+// ListAPIKeys godoc
+// @Summary List user's API keys
+// @Description Returns all API keys created by the authenticated user. Key values are not returned, only metadata.
+// @Tags Authentication API
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} object "List of API keys with metadata"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized - invalid or expired token"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/api-keys [get]
 func (a *AuthRoute) ListAPIKeys(c *gin.Context) {
 	a.apiKeyHandler.List(c)
 }
 
-// DeleteAPIKey handles DELETE /auth/api-keys/:id
+// DeleteAPIKey godoc
+// @Summary Delete API key
+// @Description Revokes and deletes an API key by ID. Deleted keys can no longer be used for authentication.
+// @Tags Authentication API
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "API key ID"
+// @Success 204 "API key deleted successfully"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized - invalid or expired token"
+// @Failure 404 {object} responses.ErrorResponse "API key not found"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/api-keys/{id} [delete]
 func (a *AuthRoute) DeleteAPIKey(c *gin.Context) {
 	a.apiKeyHandler.Delete(c)
 }
 
-// ValidateAPIKey handles POST /auth/validate-api-key (for Kong plugin)
+// ValidateAPIKey godoc
+// @Summary Validate API key (Kong Plugin)
+// @Description Internal endpoint used by Kong API Gateway to validate API keys. Not intended for direct client use.
+// @Tags Authentication API
+// @Accept json
+// @Produce json
+// @Param request body object true "API key validation request"
+// @Success 200 {object} object "API key is valid with user information"
+// @Failure 401 {object} responses.ErrorResponse "Invalid API key"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/validate-api-key [post]
 func (a *AuthRoute) ValidateAPIKey(c *gin.Context) {
 	a.apiKeyHandler.Validate(c)
 }

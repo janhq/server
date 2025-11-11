@@ -62,7 +62,7 @@ Write-Host ""
 Write-Host "Generating swagger for media-api service..." -ForegroundColor Blue
 Push-Location $MEDIA_API_DIR
 try {
-    & swag init --dir ./cmd/server,./internal/interfaces/httpserver/routes --generalInfo server.go --output ./docs/swagger --parseDependency --parseInternal
+    & swag init --dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 --generalInfo server.go --output ./docs/swagger --parseDependency --parseInternal
 
     $mediaApiSwagger = Join-Path (Join-Path (Join-Path $MEDIA_API_DIR "docs") "swagger") "swagger.json"
     if (Test-Path $mediaApiSwagger) {

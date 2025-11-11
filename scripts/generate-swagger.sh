@@ -60,7 +60,7 @@ fi
 echo -e "${BLUE}dY\"? Generating swagger for media-api service...${NC}"
 cd "$MEDIA_API_DIR"
 swag init \
-  --dir ./cmd/server,./internal/interfaces/httpserver/routes \
+  --dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 \
   --generalInfo server.go \
   --output ./docs/swagger \
   --parseDependency \

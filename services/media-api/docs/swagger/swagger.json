@@ -56,6 +56,54 @@
                 }
             }
         },
+        "/v1/media/prepare-upload": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Generates a presigned upload URL and reserves a jan_id. Client uploads directly to S3 using the URL.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Request presigned upload URL",
+                "parameters": [
+                    {
+                        "description": "Upload preparation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/media.PrepareUploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/media.UploadPreparation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/media/resolve": {
             "post": {
                 "security": [
@@ -160,6 +208,9 @@
                 },
                 "mime": {
                     "type": "string"
+                },
+                "presigned_url": {
+                    "type": "string"
                 }
             }
         },
@@ -205,6 +256,20 @@
                 }
             }
         },
+        "media.PrepareUploadRequest": {
+            "type": "object",
+            "required": [
+                "mime_type"
+            ],
+            "properties": {
+                "mime_type": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "media.Source": {
             "type": "object",
             "required": [
@@ -218,6 +283,24 @@
                     "type": "string"
                 },
                 "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "media.UploadPreparation": {
+            "type": "object",
+            "properties": {
+                "expires_in": {
+                    "description": "seconds",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "upload_url": {
                     "type": "string"
                 }
             }

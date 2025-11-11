@@ -298,7 +298,7 @@ clean-build:
 
 # --- Swagger Documentation ---
 
-.PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-combine swagger-install
+.PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-response-api swagger-combine swagger-install
 
 swagger:
 	@echo "Generating Swagger documentation for all services..."
@@ -324,7 +324,7 @@ swagger-llm-api:
 swagger-media-api:
 	@echo "Generating Swagger for media-api service..."
 	@cd services/media-api && swag init \
-		--dir ./cmd/server,./internal/interfaces/httpserver/routes \
+		--dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 \
 		--generalInfo server.go \
 		--output ./docs/swagger \
 		--parseDependency \
@@ -340,6 +340,16 @@ swagger-mcp-tools:
 		--parseDependency \
 		--parseInternal
 	@echo " mcp-tools swagger generated at services/mcp-tools/docs/swagger"
+
+swagger-response-api:
+	@echo "Generating Swagger for response-api service..."
+	@cd services/response-api && swag init \
+		--dir ./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1 \
+		--generalInfo server.go \
+		--output ./docs/swagger \
+		--parseDependency \
+		--parseInternal
+	@echo " response-api swagger generated at services/response-api/docs/swagger"
 
 swagger-combine:
 	@echo "Merging LLM API and MCP Tools swagger specs..."

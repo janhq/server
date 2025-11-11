@@ -140,9 +140,9 @@
               "raw": "{\n  \"name\": \"Marketing Campaign\",\n  \"instruction\": \"You are a marketing expert. Provide creative and data-driven marketing strategies. Always consider ROI and target audience demographics.\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects",
+              "raw": "{{llm_api_url}}/v1/projects",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"]
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -192,9 +192,9 @@
               "raw": "{\n  \"name\": \"Technical Support\",\n  \"instruction\": \"You are a technical support specialist. Provide clear, step-by-step troubleshooting guidance. Be patient and ask clarifying questions when needed.\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects",
+              "raw": "{{llm_api_url}}/v1/projects",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"]
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -234,9 +234,9 @@
               "raw": "{\n  \"name\": \"Personal Assistant\",\n  \"instruction\": \"You are a helpful personal assistant. Help with scheduling, reminders, and general life organization.\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects",
+              "raw": "{{llm_api_url}}/v1/projects",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"]
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -267,9 +267,9 @@
               }
             ],
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects/{{project_id_1}}",
+              "raw": "{{llm_api_url}}/v1/projects/{{project_id_1}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects", "{{project_id_1}}"]
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -305,9 +305,9 @@
               }
             ],
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects?limit=2",
+              "raw": "{{llm_api_url}}/v1/projects?limit=2",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"],
+              "path": ["v1", "projects"],
               "query": [
                 {
                   "key": "limit",
@@ -363,9 +363,9 @@
               }
             ],
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects?limit=2&cursor={{next_cursor}}",
+              "raw": "{{llm_api_url}}/v1/projects?limit=2&cursor={{next_cursor}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"],
+              "path": ["v1", "projects"],
               "query": [
                 {
                   "key": "limit",
@@ -413,9 +413,9 @@
               "raw": "{\n  \"name\": \"Marketing Campaign 2024\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects/{{project_id_1}}",
+              "raw": "{{llm_api_url}}/v1/projects/{{project_id_1}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects", "{{project_id_1}}"]
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -454,9 +454,9 @@
               "raw": "{\n  \"instruction\": \"You are a marketing expert specializing in digital campaigns. Focus on social media, SEO, and content marketing strategies.\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects/{{project_id_1}}",
+              "raw": "{{llm_api_url}}/v1/projects/{{project_id_1}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects", "{{project_id_1}}"]
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -494,9 +494,9 @@
               "raw": "{\n  \"is_favorite\": true\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects/{{project_id_1}}",
+              "raw": "{{llm_api_url}}/v1/projects/{{project_id_1}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects", "{{project_id_1}}"]
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -534,9 +534,9 @@
               "raw": "{\n  \"is_archived\": true\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects/{{project_id_2}}",
+              "raw": "{{llm_api_url}}/v1/projects/{{project_id_2}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects", "{{project_id_2}}"]
+              "path": ["v1", "projects", "{{project_id_2}}"]
             }
           },
           "event": [
@@ -575,9 +575,9 @@
               "raw": "{\n  \"is_archived\": false\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects/{{project_id_2}}",
+              "raw": "{{llm_api_url}}/v1/projects/{{project_id_2}}",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects", "{{project_id_2}}"]
+              "path": ["v1", "projects", "{{project_id_2}}"]
             }
           },
           "event": [
@@ -615,9 +615,9 @@
               "raw": "{\n  \"name\": \"This is a very long project name that exceeds the maximum allowed length of 120 characters and should be rejected by the validation logic in the backend\",\n  \"instruction\": \"Test instruction\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects",
+              "raw": "{{llm_api_url}}/v1/projects",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"]
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -655,9 +655,9 @@
               "raw": "{\n  \"name\": \"\",\n  \"instruction\": \"Test instruction\"\n}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/v1/llm/projects",
+              "raw": "{{llm_api_url}}/v1/projects",
               "host": ["{{llm_api_url}}"],
-              "path": ["v1", "llm", "projects"]
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -1270,7 +1270,7 @@
                 "value": "Bearer {{access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/llm/projects/{{project_id_1}}"
+            "url": "{{llm_api_url}}/v1/projects/{{project_id_1}}"
           },
           "event": [
             {
@@ -1296,7 +1296,7 @@
                 "value": "Bearer {{access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/llm/projects/{{project_id_2}}"
+            "url": "{{llm_api_url}}/v1/projects/{{project_id_2}}"
           },
           "event": [
             {
@@ -1322,7 +1322,7 @@
                 "value": "Bearer {{access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/llm/projects/{{project_id_3}}"
+            "url": "{{llm_api_url}}/v1/projects/{{project_id_3}}"
           },
           "event": [
             {
@@ -1348,7 +1348,7 @@
                 "value": "Bearer {{access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/llm/projects/{{project_id_1}}"
+            "url": "{{llm_api_url}}/v1/projects/{{project_id_1}}"
           },
           "event": [
             {
@@ -1406,3 +1406,4 @@
     }
   ]
 }
+

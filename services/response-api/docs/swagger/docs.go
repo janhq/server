@@ -9,7 +9,10 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "contact": {
+            "name": "Jan Server Team",
+            "url": "https://github.com/janhq/jan-server"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -171,8 +174,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.ConversationItem"
+                            }
                         }
                     }
                 }
@@ -308,6 +313,25 @@ const docTemplate = `{
                     "additionalProperties": true
                 }
             }
+        },
+        "response.ConversationItem": {
+            "type": "object",
+            "properties": {
+                "content": {},
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
@@ -319,7 +343,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Response API",
-	Description:      "Reference Go microservice skeleton for Jan Server",
+	Description:      "Orchestrates LLM responses with MCP tool integration, conversation context, and streaming support.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

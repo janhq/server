@@ -87,9 +87,20 @@ definitions:
         additionalProperties: true
         type: object
     type: object
+  response.ConversationItem:
+    properties:
+      content: {}
+      role:
+        type: string
+      status:
+        type: string
+    type: object
 info:
-  contact: {}
-  description: Reference Go microservice skeleton for Jan Server
+  contact:
+    name: Jan Server Team
+    url: https://github.com/janhq/jan-server
+  description: Orchestrates LLM responses with MCP tool integration, conversation
+    context, and streaming support.
   title: Response API
   version: "1.0"
 paths:
@@ -194,9 +205,15 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            items:
+              $ref: '#/definitions/response.ConversationItem'
+            type: array
       summary: List conversation input items
       tags:
       - Responses
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

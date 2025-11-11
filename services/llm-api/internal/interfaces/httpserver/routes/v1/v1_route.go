@@ -46,10 +46,7 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	v1Route.model.RegisterRouter(v1Router)
 	v1Route.chat.RegisterRouter(v1Router)
 	v1Route.conversation.RegisterRouter(v1Router)
-
-	// LLM routes group
-	llmRouter := v1Router.Group("/llm")
-	v1Route.project.RegisterRoutes(llmRouter)
+	v1Route.project.RegisterRoutes(v1Router)
 
 }
 

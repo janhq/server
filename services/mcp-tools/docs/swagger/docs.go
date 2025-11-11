@@ -20,7 +20,7 @@ const docTemplate = `{
     "paths": {
         "/v1/mcp": {
             "post": {
-                "description": "Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.\n\n**Available Tools:**\n- ` + "`" + `google_search` + "`" + `: Web search via Serper API (params: q, gl, hl, location, num, tbs, page, autocorrect)\n- ` + "`" + `scrape` + "`" + `: Web page scraping (params: url, includeMarkdown)\n\n**MCP Protocol:**\n- Request format: JSON-RPC 2.0 with method and params\n- Response format: Server-Sent Events (SSE) stream\n- Stateless mode (no session management)",
+                "description": "Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.\n\n**Available Tools:**\n- ` + "`" + `google_search` + "`" + `: Web search via pluggable engines (Serper/SearXNG/duckduckgo) with params: q, gl, hl, location, num, tbs, page, autocorrect, domain_allow_list, location_hint, offline_mode. Returns structured citations.\n- ` + "`" + `scrape` + "`" + `: Web page scraping (params: url, includeMarkdown) returning text, preview, cache_status, and metadata.\n- ` + "`" + `file_search_index` + "`" + ` / ` + "`" + `file_search_query` + "`" + `: Index arbitrary text and run similarity queries against the lightweight vector store.\n- ` + "`" + `python_exec` + "`" + `: Execute trusted code through SandboxFusion (params: code, language, session_id, approved) to retrieve stdout/stderr/artifacts.\n\n**MCP Protocol:**\n- Request format: JSON-RPC 2.0 with method and params\n- Response format: Server-Sent Events (SSE) stream\n- Stateless mode (no session management)",
                 "consumes": [
                     "application/json"
                 ],
@@ -94,6 +94,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Model Context Protocol (MCP) tools service providing search and scraping capabilities.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

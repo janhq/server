@@ -45,7 +45,7 @@ func (r *ProjectRoute) RegisterRoutes(rg *gin.RouterGroup) {
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 401 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
-// @Router /v1/llm/projects [post]
+// @Router /v1/projects [post]
 func (r *ProjectRoute) createProject(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -82,7 +82,7 @@ func (r *ProjectRoute) createProject(reqCtx *gin.Context) {
 // @Success 200 {object} projectres.ProjectListResponse
 // @Failure 401 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
-// @Router /v1/llm/projects [get]
+// @Router /v1/projects [get]
 func (r *ProjectRoute) listProjects(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -118,7 +118,7 @@ func (r *ProjectRoute) listProjects(reqCtx *gin.Context) {
 // @Failure 401 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
-// @Router /v1/llm/projects/{project_id} [get]
+// @Router /v1/projects/{project_id} [get]
 func (r *ProjectRoute) getProject(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -153,7 +153,7 @@ func (r *ProjectRoute) getProject(reqCtx *gin.Context) {
 // @Failure 401 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
-// @Router /v1/llm/projects/{project_id} [patch]
+// @Router /v1/projects/{project_id} [patch]
 func (r *ProjectRoute) updateProject(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -191,7 +191,7 @@ func (r *ProjectRoute) updateProject(reqCtx *gin.Context) {
 // @Failure 401 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
-// @Router /v1/llm/projects/{project_id} [delete]
+// @Router /v1/projects/{project_id} [delete]
 func (r *ProjectRoute) deleteProject(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
