@@ -99,7 +99,8 @@ func CreateApplication() (*Application, error) {
 	apikeyConfig := domain.ProvideAPIKeyConfig(config)
 	apikeyService := apikey.NewService(apikeyRepository, client, apikeyConfig, zerologLogger)
 	handler := apikeyhandler.NewHandler(apikeyService, zerologLogger)
-	authRoute := auth.NewAuthRoute(guestHandler, upgradeHandler, tokenHandler, handler, authHandler)
+	keycloakOAuthHandler := authhandler.ProvideKeycloakOAuthHandler(config)
+	authRoute := auth.NewAuthRoute(guestHandler, upgradeHandler, tokenHandler, handler, authHandler, keycloakOAuthHandler)
 	keycloakValidator, err := infrastructure.ProvideKeycloakValidator(config, zerologLogger)
 	if err != nil {
 		return nil, err

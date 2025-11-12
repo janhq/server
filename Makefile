@@ -737,7 +737,7 @@ test-auth:
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
-		--env-var "client_id_public=llm-api" \
+		--env-var "client_id_public=jan-client" \
 		--verbose \
 		--reporters cli
 	@echo " Authentication tests passed"
@@ -750,7 +750,7 @@ test-conversations:
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
-		--env-var "client_id_public=llm-api" \
+		--env-var "client_id_public=jan-client" \
 		--verbose \
 		--reporters cli
 	@echo " Conversation API tests passed"
@@ -804,7 +804,7 @@ ifeq ($(OS),Windows_NT)
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
-		--env-var "client_id_public=llm-api" \
+		--env-var "client_id_public=jan-client" \
 		--verbose \
 		--reporter-cli-no-banner \
 		--reporter-cli-no-summary \
@@ -816,7 +816,7 @@ else
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
-		--env-var "client_id_public=llm-api" \
+		--env-var "client_id_public=jan-client" \
 		--verbose \
 		--reporter-cli-no-banner \
 		--reporter-cli-no-summary \

@@ -10,11 +10,12 @@ import (
 
 // AuthRoute handles authentication routes
 type AuthRoute struct {
-	guestHandler   *guestauth.GuestHandler
-	upgradeHandler *guestauth.UpgradeHandler
-	tokenHandler   *authhandler.TokenHandler
-	apiKeyHandler  *apikeyhandler.Handler
-	authHandler    *authhandler.AuthHandler
+	guestHandler         *guestauth.GuestHandler
+	upgradeHandler       *guestauth.UpgradeHandler
+	tokenHandler         *authhandler.TokenHandler
+	apiKeyHandler        *apikeyhandler.Handler
+	authHandler          *authhandler.AuthHandler
+	keycloakOAuthHandler *authhandler.KeycloakOAuthHandler
 }
 
 // NewAuthRoute creates a new auth route
@@ -24,22 +25,30 @@ func NewAuthRoute(
 	tokenHandler *authhandler.TokenHandler,
 	apiKeyHandler *apikeyhandler.Handler,
 	authHandler *authhandler.AuthHandler,
+	keycloakOAuthHandler *authhandler.KeycloakOAuthHandler,
 ) *AuthRoute {
 	return &AuthRoute{
-		guestHandler:   guestHandler,
-		upgradeHandler: upgradeHandler,
-		tokenHandler:   tokenHandler,
-		apiKeyHandler:  apiKeyHandler,
-		authHandler:    authHandler,
+		guestHandler:         guestHandler,
+		upgradeHandler:       upgradeHandler,
+		tokenHandler:         tokenHandler,
+		apiKeyHandler:        apiKeyHandler,
+		authHandler:          authHandler,
+		keycloakOAuthHandler: keycloakOAuthHandler,
 	}
 }
 
 // RegisterRouter registers auth routes
 func (a *AuthRoute) RegisterRouter(router gin.IRouter, protectedRouter gin.IRouter) {
-	// Public routes
+	// Public routes - Guest login
 	router.POST("/auth/guest-login", a.CreateGuestLogin)
 	router.GET("/auth/refresh-token", a.RefreshToken)
 	router.GET("/auth/logout", a.Logout)
+
+	// Public routes - Keycloak OAuth2/OIDC (simplified)
+	router.GET("/auth/login", a.KeycloakLogin)
+	router.GET("/auth/callback", a.KeycloakCallback)
+	router.POST("/auth/validate", a.ValidateKeycloakToken)
+	router.POST("/auth/revoke", a.RevokeKeycloakToken)
 
 	// API key validation endpoint (for Kong plugin)
 	router.POST("/auth/validate-api-key", a.ValidateAPIKey)
@@ -189,4 +198,81 @@ func (a *AuthRoute) DeleteAPIKey(c *gin.Context) {
 // @Router /auth/validate-api-key [post]
 func (a *AuthRoute) ValidateAPIKey(c *gin.Context) {
 	a.apiKeyHandler.Validate(c)
+}
+
+// KeycloakLogin godoc
+// @Summary Initiate Keycloak OAuth2 login
+// @Description Returns the Keycloak authorization URL for frontend to redirect users. Supports OAuth2 authorization code flow with PKCE.
+// @Tags Authentication API
+// @Accept json
+// @Produce json
+// @Param redirect_url query string false "URL to redirect after successful login"
+// @Success 200 {object} object{authorization_url=string,state=string} "Authorization URL and state parameter"
+// @Failure 500 {object} responses.ErrorResponse "Failed to initiate login"
+// @Router /auth/login [get]
+func (a *AuthRoute) KeycloakLogin(c *gin.Context) {
+	if a.keycloakOAuthHandler != nil {
+		a.keycloakOAuthHandler.InitiateLogin(c)
+	} else {
+		c.JSON(500, gin.H{"error": "Keycloak OAuth is not configured"})
+	}
+}
+
+// KeycloakCallback godoc
+// @Summary Handle Keycloak OAuth2 callback
+// @Description Handles the OAuth2 callback from Keycloak, exchanges authorization code for JWT tokens
+// @Tags Authentication API
+// @Accept json
+// @Produce json
+// @Param code query string true "Authorization code from Keycloak"
+// @Param state query string true "State parameter for CSRF protection"
+// @Success 200 {object} object{access_token=string,refresh_token=string,expires_in=int,token_type=string} "JWT tokens"
+// @Failure 400 {object} responses.ErrorResponse "Missing code or state"
+// @Failure 401 {object} responses.ErrorResponse "Invalid state parameter"
+// @Failure 500 {object} responses.ErrorResponse "Failed to exchange code for tokens"
+// @Router /auth/callback [get]
+func (a *AuthRoute) KeycloakCallback(c *gin.Context) {
+	if a.keycloakOAuthHandler != nil {
+		a.keycloakOAuthHandler.HandleCallback(c)
+	} else {
+		c.JSON(500, gin.H{"error": "Keycloak OAuth is not configured"})
+	}
+}
+
+// ValidateKeycloakToken godoc
+// @Summary Validate Keycloak access token
+// @Description Validates an access token against Keycloak's userinfo endpoint
+// @Tags Authentication API
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token"
+// @Success 200 {object} object{valid=bool,user_info=object} "Token is valid with user information"
+// @Failure 401 {object} responses.ErrorResponse "Invalid or expired token"
+// @Failure 500 {object} responses.ErrorResponse "Keycloak OAuth is not configured"
+// @Router /auth/validate [post]
+func (a *AuthRoute) ValidateKeycloakToken(c *gin.Context) {
+	if a.keycloakOAuthHandler != nil {
+		a.keycloakOAuthHandler.ValidateAccessToken(c)
+	} else {
+		c.JSON(500, gin.H{"error": "Keycloak OAuth is not configured"})
+	}
+}
+
+// RevokeKeycloakToken godoc
+// @Summary Revoke Keycloak refresh token
+// @Description Revokes a refresh token to invalidate it
+// @Tags Authentication API
+// @Accept json
+// @Produce json
+// @Param request body object{refresh_token=string} true "Token to revoke"
+// @Success 200 {object} object{message=string} "Token revoked successfully"
+// @Failure 400 {object} responses.ErrorResponse "Invalid request body"
+// @Failure 500 {object} responses.ErrorResponse "Keycloak OAuth is not configured"
+// @Router /auth/revoke [post]
+func (a *AuthRoute) RevokeKeycloakToken(c *gin.Context) {
+	if a.keycloakOAuthHandler != nil {
+		a.keycloakOAuthHandler.RevokeKeycloakToken(c)
+	} else {
+		c.JSON(500, gin.H{"error": "Keycloak OAuth is not configured"})
+	}
 }

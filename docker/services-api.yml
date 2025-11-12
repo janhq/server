@@ -12,7 +12,7 @@ services:
       KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8085}
       JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
       ISSUER: ${ISSUER:-http://keycloak:8085/realms/jan}
-      AUDIENCE: ${AUDIENCE:-jan-client}
+      AUDIENCE: ${AUDIENCE:-account}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
@@ -99,7 +99,7 @@ services:
       TOOL_EXECUTION_TIMEOUT: ${TOOL_EXECUTION_TIMEOUT:-45s}
       AUTH_ENABLED: "true"
       AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
-      AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
+      AUTH_AUDIENCE: ${AUDIENCE:-account}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       ENABLE_TRACING: ${OTEL_ENABLED:-false}

@@ -29,6 +29,7 @@ type Config struct {
 	BackendClientID     string        `env:"BACKEND_CLIENT_ID,notEmpty"`
 	BackendClientSecret string        `env:"BACKEND_CLIENT_SECRET,notEmpty"`
 	TargetClientID      string        `env:"TARGET_CLIENT_ID,notEmpty"`
+	OAuthRedirectURI    string        `env:"OAUTH_REDIRECT_URI,notEmpty"`
 	GuestRole           string        `env:"GUEST_ROLE" envDefault:"guest"`
 	KeycloakAdminUser   string        `env:"KEYCLOAK_ADMIN"`
 	KeycloakAdminPass   string        `env:"KEYCLOAK_ADMIN_PASSWORD"`

@@ -26,6 +26,7 @@ var RouteProvider = wire.NewSet(
 	// Handlers
 	authhandler.NewAuthHandler,
 	authhandler.NewTokenHandler,
+	authhandler.ProvideKeycloakOAuthHandler,
 	apikeyhandler.NewHandler,
 	chathandler.NewChatHandler,
 	conversationhandler.NewConversationHandler,
