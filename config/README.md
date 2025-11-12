@@ -17,7 +17,6 @@ make env-create
 
 # 3. Choose your environment
 make env-switch ENV=development   # Docker development (default)
-make env-switch ENV=hybrid        # Hybrid development
 make env-switch ENV=testing       # Integration testing
 ```
 
@@ -39,12 +38,6 @@ make env-switch ENV=testing       # Integration testing
 - **Use when**: Running everything in Docker
 - **URLs**: Use Docker internal DNS (e.g., `keycloak:8085`)
 - **Command**: `make env-switch ENV=development` or `make up-full`
-
-### `config/hybrid.env`
-- **Purpose**: Hybrid development (services run natively, infra in Docker)
-- **Use when**: Debugging llm-api or mcp-tools with native debugger
-- **URLs**: Use localhost (e.g., `localhost:8085`)
-- **Command**: `make env-switch ENV=hybrid` then run services natively
 
 ### `config/testing.env`
 - **Purpose**: Integration testing with Newman
@@ -96,31 +89,11 @@ MODEL_PROVIDER_SECRET=xxxxx          # Model provider secret
 ### Method 1: Makefile (Recommended)
 
 ```bash
-# Switch to hybrid development
-make env-switch ENV=hybrid
-
 # Switch back to Docker development
 make env-switch ENV=development
 
 # Switch to testing
 make env-switch ENV=testing
-```
-
-### Method 2: Manual Copy
-
-```bash
-# Linux/macOS
-cp config/hybrid.env .env
-
-# Windows PowerShell
-Copy-Item config\hybrid.env .env
-```
-
-### Method 3: ENV_FILE Variable
-
-```bash
-# Use specific env file with docker-compose
-ENV_FILE=config/hybrid.env docker-compose up
 ```
 
 ## Validation
@@ -146,8 +119,6 @@ make check-deps
 
 ### 2. Use Environment Switcher
 ```bash
-# Good
-make env-switch ENV=hybrid
 
 # Avoid
 vi .env  # Manual editing error-prone
@@ -165,20 +136,6 @@ vi .env  # Manual editing error-prone
 - Production: Use secret management (Vault, AWS Secrets Manager, etc.)
 
 ## Troubleshooting
-
-### Service Can't Connect to Database
-
-**Symptom**: `connection refused` errors
-
-**Solution**: Check DB_DSN matches your environment
-- Development: `api-db:5432`
-- Hybrid: `localhost:5432`
-
-```bash
-# Fix for hybrid mode
-make env-switch ENV=hybrid
-make restart
-```
 
 ### Keycloak JWT Validation Fails
 

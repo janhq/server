@@ -63,17 +63,14 @@ jan-server/
 ├── scripts/
 │   ├── lib/               # Helper scripts (bash & PowerShell)
 │   ├── setup.sh/.ps1      # Initial setup scripts
-│   └── hybrid-run-*.sh    # Hybrid development runners
 ├── config/
 │   ├── defaults.env       # Default configuration
 │   ├── development.env    # Development environment
 │   ├── testing.env        # Testing environment
-│   └── hybrid.env         # Hybrid development mode
 ├── docker/
 │   ├── infrastructure.yml # Core infrastructure (DB, Auth, Gateway)
 │   ├── services-api.yml   # LLM API service
 │   ├── services-mcp.yml   # MCP services
-│   ├── dev-hybrid.yml     # Hybrid development mode
 │   ├── inference.yml      # vLLM GPU/CPU inference
 │   └── observability.yml  # Monitoring stack
 ├── docker-compose.yml     # Main compose file (includes docker/*.yml)
@@ -107,22 +104,6 @@ make down
 ### 2. Hybrid Development (Recommended for Active Development)
 
 Best for: Debugging, hot-reloading, native IDE integration
-
-#### Hybrid API Development
-
-```bash
-# 1. Start infrastructure in Docker
-make hybrid-dev-api
-
-# 2. Run APIs natively
-make hybrid-run-api
-make hybrid-run-media
-
-# Or manually:
-cd services/llm-api
-source ../../config/hybrid.env
-go run .
-```
 
 #### Hybrid MCP Development
 

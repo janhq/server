@@ -33,7 +33,6 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
   - Hybrid development mode (native execution with hot reload)
   - Monitoring stack (Prometheus, Grafana, Jaeger)
   - Build automation and utilities
-- **Hybrid Development Mode** - Run services natively for faster iteration with `make hybrid-dev`
 - **Quick Start** - One-command setup: `make setup && make up-full`
 - **Health Check Utilities** - `make health-check` for service monitoring
 
@@ -68,7 +67,6 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
   - `config/defaults.env` - Base configuration for all environments
   - `config/development.env` - Docker internal DNS configuration
   - `config/testing.env` - localhost URLs for Newman tests
-  - `config/hybrid.env` - Native development configuration
   - `config/secrets.env.example` - Secrets template
 - **Profile-based deployment**:
   - `make up-full` - Full stack with all services
@@ -88,7 +86,6 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
     - `development.md` - Complete development workflow (updated with all services)
     - `testing.md` - Testing procedures and test suites
     - `deployment.md` - Production deployment guide
-    - `hybrid-mode.md` - Native development setup
     - `monitoring.md` - Observability configuration
     - `mcp-testing.md` - MCP tools testing guide
     - `services-template.md` - Service template usage
@@ -177,7 +174,6 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
 - **Build commands**: Docker build → **`make build-llm-api`**, etc.
 - **Run commands**: `./scripts/run.sh` → **`make up-full`**
 - **Test commands**: None → **`make test-all`** and specific test suites
-- **Development mode**: Kubernetes only → **`make hybrid-dev`** for native execution
 - **Log viewing**: `kubectl logs` → **`make logs-llm-api`**
 
 ### Removed

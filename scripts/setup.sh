@@ -40,7 +40,7 @@ else
 fi
 
 if ! command_exists "go"; then
-    print_warning "Go is not installed (required for hybrid mode)"
+    print_warning "Go is not installed (optional for native development)"
     print_info "Install from: https://go.dev/dl/"
 else
     GO_VERSION=$(go version | awk '{print $3}')
@@ -138,12 +138,15 @@ Option B: Remote provider only:
 3. (Optional) start MCP:    make up-mcp
 4. Run tests:               make test-all
 
-Hybrid development (optional):
-   make down-api; ./scripts/hybrid-run-api.sh
+Development mode (for debugging/testing):
+   make dev-full
+   docker compose stop llm-api
+   ./scripts/dev-full-run.sh llm-api
 
 More info:
    make help
    cat README.md
+   docs/guides/dev-full-mode.md
 
 EOF
 

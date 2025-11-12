@@ -10,7 +10,9 @@
 # ============================================================================================================
 #
 #   make setup          - Initial project setup (dependencies, networks, .env)
+#   make build-all      - Build all Docker images
 #   make up-full        - Start all services (infrastructure + API + MCP)
+#   make dev-full       - Start all services with host.docker.internal support (for testing)
 #   make health-check   - Check if all services are healthy
 #   make test-all       - Run all integration tests
 #   make stop           - Stop all services (keeps containers & volumes)
@@ -18,82 +20,23 @@
 #   make down-clean     - Stop, remove containers and volumes (full cleanup)
 #
 # ============================================================================================================
-# COMMON COMMANDS
-# ============================================================================================================
-#
-# Environment Management:
-#   make env-create                  - Create .env from template
-#   make env-switch ENV=development  - Switch environment (development/testing/hybrid)
-#   make env-validate                - Validate .env file
-#   make env-info                    - Show current environment info
-#   make env-secrets                 - Check required secrets
-#
-# Service Management:
-#   make up-infra                    - Start infrastructure (postgres, keycloak, kong)
-#   make up-api                      - Start LLM API service
-#   make up-mcp                      - Start MCP services
-#   make up-full                     - Start all services (infra + api + mcp + vllm-gpu)
-#   make up-vllm-gpu                 - Start vLLM GPU inference only
-#   make up-vllm-cpu                 - Start vLLM CPU inference only
-#   make stop                        - Stop all services (keeps containers & volumes)
-#   make down                        - Stop and remove containers (keeps volumes)
-#   make down-clean                  - Stop, remove containers and volumes (full cleanup)
-#
-# Development (Hybrid Mode):
-#   make hybrid-dev-api              - Setup for API development (native + Docker)
-#   make hybrid-run-api              - Run API natively with hot reload
-#   make hybrid-run-media            - Run Media API natively with hot reload
-#   make hybrid-dev-mcp              - Setup for MCP development
-#   make hybrid-run-mcp              - Run MCP natively with hot reload
-#
-# Testing:
-#   make test                        - Run unit tests
-#   make test-all                    - Run all integration tests
-#   make test-auth                   - Run authentication tests
-#   make test-conversations          - Run conversation API tests
-#   make test-response               - Run response API tests
-#   make test-media                  - Run media API tests
-#   make test-mcp-integration        - Run MCP integration tests
-#
-# Build & Code Quality:
-#   make build-all                   - Build all services
-#   make swagger                     - Generate API documentation
-#   make fmt                         - Format Go code
-#   make lint                        - Run linters
-#
-# Utilities:
-#   make dev-status                  - Show status of all services
-#   make logs-api                    - View API logs
-#   make logs-mcp                    - View MCP logs
-#   make db-console                  - Open database console
-#   make curl-health                 - Test health endpoints
-#
-# ============================================================================================================
-# FILE ORGANIZATION (Single Makefile Structure)
+# MAKEFILE STRUCTURE
 # ============================================================================================================
 #
 # This Makefile is organized into the following sections:
 #
-#   1. SETUP & ENVIRONMENT       - Initial setup, dependency checks, environment management
-#   2. DOCKER INFRASTRUCTURE     - Network and volume management
-#   3. BUILD TARGETS             - Building services, code quality, Swagger
-#   4. SERVICE MANAGEMENT        - Starting/stopping services (infra, API, MCP)
-#   5. DATABASE MANAGEMENT       - DB operations, migrations, backups
-#   6. MONITORING                - Observability stack (Prometheus, Grafana, Jaeger)
-#   7. TESTING                   - Unit tests, integration tests, CI/CD
-#   8. HYBRID DEVELOPMENT        - Native development mode with Docker infrastructure
-#   9. DEVELOPER UTILITIES       - Dev tools, debugging, performance testing
-#   10. HEALTH CHECKS            - Service health validation
+#   1. SETUP & ENVIRONMENT       - Initial setup and dependency checks
+#   2. BUILD TARGETS             - Building services, code quality, Swagger documentation
+#   3. SERVICE MANAGEMENT        - Starting/stopping services (infra, API, MCP, vLLM, full stack)
+#   4. DATABASE MANAGEMENT       - DB operations, migrations, backups, restore
+#   5. MONITORING                - Observability stack (Prometheus, Grafana, Jaeger)
+#   6. TESTING                   - Integration tests with Newman
+#   7. DEVELOPER UTILITIES       - Development helpers (dev-full mode)
+#   8. HEALTH CHECKS             - Service health validation
 #
-# ============================================================================================================
-# DOCUMENTATION
-# ============================================================================================================
-#
-#   📖 docs/DEVELOPMENT.md      - Complete development guide
-#   📖 docs/TESTING.md          - Testing procedures and best practices
-#   📖 docs/HYBRID_MODE.md      - Hybrid development workflow
-#   📖 docs/MIGRATION.md        - Migration from old structure
-#   📖 README.md                - Project overview and quick reference
+# Documentation:
+#   📖 docs/guides/development.md - Complete development guide
+#   📖 README.md                  - Project overview and quick reference
 #
 # ============================================================================================================
 # VARIABLES
@@ -111,16 +54,6 @@ NEWMAN_E2E_COLLECTION = tests/automation/test-all.postman.json
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
 MEDIA_API_KEY ?= changeme-media-key
-
-# ============================================================================================================
-# BACKWARD COMPATIBILITY ALIASES
-# ============================================================================================================
-
-.PHONY: up up-llm-api up-mcp-tools
-
-up: up-infra
-up-llm-api: up-api
-up-mcp-tools: up-mcp
 
 # ============================================================================================================
 # SECTION 1: SETUP & ENVIRONMENT
@@ -155,109 +88,6 @@ install-deps:
 	@go install github.com/swaggo/swag/cmd/swag@latest
 	@echo " Development dependencies installed"
 
-# --- Environment Management ---
-
-.PHONY: env-create env-list env-switch env-validate
-
-env-create:
-	@echo "Creating .env file..."
-ifeq ($(OS),Windows_NT)
-	@if exist .env (echo .env already exists) else (copy .env.template .env && echo .env created)
-else
-	@if [ -f .env ]; then echo ".env already exists"; else cp .env.template .env && echo ".env created"; fi
-endif
-
-env-list:
-	@echo "Available environment configurations:"
-	@echo "  - development  (config/development.env) - All services in Docker"
-	@echo "  - testing      (config/testing.env)     - Integration testing"
-	@echo "  - hybrid       (config/hybrid.env)      - Native services + Docker infra"
-	@echo "  - production   (config/production.env.example) - Production template"
-	@echo ""
-	@echo "Usage: make env-switch ENV=<environment>"
-	@echo "Docs:  See config/README.md for detailed guide"
-
-env-switch:
-ifndef ENV
-	@echo "ENV variable required. Usage: make env-switch ENV=development"
-	@exit 1
-endif
-ifeq ($(OS),Windows_NT)
-	@if exist config\$(ENV).env (copy config\$(ENV).env .env && echo Switched to $(ENV)) else (echo config\$(ENV).env not found)
-else
-	@if [ -f "config/$(ENV).env" ]; then cp config/$(ENV).env .env && echo "Switched to $(ENV)"; else echo "config/$(ENV).env not found"; fi
-endif
-
-env-validate:
-ifeq ($(OS),Windows_NT)
-	@if exist .env (echo .env file exists) else (echo .env file not found. Run make env-create)
-else
-	@if [ -f .env ]; then echo ".env file exists"; else echo ".env file not found. Run make env-create"; fi
-endif
-
-env-info:
-	@echo "=== Current Environment Info ==="
-ifeq ($(OS),Windows_NT)
-	@if exist .env (echo Environment file: .env exists && echo --- && echo Recent variables: && type .env | findstr /V "^#" | findstr /V "^$$" | more +1) else (echo No .env file found)
-else
-	@if [ -f .env ]; then echo "Environment file: .env exists" && echo "---" && echo "Variables set: $$(grep -c '^[A-Z]' .env || echo 0)"; else echo "No .env file found"; fi
-endif
-	@echo ""
-	@echo "Switch environment: make env-switch ENV=<development|hybrid|testing>"
-	@echo "Documentation: config/README.md"
-
-env-secrets:
-	@echo "=== Required Secrets Checklist ==="
-	@echo "See config/secrets.env.example for details"
-	@echo ""
-ifeq ($(OS),Windows_NT)
-	@if exist .env (echo Checking .env for required secrets... && \
-		(findstr /C:"HF_TOKEN=" .env >nul && echo [OK] HF_TOKEN is set || echo [MISSING] HF_TOKEN - Get from https://huggingface.co/settings/tokens) && \
-		(findstr /C:"SERPER_API_KEY=" .env >nul && echo [OK] SERPER_API_KEY is set || echo [MISSING] SERPER_API_KEY - Get from https://serper.dev)) else (echo .env not found. Run make env-create)
-else
-	@if [ -f .env ]; then \
-		echo "Checking .env for required secrets..." && \
-		(grep -q "^HF_TOKEN=" .env && echo "[OK] HF_TOKEN is set" || echo "[MISSING] HF_TOKEN - Get from https://huggingface.co/settings/tokens") && \
-		(grep -q "^SERPER_API_KEY=" .env && echo "[OK] SERPER_API_KEY is set" || echo "[MISSING] SERPER_API_KEY - Get from https://serper.dev"); \
-	else echo ".env not found. Run make env-create"; fi
-endif
-	@echo ""
-	@echo "Full secrets list: cat config/secrets.env.example"
-
-# ============================================================================================================
-# SECTION 2: DOCKER INFRASTRUCTURE
-# ============================================================================================================
-
-# --- Network Management ---
-
-.PHONY: network-create network-list network-clean
-
-network-create:
-	@docker network inspect jan-server_default >/dev/null 2>&1 || \
-		docker network create jan-server_default
-	@docker network inspect jan-server_mcp-network >/dev/null 2>&1 || \
-		docker network create jan-server_mcp-network
-	@echo " Docker networks created"
-
-network-list:
-	@docker network ls | grep jan-server
-
-network-clean:
-	@docker network rm jan-server_default jan-server_mcp-network 2>/dev/null || true
-	@echo " Docker networks removed"
-
-# --- Volume Management ---
-
-.PHONY: volumes-list volumes-clean
-
-volumes-list:
-	@docker volume ls | grep jan-server
-
-volumes-clean:
-	@echo "  WARNING: This will delete all data!"
-	@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
-	@docker volume ls -q | grep jan-server | xargs -r docker volume rm
-	@echo " Volumes removed"
 
 # ============================================================================================================
 # SECTION 3: BUILD TARGETS
@@ -489,64 +319,7 @@ logs-vllm:
 
 # --- Full Stack ---
 
-.PHONY: up-full down-full restart-full logs logs-follow stop down down-clean stop-info
-
-stop-info:
-ifeq ($(OS),Windows_NT)
-	@echo ==========================================
-	@echo Stop/Down Commands Comparison
-	@echo ==========================================
-	@echo.
-	@echo make stop
-	@echo   - Stops all services
-	@echo   - Keeps containers (fast restart)
-	@echo   - Keeps volumes
-	@echo   - Keeps networks
-	@echo   - Use: Quick pause during development
-	@echo.
-	@echo make down
-	@echo   - Stops all services
-	@echo   - Removes containers
-	@echo   - Keeps volumes (data preserved)
-	@echo   - Removes networks
-	@echo   - Use: Clean shutdown, data preserved
-	@echo.
-	@echo make down-clean
-	@echo   - Stops all services
-	@echo   - Removes containers
-	@echo   - Removes volumes (data deleted)
-	@echo   - Removes networks
-	@echo   - Use: Complete cleanup, fresh start
-	@echo.
-	@echo ==========================================
-else
-	@echo "==========================================="
-	@echo "Stop/Down Commands Comparison"
-	@echo "==========================================="
-	@echo ""
-	@echo "make stop"
-	@echo "  - Stops all services"
-	@echo "  - Keeps containers (fast restart)"
-	@echo "  - Keeps volumes"
-	@echo "  - Keeps networks"
-	@echo "  - Use: Quick pause during development"
-	@echo ""
-	@echo "make down"
-	@echo "  - Stops all services"
-	@echo "  - Removes containers"
-	@echo "  - Keeps volumes (data preserved)"
-	@echo "  - Removes networks"
-	@echo "  - Use: Clean shutdown, data preserved"
-	@echo ""
-	@echo "make down-clean"
-	@echo "  - Stops all services"
-	@echo "  - Removes containers"
-	@echo "  - Removes volumes (data deleted)"
-	@echo "  - Removes networks"
-	@echo "  - Use: Complete cleanup, fresh start"
-	@echo ""
-	@echo "==========================================="
-endif
+.PHONY: up-full down-full restart-full logs stop down down-clean dev-full dev-full-down dev-full-stop
 
 up-full:
 	@echo "Starting full stack..."
@@ -597,9 +370,6 @@ down-clean:
 
 logs:
 	$(COMPOSE) logs -f
-
-logs-follow:
-	$(COMPOSE) logs -f $(SERVICE)
 
 # --- Individual Service Control ---
 
@@ -691,35 +461,6 @@ monitor-clean:
 	@echo "Stopping monitoring stack and removing volumes..."
 	$(MONITOR_COMPOSE) down -v
 	@echo " Monitoring stack cleaned"
-
-# ============================================================================================================
-# SECTION 7: TESTING
-# ============================================================================================================
-
-# --- Unit Tests ---
-
-.PHONY: test test-api test-mcp test-coverage
-
-test:
-	@echo "Running unit tests..."
-	@go test ./...
-	@echo " Unit tests passed"
-
-test-api:
-	@echo "Running LLM API tests..."
-	@cd services/llm-api && go test ./...
-	@echo " LLM API tests passed"
-
-test-mcp:
-	@echo "Running MCP Tools tests..."
-	@cd services/mcp-tools && go test ./...
-	@echo " MCP Tools tests passed"
-
-test-coverage:
-	@echo "Running tests with coverage..."
-	@go test -coverprofile=coverage.out ./...
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo " Coverage report generated: coverage.html"
 
 # --- Integration Tests (Newman) ---
 
@@ -823,441 +564,70 @@ else
 		--reporter-cli-show-timestamps
 endif
 
-# --- Test Environment Management ---
-
-.PHONY: test-setup test-teardown test-clean
-
-test-setup:
-	@echo "Setting up test environment..."
-	@$(MAKE) env-switch ENV=testing
-	@$(MAKE) up-full
-	@echo "Waiting for services to be ready..."
-ifeq ($(OS),Windows_NT)
-	@powershell -Command "Start-Sleep -Seconds 10"
-else
-	@sleep 10
-endif
-	@$(MAKE) health-check
-	@echo " Test environment ready"
-
-test-teardown:
-	@echo "Tearing down test environment..."
-	@$(MAKE) down
-	@echo " Test environment stopped"
-
-test-clean: test-teardown
-	@rm -f newman.json coverage.out coverage.html
-	@echo " Test artifacts cleaned"
-
-# --- CI/CD Helpers ---
-
-.PHONY: ci-test ci-lint ci-build
-
-ci-test: test test-all
-	@echo " All CI tests passed"
-
-ci-lint: lint vet
-	@echo " CI linting passed"
-
-ci-build: build-all
-	@echo " CI build complete"
 
 # ============================================================================================================
-# SECTION 8: HYBRID DEVELOPMENT
+# SECTION 8: DEVELOPER UTILITIES
 # ============================================================================================================
 
-# --- Hybrid Infrastructure ---
+# --- Development Full Stack (with host.docker.internal support) ---
 
-.PHONY: hybrid-infra-up hybrid-infra-down hybrid-mcp-up hybrid-mcp-down
+.PHONY: dev-full dev-full-stop dev-full-down
 
-hybrid-infra-up:
-	@echo "Starting infrastructure for hybrid mode..."
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
-	@echo " Infrastructure ready for hybrid development"
+dev-full:
+	@echo "Starting development full stack with host.docker.internal support..."
 	@echo ""
-	@echo "Infrastructure services running in Docker:"
+	@echo "This mode allows you to:"
+	@echo "  1. Stop any Docker service: docker compose stop <service>"
+	@echo "  2. Run it manually on host for debugging"
+	@echo "  3. Kong will automatically route to host.docker.internal"
+	@echo ""
+	$(COMPOSE) --profile full up -d
+	@echo ""
+	@echo " Development full stack started!"
+	@echo ""
+	@echo "Infrastructure:"
 	@echo "  - PostgreSQL: localhost:5432"
-	@echo "  - Keycloak:   http://localhost:8085"
+	@echo "  - Keycloak:   http://localhost:8085 (admin/admin)"
+	@echo "  - Kong:       http://localhost:8000 (with upstreams to host)"
 	@echo ""
-	@echo "You can now run services natively:"
-	@echo "  - API:   ./scripts/hybrid-run-api.sh (or .ps1 on Windows)"
-	@echo "  - Media: ./scripts/hybrid-run-media-api.sh (or .ps1 on Windows)"
-	@echo "  - MCP:   ./scripts/hybrid-run-mcp.sh (or .ps1 on Windows)"
-
-hybrid-infra-down:
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
-
-hybrid-mcp-up:
-	@echo "Starting MCP infrastructure for hybrid mode..."
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
-	@echo " MCP infrastructure ready"
-	@echo ""
-	@echo "MCP services running in Docker:"
+	@echo "Services (running in Docker):"
+	@echo "  - LLM API:        http://localhost:8080"
+	@echo "  - Media API:      http://localhost:8285"
+	@echo "  - Response API:   http://localhost:8082"
+	@echo "  - MCP Tools:      http://localhost:8091"
 	@echo "  - SearXNG:        http://localhost:8086"
 	@echo "  - Vector Store:   http://localhost:3015"
 	@echo "  - SandboxFusion:  http://localhost:3010"
 	@echo ""
-	@echo "Run MCP Tools natively: ./scripts/hybrid-run-mcp.sh"
-
-hybrid-mcp-down:
-	docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
-
-# --- Run Services Natively ---
-
-.PHONY: hybrid-run-api hybrid-run-media hybrid-run-mcp hybrid-env-api hybrid-env-media hybrid-env-mcp
-
-hybrid-run-api:
-	@echo "Running LLM API natively..."
+	@echo "To run a service manually on host:"
+	@echo "  1. Stop Docker service:"
+	@echo "     docker compose stop llm-api"
+	@echo ""
+	@echo "  2. Run on host:"
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File scripts/hybrid-run-api.ps1
+	@echo "     .\\scripts\\dev-full-run.ps1 llm-api"
 else
-	@bash scripts/hybrid-run-api.sh
+	@echo "     ./scripts/dev-full-run.sh llm-api"
 endif
-
-hybrid-run-media:
-	@echo "Running Media API natively..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File scripts/hybrid-run-media-api.ps1
-else
-	@bash scripts/hybrid-run-media-api.sh
-endif
-
-hybrid-run-mcp:
-	@echo "Running MCP Tools natively..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File scripts/hybrid-run-mcp.ps1
-else
-	@bash scripts/hybrid-run-mcp.sh
-endif
-
-hybrid-env-api:
-	@echo "Environment variables for native LLM API development:"
 	@echo ""
-	@echo "export DATABASE_URL='postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable'"
-	@echo "export KEYCLOAK_BASE_URL='http://localhost:8085'"
-	@echo "export JWKS_URL='http://localhost:8085/realms/jan/protocol/openid-connect/certs'"
-	@echo "export ISSUER='http://localhost:8090/realms/jan'"
-	@echo "export HTTP_PORT='8080'"
-	@echo "export LOG_LEVEL='debug'"
-	@echo "export LOG_FORMAT='console'"
-	@echo "export AUTO_MIGRATE='true'"
+	@echo "  3. Kong will automatically route requests to your host service"
 	@echo ""
-	@echo "Or load from config: source config/hybrid.env"
-
-hybrid-env-media:
-	@echo "Environment variables for native Media API development:"
+	@echo "Check service routing: curl http://localhost:8000/healthz"
 	@echo ""
-	@echo "export MEDIA_DATABASE_URL='postgres://media:media@localhost:5432/media_api?sslmode=disable'"
-	@echo "export MEDIA_API_PORT='8285'"
-	@echo "export MEDIA_API_URL='http://localhost:8285'"
-	@echo "export MEDIA_SERVICE_KEY='changeme-media-key'"
-	@echo "export MEDIA_API_KEY='changeme-media-key'"
-	@echo "export MEDIA_S3_ENDPOINT='https://s3.menlo.ai'"
-	@echo "export MEDIA_S3_REGION='us-west-2'"
-	@echo "export MEDIA_S3_BUCKET='platform-dev'"
-	@echo "export MEDIA_S3_ACCESS_KEY='XXXXX'"
-	@echo "export MEDIA_S3_SECRET_KEY='YYYY'"
-	@echo "export MEDIA_S3_USE_PATH_STYLE='true'"
-	@echo "export MEDIA_S3_PRESIGN_TTL='5m'"
-	@echo "export MEDIA_MAX_BYTES='20971520'"
-	@echo "export MEDIA_PROXY_DOWNLOAD='true'"
-	@echo "export MEDIA_RETENTION_DAYS='30'"
-	@echo "export MEDIA_REMOTE_FETCH_TIMEOUT='15s'"
-	@echo ""
-	@echo "Or load from config: source config/hybrid.env"
+	@echo "Documentation: docs/guides/dev-full-mode.md"
 
-hybrid-env-mcp:
-	@echo "Environment variables for native MCP Tools development:"
-	@echo ""
-	@echo "export HTTP_PORT='8091'"
-	@echo "export VECTOR_STORE_URL='http://localhost:3015'"
-	@echo "export SEARXNG_URL='http://localhost:8086'"
-	@echo "export SANDBOXFUSION_URL='http://localhost:3010'"
-	@echo "export LOG_LEVEL='debug'"
-	@echo "export LOG_FORMAT='console'"
-	@echo ""
-	@echo "Or load from config: source config/hybrid.env"
+dev-full-stop:
+	@echo "Stopping dev-full services..."
+	$(COMPOSE) --profile full stop
+	@echo " Dev-full services stopped"
 
-# --- Complete Workflows ---
-
-.PHONY: hybrid-dev-api hybrid-dev-mcp hybrid-dev-full hybrid-stop
-
-hybrid-dev-api:
-	@echo "Setting up hybrid API development environment..."
-	@echo "Starting infrastructure for hybrid mode..."
-	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
-	@echo ""
-	@echo " Ready for API development!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Start API: make hybrid-run-api"
-	@echo "  2. Start Media API: make hybrid-run-media"
-	@echo "  3. Or manually: cd services/llm-api && source ../../config/hybrid.env && go run ."
-	@echo "     (Media API example: cd services/media-api && source ../../config/hybrid.env && go run .)"
-
-hybrid-dev-mcp:
-	@echo "Setting up hybrid MCP development environment..."
-	@echo "Starting MCP infrastructure for hybrid mode..."
-	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
-	@echo ""
-	@echo " Ready for MCP development!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Start MCP: make hybrid-run-mcp"
-	@echo "  2. Or manually: cd services/mcp-tools && source ../../config/hybrid.env && go run ."
-
-hybrid-dev-full:
-	@echo "Setting up full hybrid development environment..."
-	@echo "Starting infrastructure for hybrid mode..."
-	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid up -d
-	@echo "Starting MCP infrastructure for hybrid mode..."
-	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp up -d
-	@echo ""
-	@echo " Ready for full hybrid development!"
-	@echo ""
-	@echo "Run services:"
-	@echo "  - API:   make hybrid-run-api"
-	@echo "  - Media: make hybrid-run-media"
-	@echo "  - MCP:   make hybrid-run-mcp"
-
-hybrid-stop:
-	@echo "Stopping hybrid infrastructure..."
-	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid down
-	@docker compose -f docker-compose.yml -f docker/dev-hybrid.yml --profile hybrid-mcp down
-	@echo " Hybrid infrastructure stopped"
-
-# --- Debugging ---
-
-.PHONY: hybrid-debug-api hybrid-debug-mcp
-
-hybrid-debug-api:
-	@echo "Starting API with delve debugger..."
-	@echo "Connect your IDE debugger to localhost:2345"
-	@cd services/llm-api && \
-		source ../../config/hybrid.env && \
-		dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient
-
-hybrid-debug-mcp:
-	@echo "Starting MCP Tools with delve debugger..."
-	@echo "Connect your IDE debugger to localhost:2346"
-	@cd services/mcp-tools && \
-		source ../../config/hybrid.env && \
-		dlv debug --headless --listen=:2346 --api-version=2 --accept-multiclient
+dev-full-down:
+	@echo "Stopping and removing dev-full containers..."
+	$(COMPOSE) --profile full down
+	@echo " Dev-full containers removed"
 
 # ============================================================================================================
-# SECTION 9: DEVELOPER UTILITIES
-# ============================================================================================================
-
-# --- Quick Development Commands ---
-
-.PHONY: dev-reset dev-clean dev-status
-
-dev-reset:
-	@echo "  Resetting development environment..."
-	@$(MAKE) down
-	@$(MAKE) volumes-clean
-	@$(MAKE) network-clean
-	@$(MAKE) clean-build
-	@echo ""
-	@$(MAKE) setup
-	@$(MAKE) network-create
-	@echo " Development environment reset complete"
-
-dev-clean:
-	@echo "Cleaning development artifacts..."
-	@$(MAKE) clean-build
-	@rm -f newman.json coverage.out coverage.html
-	@rm -rf services/llm-api/docs/swagger
-	@rm -rf services/media-api/docs/swagger
-	@rm -rf services/mcp-tools/docs/swagger
-	@find . -name "*.log" -type f -delete
-	@echo " Development artifacts cleaned"
-
-dev-status:
-	@echo "=== Docker Services ==="
-	@$(COMPOSE) ps
-	@echo ""
-	@echo "=== Docker Networks ==="
-	@$(MAKE) network-list
-	@echo ""
-	@echo "=== Docker Volumes ==="
-	@$(MAKE) volumes-list
-	@echo ""
-	@echo "=== Service Health ==="
-	@$(MAKE) health-check
-
-# --- API Testing Utilities ---
-
-.PHONY: curl-health curl-chat curl-mcp
-
-curl-health:
-	@echo "Testing LLM API health..."
-	@curl -s http://localhost:8080/healthz | jq
-	@echo ""
-	@echo "Testing MCP Tools health..."
-	@curl -s http://localhost:8091/healthz | jq
-
-curl-chat:
-	@if [ -z "$$TOKEN" ]; then \
-		echo " TOKEN environment variable required"; \
-		echo "Usage: TOKEN=your_token make curl-chat"; \
-		exit 1; \
-	fi
-	@curl -s -H "Authorization: Bearer $$TOKEN" \
-		-H "Content-Type: application/json" \
-		-d '{"model":"jan-v1-4b","messages":[{"role":"user","content":"Hello"}]}' \
-		http://localhost:8080/v1/chat/completions | jq
-
-curl-mcp:
-	@echo "Listing available MCP tools..."
-	@curl -s -X POST http://localhost:8091/v1/mcp \
-		-H 'Content-Type: application/json' \
-		-d '{"jsonrpc":"2.0","method":"tools/list","id":1}' | jq
-
-# --- Docker Utilities ---
-
-.PHONY: docker-ps docker-images docker-prune docker-stats
-
-docker-ps:
-	@docker ps --filter "name=jan-server" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-docker-images:
-	@docker images | grep -E "(jan|mcp|kong|keycloak|postgres)" || echo "No images found"
-
-docker-prune:
-	@echo "Cleaning up Docker system..."
-	@docker system prune -f
-	@echo " Docker system cleaned"
-
-docker-stats:
-	@docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
-
-# --- Log Utilities ---
-
-.PHONY: logs-api-tail logs-mcp-tail logs-error
-
-logs-api-tail:
-	@$(COMPOSE) logs --tail=100 llm-api
-
-logs-mcp-tail:
-	@$(COMPOSE) logs --tail=100 mcp-tools
-
-logs-error:
-	@$(COMPOSE) logs | grep -i error || echo "No errors found"
-
-# --- Performance Testing ---
-
-.PHONY: perf-test perf-load
-
-perf-test:
-	@echo "Running performance test..."
-	@echo "Requires 'ab' (Apache Bench). Install: apt-get install apache2-utils"
-	@ab -n 100 -c 10 http://localhost:8080/healthz
-
-perf-load:
-	@echo "Running load test with hey..."
-	@hey -n 1000 -c 50 -m GET http://localhost:8080/healthz
-
-# --- Code Generation ---
-
-.PHONY: generate generate-mocks
-
-generate:
-	@echo "Running go generate..."
-	@go generate ./...
-	@echo " Code generation complete"
-
-generate-mocks:
-	@echo "Generating mocks..."
-	@echo "Install mockgen: go install go.uber.org/mock/mockgen@latest"
-	@cd services/llm-api && go generate ./...
-	@cd services/mcp-tools && go generate ./...
-	@echo " Mocks generated"
-
-# --- Documentation ---
-
-.PHONY: docs-serve docs-build
-
-docs-serve:
-	@echo "Serving documentation at http://localhost:6060"
-	@echo "Install godoc: go install golang.org/x/tools/cmd/godoc@latest"
-	@godoc -http=:6060
-
-docs-build:
-	@echo "Building documentation..."
-	@$(MAKE) swagger
-	@echo " Documentation built"
-
-# --- Git Utilities ---
-
-.PHONY: git-clean git-status
-
-git-clean:
-	@echo "  This will delete all git-ignored files"
-	@git clean -fdX
-
-git-status:
-	@git status
-	@echo ""
-	@echo "=== Uncommitted changes ==="
-	@git diff --stat
-
-# --- Quick Start Commands ---
-
-.PHONY: start-llm-api start-mcp-tools run-all-tests
-
-start-llm-api:
-	@echo "Starting LLM API natively..."
-	@echo "Infrastructure must be running (make hybrid-infra-up)"
-	@echo ""
-ifeq ($(OS),Windows_NT)
-	@cd services/llm-api && set DATABASE_URL=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable && set DB_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable && set KEYCLOAK_BASE_URL=http://localhost:8085 && set JWKS_URL=http://localhost:8085/realms/jan/protocol/openid-connect/certs && set ISSUER=http://localhost:8085/realms/jan && set HTTP_PORT=8080 && set LOG_LEVEL=debug && set LOG_FORMAT=console && set AUTO_MIGRATE=true && set OTEL_ENABLED=false && go run ./cmd/server
-else
-	@cd services/llm-api && \
-		export DATABASE_URL='postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable' && \
-		export DB_DSN='postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable' && \
-		export KEYCLOAK_BASE_URL='http://localhost:8085' && \
-		export JWKS_URL='http://localhost:8085/realms/jan/protocol/openid-connect/certs' && \
-		export ISSUER='http://localhost:8085/realms/jan' && \
-		export HTTP_PORT='8080' && \
-		export LOG_LEVEL='debug' && \
-		export LOG_FORMAT='console' && \
-		export AUTO_MIGRATE='true' && \
-		export OTEL_ENABLED='false' && \
-		go run ./cmd/server
-endif
-
-start-mcp-tools:
-	@echo "Starting MCP Tools natively..."
-	@echo "MCP Infrastructure must be running (make hybrid-mcp-up)"
-	@echo ""
-ifeq ($(OS),Windows_NT)
-	@cd services/mcp-tools && set HTTP_PORT=8091 && set VECTOR_STORE_URL=http://localhost:3015 && set SEARXNG_URL=http://localhost:8086 && set SANDBOXFUSION_URL=http://localhost:3010 && set LOG_LEVEL=debug && set LOG_FORMAT=console && set OTEL_ENABLED=false && go run .
-else
-	@cd services/mcp-tools && \
-		export HTTP_PORT='8091' && \
-		export VECTOR_STORE_URL='http://localhost:3015' && \
-		export SEARXNG_URL='http://localhost:8086' && \
-		export SANDBOXFUSION_URL='http://localhost:3010' && \
-		export LOG_LEVEL='debug' && \
-		export LOG_FORMAT='console' && \
-		export OTEL_ENABLED='false' && \
-		go run .
-endif
-
-run-all-tests:
-	@echo "Running all tests (unit + integration)..."
-	@echo ""
-	@echo "=== Step 1: Unit Tests ==="
-	@$(MAKE) test
-	@echo ""
-	@echo "=== Step 2: Integration Tests ==="
-	@$(MAKE) test-all
-	@echo ""
-	@echo " All tests completed!"
-
-# ============================================================================================================
-# SECTION 10: HEALTH CHECKS
+# SECTION 9: HEALTH CHECKS
 # ============================================================================================================
 
 .PHONY: health-check health-api health-mcp health-infra
@@ -1268,19 +638,19 @@ ifeq ($(OS),Windows_NT)
 	@echo Checking All Services Health Status
 	@echo ============================================
 	@echo [Infrastructure Services]
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Keycloak:   healthy' } catch { Write-Host '  ✗ Keycloak:   unhealthy' }"
-	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host '  ✓ Kong:       healthy' } else { Write-Host '  ✗ Kong:       unhealthy' } } catch { Write-Host '  ✗ Kong:       unhealthy' } }"
-	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host '  ✓ PostgreSQL: healthy' } else { Write-Host '  ✗ PostgreSQL: unhealthy' } } catch { Write-Host '  ✗ PostgreSQL: unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Keycloak:   healthy' } catch { Write-Host '  Keycloak:   unhealthy' }"
+	@powershell -Command "try { $$response = Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if ($$response.StatusCode -ge 200 -and $$response.StatusCode -lt 500) { Write-Host '  Kong:       healthy' } else { Write-Host '  Kong:       unhealthy' } } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 404) { Write-Host '  Kong:       healthy' } else { Write-Host '  Kong:       unhealthy' } } catch { Write-Host '  Kong:       unhealthy' } }"
+	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host '  PostgreSQL: healthy' } else { Write-Host '  PostgreSQL: unhealthy' } } catch { Write-Host '  PostgreSQL: unhealthy' }"
 	@echo.
 	@echo [API Services]
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8080/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  LLM API:    healthy' } catch { Write-Host '  LLM API:    unhealthy' }"
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8285/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Media API:  healthy' } catch { Write-Host '  Media API:  unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8285/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Media API:  healthy' } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 401) { Write-Host '  Media API:  healthy' } else { Write-Host '  Media API:  unhealthy' } } catch { Write-Host '  Media API:  unhealthy' } }"
 	@echo.
 	@echo [MCP Services]
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8091/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ MCP Tools:      healthy' } catch { Write-Host '  ✗ MCP Tools:      unhealthy' }"
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8086 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ SearXNG:        healthy' } catch { Write-Host '  ✗ SearXNG:        unhealthy' }"
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3015/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ Vector Store:   healthy' } catch { Write-Host '  ✗ Vector Store:   unhealthy' }"
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3010 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  ✓ SandboxFusion:  healthy' } catch { Write-Host '  ✗ SandboxFusion:  unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8091/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  MCP Tools:      healthy' } catch { Write-Host '  MCP Tools:      unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8086 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  SearXNG:        healthy' } catch { Write-Host '  SearXNG:        unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3015/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Vector Store:   healthy' } catch { Write-Host '  Vector Store:   unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:3010 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  SandboxFusion:  healthy' } catch { Write-Host '  SandboxFusion:  unhealthy' }"
 	@echo ============================================
 else
 	@echo "============================================"
@@ -1288,19 +658,19 @@ else
 	@echo "============================================"
 	@echo ""
 	@echo "[Infrastructure Services]"
-	@curl -sf http://localhost:8085 >/dev/null && echo "  ✓ Keycloak:   healthy" || echo "  ✗ Keycloak:   unhealthy"
-	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "  ✓ Kong:       healthy" || echo "  ✗ Kong:       unhealthy")
-	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "  ✓ PostgreSQL: healthy" || echo "  ✗ PostgreSQL: unhealthy"
+	@curl -sf http://localhost:8085 >/dev/null && echo "  Keycloak:   healthy" || echo "  Keycloak:   unhealthy"
+	@curl -f --max-time 2 http://localhost:8000 >/dev/null 2>&1 || (curl --max-time 2 http://localhost:8000 2>&1 | grep -q "no Route matched" && echo "  Kong:       healthy" || echo "  Kong:       unhealthy")
+	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "  PostgreSQL: healthy" || echo "  PostgreSQL: unhealthy"
 	@echo ""
 	@echo "[API Services]"
 	@curl -sf http://localhost:8080/healthz >/dev/null && echo "  LLM API:    healthy" || echo "  LLM API:    unhealthy"
-	@curl -sf http://localhost:8285/healthz >/dev/null && echo "  Media API:  healthy" || echo "  Media API:  unhealthy"
+	@curl -s http://localhost:8285/healthz >/dev/null && echo "  Media API:  healthy" || (curl -s -w "%{http_code}" -o /dev/null http://localhost:8285/healthz | grep -q "401" && echo "  Media API:  healthy" || echo "  Media API:  unhealthy")
 	@echo ""
 	@echo "[MCP Services]"
-	@curl -sf http://localhost:8091/healthz >/dev/null && echo "  ✓ MCP Tools:      healthy" || echo "  ✗ MCP Tools:      unhealthy"
-	@curl -sf http://localhost:8086 >/dev/null && echo "  ✓ SearXNG:        healthy" || echo "  ✗ SearXNG:        unhealthy"
-	@curl -sf http://localhost:3015/healthz >/dev/null && echo "  ✓ Vector Store:   healthy" || echo "  ✗ V ector Store:   unhealthy"
-	@curl -sf http://localhost:3010 >/dev/null && echo "  ✓ SandboxFusion:  healthy" || echo "  ✗ SandboxFusion:  unhealthy"
+	@curl -sf http://localhost:8091/healthz >/dev/null && echo "  MCP Tools:      healthy" || echo "  MCP Tools:      unhealthy"
+	@curl -sf http://localhost:8086 >/dev/null && echo "  SearXNG:        healthy" || echo "  SearXNG:        unhealthy"
+	@curl -sf http://localhost:3015/healthz >/dev/null && echo "  Vector Store:   healthy" || echo "  V ector Store:   unhealthy"
+	@curl -sf http://localhost:3010 >/dev/null && echo "  SandboxFusion:  healthy" || echo "  SandboxFusion:  unhealthy"
 	@echo ""
 	@echo "============================================"
 endif

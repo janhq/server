@@ -43,7 +43,7 @@ if (-not (Test-CommandExists "make")) {
 }
 
 if (-not (Test-CommandExists "go")) {
-    Print-Warning "Go is not installed (required for hybrid mode)"
+    Print-Warning "Go is not installed (optional for native development)"
     Print-Info "Install from: https://go.dev/dl/"
 } else {
     $goVersion = go version
@@ -159,13 +159,15 @@ Option B: Remote provider only:
  3. (Optional) MCP tools:    make up-mcp
  4. Run tests:               make test-all
 
-Hybrid development (optional):
-   make down-api
-   .\scripts\hybrid-run-api.ps1
+Development mode (for debugging/testing):
+   make dev-full
+   docker compose stop llm-api
+   .\scripts\dev-full-run.ps1 llm-api
 
 More info:
    make help
    Get-Content README.md
+   docs/guides/dev-full-mode.md
 
 "@
 

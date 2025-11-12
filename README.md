@@ -47,7 +47,7 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 -  **API gateway routing** via Kong (v3.5)
 -  **Distributed tracing** with Jaeger and OpenTelemetry
 -  **Metrics & dashboards** with Prometheus + Grafana
--  **Hybrid development mode** for native execution with hot reload
+-  **Development mode** with host.docker.internal support for flexible debugging
 -  **Comprehensive testing suite** with 6 Newman/Postman collections
 -  **Service template system** for rapid microservice creation
 
@@ -151,7 +151,6 @@ make build-media-api      # Build Media API
 make build-mcp            # Build MCP Tools
 
 # Development
-make hybrid-dev           # Setup hybrid environment
 make test-all             # Run all test suites
 make swag                 # Generate API docs
 
@@ -185,16 +184,21 @@ make clean                # Clean artifacts
 make clean-all            # Clean everything (including volumes)
 ```
 
-### Hybrid Development Mode
+### Development Mode
 
-Run services natively for faster iteration:
+Run services on your host for debugging:
 
 ```bash
-make hybrid-dev           # Setup hybrid environment
-# Run API/MCP natively with hot reload
+# Start all services in Docker with host.docker.internal support
+make dev-full
+
+# Stop any service and run it on your host
+docker compose stop llm-api
+.\scripts\dev-full-run.ps1 llm-api  # Windows
+./scripts/dev-full-run.sh llm-api   # Linux/Mac
 ```
 
-See [Development Guide](docs/guides/development.md) for details.
+See [Development Guide](docs/guides/development.md) and [Dev-Full Mode](docs/guides/dev-full-mode.md) for details.
 
 ## API Examples
 
@@ -343,7 +347,6 @@ cp config/secrets.env.example config/secrets.env
 # - config/defaults.env       - Base configuration
 # - config/development.env    - Docker development
 # - config/testing.env        - Testing configuration
-# - config/hybrid.env         - Native development
 # - config/production.env.example - Production template
 ```
 
