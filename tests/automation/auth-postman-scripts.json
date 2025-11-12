@@ -318,7 +318,7 @@
                 },
                 {
                   "key": "username",
-                  "value": "{{test_user_username}}"
+                  "value": "{{test_user_email}}"
                 },
                 {
                   "key": "password",
@@ -822,7 +822,7 @@
                 },
                 {
                   "key": "username",
-                  "value": "{{test_user_username}}"
+                  "value": "{{test_user_email}}"
                 },
                 {
                   "key": "password",
