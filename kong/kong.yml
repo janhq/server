@@ -87,7 +87,7 @@ services:
           - name: cors
             tags: [llm, api, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -126,7 +126,7 @@ services:
           - name: cors
             tags: [llm, api, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -191,7 +191,7 @@ services:
           - name: cors
             tags: [media, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -219,7 +219,7 @@ services:
           - name: cors
             tags: [llm, cors, public]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "POST", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -258,7 +258,7 @@ services:
           - name: cors
             tags: [llm, cors, protected]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -304,7 +304,7 @@ services:
           - name: cors
             tags: [response, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -352,7 +352,7 @@ services:
           - name: cors
             tags: [mcp, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["POST", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -393,7 +393,7 @@ services:
           - name: cors
             tags: [mcp, health, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["GET", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "X-Request-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]

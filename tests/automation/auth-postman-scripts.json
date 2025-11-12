@@ -2,7 +2,7 @@
   "info": {
     "name": "jan-server Auth & LLM API Flows",
     "_postman_id": "e3b5366c-069a-4d2a-8491-ae9916bd3df1",
-    "description": "Automated tests for jan-server authentication flows: JWT (guest/registered), API keys (create/validate/revoke), and Kong gateway validation. Tests both Kong gateway (port 8000) and direct service access patterns.",
+    "description": "Automated tests for jan-server authentication flows: JWT (guest/registered), API keys (create/validate/revoke), and Kong gateway validation. All API requests go through Kong gateway.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -14,7 +14,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{llm_api_url}}/healthz"
+            "url": "{{kong_url}}/healthz"
           },
           "event": [
             {
@@ -54,7 +54,7 @@
               "mode": "raw",
               "raw": "{}"
             },
-            "url": "{{llm_api_url}}/auth/guest-login",
+            "url": "{{kong_url}}/auth/guest-login",
             "description": "Provision a new guest and capture issued tokens."
           },
           "event": [
@@ -258,6 +258,44 @@
           ]
         },
         {
+          "name": "Seed Verify Test User Email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{kc_admin_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailVerified\": true,\n  \"requiredActions\": []\n}"
+            },
+            "url": "{{keycloak_base_url}}/admin/realms/{{realm}}/users/{{test_user_id}}",
+            "description": "Update the test user to mark email as verified and clear required actions."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('user email verified', function () {",
+                  "    pm.expect(pm.response.code).to.eql(204);",
+                  "});",
+                  "",
+                  "// Wait 1 second for Keycloak sync delay",
+                  "setTimeout(function() {}, 1000);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Seed Obtain Registered User Token",
           "request": {
             "method": "POST",
@@ -327,7 +365,7 @@
                 "value": "Bearer {{guest_access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/models",
+            "url": "{{kong_url}}/v1/models",
             "description": "Validate that the guest token grants read access to model catalogue."
           },
           "event": [
@@ -369,7 +407,7 @@
                 "value": "Bearer {{guest_access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/models/catalogs/{{model_id_encoded}}",
+            "url": "{{kong_url}}/v1/models/catalogs/{{model_id_encoded}}",
             "description": "Fetch metadata for a specific model catalog."
           },
           "event": [
@@ -412,7 +450,7 @@
               "mode": "raw",
               "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Reply with the word ok.\"}\n  ],\n  \"max_tokens\": 16\n}"
             },
-            "url": "{{llm_api_url}}/v1/chat/completions",
+            "url": "{{kong_url}}/v1/chat/completions",
             "description": "Run a non-streaming chat completion with the guest token."
           },
           "event": [
@@ -454,7 +492,7 @@
                 "value": "Bearer {{user_access_token}}"
               }
             ],
-            "url": "{{llm_api_url}}/v1/models",
+            "url": "{{kong_url}}/v1/models",
             "description": "Ensure a registered user token also has catalogue access."
           },
           "event": [
@@ -497,7 +535,7 @@
               "mode": "raw",
               "raw": "{}"
             },
-            "url": "{{llm_api_url}}/auth/guest-login",
+            "url": "{{kong_url}}/auth/guest-login",
             "description": "Provision a new guest and capture issued tokens."
           },
           "event": [
@@ -577,7 +615,7 @@
               "mode": "raw",
               "raw": "{\n  \"username\": \"{{upgrade_username}}\",\n  \"email\": \"{{upgrade_email}}\",\n  \"full_name\": \"Guest Automation User\"\n}"
             },
-            "url": "{{llm_api_url}}/auth/upgrade",
+            "url": "{{kong_url}}/auth/upgrade",
             "description": "Upgrade the guest account to a named user."
           }
         }
@@ -1228,13 +1266,7 @@
       "key": "kong_url",
       "value": "http://localhost:8000",
       "type": "string",
-      "description": "Kong Gateway URL (recommended for production-like testing). All requests go through Kong for authentication validation."
-    },
-    {
-      "key": "llm_api_url",
-      "value": "http://localhost:8000",
-      "type": "string",
-      "description": "LLM API URL - defaults to Kong gateway (port 8000). Can be changed to http://localhost:8080 for direct service testing (bypasses Kong auth)."
+      "description": "Kong Gateway URL. All API requests go through Kong for authentication validation."
     },
     {
       "key": "keycloak_base_url",

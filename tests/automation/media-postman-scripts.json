@@ -24,9 +24,9 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/auth/guest-login",
+              "raw": "{{kong_url}}/auth/guest-login",
               "host": [
-                "{{llm_api_url}}"
+                "{{kong_url}}"
               ],
               "path": [
                 "auth",
@@ -786,7 +786,7 @@
       "value": ""
     },
     {
-      "key": "llm_api_url",
+      "key": "kong_url",
       "value": "http://localhost:8000/llm"
     }
   ]

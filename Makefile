@@ -733,7 +733,6 @@ test-auth:
 	@echo "Running authentication tests..."
 	@$(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
@@ -747,7 +746,6 @@ test-conversations:
 	@echo "Running conversation API tests..."
 	@$(NEWMAN) run $(NEWMAN_CONVERSATION_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
@@ -761,7 +759,6 @@ test-response:
 	@echo "Running response API tests..."
 	@$(NEWMAN) run $(NEWMAN_RESPONSES_COLLECTION) \
 		--env-var "response_api_url=http://localhost:8000/responses" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--verbose \
 		--reporters cli
@@ -780,7 +777,6 @@ test-mcp-integration:
 	@echo "Running MCP integration tests..."
 	@$(NEWMAN) run $(NEWMAN_MCP_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--env-var "searxng_url=http://localhost:8086" \
 		--verbose \
@@ -791,7 +787,6 @@ test-e2e:
 	@echo "Running gateway end-to-end tests..."
 	@$(NEWMAN) run $(NEWMAN_E2E_COLLECTION) \
 		--env-var "gateway_url=http://localhost:8000" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "media_api_url=http://localhost:8000/media" \
 		--env-var "response_api_url=http://localhost:8000/responses" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
@@ -805,7 +800,6 @@ newman-debug:
 ifeq ($(OS),Windows_NT)
 	@set NODE_DEBUG=request && $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
@@ -818,7 +812,6 @@ ifeq ($(OS),Windows_NT)
 else
 	@NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
-		--env-var "llm_api_url=http://localhost:8000/llm" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
