@@ -182,6 +182,12 @@ func (h *KeycloakOAuthHandler) InitiateLogin(c *gin.Context) {
 	// Build authorization URL with PKCE using public URL (browser-accessible)
 	authURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/auth",
 		h.keycloakPublicURL, h.realm)
+	// Get redirect URL from query parameter
+	redirectURL := c.Query("redirect_url")
+	if redirectURL == "" {
+		// Default redirect URL if not provided
+		redirectURL = "http://localhost:3000/auth/callback"
+	}
 
 	params := url.Values{}
 	params.Add("client_id", h.clientID)
