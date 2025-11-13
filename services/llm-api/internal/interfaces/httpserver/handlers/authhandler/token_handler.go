@@ -45,6 +45,7 @@ type GetMeResponse struct {
 	Email      string `json:"email,omitempty"`
 	Subject    string `json:"subject"`
 	AuthMethod string `json:"auth_method"`
+	Name       string `json:"name,omitempty"`
 }
 
 // Logout removes authentication tokens
@@ -83,9 +84,16 @@ func (h *TokenHandler) GetMe(c *gin.Context) {
 		return
 	}
 
+	// Use username as name if name is empty
+	name := principal.Name
+	if name == "" {
+		name = principal.Username
+	}
+
 	c.JSON(http.StatusOK, GetMeResponse{
 		ID:         principal.ID,
 		Username:   principal.Username,
+		Name:       name,
 		Email:      principal.Email,
 		Subject:    principal.Subject,
 		AuthMethod: string(principal.AuthMethod),
