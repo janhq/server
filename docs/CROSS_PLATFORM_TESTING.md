@@ -159,22 +159,24 @@ make health-check
 
 ## Platform-Specific Fixes Applied
 
-### 1. Makefile Build Targets
+### 1. Makefile Build Targets (Git Bash Compatibility)
 
-**Issue**: Build commands using `cd services/llm-api && go build` didn't work properly on Windows.
+**Issue**: GitHub Actions Windows runners use Git bash (`/usr/bin/bash`), which doesn't support Windows backslash paths. Commands like `cd services\llm-api` failed with "No such file or directory".
 
-**Fix**: Added platform-specific branches with correct path separators:
+**Fix**: Use forward slashes universally, as they work in bash, PowerShell, and CMD:
 
 ```makefile
 build-llm-api:
 	@echo "Building LLM API..."
 ifeq ($(OS),Windows_NT)
-	@cd services\llm-api && go build -o bin\llm-api.exe .\cmd\server
+	@cd services/llm-api && go build -o bin/llm-api.exe ./cmd/server
 else
 	@cd services/llm-api && go build -o bin/llm-api ./cmd/server
 endif
 	@echo " LLM API built: services/llm-api/bin/llm-api"
 ```
+
+**Key Insight**: Forward slashes (`/`) work on all platforms in bash, PowerShell 5.1+, and CMD. Backslashes only work in native Windows shells.
 
 ### 2. Makefile Clean Target
 
@@ -247,7 +249,9 @@ if isWindows() {
 
 ### Windows-Specific
 
-1. **Make Output Suppression**: Some `make` commands show only quoted strings due to Windows shell redirection differences. Functionality works correctly despite cosmetic output issues.
+1. **Git Bash Shell**: GitHub Actions Windows runners use Git bash (`/usr/bin/bash`) instead of PowerShell or CMD for make commands. All Makefile paths use forward slashes for cross-platform compatibility, as they work in bash, PowerShell, and CMD.
+
+2. **Make Output Suppression**: Some `make` commands show only quoted strings due to Windows shell redirection differences. Functionality works correctly despite cosmetic output issues.
 
 2. **Path Separators**: Windows uses backslashes (`\`) in paths. The Makefile uses `ifeq ($(OS),Windows_NT)` branches to handle this.
 

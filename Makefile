@@ -112,7 +112,7 @@ build-api: build-llm-api build-media-api
 build-llm-api:
 	@echo "Building LLM API..."
 ifeq ($(OS),Windows_NT)
-	@cd services\llm-api && go build -o bin\llm-api.exe .\cmd\server
+	@cd services/llm-api && go build -o bin/llm-api.exe ./cmd/server
 else
 	@cd services/llm-api && go build -o bin/llm-api ./cmd/server
 endif
@@ -121,7 +121,7 @@ endif
 build-media-api:
 	@echo "Building Media API..."
 ifeq ($(OS),Windows_NT)
-	@cd services\media-api && go build -o bin\media-api.exe .\cmd\server
+	@cd services/media-api && go build -o bin/media-api.exe ./cmd/server
 else
 	@cd services/media-api && go build -o bin/media-api ./cmd/server
 endif
@@ -130,7 +130,7 @@ endif
 build-mcp:
 	@echo "Building MCP Tools..."
 ifeq ($(OS),Windows_NT)
-	@cd services\mcp-tools && go build -o bin\mcp-tools.exe .
+	@cd services/mcp-tools && go build -o bin/mcp-tools.exe .
 else
 	@cd services/mcp-tools && go build -o bin/mcp-tools .
 endif
