@@ -82,8 +82,8 @@ endif
 
 # Ensure docker/.env exists by copying from root .env
 ensure-docker-env:
-	@mkdir -p docker 2>/dev/null || true
-	@cp -f .env docker/.env 2>/dev/null || true
+	@if not exist docker mkdir docker 2>nul
+	@copy /Y .env docker\.env >nul 2>&1 || echo Skipped copying .env
 
 check-deps:
 	@echo "Checking dependencies..."
@@ -143,8 +143,10 @@ build-all:
 
 clean-build:
 	@echo "Cleaning build artifacts..."
-	@rm -rf services/llm-api/bin services/media-api/bin services/mcp-tools/bin 2>/dev/null || true
-	@echo " Build artifacts cleaned"
+	@if exist services\llm-api\bin rmdir /s /q services\llm-api\bin 2>nul
+	@if exist services\media-api\bin rmdir /s /q services\media-api\bin 2>nul
+	@if exist services\mcp-tools\bin rmdir /s /q services\mcp-tools\bin 2>nul
+	@echo "✓ Build artifacts cleaned"
 
 # --- Configuration Management ---
 
@@ -480,7 +482,7 @@ db-reset:
 	@echo "Stopping and removing API database..."
 	$(COMPOSE) stop api-db
 	$(COMPOSE) rm -f api-db
-	@docker volume rm jan-server_api-db-data || true
+	@docker volume rm jan-server_api-db-data 2>nul || echo Volume removed or didn't exist
 	@echo " Database reset complete. Run 'make up-api' to restart."
 
 db-migrate:
