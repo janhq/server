@@ -37,12 +37,12 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 | `KEYCLOAK_ADMIN_CLIENT_ID` | string | `admin-cli` | llm-api | OK Already aligned |
 | `BACKEND_CLIENT_ID` | string | `backend` | llm-api | OK Already aligned |
 | `BACKEND_CLIENT_SECRET` | string | (secret) | llm-api | OK Already aligned |
-| `TARGET_CLIENT_ID` | string | `jan-client` | llm-api | OK Already aligned |
+| `CLIENT` | string | `jan-client` | llm-api | OK Already aligned |
 | `OAUTH_REDIRECT_URI` | string | `http://localhost:8000/auth/callback` | llm-api | OK Already aligned |
 | `JWKS_URL` | string | (computed) | llm-api | OK Already aligned |
 | `OIDC_DISCOVERY_URL` | string | (computed) | llm-api | New standardized var |
 | `ISSUER` | string | `http://localhost:8085/realms/jan` | llm-api | OK Already aligned |
-| `AUDIENCE` | string | `jan-client` | llm-api | OK Already aligned |
+| `ACCOUNT` | string | `account` | llm-api | OK Already aligned |
 | `JWKS_REFRESH_INTERVAL` | duration | `5m` | llm-api | OK Already aligned |
 | `AUTH_CLOCK_SKEW` | duration | `60s` | llm-api | OK Already aligned |
 | `GUEST_ROLE` | string | `guest` | llm-api | OK Already aligned |

@@ -29,10 +29,10 @@ type Config struct {
 	DBConnLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" envDefault:"30m"`
 
 	// Authentication
-	AuthEnabled  bool   `env:"AUTH_ENABLED" envDefault:"false"`
-	AuthIssuer   string `env:"AUTH_ISSUER"`
-	AuthAudience string `env:"AUTH_AUDIENCE"`
-	AuthJWKSURL  string `env:"AUTH_JWKS_URL"`
+	AuthEnabled bool   `env:"AUTH_ENABLED" envDefault:"false"`
+	AuthIssuer  string `env:"AUTH_ISSUER"`
+	Account     string `env:"ACCOUNT"`
+	AuthJWKSURL string `env:"AUTH_JWKS_URL"`
 
 	// External Services
 	LLMAPIURL   string `env:"RESPONSE_LLM_API_URL" envDefault:"http://localhost:8080"`

@@ -65,5 +65,5 @@ Each table uses JSONB columns for flexible payload storage. Point `RESPONSE_DATA
 
 ## Authentication
 
-- Set `AUTH_ENABLED=true` to enforce Bearer tokens. Provide `AUTH_ISSUER`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL`.
+- Set `AUTH_ENABLED=true` to enforce Bearer tokens. Provide `AUTH_ISSUER`, `ACCOUNT`, and `AUTH_JWKS_URL`.
 - With auth disabled the service treats callers as `guest` unless a `user` field is provided in the request body.

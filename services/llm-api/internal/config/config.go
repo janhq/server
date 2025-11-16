@@ -32,7 +32,7 @@ type Config struct {
 	KeycloakRealm       string        `env:"KEYCLOAK_REALM" envDefault:"jan"`
 	BackendClientID     string        `env:"BACKEND_CLIENT_ID,notEmpty"`
 	BackendClientSecret string        `env:"BACKEND_CLIENT_SECRET,notEmpty"`
-	TargetClientID      string        `env:"TARGET_CLIENT_ID,notEmpty"`
+	Client              string        `env:"CLIENT,notEmpty"`
 	OAuthRedirectURI    string        `env:"OAUTH_REDIRECT_URI,notEmpty"`
 	GuestRole           string        `env:"GUEST_ROLE" envDefault:"guest"`
 	KeycloakAdminUser   string        `env:"KEYCLOAK_ADMIN"`
@@ -43,7 +43,7 @@ type Config struct {
 	JWKSURL             string        `env:"JWKS_URL"`
 	OIDCDiscoveryURL    string        `env:"OIDC_DISCOVERY_URL"`
 	Issuer              string        `env:"ISSUER,notEmpty"`
-	Audience            string        `env:"AUDIENCE,notEmpty"`
+	Account             string        `env:"ACCOUNT,notEmpty"`
 	RefreshJWKSInterval time.Duration `env:"JWKS_REFRESH_INTERVAL" envDefault:"5m"`
 	AuthClockSkew       time.Duration `env:"AUTH_CLOCK_SKEW" envDefault:"60s"`
 

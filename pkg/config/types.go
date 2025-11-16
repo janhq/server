@@ -104,8 +104,8 @@ type KeycloakConfig struct {
 	// Backend client secret (from secrets)
 	BackendClientSecret string `yaml:"backend_client_secret,omitempty" json:"backend_client_secret,omitempty" env:"BACKEND_CLIENT_SECRET" jsonschema:"required" description:"Backend client secret (from secret provider)"`
 
-	// Target client ID
-	TargetClientID string `yaml:"target_client_id" json:"target_client_id" env:"TARGET_CLIENT_ID" envDefault:"jan-client" jsonschema:"required" description:"Target client ID for token exchange"`
+	// Client ID used for token exchange
+	Client string `yaml:"client" json:"client" env:"CLIENT" envDefault:"jan-client" jsonschema:"required" description:"Client ID for token exchange"`
 
 	// OAuth redirect URI
 	OAuthRedirectURI string `yaml:"oauth_redirect_uri" json:"oauth_redirect_uri" env:"OAUTH_REDIRECT_URI" envDefault:"http://localhost:8000/auth/callback" jsonschema:"required,format=uri" description:"OAuth redirect URI"`
@@ -119,8 +119,8 @@ type KeycloakConfig struct {
 	// JWT issuer
 	Issuer string `yaml:"issuer" json:"issuer" env:"ISSUER" envDefault:"http://localhost:8085/realms/jan" jsonschema:"required,format=uri" description:"JWT issuer URL"`
 
-	// JWT audience
-	Audience string `yaml:"audience" json:"audience" env:"AUDIENCE" envDefault:"jan-client" jsonschema:"required" description:"JWT audience claim"`
+	// Account identifier (audience claim)
+	Account string `yaml:"account" json:"account" env:"ACCOUNT" envDefault:"account" jsonschema:"required" description:"Account/audience claim"`
 
 	// JWKS refresh interval
 	RefreshJWKSInterval time.Duration `yaml:"refresh_jwks_interval" json:"refresh_jwks_interval" env:"JWKS_REFRESH_INTERVAL" envDefault:"5m" description:"JWKS refresh interval"`

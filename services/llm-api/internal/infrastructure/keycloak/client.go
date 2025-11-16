@@ -22,7 +22,7 @@ type Client struct {
 	realm               string
 	backendClientID     string
 	backendClientSecret string
-	targetClientID      string
+	clientID            string
 	guestRole           string
 	httpClient          *http.Client
 	logger              zerolog.Logger
@@ -34,7 +34,7 @@ type Client struct {
 }
 
 // NewClient constructs a Keycloak client.
-func NewClient(baseURL, realm, backendClientID, backendClientSecret, targetClientID, guestRole string, httpClient *http.Client, logger zerolog.Logger, adminUsername, adminPassword, adminRealm, adminClientID, adminClientSecret string) *Client {
+func NewClient(baseURL, realm, backendClientID, backendClientSecret, clientID, guestRole string, httpClient *http.Client, logger zerolog.Logger, adminUsername, adminPassword, adminRealm, adminClientID, adminClientSecret string) *Client {
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -43,7 +43,7 @@ func NewClient(baseURL, realm, backendClientID, backendClientSecret, targetClien
 		realm:               realm,
 		backendClientID:     backendClientID,
 		backendClientSecret: backendClientSecret,
-		targetClientID:      targetClientID,
+		clientID:            clientID,
 		guestRole:           guestRole,
 		httpClient:          httpClient,
 		logger:              logger,
@@ -90,26 +90,7 @@ func (c *Client) CreateGuest(ctx context.Context) (*GuestCredentials, error) {
 				Err(err).
 				Msg("admin credentials present but password grant failed, falling back to service account")
 		} else {
-			user, err := c.createGuestUser(ctx, adminToken.AccessToken)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := c.assignGuestRole(ctx, adminToken.AccessToken, user.UserID); err != nil {
-				return nil, err
-			}
-
-			password := strings.ReplaceAll(uuid.NewString(), "-", "")
-			if err := c.setUserPassword(ctx, adminToken.AccessToken, user.UserID, password); err != nil {
-				return nil, err
-			}
-
-			tokens, err := c.passwordGrantTokens(ctx, user.Email, password)
-			if err != nil {
-				return nil, err
-			}
-			user.Tokens = *tokens
-			return user, nil
+			return c.createGuestWithPasswordGrant(ctx, adminToken.AccessToken)
 		}
 	}
 
@@ -118,19 +99,30 @@ func (c *Client) CreateGuest(ctx context.Context) (*GuestCredentials, error) {
 		return nil, err
 	}
 
-	user, err := c.createGuestUser(ctx, serviceToken.AccessToken)
+	adminToken := c.adminAccessToken(ctx, serviceToken.AccessToken)
+	return c.createGuestWithPasswordGrant(ctx, adminToken)
+}
+
+func (c *Client) createGuestWithPasswordGrant(ctx context.Context, adminToken string) (*GuestCredentials, error) {
+	user, err := c.createGuestUser(ctx, adminToken)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := c.assignGuestRole(ctx, serviceToken.AccessToken, user.UserID); err != nil {
+	if err := c.assignGuestRole(ctx, adminToken, user.UserID); err != nil {
 		return nil, err
 	}
 
-	tokens, err := c.exchangeForUser(ctx, serviceToken.AccessToken, user.UserID)
+	password := strings.ReplaceAll(uuid.NewString(), "-", "")
+	if err := c.setUserPassword(ctx, adminToken, user.UserID, password); err != nil {
+		return nil, err
+	}
+
+	tokens, err := c.passwordGrantTokens(ctx, user.Email, password)
 	if err != nil {
 		return nil, err
 	}
+
 	user.Tokens = *tokens
 	return user, nil
 }
@@ -431,9 +423,11 @@ func (c *Client) setUserPassword(ctx context.Context, adminToken, userID, passwo
 func (c *Client) passwordGrantTokens(ctx context.Context, email, password string) (*TokenSet, error) {
 	values := url.Values{}
 	values.Set("grant_type", "password")
-	values.Set("client_id", c.targetClientID)
+	values.Set("client_id", c.clientID)
+	if c.clientID == c.backendClientID && c.backendClientSecret != "" {
+		values.Set("client_secret", c.backendClientSecret)
+	}
 	values.Set("username", email)
-	values.Set("email", email)
 	values.Set("password", password)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))
@@ -495,7 +489,10 @@ func (c *Client) exchangeForUser(ctx context.Context, adminToken, userID string)
 	values.Set("subject_token", adminToken)
 	values.Set("requested_subject", userID)
 	values.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
-	values.Set("audience", c.targetClientID)
+	if c.clientID != "" {
+		values.Set("audience", c.clientID)
+	}
+	// Request tokens scoped for the frontend client so they pass audience/azp validation
 	values.Set("scope", "openid profile email")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))
@@ -567,7 +564,7 @@ func (c *Client) adminTokenEndpoint() string {
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenSet, error) {
 	values := url.Values{}
 	values.Set("grant_type", "refresh_token")
-	values.Set("client_id", c.targetClientID)
+	values.Set("client_id", c.clientID)
 	values.Set("refresh_token", refreshToken)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))

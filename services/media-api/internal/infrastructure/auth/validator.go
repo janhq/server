@@ -89,7 +89,7 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 			}
 		}
 
-		if audience := strings.TrimSpace(v.cfg.AuthAudience); audience != "" {
+		if audience := strings.TrimSpace(v.cfg.Account); audience != "" {
 			audClaim, ok := claims["aud"]
 			if ok {
 				switch aud := audClaim.(type) {

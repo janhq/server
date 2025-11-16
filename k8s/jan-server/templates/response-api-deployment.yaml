@@ -70,8 +70,8 @@ spec:
           value: "true"
         - name: AUTH_ISSUER
           value: {{ .Values.keycloak.issuer | quote }}
-        - name: AUTH_AUDIENCE
-          value: {{ .Values.keycloak.audience | default "jan-client" | quote }}
+        - name: ACCOUNT
+          value: {{ .Values.keycloak.account | default "account" | quote }}
         - name: AUTH_JWKS_URL
           value: {{ tpl .Values.keycloak.jwksUrl . | quote }}
         - name: MAX_TOOL_EXECUTION_DEPTH

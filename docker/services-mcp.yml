@@ -96,6 +96,9 @@ services:
       # MCP Configuration
       MCP_CONFIG_FILE: ${MCP_CONFIG_FILE:-configs/mcp-providers.yml}
       MCP_SANDBOX_REQUIRE_APPROVAL: ${MCP_SANDBOX_REQUIRE_APPROVAL:-true}
+      
+      # Authentication
+      AUTH_ENABLED: ${AUTH_ENABLED:-false}
     ports:
       - "${MCP_TOOLS_HTTP_PORT:-8091}:${MCP_TOOLS_HTTP_PORT:-8091}"
     depends_on:

@@ -52,7 +52,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
 # Auth (when fronted by Kong or called directly with JWT)
 AUTH_ENABLED=true
 AUTH_ISSUER=http://localhost:8085/realms/jan
-AUTH_AUDIENCE=jan-client
+ACCOUNT=account
 AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
 ```
 

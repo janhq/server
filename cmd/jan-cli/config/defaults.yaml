@@ -32,12 +32,12 @@ infrastructure:
       admin_realm: master
       admin_client_id: admin-cli
       backend_client_id: backend
-      target_client_id: jan-client
+      client: jan-client
       oauth_redirect_uri: http://localhost:8000/auth/callback
       jwks_url: ""
       oidc_discovery_url: ""
       issuer: http://localhost:8085/realms/jan
-      audience: jan-client
+      account: account
       refresh_jwks_interval: 5m0s
       auth_clock_skew: 1m0s
       guest_role: guest

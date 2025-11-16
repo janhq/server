@@ -43,7 +43,7 @@ OTEL_ENABLED=false
 # Auth (optional)
 AUTH_ENABLED=true
 AUTH_ISSUER=http://localhost:8085/realms/jan
-AUTH_AUDIENCE=jan-client
+ACCOUNT=account
 AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
 ```
 

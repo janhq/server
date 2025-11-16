@@ -34,5 +34,5 @@ Set configuration values via exported environment variables or by editing the re
 ## Authentication
 
 - Set `AUTH_ENABLED=true` to require Bearer tokens issued by Keycloak (or any OIDC provider).
-- Provide `AUTH_ISSUER`, `AUTH_AUDIENCE`, and `AUTH_JWKS_URL`; the server caches JWKS keys and rejects missing/invalid tokens.
+- Provide `AUTH_ISSUER`, `ACCOUNT`, and `AUTH_JWKS_URL`; the server caches JWKS keys and rejects missing/invalid tokens.
 - Leave `AUTH_ENABLED=false` for open endpoints during local development.

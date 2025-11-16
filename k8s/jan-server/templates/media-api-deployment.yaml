@@ -61,8 +61,8 @@ spec:
           value: {{ .Values.mediaApi.env.AUTH_ENABLED | quote }}
         - name: AUTH_ISSUER
           value: {{ .Values.mediaApi.env.AUTH_ISSUER | quote }}
-        - name: AUTH_AUDIENCE
-          value: {{ .Values.mediaApi.env.AUTH_AUDIENCE | quote }}
+        - name: ACCOUNT
+          value: {{ .Values.mediaApi.env.ACCOUNT | quote }}
         - name: AUTH_JWKS_URL
           value: {{ .Values.mediaApi.env.AUTH_JWKS_URL | quote }}
         - name: MEDIA_DATABASE_URL

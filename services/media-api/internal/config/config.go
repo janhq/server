@@ -58,10 +58,10 @@ type Config struct {
 	GCSBucket string `env:"MEDIA_GCS_BUCKET"`
 
 	// Authentication
-	AuthEnabled  bool   `env:"AUTH_ENABLED" envDefault:"false"`
-	AuthIssuer   string `env:"AUTH_ISSUER"`
-	AuthAudience string `env:"AUTH_AUDIENCE"`
-	AuthJWKSURL  string `env:"AUTH_JWKS_URL"`
+	AuthEnabled bool   `env:"AUTH_ENABLED" envDefault:"false"`
+	AuthIssuer  string `env:"AUTH_ISSUER"`
+	Account     string `env:"ACCOUNT"`
+	AuthJWKSURL string `env:"AUTH_JWKS_URL"`
 }
 
 // Load parses environment variables into Config.

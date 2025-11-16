@@ -57,7 +57,7 @@ LOG_FORMAT=json # json or text
 KEYCLOAK_BASE_URL=http://keycloak:8085 # Keycloak URL
 JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
 ISSUER=http://localhost:8090/realms/jan # Token issuer
-AUDIENCE=jan-client # JWT audience
+ACCOUNT=account # JWT audience/account claim
 ```
 
 ### Optional Configuration

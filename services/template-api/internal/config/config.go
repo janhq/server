@@ -34,7 +34,7 @@ type Config struct {
 	DBConnLifetime  time.Duration `env:"DB_CONN_MAX_LIFETIME" envDefault:"30m"`
 	AuthEnabled     bool          `env:"AUTH_ENABLED" envDefault:"false"`
 	AuthIssuer      string        `env:"AUTH_ISSUER"`
-	AuthAudience    string        `env:"AUTH_AUDIENCE"`
+	Account         string        `env:"ACCOUNT"`
 	AuthJWKSURL     string        `env:"AUTH_JWKS_URL"`
 }
 
@@ -60,8 +60,8 @@ func Load() (*Config, error) {
 		if strings.TrimSpace(cfg.AuthIssuer) == "" {
 			return nil, fmt.Errorf("AUTH_ISSUER is required when AUTH_ENABLED is true")
 		}
-		if strings.TrimSpace(cfg.AuthAudience) == "" {
-			return nil, fmt.Errorf("AUTH_AUDIENCE is required when AUTH_ENABLED is true")
+		if strings.TrimSpace(cfg.Account) == "" {
+			return nil, fmt.Errorf("ACCOUNT is required when AUTH_ENABLED is true")
 		}
 		if strings.TrimSpace(cfg.AuthJWKSURL) == "" {
 			return nil, fmt.Errorf("AUTH_JWKS_URL is required when AUTH_ENABLED is true")

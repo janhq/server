@@ -211,7 +211,7 @@ DATABASE_URL=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode
 KEYCLOAK_BASE_URL=http://localhost:8085
 BACKEND_CLIENT_ID=llm-api
 BACKEND_CLIENT_SECRET=your-secret
-TARGET_CLIENT_ID=jan-client
+CLIENT=jan-client
 
 # Optional
 JAN_DEFAULT_NODE_SETUP=false  # Disable if no Jan provider

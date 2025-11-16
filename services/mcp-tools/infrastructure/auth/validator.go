@@ -58,7 +58,7 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 		}
 
 		token, err := jwt.Parse(tokenString, v.jwks.Keyfunc,
-			jwt.WithAudience(v.cfg.AuthAudience),
+			jwt.WithAudience(v.cfg.Account),
 			jwt.WithIssuer(v.cfg.AuthIssuer),
 			jwt.WithValidMethods([]string{"RS256", "RS384", "RS512"}),
 		)

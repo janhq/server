@@ -21,15 +21,17 @@
       "bearerOnly": false,
       "secret": "backend-secret",
       "serviceAccountsEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "standardFlowEnabled": false,
-      "fullScopeAllowed": false,
+      "fullScopeAllowed": true,
       "authorizationServicesEnabled": true,
       "attributes": {
         "access.token.lifespan": "300",
         "oauth2.device.authorization.grant.enabled": "true",
         "token.exchange.grant.enabled": "true"
-      }
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
     },
     {
       "clientId": "jan-client",

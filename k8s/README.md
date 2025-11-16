@@ -214,7 +214,7 @@ llmApi:
     DATABASE_URL: "postgres://..."   # Auto-configured via secret
     KEYCLOAK_BASE_URL: "http://..."  # Auto-configured
     BACKEND_CLIENT_ID: "llm-api"
-    TARGET_CLIENT_ID: "jan-client"
+    CLIENT: "jan-client"
 ```
 
 **Response API** key settings:

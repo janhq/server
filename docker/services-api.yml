@@ -25,11 +25,11 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
       BACKEND_CLIENT_ID: ${BACKEND_CLIENT_ID:-backend}
       BACKEND_CLIENT_SECRET: ${BACKEND_CLIENT_SECRET:-}
-      TARGET_CLIENT_ID: ${TARGET_CLIENT_ID:-jan-client}
+      CLIENT: ${CLIENT:-jan-client}
       OAUTH_REDIRECT_URI: ${OAUTH_REDIRECT_URI:-http://localhost:8000/auth/callback}
       JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
       ISSUER: ${ISSUER:-http://keycloak:8085/realms/jan}
-      AUDIENCE: ${AUDIENCE:-jan-client}
+      ACCOUNT: ${ACCOUNT:-account}
       JWKS_REFRESH_INTERVAL: ${JWKS_REFRESH_INTERVAL:-5m}
       AUTH_CLOCK_SKEW: ${AUTH_CLOCK_SKEW:-60s}
       GUEST_ROLE: ${GUEST_ROLE:-guest}
@@ -122,7 +122,7 @@ services:
       # Authentication
       AUTH_ENABLED: "true"
       AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
-      AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
+      ACCOUNT: ${ACCOUNT:-account}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
     ports:
       - "${MEDIA_API_PORT:-8285}:${MEDIA_API_PORT:-8285}"
@@ -167,7 +167,7 @@ services:
       # Authentication
       AUTH_ENABLED: "true"
       AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
-      AUTH_AUDIENCE: ${AUDIENCE:-jan-client}
+      ACCOUNT: ${ACCOUNT:-account}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
       
       # Observability

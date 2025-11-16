@@ -8,7 +8,7 @@
  - OAuth2 (code/password/device) flows against the `jan` realm in Keycloak for registered users.
 - **Services** validate tokens with:
  - `AUTH_ENABLED=true`
- - `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_JWKS_URL`
+ - `AUTH_ISSUER`, `ACCOUNT`, `AUTH_JWKS_URL`
 - **Service auth**: Media API, Response API, and MCP Tools enforce Keycloak-issued JWTs via `AUTH_*` settings and inherit Kong headers when needed.
 - **Kong plugins**: besides jwt/apikey, Kong applies rate limiting, request size limits, and header sanitization at the edge to keep unauthenticated traffic out.
 

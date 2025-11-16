@@ -804,7 +804,7 @@ See `.vscode/tasks.json` for full configuration.
 - `KEYCLOAK_ADMIN_PASSWORD` - Keycloak admin password
 - `JWKS_URL` - JWKS endpoint for JWT validation
 - `ISSUER` - JWT issuer URL
-- `AUDIENCE` - JWT audience
+- `ACCOUNT` - JWT account/audience
 - `BACKEND_CLIENT_ID` - Backend client ID
 - `BACKEND_CLIENT_SECRET` - Backend client secret
 

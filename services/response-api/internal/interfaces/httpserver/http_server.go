@@ -38,12 +38,20 @@ func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service,
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	engine.Use(gin.Logger())
+
+	handlerProvider := handlers.NewProvider(responseService, log)
+	routeProvider := routes.NewProvider(handlerProvider)
+
+	// Register public routes (health checks, swagger) without authentication
+	registerPublicRoutes(engine, cfg, authValidator)
+
+	// Apply authentication middleware before protected routes
 	if authValidator != nil {
 		engine.Use(authValidator.Middleware())
 	}
-	handlerProvider := handlers.NewProvider(responseService, log)
-	routeProvider := routes.NewProvider(handlerProvider)
-	registerCoreRoutes(engine, cfg, routeProvider, authValidator)
+
+	// Register protected API routes
+	routeProvider.Register(engine)
 
 	return &HttpServer{
 		cfg:         cfg,
@@ -89,7 +97,7 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *routes.Provider, authValidator *auth.Validator) {
+func registerPublicRoutes(engine *gin.Engine, cfg *config.Config, authValidator *auth.Validator) {
 	engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": cfg.ServiceName,
@@ -113,6 +121,4 @@ func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *r
 	})
 
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	routeProvider.Register(engine)
 }

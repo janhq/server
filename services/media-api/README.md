@@ -147,7 +147,7 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | `MEDIA_RETENTION_DAYS` | Metadata retention window. |
 | `AUTH_ENABLED` | Set to `true` to enforce Keycloak-issued JWTs (required in shared environments). |
 | `AUTH_ISSUER` | Expected Keycloak issuer claim (e.g., `http://localhost:8085/realms/jan`). |
-| `AUTH_AUDIENCE` | Audience or client ID the token is minted for (e.g., `jan-client`). |
+| `ACCOUNT` | Audience or client ID the token is minted for (e.g., `account`). |
 | `AUTH_JWKS_URL` | JWKS endpoint used to validate signatures (e.g., `http://keycloak:8085/realms/jan/protocol/openid-connect/certs`). |
 
 > If the S3 bucket or credentials are omitted the service still starts, but media upload/resolve endpoints will respond with `media storage backend is not configured` until valid `MEDIA_S3_*` values are provided.

@@ -204,11 +204,11 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: {{ .Auth.Keycloak.AdminPassword }}
       BACKEND_CLIENT_ID: {{ .Auth.Keycloak.BackendClientId }}
       BACKEND_CLIENT_SECRET: {{ .Auth.Keycloak.BackendClientSecret }}
-      TARGET_CLIENT_ID: {{ .Auth.Keycloak.TargetClientId }}
+      CLIENT: {{ .Auth.Keycloak.Client }}
       OAUTH_REDIRECT_URI: {{ .Auth.Keycloak.OAuthRedirectUri }}
       JWKS_URL: {{ .Auth.Keycloak.JwksUrl }}
       ISSUER: {{ .Auth.Keycloak.Issuer }}
-      AUDIENCE: {{ .Auth.Keycloak.Audience }}
+      ACCOUNT: {{ .Auth.Keycloak.Account }}
       
       # API Keys
       API_KEY_PREFIX: {{ .Services.LLMApi.ApiKeys.Prefix }}
@@ -281,7 +281,7 @@ services:
       # Auth
       MEDIA_JWKS_URL: {{ .Auth.Keycloak.JwksUrl }}
       MEDIA_ISSUER: {{ .Auth.Keycloak.Issuer }}
-      MEDIA_AUDIENCE: {{ .Auth.Keycloak.Audience }}
+      MEDIA_AUDIENCE: {{ .Auth.Keycloak.Account }}
       
       # Logging
       MEDIA_LOG_LEVEL: {{ .Services.MediaApi.LogLevel }}
@@ -325,7 +325,7 @@ services:
       # Auth
       RESPONSE_JWKS_URL: {{ .Auth.Keycloak.JwksUrl }}
       RESPONSE_ISSUER: {{ .Auth.Keycloak.Issuer }}
-      RESPONSE_AUDIENCE: {{ .Auth.Keycloak.Audience }}
+      RESPONSE_AUDIENCE: {{ .Auth.Keycloak.Account }}
       
       # Logging
       RESPONSE_LOG_LEVEL: {{ .Services.ResponseApi.LogLevel }}
