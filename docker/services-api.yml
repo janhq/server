@@ -73,8 +73,8 @@ services:
     depends_on:
       api-db:
         condition: service_healthy
-      # keycloak:
-      #   condition: service_healthy
+      keycloak:
+        condition: service_healthy
       # vllm-jan-gpu:
       #   condition: service_healthy
     volumes:
@@ -129,8 +129,8 @@ services:
     depends_on:
       api-db:
         condition: service_healthy
-      # keycloak:
-      #   condition: service_healthy
+      keycloak:
+        condition: service_healthy
     volumes:
       - ../services/media-api/config:/app/config:ro
     healthcheck:
@@ -177,6 +177,8 @@ services:
       - "${RESPONSE_API_PORT:-8082}:${RESPONSE_API_PORT:-8082}"
     depends_on:
       api-db:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
       # llm-api:
       #   condition: service_healthy

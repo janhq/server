@@ -37,7 +37,7 @@ func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, a
 	engine.Use(gin.Recovery(), gin.Logger())
 
 	handlerProvider := handlers.NewProvider(cfg, mediaService, log)
-	routeProvider := v1.NewRoutes(handlerProvider)
+	routeProvider := v1.NewRoutes(handlerProvider, cfg)
 	if authValidator != nil {
 		engine.Use(authValidator.Middleware())
 	}

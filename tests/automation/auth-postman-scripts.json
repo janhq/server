@@ -1216,7 +1216,7 @@
         {
           "name": "Test Token Refresh Endpoint",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
                 "key": "Authorization",

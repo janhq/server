@@ -161,3 +161,8 @@ func (s *S3Storage) Health(ctx context.Context) error {
 	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(s.bucket)})
 	return err
 }
+
+// SupportsPresignedUploads returns true for S3 storage.
+func (s *S3Storage) SupportsPresignedUploads() bool {
+	return !s.disabled
+}

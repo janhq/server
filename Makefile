@@ -82,27 +82,15 @@ endif
 
 # Ensure docker/.env exists by copying from root .env
 ensure-docker-env:
-ifeq ($(OS),Windows_NT)
-	@if not exist docker mkdir docker >nul 2>&1
-	@copy .env docker\.env >nul 2>&1
-else
-	@mkdir -p docker
-	@cp .env docker/.env
-endif
+	@mkdir -p docker 2>/dev/null || true
+	@cp -f .env docker/.env 2>/dev/null || true
 
 check-deps:
 	@echo "Checking dependencies..."
-ifeq ($(OS),Windows_NT)
-	@docker --version >nul 2>&1 || echo "Docker not found"
-	@docker compose version >nul 2>&1 || echo "Docker Compose V2 not found"
-	@go version >nul 2>&1 || echo "Go not found (optional)"
-	@newman --version >nul 2>&1 || echo "Newman not found (optional)"
-else
 	@docker --version >/dev/null 2>&1 || echo "Docker not found"
 	@docker compose version >/dev/null 2>&1 || echo "Docker Compose V2 not found"
 	@go version >/dev/null 2>&1 || echo "Go not found (optional)"
 	@newman --version >/dev/null 2>&1 || echo "Newman not found (optional)"
-endif
 	@echo "Dependency check complete"
 
 install-deps:
@@ -155,15 +143,7 @@ build-all:
 
 clean-build:
 	@echo "Cleaning build artifacts..."
-ifeq ($(OS),Windows_NT)
-	@if exist services\llm-api\bin rd /s /q services\llm-api\bin >nul 2>&1
-	@if exist services\media-api\bin rd /s /q services\media-api\bin >nul 2>&1
-	@if exist services\mcp-tools\bin rd /s /q services\mcp-tools\bin >nul 2>&1
-else
-	@rm -rf services/llm-api/bin
-	@rm -rf services/media-api/bin
-	@rm -rf services/mcp-tools/bin
-endif
+	@rm -rf services/llm-api/bin services/media-api/bin services/mcp-tools/bin 2>/dev/null || true
 	@echo " Build artifacts cleaned"
 
 # --- Configuration Management ---

@@ -263,17 +263,160 @@ func promptForEnvVars(envPath string) error {
 	// 3. Media API Configuration
 	fmt.Println()
 	fmt.Println("🖼️  Media API Setup")
-	fmt.Print("Enable Media API? (Y/n): ")
 
-	mediaChoice, _ := reader.ReadString('\n')
-	mediaChoice = strings.TrimSpace(strings.ToLower(mediaChoice))
+	// Media API with local storage only works when using local vLLM
+	if !useLocalVLLM {
+		fmt.Println("Note: Media API with local storage requires local vLLM deployment")
+		fmt.Println("      Only S3 storage is available with remote API providers")
+		fmt.Print("Enable Media API with S3 storage? (y/N): ")
 
-	if mediaChoice == "n" || mediaChoice == "no" {
-		updates["MEDIA_API_ENABLED"] = "false"
-		fmt.Println("✓ Media API disabled")
+		mediaChoice, _ := reader.ReadString('\n')
+		mediaChoice = strings.TrimSpace(strings.ToLower(mediaChoice))
+
+		if mediaChoice == "y" || mediaChoice == "yes" {
+			updates["MEDIA_API_ENABLED"] = "true"
+			updates["MEDIA_STORAGE_BACKEND"] = "s3"
+
+			fmt.Println()
+			fmt.Println("S3-compatible storage configuration:")
+			fmt.Println("(Press Enter to use default Menlo AI settings)")
+
+			fmt.Print("S3 Endpoint URL (default: https://s3.menlo.ai): ")
+			s3Endpoint, _ := reader.ReadString('\n')
+			s3Endpoint = strings.TrimSpace(s3Endpoint)
+			if s3Endpoint == "" {
+				s3Endpoint = "https://s3.menlo.ai"
+			}
+			updates["MEDIA_S3_ENDPOINT"] = s3Endpoint
+
+			fmt.Print("S3 Bucket name (default: platform-dev): ")
+			s3Bucket, _ := reader.ReadString('\n')
+			s3Bucket = strings.TrimSpace(s3Bucket)
+			if s3Bucket == "" {
+				s3Bucket = "platform-dev"
+			}
+			updates["MEDIA_S3_BUCKET"] = s3Bucket
+
+			fmt.Print("S3 Access Key ID (default: 7N33WPTUI1KN99MFILQS): ")
+			s3AccessKey, _ := reader.ReadString('\n')
+			s3AccessKey = strings.TrimSpace(s3AccessKey)
+			if s3AccessKey == "" {
+				s3AccessKey = "7N33WPTUI1KN99MFILQS"
+			}
+			updates["MEDIA_S3_ACCESS_KEY_ID"] = s3AccessKey
+
+			fmt.Print("S3 Secret Access Key (default: ppxQsHpnfDSewYZD065aGjQeEQ0nTFA7c2aHNPz5): ")
+			s3SecretKey, _ := reader.ReadString('\n')
+			s3SecretKey = strings.TrimSpace(s3SecretKey)
+			if s3SecretKey == "" {
+				s3SecretKey = "ppxQsHpnfDSewYZD065aGjQeEQ0nTFA7c2aHNPz5"
+			}
+			updates["MEDIA_S3_SECRET_ACCESS_KEY"] = s3SecretKey
+
+			fmt.Print("S3 Region (default: us-west-2): ")
+			s3Region, _ := reader.ReadString('\n')
+			s3Region = strings.TrimSpace(s3Region)
+			if s3Region == "" {
+				s3Region = "us-west-2"
+			}
+			updates["MEDIA_S3_REGION"] = s3Region
+
+			// Set media API URLs
+			updates["MEDIA_API_URL"] = "http://media-api:8285"
+			updates["MEDIA_RESOLVE_URL"] = "http://media-api:8285/v1/media/resolve"
+
+			fmt.Println("✓ Media API enabled with S3 storage")
+		} else {
+			updates["MEDIA_API_ENABLED"] = "false"
+			fmt.Println("✓ Media API disabled")
+		}
 	} else {
-		updates["MEDIA_API_ENABLED"] = "true"
-		fmt.Println("✓ Media API enabled")
+		// Local vLLM - offer both storage options
+		fmt.Print("Enable Media API? (Y/n): ")
+
+		mediaChoice, _ := reader.ReadString('\n')
+		mediaChoice = strings.TrimSpace(strings.ToLower(mediaChoice))
+
+		if mediaChoice == "n" || mediaChoice == "no" {
+			updates["MEDIA_API_ENABLED"] = "false"
+			fmt.Println("✓ Media API disabled")
+		} else {
+			updates["MEDIA_API_ENABLED"] = "true"
+
+			// Ask for storage backend
+			fmt.Println()
+			fmt.Println("Choose Media storage backend:")
+			fmt.Println("  1. Local file system (default, stores files locally)")
+			fmt.Println("  2. S3-compatible storage (requires credentials)")
+			fmt.Print("Enter choice [1/2] (default: 1): ")
+
+			storageChoice, _ := reader.ReadString('\n')
+			storageChoice = strings.TrimSpace(storageChoice)
+			if storageChoice == "" {
+				storageChoice = "1"
+			}
+
+			if storageChoice == "2" {
+				// S3 Configuration
+				updates["MEDIA_STORAGE_BACKEND"] = "s3"
+
+				fmt.Println()
+				fmt.Println("S3-compatible storage configuration:")
+				fmt.Println("(Press Enter to use default Menlo AI settings)")
+
+				fmt.Print("S3 Endpoint URL (default: https://s3.menlo.ai): ")
+				s3Endpoint, _ := reader.ReadString('\n')
+				s3Endpoint = strings.TrimSpace(s3Endpoint)
+				if s3Endpoint == "" {
+					s3Endpoint = "https://s3.menlo.ai"
+				}
+				updates["MEDIA_S3_ENDPOINT"] = s3Endpoint
+
+				fmt.Print("S3 Bucket name (default: platform-dev): ")
+				s3Bucket, _ := reader.ReadString('\n')
+				s3Bucket = strings.TrimSpace(s3Bucket)
+				if s3Bucket == "" {
+					s3Bucket = "platform-dev"
+				}
+				updates["MEDIA_S3_BUCKET"] = s3Bucket
+
+				fmt.Print("S3 Access Key ID (default: 7N33WPTUI1KN99MFILQS): ")
+				s3AccessKey, _ := reader.ReadString('\n')
+				s3AccessKey = strings.TrimSpace(s3AccessKey)
+				if s3AccessKey == "" {
+					s3AccessKey = "7N33WPTUI1KN99MFILQS"
+				}
+				updates["MEDIA_S3_ACCESS_KEY_ID"] = s3AccessKey
+
+				fmt.Print("S3 Secret Access Key (default: ppxQsHpnfDSewYZD065aGjQeEQ0nTFA7c2aHNPz5): ")
+				s3SecretKey, _ := reader.ReadString('\n')
+				s3SecretKey = strings.TrimSpace(s3SecretKey)
+				if s3SecretKey == "" {
+					s3SecretKey = "ppxQsHpnfDSewYZD065aGjQeEQ0nTFA7c2aHNPz5"
+				}
+				updates["MEDIA_S3_SECRET_ACCESS_KEY"] = s3SecretKey
+
+				fmt.Print("S3 Region (default: us-west-2): ")
+				s3Region, _ := reader.ReadString('\n')
+				s3Region = strings.TrimSpace(s3Region)
+				if s3Region == "" {
+					s3Region = "us-west-2"
+				}
+				updates["MEDIA_S3_REGION"] = s3Region
+
+				fmt.Println("✓ Media API enabled with S3 storage")
+			} else {
+				// Local file system storage (default)
+				updates["MEDIA_STORAGE_BACKEND"] = "local"
+				updates["MEDIA_LOCAL_STORAGE_PATH"] = "./media-data"
+				updates["MEDIA_LOCAL_STORAGE_BASE_URL"] = "http://localhost:8285/v1/files"
+				fmt.Println("✓ Media API enabled with local file system storage")
+			}
+
+			// Set media API URLs (common for both backends)
+			updates["MEDIA_API_URL"] = "http://media-api:8285"
+			updates["MEDIA_RESOLVE_URL"] = "http://media-api:8285/v1/media/resolve"
+		}
 	}
 
 	// Apply all updates

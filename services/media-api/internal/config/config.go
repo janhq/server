@@ -31,6 +31,13 @@ type Config struct {
 	// API Configuration
 	APIURL string `env:"MEDIA_API_URL"`
 
+	// Storage Backend Selection
+	StorageBackend string `env:"MEDIA_STORAGE_BACKEND" envDefault:"s3"` // Options: "s3" or "local"
+
+	// Local Storage Configuration
+	LocalStoragePath    string `env:"MEDIA_LOCAL_STORAGE_PATH"`     // Path to store files (e.g., "/var/media" or "./media-data")
+	LocalStorageBaseURL string `env:"MEDIA_LOCAL_STORAGE_BASE_URL"` // Base URL for serving files (e.g., "http://localhost:8285/v1/files")
+
 	// S3 Storage Configuration
 	S3Endpoint       string        `env:"MEDIA_S3_ENDPOINT" envDefault:"https://s3.menlo.ai"`
 	S3PublicEndpoint string        `env:"MEDIA_S3_PUBLIC_ENDPOINT"`
@@ -101,4 +108,15 @@ func (c *Config) GetDatabaseReadDSN() string {
 // Addr returns the HTTP listen address.
 func (c *Config) Addr() string {
 	return fmt.Sprintf(":%d", c.HTTPPort)
+}
+
+// IsLocalStorage returns true if local storage backend is configured.
+func (c *Config) IsLocalStorage() bool {
+	return strings.ToLower(strings.TrimSpace(c.StorageBackend)) == "local"
+}
+
+// IsS3Storage returns true if S3 storage backend is configured.
+func (c *Config) IsS3Storage() bool {
+	backend := strings.ToLower(strings.TrimSpace(c.StorageBackend))
+	return backend == "" || backend == "s3"
 }
