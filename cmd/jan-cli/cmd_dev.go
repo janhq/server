@@ -57,19 +57,24 @@ func runDevSetup(cmd *cobra.Command, args []string) error {
 	fmt.Println("Setting up development environment...")
 	fmt.Println()
 
-	// 1. Check Docker
+	// 1. Check Docker (optional - warn if not available)
+	dockerAvailable := false
 	fmt.Print("Checking Docker... ")
 	if err := execCommand("docker", "--version"); err != nil {
-		return fmt.Errorf("Docker not found. Please install Docker Desktop")
-	}
-	fmt.Println("✓")
-
-	// 2. Check Docker Compose (optional - warn if not available)
-	fmt.Print("Checking Docker Compose... ")
-	if err := execCommand("docker", "compose", "version"); err != nil {
-		fmt.Println("⚠ (not available - some features may be limited)")
+		fmt.Println("⚠ (not available - Docker features will be limited)")
 	} else {
 		fmt.Println("✓")
+		dockerAvailable = true
+	}
+
+	// 2. Check Docker Compose (optional - only if Docker is available)
+	if dockerAvailable {
+		fmt.Print("Checking Docker Compose... ")
+		if err := execCommand("docker", "compose", "version"); err != nil {
+			fmt.Println("⚠ (not available - some features may be limited)")
+		} else {
+			fmt.Println("✓")
+		}
 	}
 
 	// 3. Check for .env file
@@ -112,20 +117,22 @@ func runDevSetup(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓")
 
-	// 6. Create Docker networks
-	fmt.Print("Creating Docker networks... ")
-	networks := []string{"jan-network", "jan-monitoring"}
-	for _, network := range networks {
-		// Check if network exists
-		checkCmd := execCommandSilent("docker", "network", "inspect", network)
-		if checkCmd != nil {
-			// Network doesn't exist, create it
-			if err := execCommandSilent("docker", "network", "create", network); err != nil {
-				fmt.Printf("(skipped %s) ", network)
+	// 6. Create Docker networks (only if Docker is available)
+	if dockerAvailable {
+		fmt.Print("Creating Docker networks... ")
+		networks := []string{"jan-network", "jan-monitoring"}
+		for _, network := range networks {
+			// Check if network exists
+			checkCmd := execCommandSilent("docker", "network", "inspect", network)
+			if checkCmd != nil {
+				// Network doesn't exist, create it
+				if err := execCommandSilent("docker", "network", "create", network); err != nil {
+					fmt.Printf("(skipped %s) ", network)
+				}
 			}
 		}
+		fmt.Println("✓")
 	}
-	fmt.Println("✓")
 
 	fmt.Println()
 	fmt.Println("✅ Development environment setup complete!")
