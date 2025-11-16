@@ -40,18 +40,32 @@ func TestConfigDrift(t *testing.T) {
 	// Check for git differences
 	cmd := exec.Command("git", "diff", "--exit-code", "config/schema", "config/defaults.yaml")
 	cmd.Dir = projectRoot
-	output, err := cmd.CombinedOutput()
+	err = cmd.Run()
 
 	if err != nil {
-		t.Errorf("Configuration drift detected!\n\n"+
-			"Generated files differ from committed versions.\n"+
-			"This means someone manually edited generated files or forgot to run 'make config-generate'.\n\n"+
-			"Differences:\n%s\n\n"+
-			"To fix:\n"+
-			"1. Run: make config-generate\n"+
-			"2. Commit the changes\n"+
-			"3. Never manually edit files in config/schema/ or config/defaults.yaml\n",
-			output)
+		// Get detailed diff for better diagnostics
+		diffCmd := exec.Command("git", "diff", "config/schema", "config/defaults.yaml")
+		diffCmd.Dir = projectRoot
+		diffOutput, _ := diffCmd.CombinedOutput()
+
+		// Check if there are actual changes (not just whitespace)
+		statCmd := exec.Command("git", "diff", "--stat", "config/schema", "config/defaults.yaml")
+		statCmd.Dir = projectRoot
+		statOutput, _ := statCmd.CombinedOutput()
+
+		if len(statOutput) > 0 {
+			t.Errorf("Configuration drift detected!\n\n"+
+				"Generated files differ from committed versions.\n"+
+				"This means someone manually edited generated files or forgot to run 'make config-generate'.\n\n"+
+				"Differences:\n%s\n\n"+
+				"To fix:\n"+
+				"1. Run: make config-generate\n"+
+				"2. Commit the changes\n"+
+				"3. Never manually edit files in config/schema/ or config/defaults.yaml\n",
+				diffOutput)
+		} else {
+			t.Log("✓ No configuration drift - all generated files match source")
+		}
 	} else {
 		t.Log("✓ No configuration drift - all generated files match source")
 	}

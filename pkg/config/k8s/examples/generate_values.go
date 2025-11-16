@@ -24,7 +24,7 @@ func main() {
 	generator := k8s.NewValuesGenerator(cfg)
 
 	// Generate for development
-	fmt.Println("=== Generating Helm Values ===\n")
+	fmt.Println("=== Generating Helm Values ===")
 
 	// Write to file
 	outputPath := "values-dev.yaml"

@@ -104,7 +104,7 @@ services:
 inference:
   vllm:
     enabled: true
-    port: 8001
+    port: 8101
     model: Qwen/Qwen2.5-0.5B-Instruct
     served_name: qwen2.5-0.5b-instruct
     gpu_utilization: 0.66

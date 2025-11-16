@@ -37,7 +37,7 @@ infrastructure:
       jwks_url: ""
       oidc_discovery_url: ""
       issuer: http://localhost:8085/realms/jan
-      audience: account
+      audience: jan-client
       refresh_jwks_interval: 5m0s
       auth_clock_skew: 1m0s
       guest_role: guest
