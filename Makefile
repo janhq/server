@@ -137,7 +137,7 @@ endif
 	@echo " MCP Tools built: services/mcp-tools/bin/mcp-tools"
 
 build-all:
-	@echo "Building all Docker images..."
+	@echo "Building all Docker images ..."
 	$(COMPOSE) --profile full build
 	@echo " All services built"
 
