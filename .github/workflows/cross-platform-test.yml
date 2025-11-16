@@ -48,32 +48,30 @@ jobs:
       - name: Install dependencies
         run: go mod download
         
-      - name: Set up Docker on macOS
+      - name: Set up Docker on macOS (optional - for local compatibility)
         if: runner.os == 'macOS'
+        continue-on-error: true
         run: |
           echo "Installing Docker on macOS via Colima..."
+          echo "Note: Docker tests run on Ubuntu only. macOS tests CLI and build."
           brew install docker colima
           
-          # Start Colima with conservative settings for GitHub Actions
-          # Use native ARM64 architecture (macos-latest runners are ARM64)
+          # Start Colima with conservative settings
           colima start \
             --cpu 2 \
             --memory 4 \
             --disk 20 \
             --vm-type=vz \
-            --mount-type=virtiofs
+            --mount-type=virtiofs || echo "[WARNING] Colima failed to start"
           
-          # Wait for Docker to be ready with longer timeout
-          echo "Waiting for Docker to be ready..."
-          for i in {1..60}; do
+          # Wait for Docker to be ready (optional)
+          for i in {1..30}; do
             if docker info &> /dev/null; then
               echo "[OK] Docker is ready"
               break
             fi
-            if [ $i -eq 60 ]; then
-              echo "[ERROR] Docker failed to start after 120 seconds"
-              colima status
-              exit 1
+            if [ $i -eq 30 ]; then
+              echo "[INFO] Docker not available - skipping Docker tests on macOS"
             fi
             sleep 2
           done
@@ -250,22 +248,22 @@ jobs:
           uname -a
           
       - name: Install Newman for API testing
-        if: runner.os == 'macOS'
+        if: runner.os == 'Linux'  # Only run Docker tests on Ubuntu
         run: |
           echo "Installing Newman for API testing..."
           npm install -g newman
           newman --version
       
       - name: Start Docker services for testing
-        if: runner.os == 'macOS'
+        if: runner.os == 'Linux'  # Only run Docker tests on Ubuntu
         run: |
-          echo "Starting Docker services..."
+          echo "Starting Docker services on Ubuntu (native Docker)..."
           # Copy .env.template to .env
           cp .env.template .env
           
           # Update .env with test values
-          sed -i '' 's/COMPOSE_PROFILES=.*/COMPOSE_PROFILES=infra,api,mcp/' .env
-          sed -i '' 's/HF_TOKEN=.*/HF_TOKEN=not_required_for_tests/' .env
+          sed -i 's/COMPOSE_PROFILES=.*/COMPOSE_PROFILES=infra,api,mcp/' .env
+          sed -i 's/HF_TOKEN=.*/HF_TOKEN=not_required_for_tests/' .env
           
           # Start services
           docker compose up -d
@@ -278,13 +276,13 @@ jobs:
           docker compose ps
       
       - name: Run authentication tests
-        if: runner.os == 'macOS'
+        if: runner.os == 'Linux'  # Only run Docker tests on Ubuntu
         run: |
           echo "Running authentication tests..."
           make test-auth || echo "[WARNING] Auth tests failed (expected in CI)"
       
       - name: Stop Docker services
-        if: always() && runner.os == 'macOS'
+        if: always() && runner.os == 'Linux'
         run: |
           echo "Stopping Docker services..."
           docker compose down -v || true
@@ -298,6 +296,13 @@ jobs:
           echo "Go version: $(go version)"
           echo "System: $(uname -s)"
           echo "Architecture: $(uname -m)"
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            echo "Docker: Tested CLI and build tools only"
+            echo "Note: Full Docker integration tests run on Ubuntu"
+          else
+            echo "Docker: Full integration tests completed"
+          fi
+          echo "=========================================="
           if [ "${{ runner.os }}" = "macOS" ]; then
             echo "Docker: $(docker --version 2>/dev/null || echo 'Not available')"
           fi

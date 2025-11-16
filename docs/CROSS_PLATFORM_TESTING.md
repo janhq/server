@@ -78,8 +78,8 @@ You have **three ways** to test on Unix systems (Linux/macOS):
 #### Option 1: Automated CI/CD Testing (GitHub Actions)
 
 The repository includes a comprehensive GitHub Actions workflow that automatically tests on:
-- **Ubuntu** (latest) - Full stack with Docker and authentication tests
-- **macOS** (latest) - Full stack with Docker (via Colima) and authentication tests  
+- **Ubuntu** (latest) - Full Docker integration with authentication tests
+- **macOS** (latest) - CLI and build tests (Docker tests run on Ubuntu)
 - **Windows** (latest) - CLI and build tests only (no Docker)
 
 The workflow is triggered on:
@@ -89,8 +89,8 @@ The workflow is triggered on:
 **What gets tested:**
 - ✅ jan-cli commands (all platforms)
 - ✅ Makefile build targets (all platforms)
-- ✅ Docker service deployment (Ubuntu/macOS)
-- ✅ Authentication tests via Newman (Ubuntu/macOS)
+- ✅ Docker service deployment (Ubuntu only)
+- ✅ Authentication tests via Newman (Ubuntu only)
 - ✅ Auto-rebuild detection (all platforms)
 - ✅ Cross-platform file path handling
 
@@ -102,10 +102,16 @@ To view test results:
 3. Select **Cross-Platform Testing** workflow
 4. View the latest run
 
-**Docker Setup Notes:**
-- **Ubuntu**: Docker pre-installed, ready to use
-- **macOS**: Installs Colima (lightweight Docker runtime) via Homebrew
-- **Windows**: Docker not available on GitHub Actions (tests skip Docker-dependent features)
+**Docker Testing Strategy:**
+- **Ubuntu**: Native Docker support - runs full integration tests
+- **macOS**: Optional Colima setup (may fail) - focuses on CLI/build tests
+- **Windows**: No Docker - CLI/build tests only
+
+**Why Ubuntu for Docker tests?**
+- Native Docker support (no setup time)
+- Most reliable and fast
+- Represents Linux production environment
+- macOS/Windows developers use Docker Desktop locally anyway
 
 #### Option 2: Local Automated Test Script
 
