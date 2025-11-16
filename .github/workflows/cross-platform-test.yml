@@ -49,38 +49,11 @@ jobs:
         run: go mod download
         
       - name: Set up Docker on macOS (optional - for local compatibility)
-        if: runner.os == 'macOS'
+        if: false  # Disabled: Docker tests run on Ubuntu only
         continue-on-error: true
         run: |
-          echo "Installing Docker on macOS via Colima..."
+          echo "Skipping Docker setup on macOS"
           echo "Note: Docker tests run on Ubuntu only. macOS tests CLI and build."
-          brew install docker colima
-          
-          # Start Colima with conservative settings
-          colima start \
-            --cpu 2 \
-            --memory 4 \
-            --disk 20 \
-            --vm-type=vz \
-            --mount-type=virtiofs || echo "[WARNING] Colima failed to start"
-          
-          # Wait for Docker to be ready (optional)
-          for i in {1..30}; do
-            if docker info &> /dev/null; then
-              echo "[OK] Docker is ready"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "[INFO] Docker not available - skipping Docker tests on macOS"
-            fi
-            sleep 2
-          done
-          
-          # Verify Docker is working
-          docker --version
-          docker compose version
-          docker info
-          echo "[OK] Docker setup complete on macOS"
         
       - name: Make jan-cli.sh executable
         run: chmod +x jan-cli.sh

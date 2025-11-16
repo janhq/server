@@ -64,12 +64,13 @@ func runDevSetup(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓")
 
-	// 2. Check Docker Compose
+	// 2. Check Docker Compose (optional - warn if not available)
 	fmt.Print("Checking Docker Compose... ")
 	if err := execCommand("docker", "compose", "version"); err != nil {
-		return fmt.Errorf("Docker Compose not found")
+		fmt.Println("⚠ (not available - some features may be limited)")
+	} else {
+		fmt.Println("✓")
 	}
-	fmt.Println("✓")
 
 	// 3. Check for .env file
 	fmt.Print("Checking .env file... ")
