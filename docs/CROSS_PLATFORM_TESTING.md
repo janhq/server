@@ -292,21 +292,40 @@ sudo apt-get install docker-compose-plugin
 **Option 2: Colima (Recommended for CI/CD and lightweight use)**
 ```bash
 # Install via Homebrew
-brew install docker docker-compose colima
+brew install docker colima
 
 # Start with appropriate resources
+# For local development
 colima start --cpu 4 --memory 8 --disk 100
+
+# For GitHub Actions CI (conservative settings)
+colima start \
+  --cpu 2 \
+  --memory 4 \
+  --disk 20 \
+  --vm-type=vz \
+  --mount-type=virtiofs \
+  --arch x86_64
 
 # Verify
 docker info
 docker compose version
 ```
 
+**Colima Settings Explained:**
+- `--cpu 2/4`: CPU cores (2 for CI, 4+ for local)
+- `--memory 4/8`: RAM in GB (4 for CI, 8+ for local)
+- `--disk 20/100`: Disk space in GB (20 for CI, 100+ for local)
+- `--vm-type=vz`: Use Virtualization.framework (more stable on macOS)
+- `--mount-type=virtiofs`: Better file sharing performance
+- `--arch x86_64`: Ensure compatibility with runners
+
 **Our CI/CD uses Colima** because:
 - ✅ Free and open source
 - ✅ Lightweight (faster CI runs)
 - ✅ No licensing restrictions
 - ✅ Works headless (perfect for automation)
+- ✅ Tuned for GitHub Actions runner constraints
 
 ### Windows
 
@@ -329,14 +348,20 @@ docker compose version
 
 ### GitHub Actions Runner Comparison
 
-| Platform | Docker Available | Method | Speed | Cost |
-|----------|-----------------|--------|-------|------|
-| **ubuntu-latest** | ✅ Yes | Native | Fast | Free |
-| **macos-latest** | ✅ Yes* | Colima | Medium | Free |
-| **windows-latest** | ❌ No | N/A | N/A | Free |
-| **Self-hosted** | ✅ Yes | Manual setup | Varies | Infrastructure cost |
+| Platform | Docker Available | Method | Speed | Cost | Notes |
+|----------|-----------------|--------|-------|------|-------|
+| **ubuntu-latest** | ✅ Yes | Native | Fast | Free | Docker pre-installed |
+| **macos-latest** | ✅ Yes* | Colima | Medium | Free | Requires ~3min setup |
+| **windows-latest** | ❌ No | N/A | N/A | Free | No Docker support |
+| **Self-hosted** | ✅ Yes | Manual setup | Varies | Infrastructure cost | Full control |
 
-*Requires installation step in workflow
+*Requires installation step with conservative resource settings
+
+**macOS Colima Configuration for GitHub Actions:**
+- Uses VZ virtualization framework (more stable)
+- Conservative resources (2 CPU, 4GB RAM, 20GB disk)
+- Optimized for GitHub Actions runner constraints
+- Typical startup time: 2-3 minutes
 
 ## Best Practices for Cross-Platform Development
 
