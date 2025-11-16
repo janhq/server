@@ -2,38 +2,38 @@
 
 Complete Helm chart for deploying Jan Server on Kubernetes.
 
-## 📋 Overview
+## Docs Overview
 
 This directory contains Helm charts for deploying the entire Jan Server stack:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Kong API Gateway                      │
-│                    (LoadBalancer)                        │
-└─────────────────────────────────────────────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┬──────────┐
-        │                  │                  │          │
-        ▼                  ▼                  ▼          ▼
-   ┌─────────┐      ┌──────────┐      ┌──────────┐ ┌─────────┐
-   │ LLM API │      │Media API │      │Response  │ │MCP Tools│
-   │         │      │          │      │   API    │ │         │
-   └─────────┘      └──────────┘      └──────────┘ └─────────┘
-        │                  │                  │          │
-        └──────────────────┼──────────────────┴──────────┘
-                           │
-                           ▼
-                   ┌──────────────┐
-                   │  PostgreSQL  │
-                   └──────────────┘
++---------------------------------------------------------+
+|                    Kong API Gateway                      |
+|                    (LoadBalancer)                        |
++---------------------------------------------------------+
+                           |
+        +------------------+------------------+----------+
+        |                  |                  |          |
+        v                  v                  v          v
+   +---------+      +----------+      +----------+ +---------+
+   | LLM API |      |Media API |      |Response  | |MCP Tools|
+   |         |      |          |      |   API    | |         |
+   +---------+      +----------+      +----------+ +---------+
+        |                  |                  |          |
+        +------------------+------------------+----------+
+                           |
+                           v
+                   +--------------+
+                   |  PostgreSQL  |
+                   +--------------+
                            
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│   Keycloak   │   │    Redis     │   │   SearXNG    │
-└──────────────┘   └──────────────┘   └──────────────┘
++--------------+   +--------------+   +--------------+
+|   Keycloak   |   |    Redis     |   |   SearXNG    |
++--------------+   +--------------+   +--------------+
 
-┌──────────────┐   ┌──────────────┐
-│ Vector Store │   │SandboxFusion │
-└──────────────┘   └──────────────┘
++--------------+   +--------------+
+| Vector Store |   |SandboxFusion |
++--------------+   +--------------+
 ```
 
 ##  Quick Start
@@ -131,30 +131,30 @@ open http://localhost:8085
 
 **Note:** Kong is available but may show restarts due to memory constraints in minikube. For production, increase Kong's memory limits or access services directly.
 
-## 📦 Components
+## Package Components
 
 ### Core Services
 
 | Service | Port | Description | Status |
 |---------|------|-------------|--------|
-| LLM API | 8080 | Core LLM orchestration service | ✅ Working |
-| Media API | 8285 | Media upload and management | ✅ Working |
-| Response API | 8280 | Response generation service | ✅ Working |
-| MCP Tools | 8091 | Model Context Protocol tools | ✅ Working |
-| Keycloak | 8085 | Authentication server | ✅ Working |
-| Kong | 8000 | Unified API Gateway | ⚠️ Optional |
+| LLM API | 8080 | Core LLM orchestration service | OK Working |
+| Media API | 8285 | Media upload and management | OK Working |
+| Response API | 8280 | Response generation service | OK Working |
+| MCP Tools | 8091 | Model Context Protocol tools | OK Working |
+| Keycloak | 8085 | Authentication server | OK Working |
+| Kong | 8000 | Unified API Gateway | WARNING Optional |
 
 ### Supporting Services
 
 | Service | Port | Description | Status |
 |---------|------|-------------|--------|
-| PostgreSQL | 5432 | Primary database (3 databases) | ✅ Working |
-| Redis | 6379 | Caching and sessions | ✅ Working |
-| SearXNG | 8080 | Meta search engine | ✅ Working |
-| SandboxFusion | 8080 | Code interpreter | ✅ Working |
-| Vector Store | 3015 | File search database | 🔴 Disabled by default |
+| PostgreSQL | 5432 | Primary database (3 databases) | OK Working |
+| Redis | 6379 | Caching and sessions | OK Working |
+| SearXNG | 8080 | Meta search engine | OK Working |
+| SandboxFusion | 8080 | Code interpreter | OK Working |
+| Vector Store | 3015 | File search database | Offline Disabled by default |
 
-## 🔧 Configuration
+## Tools Configuration
 
 ### Values Files
 
@@ -311,7 +311,7 @@ llmApi:
           - api.yourdomain.com
 ```
 
-## 🌐 Deployment Scenarios
+## Global Deployment Scenarios
 
 ### Development (Minikube) - Verified Working 
 
@@ -404,7 +404,7 @@ helm install jan-server ./jan-server \
   --set global.redis.host=redis.internal
 ```
 
-## 🔒 Security Best Practices
+## Lock Security Best Practices
 
 ### 1. Use External Secrets
 
@@ -488,7 +488,7 @@ spec:
 EOF
 ```
 
-## 📊 Monitoring
+## Stats Monitoring
 
 ### Prometheus & Grafana
 
@@ -515,7 +515,7 @@ helm install loki grafana/loki-stack \
   --set grafana.enabled=true
 ```
 
-## 🔄 Upgrade & Maintenance
+## Refresh Upgrade & Maintenance
 
 ### Upgrade Helm Release
 
@@ -552,7 +552,7 @@ kubectl exec -i -n jan-server jan-server-postgresql-0 -- \
   psql -U jan_user jan_llm_api < backup-20250109.sql
 ```
 
-## 🐛 Troubleshooting
+## Bug Troubleshooting
 
 ### Common Issues
 
@@ -590,20 +590,20 @@ kubectl run -n jan-server curl-test --rm -it \
   -- curl http://jan-server-llm-api:8080/healthz
 ```
 
-## 📚 Additional Resources
+## Docs Additional Resources
 
 - [Helm Documentation](https://helm.sh/docs/)
 - [Kubernetes Best Practices](https://kubernetes.io/docs/concepts/configuration/overview/)
 - [Jan Server Documentation](https://docs.jan.ai)
 - [Bitnami Charts](https://github.com/bitnami/charts)
 
-## 🤝 Support
+## Partner Support
 
 For issues and questions:
 - GitHub Issues: https://github.com/janhq/jan-server/issues
 - Documentation: https://docs.jan.ai
 - Community: https://discord.gg/jan
 
-## 📄 License
+## Doc License
 
 See the main project LICENSE file.

@@ -33,9 +33,9 @@ curl -X POST http://localhost:8082/v1/responses \
 
 Useful targets:
 
-- `make wire` – regenerate DI after editing `cmd/server/wire.go`.
-- `make swagger` – regenerate OpenAPI docs from annotations.
-- `make test` – unit/integration test suite.
+- `make wire` - regenerate DI after editing `cmd/server/wire.go`.
+- `make swagger` - regenerate OpenAPI docs from annotations.
+- `make test` - unit/integration test suite.
 
 ## Configuration
 

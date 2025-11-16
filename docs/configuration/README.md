@@ -1,71 +1,36 @@
 # Configuration System
 
-Jan Server uses a centralized, type-safe configuration system that combines YAML defaults with environment variable overrides.
+Jan Server uses a simple configuration system with default values that you can override.
 
-## Overview
+## Why This Matters
 
-**Benefits:**
-- **Type-safe:** Go structs with compile-time validation
-- **Self-documenting:** Auto-generates JSON Schema and markdown docs
-- **Environment-aware:** Defaults for dev/staging/prod
-- **Validated:** Built-in validation with clear error messages
-- **Traceable:** Configuration provenance tracking
-- **Kubernetes-ready:** Auto-generates Helm values files
+- **Safe:** Catches configuration errors before startup
+- **Clear:** Easy to see what settings are available
+- **Flexible:** Works in development and production
+- **Validated:** Tells you exactly what's wrong if config is invalid
 
-## Quick Start
+## How It Works
 
-### 1. Using Configuration in Your Service
+Configuration is loaded in this order (later overrides earlier):
 
-```go
-import "jan-server/pkg/config"
+1. **YAML defaults** - Built-in sensible defaults (`config/defaults.yaml`)
+2. **Environment file** - Your specific settings (`config/production.yaml`)
+3. **Environment variables** - Highest priority (great for secrets)
 
-func main() {
-    // Load configuration
-    cfg, err := config.Load()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Get service-specific config
-    serviceCfg, err := cfg.GetServiceConfig("llm-api")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Use configuration
-    server := &http.Server{
-        Addr: fmt.Sprintf(":%d", serviceCfg.HTTP.Port),
-    }
-}
-```
-
-### 2. Configuration Loading Order
-
-Configuration is loaded with the following precedence (highest to lowest):
-
-1. **Environment Variables** (highest priority)
-2. **Environment-specific YAML** (`config/production.yaml`, etc.)
-3. **Base YAML Defaults** (`config/defaults.yaml`)
-
-### 3. CLI Tool
-
-Use the `jan-cli config` CLI to validate and inspect configuration:
+## Quick Commands
 
 ```bash
-# Validate configuration
+# Check if your configuration is valid
 jan-cli config validate
 
-# Export effective configuration
-jan-cli config export > effective-config.yaml
+# See all current settings
+jan-cli config export
 
-# Show specific service config
+# See settings for one service
 jan-cli config show llm-api
-
-# Generate configuration files
-jan-cli config generate
 ```
 
-**For complete jan-cli documentation, see [Jan CLI Guide](../guides/jan-cli.md)**
+For the full set of commands (for example `config generate`, `config k8s-values`, and `config drift`), see the [Jan CLI Guide](../guides/jan-cli.md).
 
 ## Documentation Structure
 
@@ -75,9 +40,9 @@ This directory contains configuration system implementation details:
 |----------|-------------|
 | [precedence.md](precedence.md) | Configuration precedence rules and loading order |
 | [env-var-mapping.md](env-var-mapping.md) | Environment variable to config mapping |
-| [docker-compose-generation.md](docker-compose-generation.md) | Docker Compose integration |
-| [k8s-values-generation.md](k8s-values-generation.md) | Kubernetes Helm values generation |
-| [service-migration-strategy.md](service-migration-strategy.md) | Migrating services to new config system |
+| [docker compose.md](docker compose.md) | Docker Compose integration |
+| [kubernetes.md](kubernetes.md) | Kubernetes Helm values generation |
+| [service-migration.md](service-migration.md) | Migrating services to new config system |
 
 **For user-facing documentation:**
 - **[Jan CLI Guide](../guides/jan-cli.md)** - Command-line tool for configuration management
@@ -93,38 +58,57 @@ Base configuration with sensible defaults for all environments:
 environment: development
 
 services:
-  llm-api:
-    http:
-      port: 8080
-      timeout: 30s
-    database:
-      dsn: postgres://jan_user:jan_password@localhost:5432/jan_llm_api
-      max_idle_conns: 10
-      max_open_conns: 30
-    auth:
-      enabled: true
-      issuer: http://localhost:8085/realms/jan
+ llm-api:
+ http:
+ port: 8080
+ timeout: 30s
+ database:
+ dsn: postgres://jan_user:jan_password@localhost:5432/jan_llm_api
+ max_idle_conns: 10
+ max_open_conns: 30
+ auth:
+ enabled: true
+ issuer: http://localhost:8085/realms/jan
 ```
 
 ### Environment-specific YAMLs
 
-Override defaults for specific environments:
+Optional overrides live in `config/environments/<environment>.yaml`. The directory is not created by default---add it as needed:
 
 ```yaml
-# config/production.yaml
+# config/environments/production.yaml
 environment: production
 
 services:
-  llm-api:
-    http:
-      timeout: 60s
-    database:
-      max_idle_conns: 20
-      max_open_conns: 100
-    observability:
-      enabled: true
-      endpoint: https://otel-collector.prod.example.com
+ llm-api:
+ http:
+ timeout: 60s
+ database:
+ max_idle_conns: 20
+ max_open_conns: 100
+ observability:
+ enabled: true
+ endpoint: https://otel-collector.prod.example.com
 ```
+
+When you run the loader with `environment=production`, the stack becomes:
+1. Struct defaults (priority 100)
+2. `config/defaults.yaml` (priority 200)
+3. `config/environments/production.yaml` (priority 300) --- **create this file**
+4. Environment variables (priority 500)
+
+### Environment Files (`.env`)
+
+The repo ships with ready-made `.env` templates for Docker workflows:
+
+| File | Purpose |
+|------|---------|
+| `.env.template` | Base template used by `make quickstart` |
+| `.env` | Generated interactive configuration (git-ignored) |
+| `config/production.env.example` | Example values for production CI/CD |
+| `config/secrets.env.example` | Placeholder for sensitive values (copy to `config/secrets.env`) |
+
+Use `make quickstart` or `make setup` to populate `.env`; copy the example files when preparing staging/production pipelines.
 
 ### Environment Variables
 
@@ -146,33 +130,33 @@ export LLM_API_OBSERVABILITY_ENABLED=true
 ### Adding a New Configuration Field
 
 1. **Update Go struct** in `pkg/config/types.go`:
-   ```go
-   type HTTPConfig struct {
-       Port    int           `yaml:"port" env:"HTTP_PORT" default:"8080"`
-       Timeout time.Duration `yaml:"timeout" env:"HTTP_TIMEOUT" default:"30s"`
-       // Add new field
-       MaxBodySize int64 `yaml:"max_body_size" env:"HTTP_MAX_BODY_SIZE" default:"10485760"`
-   }
-   ```
+ ```go
+ type HTTPConfig struct {
+ Port int `yaml:"port" env:"HTTP_PORT" default:"8080"`
+ Timeout time.Duration `yaml:"timeout" env:"HTTP_TIMEOUT" default:"30s"`
+ // Add new field
+ MaxBodySize int64 `yaml:"max_body_size" env:"HTTP_MAX_BODY_SIZE" default:"10485760"`
+ }
+ ```
 
 2. **Regenerate config files**:
-   ```bash
-   make config-generate
-   ```
+ ```bash
+ make config-generate
+ ```
 
 3. **Update defaults.yaml** (if auto-generated values aren't sufficient):
-   ```yaml
-   services:
-     llm-api:
-       http:
-         max_body_size: 10485760  # 10 MB
-   ```
+ ```yaml
+ services:
+ llm-api:
+ http:
+ max_body_size: 10485760 # 10 MB
+ ```
 
 4. **Test your changes**:
-   ```bash
-   make config-test
-   jan-cli config validate
-   ```
+ ```bash
+ make config-test
+ jan-cli config validate
+ ```
 
 ### Validating Configuration
 
@@ -196,9 +180,9 @@ jan-cli config k8s-values --env production > k8s/jan-server/values-production.ya
 
 # Generate with overrides
 jan-cli config k8s-values --env production \
-  --set services.llm-api.replicas=3 \
-  --set services.llm-api.resources.limits.memory=2Gi \
-  > k8s/values-prod-scaled.yaml
+ --set services.llm-api.replicas=3 \
+ --set services.llm-api.resources.limits.memory=2Gi \
+ > k8s/values-prod-scaled.yaml
 ```
 
 ## Architecture
@@ -207,23 +191,23 @@ jan-cli config k8s-values --env production \
 
 ```
 pkg/config/
-├── types.go              # Configuration structs (source of truth)
-├── loader.go             # YAML + env loading logic
-├── validation.go         # Validation rules
-├── provenance.go         # Track config source
-├── env.go               # Environment variable helpers
-├── k8s/
-│   └── values_generator.go  # Helm values generator
-└── testdata/            # Test fixtures
++-- types.go # Configuration structs (source of truth)
++-- loader.go # YAML + env loading logic
++-- validation.go # Validation rules
++-- provenance.go # Track config source
++-- env.go # Environment variable helpers
++-- k8s/
+| +-- values_generator.go # Helm values generator
++-- testdata/ # Test fixtures
 
 config/
-├── defaults.yaml        # Auto-generated base defaults
-├── development.yaml     # Dev overrides (optional)
-├── staging.yaml         # Staging overrides (optional)
-└── production.yaml      # Production overrides (optional)
++-- defaults.yaml # Auto-generated base defaults
++-- development.yaml # Dev overrides (optional)
++-- staging.yaml # Staging overrides (optional)
++-- production.yaml # Production overrides (optional)
 
 cmd/jan-cli/
-└── main.go             # CLI tool
++-- main.go # CLI tool
 ```
 
 ### Design Principles
@@ -243,11 +227,11 @@ Migrating from old environment-variable-only approach:
 
 ```go
 type Config struct {
-    HTTPPort        int    `env:"HTTP_PORT" envDefault:"8080"`
-    DatabaseURL     string `env:"DATABASE_URL" envDefault:"postgres://..."`
-    LogLevel        string `env:"LOG_LEVEL" envDefault:"info"`
-    AuthEnabled     bool   `env:"AUTH_ENABLED" envDefault:"false"`
-    // ... 50+ more variables
+ HTTPPort int `env:"HTTP_PORT" envDefault:"8080"`
+ DatabaseURL string `env:"DATABASE_URL" envDefault:"postgres://..."`
+ LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
+ AuthEnabled bool `env:"AUTH_ENABLED" envDefault:"false"`
+ //... 50+ more variables
 }
 ```
 
@@ -263,12 +247,12 @@ type Config struct {
 ```go
 import "jan-server/pkg/config"
 
-cfg, _ := config.Load()
-serviceCfg, _ := cfg.GetServiceConfig("llm-api")
+cfg, _:= config.Load()
+serviceCfg, _:= cfg.GetServiceConfig("llm-api")
 
 // Type-safe access
-port := serviceCfg.HTTP.Port
-dbDSN := serviceCfg.Database.DSN
+port:= serviceCfg.HTTP.Port
+dbDSN:= serviceCfg.Database.DSN
 ```
 
 **Benefits:**
@@ -278,7 +262,7 @@ dbDSN := serviceCfg.Database.DSN
 - YAML files for environment differences
 - Auto-generated documentation
 
-See [service-migration-strategy.md](service-migration-strategy.md) for detailed migration steps.
+See [service-migration.md](service-migration.md) for detailed migration steps.
 
 ## Best Practices
 
@@ -289,10 +273,10 @@ Put shared defaults in `config/defaults.yaml`:
 ```yaml
 # Good: Shared defaults
 services:
-  llm-api:
-    http:
-      timeout: 30s
-      port: 8080
+ llm-api:
+ http:
+ timeout: 30s
+ port: 8080
 ```
 
 ### 2. Override Only What's Different
@@ -302,11 +286,11 @@ Environment-specific files should be minimal:
 ```yaml
 # config/production.yaml - Only overrides
 services:
-  llm-api:
-    database:
-      max_open_conns: 100  # Higher for production
-    observability:
-      enabled: true
+ llm-api:
+ database:
+ max_open_conns: 100 # Higher for production
+ observability:
+ enabled: true
 ```
 
 ### 3. Use Environment Variables for Secrets
@@ -314,7 +298,7 @@ services:
 Never put secrets in YAML files:
 
 ```bash
-# .env or CI/CD secrets
+#.env or CI/CD secrets
 export LLM_API_DATABASE_DSN=postgres://user:${DB_PASSWORD}@prod-db/db
 export LLM_API_AUTH_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
 ```
@@ -324,9 +308,9 @@ export LLM_API_AUTH_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
 Add validation to your config loading:
 
 ```go
-cfg, err := config.Load()
+cfg, err:= config.Load()
 if err != nil {
-    log.Fatal("invalid configuration: %w", err)
+ log.Fatal("invalid configuration: %w", err)
 }
 ```
 
@@ -335,11 +319,11 @@ if err != nil {
 Prevent configuration drift:
 
 ```yaml
-# .github/workflows/ci.yml
+#.github/workflows/ci.yml
 - name: Validate configuration
-  run: |
-    make config-drift-check
-    jan-cli config validate
+ run: |
+ make config-drift-check
+ jan-cli config validate
 ```
 
 ## Troubleshooting
@@ -382,9 +366,9 @@ helm upgrade jan-server k8s/jan-server -f k8s/values-prod.yaml
 ## Reference
 
 ### Documentation
-- **CLI Tool:** [JAN-CLI.md](JAN-CLI.md) - Complete CLI guide (installation, usage, commands)
-- **CLI Command Reference:** [cmd/jan-cli/README.md](../../cmd/jan-cli/README.md) - Detailed command reference
-- **Cleanup Summary:** [CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md) - What was removed during cleanup
+- **CLI Guide:** [docs/guides/jan-cli.md](../guides/jan-cli.md) - Installation, usage, and examples
+- **CLI Command Reference:** [cmd/jan-cli/README.md](../../cmd/jan-cli/README.md)
+- **Configuration Types:** [pkg/config/README.md](../../pkg/config/README.md)
 
 ### Code References
 - **Go Package:** `pkg/config/` in workspace root
@@ -400,5 +384,11 @@ See working examples in:
 
 ---
 
-**Need help?** See [service-migration-strategy.md](service-migration-strategy.md) or check existing service implementations for patterns.
+**Need help?** See [service-migration.md](service-migration.md) or check existing service implementations for patterns.
+
+
+
+
+
+
 

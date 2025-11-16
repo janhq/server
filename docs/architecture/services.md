@@ -10,6 +10,7 @@ Jan Server ships four core services plus shared infrastructure. Use this documen
 | **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools | 8082 | `services/response-api` | [api/response-api/README.md](api/response-api/README.md) |
 | **Media API** | Binary ingestion, jan_* IDs, S3 storage and resolution | 8285 | `services/media-api` | [api/media-api/README.md](api/media-api/README.md) |
 | **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091 | `services/mcp-tools` | [api/mcp-tools/README.md](api/mcp-tools/README.md), [services/mcp-tools/README.md](../services/mcp-tools/README.md) |
+| **Template API** | Go microservice scaffold used by new feature teams | 8185 | `services/template-api` | [services/template-api/README.md](../services/template-api/README.md) |
 
 ## Configuration
 
@@ -45,30 +46,30 @@ scripts/new-service-from-template.ps1 -Name my-service
 New services should use the centralized configuration system:
 
 1. **Define service config in `pkg/config/types.go`:**
-   ```go
-   type ServiceConfig struct {
-       HTTP     HTTPConfig     `yaml:"http"`
-       Database DatabaseConfig `yaml:"database"`
-       // Add service-specific fields
-   }
-   ```
+ ```go
+ type ServiceConfig struct {
+ HTTP HTTPConfig `yaml:"http"`
+ Database DatabaseConfig `yaml:"database"`
+ // Add service-specific fields
+ }
+ ```
 
 2. **Regenerate config files:**
-   ```bash
-   make config-generate
-   ```
+ ```bash
+ make config-generate
+ ```
 
 3. **Load config in your service:**
-   ```go
-   import "jan-server/pkg/config"
-   
-   cfg, _ := config.Load()
-   serviceCfg, _ := cfg.GetServiceConfig("my-service")
-   ```
+ ```go
+ import "jan-server/pkg/config"
+ 
+ cfg, _:= config.Load()
+ serviceCfg, _:= cfg.GetServiceConfig("my-service")
+ ```
 
 4. **Update deployment configs:**
-   - Add service to `docker/services-api.yml`
-   - Generate K8s values: `jan-cli config k8s-values --env production`
+ - Add service to `docker/services-api.yml`
+ - Generate K8s values: `jan-cli config k8s-values --env production`
 
 See [Configuration System](configuration/README.md) and [Service Template](../services/template-api/NEW_SERVICE_GUIDE.md) for complete guide.
 
@@ -76,7 +77,7 @@ See [Configuration System](configuration/README.md) and [Service Template](../se
 
 1. Update `docs/services.md` (this file) with new service row
 2. Create `docs/api/<service>/README.md` with API reference
-3. Add service to `docs/INDEX.md` navigation
+3. Add service to `docs/index.md` navigation
 4. Update `k8s/jan-server/values.yaml` if deploying to Kubernetes
 
 ## Service Interactions

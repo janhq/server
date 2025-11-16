@@ -17,7 +17,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 | `POSTGRES_MAX_CONNECTIONS` | int | `100` | llm-api | New standardized var |
 | `POSTGRES_MAX_IDLE_CONNS` | int | `5` | llm-api | New standardized var |
 | `POSTGRES_MAX_OPEN_CONNS` | int | `15` | llm-api | New standardized var |
-| `DB_CONN_MAX_LIFETIME` | duration | `30m` | llm-api | ✅ Already aligned |
+| `DB_CONN_MAX_LIFETIME` | duration | `30m` | llm-api | OK Already aligned |
 
 **Migration Notes:**
 - Services currently using `DATABASE_URL` should transition to component-based env vars
@@ -28,24 +28,24 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Services Using | Notes |
 |---------------------|------|---------|----------------|-------|
-| `KEYCLOAK_BASE_URL` | string | `http://keycloak:8085` | llm-api | ✅ Already aligned |
-| `KEYCLOAK_REALM` | string | `jan` | llm-api | ✅ Already aligned |
+| `KEYCLOAK_BASE_URL` | string | `http://keycloak:8085` | llm-api | OK Already aligned |
+| `KEYCLOAK_REALM` | string | `jan` | llm-api | OK Already aligned |
 | `KEYCLOAK_HTTP_PORT` | int | `8085` | Infrastructure | New standardized var |
-| `KEYCLOAK_ADMIN` | string | `admin` | llm-api | ✅ Already aligned |
-| `KEYCLOAK_ADMIN_PASSWORD` | string | (secret) | llm-api | ✅ Already aligned |
-| `KEYCLOAK_ADMIN_REALM` | string | `master` | llm-api | ✅ Already aligned |
-| `KEYCLOAK_ADMIN_CLIENT_ID` | string | `admin-cli` | llm-api | ✅ Already aligned |
-| `BACKEND_CLIENT_ID` | string | `backend` | llm-api | ✅ Already aligned |
-| `BACKEND_CLIENT_SECRET` | string | (secret) | llm-api | ✅ Already aligned |
-| `TARGET_CLIENT_ID` | string | `jan-client` | llm-api | ✅ Already aligned |
-| `OAUTH_REDIRECT_URI` | string | `http://localhost:8000/auth/callback` | llm-api | ✅ Already aligned |
-| `JWKS_URL` | string | (computed) | llm-api | ✅ Already aligned |
+| `KEYCLOAK_ADMIN` | string | `admin` | llm-api | OK Already aligned |
+| `KEYCLOAK_ADMIN_PASSWORD` | string | (secret) | llm-api | OK Already aligned |
+| `KEYCLOAK_ADMIN_REALM` | string | `master` | llm-api | OK Already aligned |
+| `KEYCLOAK_ADMIN_CLIENT_ID` | string | `admin-cli` | llm-api | OK Already aligned |
+| `BACKEND_CLIENT_ID` | string | `backend` | llm-api | OK Already aligned |
+| `BACKEND_CLIENT_SECRET` | string | (secret) | llm-api | OK Already aligned |
+| `TARGET_CLIENT_ID` | string | `jan-client` | llm-api | OK Already aligned |
+| `OAUTH_REDIRECT_URI` | string | `http://localhost:8000/auth/callback` | llm-api | OK Already aligned |
+| `JWKS_URL` | string | (computed) | llm-api | OK Already aligned |
 | `OIDC_DISCOVERY_URL` | string | (computed) | llm-api | New standardized var |
-| `ISSUER` | string | `http://localhost:8085/realms/jan` | llm-api | ✅ Already aligned |
-| `AUDIENCE` | string | `jan-client` | llm-api | ✅ Already aligned |
-| `JWKS_REFRESH_INTERVAL` | duration | `5m` | llm-api | ✅ Already aligned |
-| `AUTH_CLOCK_SKEW` | duration | `60s` | llm-api | ✅ Already aligned |
-| `GUEST_ROLE` | string | `guest` | llm-api | ✅ Already aligned |
+| `ISSUER` | string | `http://localhost:8085/realms/jan` | llm-api | OK Already aligned |
+| `AUDIENCE` | string | `jan-client` | llm-api | OK Already aligned |
+| `JWKS_REFRESH_INTERVAL` | duration | `5m` | llm-api | OK Already aligned |
+| `AUTH_CLOCK_SKEW` | duration | `60s` | llm-api | OK Already aligned |
+| `GUEST_ROLE` | string | `guest` | llm-api | OK Already aligned |
 | `KEYCLOAK_FEATURES` | []string | `token-exchange,preview` | Infrastructure | New standardized var |
 
 ### Gateway (Kong)
@@ -54,7 +54,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 |---------------------|------|---------|----------------|-------|
 | `KONG_HTTP_PORT` | int | `8000` | Infrastructure | New standardized var |
 | `KONG_ADMIN_PORT` | int | `8001` | Infrastructure | New standardized var |
-| `KONG_ADMIN_URL` | string | `http://kong:8001` | llm-api | ✅ Already aligned |
+| `KONG_ADMIN_URL` | string | `http://kong:8001` | llm-api | OK Already aligned |
 | `KONG_LOG_LEVEL` | string | `info` | Infrastructure | New standardized var |
 
 ## Services
@@ -63,41 +63,41 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `HTTP_PORT` | int | `8080` | `HTTP_PORT` | ✅ Aligned |
-| `METRICS_PORT` | int | `9091` | `METRICS_PORT` | ✅ Aligned |
-| `LOG_LEVEL` | string | `info` | `LOG_LEVEL` | ✅ Aligned |
-| `LOG_FORMAT` | string | `json` | `LOG_FORMAT` | ✅ Aligned |
-| `AUTO_MIGRATE` | bool | `true` | `AUTO_MIGRATE` | ✅ Aligned |
-| `API_KEY_PREFIX` | string | `sk_live` | `API_KEY_PREFIX` | ✅ Aligned |
-| `API_KEY_DEFAULT_TTL` | duration | `2160h` | `API_KEY_DEFAULT_TTL` | ✅ Aligned |
-| `API_KEY_MAX_TTL` | duration | `2160h` | `API_KEY_MAX_TTL` | ✅ Aligned |
-| `API_KEY_MAX_PER_USER` | int | `5` | `API_KEY_MAX_PER_USER` | ✅ Aligned |
-| `MODEL_PROVIDER_SECRET` | string | `jan-model-provider-secret-2024` | `MODEL_PROVIDER_SECRET` | ✅ Aligned |
-| `MODEL_SYNC_ENABLED` | bool | `true` | `MODEL_SYNC_ENABLED` | ✅ Aligned |
-| `MODEL_SYNC_INTERVAL_MINUTES` | int | `60` | `MODEL_SYNC_INTERVAL_MINUTES` | ✅ Aligned |
-| `MEDIA_RESOLVE_URL` | string | `http://kong:8000/media/v1/media/resolve` | `MEDIA_RESOLVE_URL` | ✅ Aligned |
-| `MEDIA_RESOLVE_TIMEOUT` | duration | `5s` | `MEDIA_RESOLVE_TIMEOUT` | ✅ Aligned |
+| `HTTP_PORT` | int | `8080` | `HTTP_PORT` | OK Aligned |
+| `METRICS_PORT` | int | `9091` | `METRICS_PORT` | OK Aligned |
+| `LOG_LEVEL` | string | `info` | `LOG_LEVEL` | OK Aligned |
+| `LOG_FORMAT` | string | `json` | `LOG_FORMAT` | OK Aligned |
+| `AUTO_MIGRATE` | bool | `true` | `AUTO_MIGRATE` | OK Aligned |
+| `API_KEY_PREFIX` | string | `sk_live` | `API_KEY_PREFIX` | OK Aligned |
+| `API_KEY_DEFAULT_TTL` | duration | `2160h` | `API_KEY_DEFAULT_TTL` | OK Aligned |
+| `API_KEY_MAX_TTL` | duration | `2160h` | `API_KEY_MAX_TTL` | OK Aligned |
+| `API_KEY_MAX_PER_USER` | int | `5` | `API_KEY_MAX_PER_USER` | OK Aligned |
+| `MODEL_PROVIDER_SECRET` | string | `jan-model-provider-secret-2024` | `MODEL_PROVIDER_SECRET` | OK Aligned |
+| `MODEL_SYNC_ENABLED` | bool | `true` | `MODEL_SYNC_ENABLED` | OK Aligned |
+| `MODEL_SYNC_INTERVAL_MINUTES` | int | `60` | `MODEL_SYNC_INTERVAL_MINUTES` | OK Aligned |
+| `MEDIA_RESOLVE_URL` | string | `http://kong:8000/media/v1/media/resolve` | `MEDIA_RESOLVE_URL` | OK Aligned |
+| `MEDIA_RESOLVE_TIMEOUT` | duration | `5s` | `MEDIA_RESOLVE_TIMEOUT` | OK Aligned |
 
 **Provider Config:**
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `JAN_PROVIDER_CONFIGS_FILE` | string | `config/providers.yml` | `JAN_PROVIDER_CONFIGS_FILE` | ⚠️ Path may differ |
-| `JAN_PROVIDER_CONFIG_SET` | string | `default` | `JAN_PROVIDER_CONFIG_SET` | ✅ Aligned |
-| `JAN_PROVIDER_CONFIGS` | bool | `true` | `JAN_PROVIDER_CONFIGS` | ✅ Aligned |
+| `JAN_PROVIDER_CONFIGS_FILE` | string | `config/providers.yml` | `JAN_PROVIDER_CONFIGS_FILE` | TODO Path may differ |
+| `JAN_PROVIDER_CONFIG_SET` | string | `default` | `JAN_PROVIDER_CONFIG_SET` | OK Aligned |
+| `JAN_PROVIDER_CONFIGS` | bool | `true` | `JAN_PROVIDER_CONFIGS` | OK Aligned |
 
 ### MCP Tools
 
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `MCP_TOOLS_HTTP_PORT` | int | `8091` | `HTTP_PORT` | ⚠️ Need prefix |
-| `MCP_TOOLS_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | ⚠️ Need prefix |
-| `MCP_TOOLS_LOG_FORMAT` | string | `json` | `LOG_FORMAT` | ⚠️ Need prefix |
-| `MCP_SEARCH_ENGINE` | string | `serper` | `SEARCH_ENGINE` | ⚠️ Need prefix |
-| `SEARXNG_URL` | string | `http://searxng:8080` | `SEARXNG_URL` | ✅ Aligned |
-| `VECTOR_STORE_URL` | string | `http://vector-store:3015` | `VECTOR_STORE_URL` | ✅ Aligned |
-| `SANDBOXFUSION_URL` | string | `http://sandboxfusion:8080` | `SANDBOXFUSION_URL` | ✅ Aligned |
-| `MCP_SANDBOX_REQUIRE_APPROVAL` | bool | `true` | `SANDBOX_REQUIRE_APPROVAL` | ⚠️ Need prefix |
-| `MCP_CONFIG_FILE` | string | `configs/mcp-providers.yml` | `MCP_CONFIG_FILE` | ✅ Aligned |
+| `MCP_TOOLS_HTTP_PORT` | int | `8091` | `HTTP_PORT` | TODO Need prefix |
+| `MCP_TOOLS_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | TODO Need prefix |
+| `MCP_TOOLS_LOG_FORMAT` | string | `json` | `LOG_FORMAT` | TODO Need prefix |
+| `MCP_SEARCH_ENGINE` | string | `serper` | `SEARCH_ENGINE` | TODO Need prefix |
+| `SEARXNG_URL` | string | `http://searxng:8080` | `SEARXNG_URL` | OK Aligned |
+| `VECTOR_STORE_URL` | string | `http://vector-store:3015` | `VECTOR_STORE_URL` | OK Aligned |
+| `SANDBOXFUSION_URL` | string | `http://sandboxfusion:8080` | `SANDBOXFUSION_URL` | OK Aligned |
+| `MCP_SANDBOX_REQUIRE_APPROVAL` | bool | `true` | `SANDBOX_REQUIRE_APPROVAL` | TODO Need prefix |
+| `MCP_CONFIG_FILE` | string | `configs/mcp-providers.yml` | `MCP_CONFIG_FILE` | OK Aligned |
 
 **Migration Notes:**
 - Add `MCP_` or `MCP_TOOLS_` prefix to disambiguate from other services
@@ -107,19 +107,19 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `MEDIA_API_PORT` | int | `8285` | `HTTP_PORT` | ⚠️ Need rename |
-| `MEDIA_API_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | ⚠️ Need prefix |
-| `MEDIA_MAX_UPLOAD_BYTES` | int | `20971520` | `MAX_UPLOAD_SIZE` | ⚠️ Rename needed |
-| `MEDIA_RETENTION_DAYS` | int | `30` | `RETENTION_DAYS` | ⚠️ Need prefix |
-| `MEDIA_PROXY_DOWNLOAD` | bool | `true` | `PROXY_DOWNLOAD` | ⚠️ Need prefix |
-| `MEDIA_REMOTE_FETCH_TIMEOUT` | duration | `15s` | `FETCH_TIMEOUT` | ⚠️ Rename needed |
-| `MEDIA_S3_ENDPOINT` | string | `https://s3.menlo.ai` | `S3_ENDPOINT` | ⚠️ Need prefix |
-| `MEDIA_S3_REGION` | string | `us-west-2` | `S3_REGION` | ⚠️ Need prefix |
-| `MEDIA_S3_BUCKET` | string | `platform-dev` | `S3_BUCKET` | ⚠️ Need prefix |
-| `MEDIA_S3_USE_PATH_STYLE` | bool | `true` | `S3_PATH_STYLE` | ⚠️ Rename needed |
-| `MEDIA_S3_PRESIGN_TTL` | duration | `5m` | `PRESIGN_TTL` | ⚠️ Need prefix |
-| `MEDIA_S3_ACCESS_KEY_ID` | string | (secret) | `AWS_ACCESS_KEY_ID` | ⚠️ Rename for clarity |
-| `MEDIA_S3_SECRET_ACCESS_KEY` | string | (secret) | `AWS_SECRET_ACCESS_KEY` | ⚠️ Rename for clarity |
+| `MEDIA_API_PORT` | int | `8285` | `HTTP_PORT` | TODO Need rename |
+| `MEDIA_API_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | TODO Need prefix |
+| `MEDIA_MAX_UPLOAD_BYTES` | int | `20971520` | `MAX_UPLOAD_SIZE` | TODO Rename needed |
+| `MEDIA_RETENTION_DAYS` | int | `30` | `RETENTION_DAYS` | TODO Need prefix |
+| `MEDIA_PROXY_DOWNLOAD` | bool | `true` | `PROXY_DOWNLOAD` | TODO Need prefix |
+| `MEDIA_REMOTE_FETCH_TIMEOUT` | duration | `15s` | `FETCH_TIMEOUT` | TODO Rename needed |
+| `MEDIA_S3_ENDPOINT` | string | `https://s3.menlo.ai` | `S3_ENDPOINT` | TODO Need prefix |
+| `MEDIA_S3_REGION` | string | `us-west-2` | `S3_REGION` | TODO Need prefix |
+| `MEDIA_S3_BUCKET` | string | `platform-dev` | `S3_BUCKET` | TODO Need prefix |
+| `MEDIA_S3_USE_PATH_STYLE` | bool | `true` | `S3_PATH_STYLE` | TODO Rename needed |
+| `MEDIA_S3_PRESIGN_TTL` | duration | `5m` | `PRESIGN_TTL` | TODO Need prefix |
+| `MEDIA_S3_ACCESS_KEY_ID` | string | (secret) | `AWS_ACCESS_KEY_ID` | TODO Rename for clarity |
+| `MEDIA_S3_SECRET_ACCESS_KEY` | string | (secret) | `AWS_SECRET_ACCESS_KEY` | TODO Rename for clarity |
 
 **Migration Notes:**
 - Most env vars need `MEDIA_` prefix to avoid conflicts
@@ -130,12 +130,12 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `RESPONSE_API_PORT` | int | `8082` | `HTTP_PORT` | ⚠️ Need rename |
-| `RESPONSE_API_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | ⚠️ Need prefix |
-| `RESPONSE_LLM_API_URL` | string | `http://llm-api:8080` | `LLM_API_URL` | ⚠️ Need prefix |
-| `RESPONSE_MCP_TOOLS_URL` | string | `http://mcp-tools:8091` | `MCP_TOOLS_URL` | ⚠️ Need prefix |
-| `RESPONSE_MAX_TOOL_DEPTH` | int | `8` | `MAX_TOOL_DEPTH` | ⚠️ Need prefix |
-| `RESPONSE_TOOL_TIMEOUT` | duration | `45s` | `TOOL_TIMEOUT` | ⚠️ Need prefix |
+| `RESPONSE_API_PORT` | int | `8082` | `HTTP_PORT` | TODO Need rename |
+| `RESPONSE_API_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | TODO Need prefix |
+| `RESPONSE_LLM_API_URL` | string | `http://llm-api:8080` | `LLM_API_URL` | TODO Need prefix |
+| `RESPONSE_MCP_TOOLS_URL` | string | `http://mcp-tools:8091` | `MCP_TOOLS_URL` | TODO Need prefix |
+| `RESPONSE_MAX_TOOL_DEPTH` | int | `8` | `MAX_TOOL_DEPTH` | TODO Need prefix |
+| `RESPONSE_TOOL_TIMEOUT` | duration | `45s` | `TOOL_TIMEOUT` | TODO Need prefix |
 
 ## Monitoring
 
@@ -143,9 +143,9 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Services Using | Status |
 |---------------------|------|---------|----------------|--------|
-| `OTEL_ENABLED` | bool | `false` | All services | ✅ Standard |
-| `OTEL_SERVICE_NAME` | string | `llm-api` | All services | ⚠️ Service-specific |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | string | `http://otel-collector:4318` | All services | ✅ Standard |
+| `OTEL_ENABLED` | bool | `false` | All services | OK Standard |
+| `OTEL_SERVICE_NAME` | string | `llm-api` | All services | TODO Service-specific |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | string | `http://otel-collector:4318` | All services | OK Standard |
 | `OTEL_HTTP_PORT` | int | `4318` | Infrastructure | New |
 | `OTEL_GRPC_PORT` | int | `4317` | Infrastructure | New |
 
@@ -184,27 +184,27 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 ## Migration Priority
 
 ### Phase 1: Critical (Sprint 3.1)
-✅ **Already Aligned - No Changes Needed:**
+OK **Already Aligned - No Changes Needed:**
 - llm-api authentication vars (Keycloak)
 - llm-api API key management
 - llm-api model sync
 - Database connection timeouts
 
 ### Phase 2: High Priority (Sprint 3.2)
-⚠️ **Requires Prefix/Rename:**
-- Service-specific HTTP_PORT → {SERVICE}_PORT
-- Service-specific LOG_LEVEL → {SERVICE}_LOG_LEVEL
+TODO **Requires Prefix/Rename:**
+- Service-specific HTTP_PORT -> {SERVICE}_PORT
+- Service-specific LOG_LEVEL -> {SERVICE}_LOG_LEVEL
 - Database URL components (transition from DATABASE_URL)
 
 ### Phase 3: Medium Priority (Sprint 3.3)
-⚠️ **New Variables - Add Support:**
+TODO **New Variables - Add Support:**
 - Infrastructure monitoring ports (Prometheus, Grafana, Jaeger)
 - vLLM inference configuration
 - Kong gateway ports
 - Database connection pool settings
 
 ### Phase 4: Low Priority (Sprint 3.4)
-⚠️ **Nice to Have:**
+TODO **Nice to Have:**
 - Media API S3 prefixing
 - Response API prefixing
 - MCP Tools prefixing
@@ -245,7 +245,7 @@ curl http://localhost:8080/health
 
 If migration causes issues:
 
-1. **Immediate:** Revert docker-compose.yml to use old env vars
+1. **Immediate:** Revert docker compose.yml to use old env vars
 2. **Service-Level:** Keep backward compatibility (read both old and new vars)
 3. **Gradual Migration:** Migrate one service at a time, not all at once
 
@@ -254,3 +254,4 @@ If migration causes issues:
 - [Service Migration Strategy](./service-migration-strategy.md)
 - [Configuration Precedence](./precedence.md)
 - [Configuration Types Reference](../../pkg/config/types.go)
+

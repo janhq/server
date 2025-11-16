@@ -23,13 +23,13 @@ The routes define **OR logic**: requests are accepted if either the JWT or API k
 
 ```
 Client
-  └──> Kong Gateway (`/llm/*`)
-        ├── JWT Plugin (Keycloak)
-        │     └──> Valid token → Add `X-Auth-Method: jwt`, inject user headers → Upstream
-        ├── API Key Plugin (`keycloak-apikey`)
-        │     └──> Forward `X-API-Key` to `llm-api/auth/validate-api-key`
-        │            └──> LLM API hashes key, consults Keycloak → Valid → Inject headers + `X-Auth-Method: apikey`
-        └── Request-termination (fallback) → Return 401
+ +--> Kong Gateway (`/llm/*`)
+ +-- JWT Plugin (Keycloak)
+ | +--> Valid token -> Add `X-Auth-Method: jwt`, inject user headers -> Upstream
+ +-- API Key Plugin (`keycloak-apikey`)
+ | +--> Forward `X-API-Key` to `llm-api/auth/validate-api-key`
+ | +--> LLM API hashes key, consults Keycloak -> Valid -> Inject headers + `X-Auth-Method: apikey`
+ +-- Request-termination (fallback) -> Return 401
 ```
 
 ## 3. Guest Tokens
@@ -44,15 +44,15 @@ Client
 
 - **Format**: Keys use the `sk_` prefix plus 32 random characters. The shared secret is shown only once (on creation). Services store only the SHA-256 hash inside Keycloak user attributes and PostgreSQL (`api_keys` table from `000001_init_schema.up.sql`).
 - **Endpoints** (require JWT auth):
-  - `POST /auth/api-keys` – Create a new API key tied to the authenticated user.
-  - `GET /auth/api-keys` – List active keys for the calling user.
-  - `DELETE /auth/api-keys/{id}` – Revoke a key.
-  - `POST /auth/validate-api-key` – Public validation endpoint called by Kong’s plugin.
+ - `POST /auth/api-keys` - Create a new API key tied to the authenticated user.
+ - `GET /auth/api-keys` - List active keys for the calling user.
+ - `DELETE /auth/api-keys/{id}` - Revoke a key.
+ - `POST /auth/validate-api-key` - Public validation endpoint called by Kong's plugin.
 - **Validation Flow**:
-  1. Kong receives `X-API-Key` from the client.
-  2. `keycloak-apikey` calls `http://llm-api:8080/auth/validate-api-key`.
-  3. LLM API hashes the key, compares it against Keycloak attributes, and responds with user data (or `401` when invalid).
-  4. Kong injects user headers and marks the request as authenticated (can now enforce rate limits per consumer).
+ 1. Kong receives `X-API-Key` from the client.
+ 2. `keycloak-apikey` calls `http://llm-api:8080/auth/validate-api-key`.
+ 3. LLM API hashes the key, compares it against Keycloak attributes, and responds with user data (or `401` when invalid).
+ 4. Kong injects user headers and marks the request as authenticated (can now enforce rate limits per consumer).
 
 ## 5. Keycloak Integration Notes
 
@@ -63,7 +63,7 @@ Client
 ## 6. Environment & Deployment Guidance
 
 - **Overlays**: Use environment-specific Kong overlays (`docker`, `k8s/jan-server/templates`, etc.) to toggle TLS verification (`ssl_verify: false` in development, `true` plus CA bundles in staging/prod).
-- **Rate limiting**: Kong enforces per-IP limits at the gateway plus per-consumer bucketed limits where a consumer is resolved either from JWT claims (`iss` → `keycloak-issuer`) or from API key metadata.
+- **Rate limiting**: Kong enforces per-IP limits at the gateway plus per-consumer bucketed limits where a consumer is resolved either from JWT claims (`iss` -> `keycloak-issuer`) or from API key metadata.
 - **Plugin loading**: Custom `keycloak-apikey` code lives in `kong/plugins/keycloak-apikey/` (handler + schema + README). Compose mounts `../kong/plugins:/usr/local/kong/plugins:ro` and sets `KONG_PLUGINS: bundled,keycloak-apikey`.
 - **Credentials**: The plugin uses `hide_credentials: true` so backend services never see the raw `X-API-Key`.
 

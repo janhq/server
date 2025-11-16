@@ -34,7 +34,7 @@ The jan-server project uses a **workspace** structure where each service is a se
 HTTPPort int `env:"HTTP_PORT"`
 
 // After (aligned with pkg/config/types.go):
-HTTPPort int `env:"HTTP_PORT"`  // ✅ Already matches!
+HTTPPort int `env:"HTTP_PORT"` // OK Already matches!
 
 // Before (llm-api):
 DatabaseURL string `env:"DATABASE_URL"`
@@ -55,11 +55,11 @@ import centralconfig "github.com/janhq/jan-server/pkg/config"
 
 // FromCentralConfig converts pkg/config.Config to llm-api Config
 func FromCentralConfig(central *centralconfig.Config) *Config {
-    return &Config{
-        HTTPPort: central.Services.LLMAPI.HTTPPort,
-        DatabaseURL: buildDatabaseURL(central.Infrastructure.Database.Postgres),
-        // ... map all fields
-    }
+ return &Config{
+ HTTPPort: central.Services.LLMAPI.HTTPPort,
+ DatabaseURL: buildDatabaseURL(central.Infrastructure.Database.Postgres),
+ //... map all fields
+ }
 }
 ```
 
@@ -80,7 +80,7 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 
 ## Current Status
 
-### Sprint 2 Complete ✅
+### Sprint 2 Complete OK
 - pkg/config foundation built
 - Precedence system (100-600) implemented
 - All tests passing
@@ -89,25 +89,25 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 ### Sprint 3 Next Steps
 
 **Option A: Environment Variable Alignment (Recommended for Sprint 3)**
-- ✅ Low risk, immediate value
-- ✅ No code restructuring needed
-- ✅ Can be done per-service incrementally
+- OK Low risk, immediate value
+- OK No code restructuring needed
+- OK Can be done per-service incrementally
 - Tasks:
-  1. Create env var mapping document
-  2. Update docker-compose.yml environment sections
-  3. Update service env tags
-  4. Test each service
+ 1. Create env var mapping document
+ 2. Update docker compose.yml environment sections
+ 3. Update service env tags
+ 4. Test each service
 
 **Option B: Module Restructuring (Deferred to Sprint 4-5)**
-- ⚠️ Requires Go workspace setup or monorepo migration
-- ⚠️ Higher risk, more invasive
-- ⚠️ Blocks other development during migration
+- WARNING Requires Go workspace setup or monorepo migration
+- WARNING Higher risk, more invasive
+- WARNING Blocks other development during migration
 - Tasks:
-  1. Set up Go workspace in root
-  2. Update all go.mod files
-  3. Implement bridge pattern
-  4. Migrate services one by one
-  5. Comprehensive integration testing
+ 1. Set up Go workspace in root
+ 2. Update all go.mod files
+ 3. Implement bridge pattern
+ 4. Migrate services one by one
+ 5. Comprehensive integration testing
 
 ## Decision: Sprint 3 Scope
 
@@ -121,7 +121,7 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 
 **Deliverables for Sprint 3:**
 1. Environment variable mapping document
-2. Updated docker-compose.yml with aligned env vars
+2. Updated docker compose.yml with aligned env vars
 3. Service-by-service env var audit
 4. Integration tests validating env var precedence
 
@@ -137,7 +137,7 @@ Create `docs/configuration/env-var-mapping.md` documenting:
 
 ### Task 3.2: Docker Compose Updates
 
-Update `docker-compose.yml` and `docker/` files to use:
+Update `docker compose.yml` and `docker/` files to use:
 - Standardized env var names
 - config/environments/*.yaml for environment-specific overrides
 

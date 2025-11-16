@@ -8,7 +8,7 @@ Comprehensive guide for deploying Jan Server to various environments.
 - [Prerequisites](#prerequisites)
 - [Deployment Options](#deployment-options)
   - [Kubernetes (Recommended)](#kubernetes-recommended)
-  - [Docker Compose](#docker-compose)
+  - [Docker Compose](#docker compose)
   - [Hybrid Mode](#hybrid-mode)
 - [Environment Configuration](#environment-configuration)
 - [Security Considerations](#security-considerations)
@@ -146,22 +146,25 @@ helm install jan-server ./jan-server \
 
 ### Docker Compose
 
-For local development and testing environments.
+For local development and integration testing.
 
 #### Development Mode
 
 ```bash
-# Start infrastructure only
-make up
+# Start infrastructure only (PostgreSQL, Keycloak, Kong)
+make up-infra
 
-# With LLM API
-make up-llm-api
+# With API services (llm-api, media-api, response-api)
+make up-api
 
-# Full stack with Kong
+# With MCP services (mcp-tools, vector-store)
+make up-mcp
+
+# Full stack with Kong + APIs + MCP
 make up-full
 
-# With GPU inference
-make up-gpu
+# With GPU inference (local vLLM)
+make up-vllm-gpu
 ```
 
 **Complete guide:** See [Development Guide](development.md)
@@ -169,15 +172,11 @@ make up-gpu
 #### Testing Environment
 
 ```bash
-# Load testing configuration
-cp config/testing.env .env
-source .env
+cp .env.template .env                # ensure a clean env file
+# Edit .env and set: COMPOSE_PROFILES=infra,api,mcp
 
-# Start services
-docker compose up -d
-
-# Run tests
-make test-automation
+make up-full                         # start stack under test
+make test-all                        # run Newman suites
 ```
 
 ### Hybrid Mode
@@ -185,17 +184,15 @@ make test-automation
 For fast iteration during development:
 
 ```bash
-# Start infrastructure (PostgreSQL, Redis, Keycloak)
-docker compose --profile infrastructure up -d
+make dev-full                 # start stack with host routing
 
-# Run LLM API natively
-./scripts/hybrid-run-api.sh  # or .ps1 on Windows
+# Replace a service with a host-native process
+./jan-cli.sh dev run llm-api  # macOS/Linux
+.\jan-cli.ps1 dev run llm-api # Windows PowerShell
 
-# Run Media API natively
-./scripts/hybrid-run-media-api.sh
-
-# Run MCP Tools natively
-./scripts/hybrid-run-mcp.sh
+# Stop dev-full when done
+make dev-full-stop            # keep containers
+make dev-full-down            # remove containers
 ```
 
 **Complete guide:** See [Hybrid Mode Guide](hybrid-mode.md)

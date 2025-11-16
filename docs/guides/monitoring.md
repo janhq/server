@@ -26,19 +26,19 @@ This command will:
 ### Access Dashboards
 
 - **Grafana** (Unified Dashboard): http://localhost:3001
-  - Username: `admin`
-  - Password: `admin`
-  - Pre-configured with Prometheus and Jaeger datasources
+ - Username: `admin`
+ - Password: `admin`
+ - Pre-configured with Prometheus and Jaeger datasources
 
 - **Prometheus** (Metrics): http://localhost:9090
-  - Direct PromQL queries
-  - Service discovery status
-  - Target health monitoring
+ - Direct PromQL queries
+ - Service discovery status
+ - Target health monitoring
 
 - **Jaeger** (Traces): http://localhost:16686
-  - Distributed trace search
-  - Service dependency graph
-  - Performance analysis
+ - Distributed trace search
+ - Service dependency graph
+ - Performance analysis
 
 ### Stop Monitoring Stack
 ```bash
@@ -46,7 +46,7 @@ This command will:
 make monitor-down
 
 # Stop and remove all data volumes (fresh start)
-make monitor-down-v
+make monitor-clean
 ```
 
 ### View Logs
@@ -57,38 +57,38 @@ make monitor-logs
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Jan Server Services                     │
-│  (llm-api, mcp-tools, etc.)                                 │
-└────────────────┬────────────────────────────────────────────┘
-                 │ OpenTelemetry Protocol (OTLP)
-                 │ Ports: 4318 (HTTP), 4317 (gRPC)
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│           OpenTelemetry Collector                           │
-│  • Receives metrics and traces from services                │
-│  • Processes and enriches telemetry data                    │
-│  • Exports to Prometheus (metrics) and Jaeger (traces)      │
-│  • Uses OTLP exporter for Jaeger (not deprecated Jaeger)    │
-└────────────┬──────────────────────────────┬─────────────────┘
-             │                              │
-             │ Metrics                      │ Traces (OTLP)
-             ▼                              ▼
-┌────────────────────────┐    ┌────────────────────────────────┐
-│     Prometheus         │    │        Jaeger                  │
-│  • Time-series DB      │    │  • Trace storage               │
-│  • 15s scrape interval │    │  • Service dependency graph    │
-│  • PromQL queries      │    │  • Performance insights        │
-└────────────┬───────────┘    └────────────┬───────────────────┘
-             │                              │
-             └──────────────┬───────────────┘
-                            ▼
-                ┌────────────────────────┐
-                │      Grafana           │
-                │  • Unified dashboards  │
-                │  • Metrics + Traces    │
-                │  • Alerting            │
-                └────────────────────────┘
++-------------------------------------------------------------+
+| Jan Server Services |
+| (llm-api, mcp-tools, etc.) |
++----------------+--------------------------------------------+
+ | OpenTelemetry Protocol (OTLP)
+ | Ports: 4318 (HTTP), 4317 (gRPC)
+ v
++-------------------------------------------------------------+
+| OpenTelemetry Collector |
+| - Receives metrics and traces from services |
+| - Processes and enriches telemetry data |
+| - Exports to Prometheus (metrics) and Jaeger (traces) |
+| - Uses OTLP exporter for Jaeger (not deprecated Jaeger) |
++------------+------------------------------+-----------------+
+ | |
+ | Metrics | Traces (OTLP)
+ v v
++------------------------+ +--------------------------------+
+| Prometheus | | Jaeger |
+| - Time-series DB | | - Trace storage |
+| - 15s scrape interval | | - Service dependency graph |
+| - PromQL queries | | - Performance insights |
++------------+-----------+ +------------+-------------------+
+ | |
+ +--------------+---------------+
+ v
+ +------------------------+
+ | Grafana |
+ | - Unified dashboards |
+ | - Metrics + Traces |
+ | - Alerting |
+ +------------------------+
 ```
 
 ## Configuration
@@ -131,17 +131,17 @@ The `monitoring/prometheus.yml` file defines scrape targets:
 
 ```yaml
 scrape_configs:
-  - job_name: 'otel-collector'
-    static_configs:
-      - targets: ['otel-collector:8889']
-  
-  - job_name: 'llm-api'
-    static_configs:
-      - targets: ['llm-api:8080']
-  
-  - job_name: 'mcp-tools'
-    static_configs:
-      - targets: ['mcp-tools:8091']
+ - job_name: 'otel-collector'
+ static_configs:
+ - targets: ['otel-collector:8889']
+ 
+ - job_name: 'llm-api'
+ static_configs:
+ - targets: ['llm-api:8080']
+ 
+ - job_name: 'mcp-tools'
+ static_configs:
+ - targets: ['mcp-tools:8091']
 ```
 
 ### Grafana Datasources
@@ -158,34 +158,34 @@ Datasources are auto-provisioned from `monitoring/grafana/provisioning/datasourc
 1. Navigate to http://localhost:9090
 2. Use the "Graph" tab for queries
 3. Example PromQL queries:
-   ```promql
-   # Request rate
-   rate(http_requests_total[5m])
-   
-   # Error rate
-   rate(http_requests_total{status=~"5.."}[5m])
-   
-   # Response time (95th percentile)
-   histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
-   ```
+ ```promql
+ # Request rate
+ rate(http_requests_total[5m])
+ 
+ # Error rate
+ rate(http_requests_total{status=~"5.."}[5m])
+ 
+ # Response time (95th percentile)
+ histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+ ```
 
 ### Viewing Traces in Jaeger
 
 1. Navigate to http://localhost:16686
 2. Select a service (e.g., `llm-api`)
 3. Search for traces by:
-   - Time range
-   - Duration
-   - Tags
+ - Time range
+ - Duration
+ - Tags
 4. Click on a trace to view:
-   - Span timeline
-   - Service dependencies
-   - Tags and logs
+ - Span timeline
+ - Service dependencies
+ - Tags and logs
 
 ### Creating Grafana Dashboards
 
 1. Navigate to http://localhost:3001 (admin/admin)
-2. Click "+" → "Create Dashboard"
+2. Click "+" -> "Create Dashboard"
 3. Add panels with queries from Prometheus or Jaeger
 4. Save the dashboard
 
@@ -205,10 +205,10 @@ The monitoring stack uses Docker volumes for data persistence:
 
 ```bash
 # Backup Prometheus data
-docker run --rm -v jan-server_prometheus-data:/data -v $(pwd):/backup alpine tar czf /backup/prometheus-backup.tar.gz -C /data .
+docker run --rm -v jan-server_prometheus-data:/data -v $(pwd):/backup alpine tar czf /backup/prometheus-backup.tar.gz -C /data.
 
 # Backup Grafana data
-docker run --rm -v jan-server_grafana-data:/data -v $(pwd):/backup alpine tar czf /backup/grafana-backup.tar.gz -C /data .
+docker run --rm -v jan-server_grafana-data:/data -v $(pwd):/backup alpine tar czf /backup/grafana-backup.tar.gz -C /data.
 ```
 
 ### Restore Data
@@ -233,57 +233,56 @@ docker compose -f docker/observability.yml ps
 make monitor-logs
 
 # Restart with fresh data
-make monitor-down-v
-make monitor-up
+make monitor-clean && make monitor-up
 ```
 
 ### No Metrics in Prometheus
 
 1. Check if OpenTelemetry Collector is running:
-   ```bash
-   docker compose -f docker/observability.yml ps otel-collector
-   ```
+ ```bash
+ docker compose -f docker/observability.yml ps otel-collector
+ ```
 
 2. Verify Prometheus targets are healthy:
-   - Navigate to http://localhost:9090/targets
-   - All targets should show "UP" status
+ - Navigate to http://localhost:9090/targets
+ - All targets should show "UP" status
 
 3. Ensure services are exporting metrics:
-   - Set `OTEL_ENABLED=true` in service environment
-   - Restart the service
+ - Set `OTEL_ENABLED=true` in service environment
+ - Restart the service
 
 ### No Traces in Jaeger
 
 1. Check Jaeger is receiving data:
-   ```bash
-   make monitor-logs | grep jaeger
-   ```
+ ```bash
+ make monitor-logs | grep jaeger
+ ```
 
 2. Verify OpenTelemetry Collector is exporting to Jaeger:
-   ```bash
-   make monitor-logs | grep "jaeger.*exporter"
-   ```
+ ```bash
+ make monitor-logs | grep "jaeger.*exporter"
+ ```
 
 3. Ensure services are generating traces:
-   - Check service logs for trace IDs
-   - Verify OTLP endpoint is correct
+ - Check service logs for trace IDs
+ - Verify OTLP endpoint is correct
 
 ### Grafana Datasources Not Working
 
 1. Check datasource configuration:
-   - Login to Grafana
-   - Go to Configuration → Data Sources
-   - Test each datasource
+ - Login to Grafana
+ - Go to Configuration -> Data Sources
+ - Test each datasource
 
 2. Verify provisioning:
-   ```bash
-   docker compose -f docker/observability.yml exec grafana ls -la /etc/grafana/provisioning/datasources
-   ```
+ ```bash
+ docker compose -f docker/observability.yml exec grafana ls -la /etc/grafana/provisioning/datasources
+ ```
 
 3. Restart Grafana:
-   ```bash
-   docker compose -f docker/observability.yml restart grafana
-   ```
+ ```bash
+ docker compose -f docker/observability.yml restart grafana
+ ```
 
 ## Advanced Configuration
 
@@ -293,9 +292,9 @@ Edit `docker/observability.yml`:
 
 ```yaml
 prometheus:
-  command:
-    - '--storage.tsdb.retention.time=30d'  # Keep data for 30 days
-    - '--storage.tsdb.retention.size=10GB' # Max 10GB storage
+ command:
+ - '--storage.tsdb.retention.time=30d' # Keep data for 30 days
+ - '--storage.tsdb.retention.size=10GB' # Max 10GB storage
 ```
 
 ### Custom Grafana Plugins
@@ -304,8 +303,8 @@ Edit `docker/observability.yml`:
 
 ```yaml
 grafana:
-  environment:
-    GF_INSTALL_PLUGINS: 'grafana-clock-panel,grafana-simple-json-datasource'
+ environment:
+ GF_INSTALL_PLUGINS: 'grafana-clock-panel,grafana-simple-json-datasource'
 ```
 
 ### Enable Jaeger Sampling
@@ -314,37 +313,37 @@ Edit `docker/observability.yml`:
 
 ```yaml
 jaeger:
-  environment:
-    COLLECTOR_OTLP_ENABLED: "true"
-    SAMPLING_STRATEGIES_FILE: /etc/jaeger/sampling.json
-  volumes:
-    - ./docs/jaeger-sampling.json:/etc/jaeger/sampling.json:ro
+ environment:
+ COLLECTOR_OTLP_ENABLED: "true"
+ SAMPLING_STRATEGIES_FILE: /etc/jaeger/sampling.json
+ volumes:
+ -./docs/jaeger-sampling.json:/etc/jaeger/sampling.json:ro
 ```
 
 ## Production Recommendations
 
 1. **Change default Grafana password**:
-   ```bash
-   GRAFANA_ADMIN_PASSWORD=<secure-password>
-   ```
+ ```bash
+ GRAFANA_ADMIN_PASSWORD=<secure-password>
+ ```
 
 2. **Configure retention policies**:
-   - Prometheus: Set appropriate retention based on storage
-   - Jaeger: Configure sampling to reduce data volume
+ - Prometheus: Set appropriate retention based on storage
+ - Jaeger: Configure sampling to reduce data volume
 
 3. **Set up alerting**:
-   - Configure Prometheus alert rules
-   - Set up Grafana alert notifications (email, Slack, etc.)
+ - Configure Prometheus alert rules
+ - Set up Grafana alert notifications (email, Slack, etc.)
 
 4. **Secure access**:
-   - Use reverse proxy (nginx/traefik) with TLS
-   - Implement authentication/authorization
-   - Restrict network access to monitoring ports
+ - Use reverse proxy (nginx/traefik) with TLS
+ - Implement authentication/authorization
+ - Restrict network access to monitoring ports
 
 5. **Scale for production**:
-   - Use external storage for Prometheus (remote write)
-   - Use production-grade Jaeger backend (Elasticsearch, Cassandra)
-   - Enable Grafana HA mode
+ - Use external storage for Prometheus (remote write)
+ - Use production-grade Jaeger backend (Elasticsearch, Cassandra)
+ - Enable Grafana HA mode
 
 ## Resources
 

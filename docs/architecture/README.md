@@ -2,78 +2,77 @@
 
 ## Overview
 
-Jan Server is a modular, microservices-based LLM API platform with enterprise-grade authentication, API gateway routing, and flexible inference backend support. The system provides OpenAI-compatible API endpoints for chat completions, conversations, and model management.
+Jan Server is built from multiple small services (microservices) that work together. Each service has a specific job.
 
-## Architecture Components
+## Main Parts
 
-The system is organized into several layers:
-
-1. **[System Design](system-design.md)** - Overall architecture diagram and layer descriptions
-2. **[Services](services.md)** - Detailed service descriptions and configurations
-3. **[Data Flow](data-flow.md)** - Request flow patterns and interactions
-4. **[Security](security.md)** - Authentication, authorization, and security considerations
-5. **[Observability](observability.md)** - Monitoring, tracing, and logging
-6. **[Test Flows](test-flows.md)** - Automated test architecture and flow diagrams
+1. **[System Design](system-design.md)** - How all the pieces fit together
+2. **[Services](services.md)** - What each service does
+3. **[Data Flow](data-flow.md)** - How requests move through the system
+4. **[Security](security.md)** - How we keep things secure
+5. **[Observability](observability.md)** - How we monitor and debug
+6. **[Test Flows](test-flows.md)** - How we test everything
 
 ## Quick Reference
 
-### Service Ports
+### Service Ports (Docker Compose defaults)
 
-| Service | Port | Access |
-|---------|------|--------|
-| Kong Gateway | 8000 | External (public API) |
-| LLM-API | 8080 | Internal |
-| MCP-Tools | 8091 | Internal |
-| Keycloak | 8085 | External (admin console) |
-| vLLM | 8000 | Internal |
-| Prometheus | 9090 | External (monitoring) |
-| Jaeger | 16686 | External (tracing UI) |
-| Grafana | 3001 | External (dashboards) |
+| Service | Port | Access Notes |
+|---------|------|-------------|
+| **Kong Gateway** | 8000 | Entry point for `/llm/*`, `/responses/*`, `/media/*`, `/mcp` (routing + auth) |
+| **LLM API** | 8080 | Internal; exposed through Kong routes |
+| **Response API** | 8082 | Internal; streaming SSE via Kong `/responses` |
+| **Media API** | 8285 | Internal; proxied by Kong `/media` |
+| **MCP Tools** | 8091 | Internal; routed through Kong `/mcp` |
+| **Template API** | 8185 | Scaffold service generated from `services/template-api` |
+| **Keycloak** | 8085 | Admin console (protect behind VPN/SSO in production) |
+| **vLLM** | 8101 | Inference backend (local GPU/CPU profile) |
+| **Prometheus** | 9090 | Dev-only monitoring UI (`make monitor-up`) |
+| **Jaeger** | 16686 | Trace UI |
+| **Grafana** | 3001 | Dashboards (admin/admin in dev) |
 
 ### Technology Stack
 
-| Component       | Technology                     |
+| Component | Technology |
 |-----------------|--------------------------------|
-| API Gateway     | Kong 3.5                       |
-| Services        | Go 1.21+ (Gin framework)       |
-| MCP Server      | mark3labs/mcp-go v0.7.0        |
-| ORM             | GORM                           |
-| Database        | PostgreSQL 18                  |
-| Auth            | Keycloak (OpenID Connect)      |
-| Inference       | vLLM (OpenAI-compatible)       |
-| Observability   | OpenTelemetry Collector        |
-| Metrics         | Prometheus 2.48                |
-| Tracing         | Jaeger 1.51                    |
-| Dashboards      | Grafana 10.2                   |
+| API Gateway | Kong 3.5 + `keycloak-apikey` plugin |
+| Services | Go 1.21+ (Gin framework, zerolog, wire DI) |
+| MCP Server | mark3labs/mcp-go v0.7.0 |
+| ORM | GORM + goose migrations |
+| Database | PostgreSQL 15/16 (Docker) / managed service |
+| Auth | Keycloak (OpenID Connect) |
+| Inference | vLLM (OpenAI-compatible) or remote providers |
+| Observability | OpenTelemetry Collector |
+| Metrics | Prometheus 2.48 |
+| Tracing | Jaeger 1.51 |
+| Dashboards | Grafana 10.2 |
 
-## Deployment Options
+## How to Run It
 
-The system supports multiple deployment strategies:
+You can run Jan Server in different ways:
 
-### Docker Compose (Development)
+### Docker Compose (For Development)
 
-Docker Compose services are organized by profiles for flexible development:
+Use Docker Compose to run on your local computer:
 
-- **Infrastructure only**: `make up` (api-db, keycloak-db, keycloak)
-- **With LLM API**: `make up-llm-api` (+ llm-api service)
-- **With Kong**: `make up-kong` (+ kong gateway)
-- **Full stack**: `make up-full` (all services)
-- **GPU inference**: `make up-gpu` (+ vllm with GPU)
-- **CPU inference**: `make up-cpu` (+ vllm CPU-only)
-- **Monitoring stack**: `make monitor-up` (prometheus, jaeger, grafana, otel-collector)
+- `make quickstart` - interactive wizard (creates `.env`, starts stack)
+- `make up-full` - bring up all services (`docker compose.yml` + `docker/*.yml`)
+- `make up-vllm-gpu` / `make up-vllm-cpu` - start vLLM profile
+- `make monitor-up` - start Prometheus, Grafana, Jaeger
+- `make down` / `make down-clean` - stop stack (preserve or remove volumes)
 
-### Kubernetes (Production)
+### Kubernetes (For Production)
 
-Production deployments use Helm charts with flexible configuration:
+Use Kubernetes to run in the cloud or on servers:
 
-- **Development**: Minikube with local images (`imagePullPolicy: Never`)
-- **Cloud**: AKS/EKS/GKE with autoscaling and managed databases
-- **On-Premises**: Custom Kubernetes clusters with external databases
+- **Local testing**: Minikube or kind (see `k8s/SETUP.md`)
+- **Production**: `k8s/jan-server` Helm chart + managed Postgres + managed Keycloak
+- **Hybrid**: Run inference locally while other services run in the cluster
 
-**Deployment guides:**
-- [Kubernetes Setup Guide](../../k8s/SETUP.md) - Step-by-step minikube setup
-- [Kubernetes Configuration](../../k8s/README.md) - Helm chart reference
-- [Deployment Guide](../guides/deployment.md) - All deployment strategies
+**Helpful references:**
+- [Kubernetes Setup Guide](../../k8s/SETUP.md) - minikube/bootstrap walkthrough
+- [Kubernetes README](../../k8s/README.md) - Helm values, ingress, TLS
+- [Deployment Guide](../guides/deployment.md) - Docker, hybrid, CI/CD instructions
 
 ## References
 
@@ -85,4 +84,7 @@ Production deployments use Helm charts with flexible configuration:
 - [Test Flows & Diagrams](test-flows.md)
 - [API Reference](../api/README.md)
 - [Development Guide](../guides/development.md)
+
+
+
 

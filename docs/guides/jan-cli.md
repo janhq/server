@@ -1,7 +1,7 @@
 # Jan CLI - Complete Guide
 
-**Last Updated**: January 2025  
-**Status**: Production Ready ✅  
+**Last Updated**: January 2025 
+**Status**: Production Ready OK 
 **Version**: 1.0.0
 
 Complete documentation for the Jan CLI tool - installation, usage, commands, and technical details.
@@ -36,12 +36,12 @@ Built with [Cobra framework](https://github.com/spf13/cobra), the industry stand
 
 ### Key Features
 
-- ✅ **Unified Interface** - Single command for all Jan Server operations
-- ✅ **Professional Structure** - Industry-standard Cobra framework
-- ✅ **Extensible** - Easy to add new commands
-- ✅ **Well-Documented** - Comprehensive help and examples
-- ✅ **Cross-Platform** - Works on Windows, Linux, macOS
-- ✅ **Shell Completion** - Bash, Zsh, Fish, PowerShell support
+- OK **Unified Interface** - Single command for all Jan Server operations
+- OK **Professional Structure** - Industry-standard Cobra framework
+- OK **Extensible** - Easy to add new commands
+- OK **Well-Documented** - Comprehensive help and examples
+- OK **Cross-Platform** - Works on Windows, Linux, macOS
+- OK **Shell Completion** - Bash, Zsh, Fish, PowerShell support
 
 ---
 
@@ -82,7 +82,7 @@ $env:PATH += ";$env:USERPROFILE\bin"
 export PATH="$PATH:$HOME/bin"
 
 # Reload your shell
-source ~/.bashrc  # or source ~/.zshrc
+source ~/.bashrc # or source ~/.zshrc
 ```
 
 ### Verify Installation
@@ -160,7 +160,7 @@ Run directly from project root using wrapper scripts:
 
 **Disadvantages:**
 - Must be run from project root
-- Requires file extension (.sh or .ps1)
+- Requires file extension (.sh or.ps1)
 
 ### Method 3: Manual Build
 
@@ -172,20 +172,20 @@ cd cmd/jan-cli
 go build
 
 # Run
-./jan-cli --help  # Linux/macOS
-.\jan-cli.exe --help  # Windows
+./jan-cli --help # Linux/macOS
+.\jan-cli.exe --help # Windows
 
 # Optional: Copy to a location in your PATH
-cp jan-cli ~/bin/  # Linux/macOS
-copy jan-cli.exe %USERPROFILE%\bin\  # Windows
+cp jan-cli ~/bin/ # Linux/macOS
+copy jan-cli.exe %USERPROFILE%\bin\ # Windows
 ```
 
 ### Makefile Targets
 
 ```bash
-make cli-build      # Build the binary
-make cli-install    # Build and install to local bin
-make cli-clean      # Remove the binary
+make cli-build # Build the binary
+make cli-install # Build and install to local bin
+make cli-clean # Remove the binary
 ```
 
 **cli-build** - Builds binary in `cmd/jan-cli/`:
@@ -210,25 +210,25 @@ make cli-clean      # Remove the binary
 
 ```
 jan-cli (root)
-├── config (configuration management)
-│   ├── validate    - Validate configuration files
-│   ├── export      - Export configuration
-│   ├── show        - Display configuration values
-│   └── generate    - Generate schemas and defaults
-├── service (service operations)
-│   ├── list        - List all services
-│   ├── logs        - Show service logs
-│   └── status      - Check service status
-├── dev (development tools)
-│   ├── setup       - Initialize development environment
-│   └── scaffold    - Generate new service from template
-├── swagger (API documentation)
-│   └── generate    - Generate OpenAPI documentation
-└── completion (shell completions)
-    ├── bash
-    ├── zsh
-    ├── fish
-    └── powershell
++-- config (configuration management)
+| +-- validate - Validate configuration files
+| +-- export - Export configuration
+| +-- show - Display configuration values
+| +-- generate - Generate schemas and defaults
++-- service (service operations)
+| +-- list - List all services
+| +-- logs - Show service logs
+| +-- status - Check service status
++-- dev (development tools)
+| +-- setup - Initialize development environment
+| +-- scaffold - Generate new service from template
++-- swagger (API documentation)
+| +-- generate - Generate OpenAPI documentation
++-- completion (shell completions)
+ +-- bash
+ +-- zsh
+ +-- fish
+ +-- powershell
 ```
 
 ### Global Flags
@@ -263,8 +263,8 @@ jan-cli config validate --verbose
 ```
 
 **Output:**
-- ✅ Configuration valid
-- ❌ Validation errors with details
+- OK Configuration valid
+- [X] Validation errors with details
 
 ### config export
 
@@ -275,7 +275,7 @@ Export configuration in various formats:
 jan-cli config export --format env
 
 # Export as Docker env file
-jan-cli config export --format docker-env --output .env
+jan-cli config export --format docker-env --output.env
 
 # Export as JSON
 jan-cli config export --format json --output config.json
@@ -356,15 +356,15 @@ jan-cli service list
 **Output:**
 ```
 Available services:
-  llm-api         :8080  LLM API - OpenAI-compatible chat completions
-  media-api       :8285  Media API - File upload and management
-  response-api    :8082  Response API - Multi-step orchestration
-  mcp-tools       :8091  MCP Tools - Model Context Protocol tools
+ llm-api:8080 LLM API - OpenAI-compatible chat completions
+ media-api:8285 Media API - File upload and management
+ response-api:8082 Response API - Multi-step orchestration
+ mcp-tools:8091 MCP Tools - Model Context Protocol tools
 ```
 
 ### service logs
 
-Show service logs (placeholder for future implementation):
+Show Docker Compose logs for a specific service:
 
 ```bash
 # View logs for a service
@@ -377,21 +377,22 @@ jan-cli service logs llm-api --follow
 jan-cli service logs llm-api --tail 50
 ```
 
-**Note:** Currently a placeholder. Will integrate with Docker/Kubernetes logs.
+`jan-cli service logs` wraps `docker compose logs`, so it works on every platform where Docker Desktop is installed.
 
 ### service status
 
-Check service health status (placeholder for future implementation):
+Check container status (and optionally health endpoints):
 
 ```bash
-# Check all services
+# Check all services via Makefile health check
 jan-cli service status
 
 # Check specific service
 jan-cli service status llm-api
 ```
 
-**Note:** Currently a placeholder. Will integrate with health check endpoints.
+- `jan-cli service status` without arguments runs `make health-check`
+- With a service argument it shows `docker compose ps <service>` and invokes the service-specific `/healthz` endpoint (PowerShell `Invoke-WebRequest` on Windows or `curl` on macOS/Linux)
 
 ---
 
@@ -410,31 +411,32 @@ jan-cli dev setup
 **What it does:**
 1. Creates required directories (logs/, tmp/, uploads/)
 2. Creates Docker networks (jan-network, jan-dev)
-3. Generates .env file from templates
+3. Generates.env file from templates
 4. Optional: Sets up Docker environment
 
 **Features:**
-- ✅ Cross-platform (Windows, Linux, macOS)
-- ✅ Docker optional (warns if not available)
-- ✅ Idempotent (safe to run multiple times)
+- OK Cross-platform (Windows, Linux, macOS)
+- OK Docker optional (warns if not available)
+- OK Idempotent (safe to run multiple times)
 
 ### dev scaffold
 
-Generate new service from template (placeholder for future implementation):
+Generate a new service from `services/template-api`:
 
 ```bash
-# Create new service
+# Create new API service
 jan-cli dev scaffold my-service
 
-# With options
-jan-cli dev scaffold worker-service --template worker --port 8999
+# Specify template/port (future templates can be added later)
+jan-cli dev scaffold worker-service --template api --port 8999
 ```
 
-**Planned functionality:**
-- Generate service structure
-- Create boilerplate code
-- Setup configuration
-- Add to docker-compose
+What it does today:
+- Copies `services/template-api` to `services/<name>`
+- Replaces placeholders (module import paths, README text, comments)
+- Prints next steps (run `go mod tidy`, update docker-compose, add Kong routes)
+
+If the destination already exists the command aborts without touching files.
 
 ---
 
@@ -470,20 +472,20 @@ jan-cli swagger generate --service media-api
 
 **Solution:**
 1. Check if `~/bin` exists:
-   ```bash
-   ls ~/bin/jan-cli
-   ```
+ ```bash
+ ls ~/bin/jan-cli
+ ```
 
 2. Add to PATH:
-   ```bash
-   export PATH="$PATH:$HOME/bin"
-   ```
+ ```bash
+ export PATH="$PATH:$HOME/bin"
+ ```
 
 3. Make permanent by adding to `~/.bashrc` or `~/.zshrc`:
-   ```bash
-   echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc
-   source ~/.bashrc
-   ```
+ ```bash
+ echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc
+ source ~/.bashrc
+ ```
 
 ### "jan-cli is not recognized" (Windows)
 
@@ -491,21 +493,21 @@ jan-cli swagger generate --service media-api
 
 **Solution:**
 1. Check if file exists:
-   ```powershell
-   Test-Path $env:USERPROFILE\bin\jan-cli.exe
-   ```
+ ```powershell
+ Test-Path $env:USERPROFILE\bin\jan-cli.exe
+ ```
 
 2. Add to PATH (temporary):
-   ```powershell
-   $env:PATH += ";$env:USERPROFILE\bin"
-   ```
+ ```powershell
+ $env:PATH += ";$env:USERPROFILE\bin"
+ ```
 
 3. Make permanent:
-   ```powershell
-   notepad $PROFILE
-   # Add this line:
-   $env:PATH += ";$env:USERPROFILE\bin"
-   ```
+ ```powershell
+ notepad $PROFILE
+ # Add this line:
+ $env:PATH += ";$env:USERPROFILE\bin"
+ ```
 
 4. Restart PowerShell
 
@@ -540,24 +542,24 @@ make cli-install
 
 **Solution:**
 1. Ensure Go is installed:
-   ```bash
-   go version
-   ```
+ ```bash
+ go version
+ ```
 
 2. Ensure in project root:
-   ```bash
-   pwd  # Should show jan-server directory
-   ```
+ ```bash
+ pwd # Should show jan-server directory
+ ```
 
 3. Check script is executable (Linux/macOS):
-   ```bash
-   chmod +x jan-cli.sh
-   ```
+ ```bash
+ chmod +x jan-cli.sh
+ ```
 
 4. Try manual build:
-   ```bash
-   cd cmd/jan-cli && go build
-   ```
+ ```bash
+ cd cmd/jan-cli && go build
+ ```
 
 ---
 
@@ -627,8 +629,8 @@ Jan CLI uses [spf13/cobra](https://github.com/spf13/cobra) v1.8.1, the industry-
 **Dependencies:**
 ```go
 require (
-    github.com/spf13/cobra v1.8.1
-    gopkg.in/yaml.v3 v3.0.1
+ github.com/spf13/cobra v1.8.1
+ gopkg.in/yaml.v3 v3.0.1
 )
 ```
 
@@ -636,15 +638,15 @@ require (
 
 ```
 cmd/jan-cli/
-├── main.go              # Root command and initialization
-├── cmd_config.go        # Configuration management
-├── cmd_service.go       # Service operations
-├── cmd_dev.go           # Development tools
-├── cmd_setup.go         # Interactive setup wizard
-├── cmd_swagger.go       # Swagger generation
-├── utils.go             # Utility functions
-├── go.mod               # Go module dependencies
-└── README.md            # CLI documentation
++-- main.go # Root command and initialization
++-- cmd_config.go # Configuration management
++-- cmd_service.go # Service operations
++-- cmd_dev.go # Development tools
++-- cmd_setup.go # Interactive setup wizard
++-- cmd_swagger.go # Swagger generation
++-- utils.go # Utility functions
++-- go.mod # Go module dependencies
++-- README.md # CLI documentation
 ```
 
 ### Build Details
@@ -697,7 +699,7 @@ jan-cli config generate
 jan-cli config validate --env production
 
 # Export as environment variables
-jan-cli config export --format env --env production > .env.production
+jan-cli config export --format env --env production >.env.production
 
 # Show specific service config
 jan-cli config show llm-api --format json
@@ -709,10 +711,10 @@ jan-cli config show llm-api --format json
 # List all services
 jan-cli service list
 
-# View logs (future)
+# View logs
 jan-cli service logs llm-api --follow
 
-# Check health (future)
+# Check health
 jan-cli service status
 ```
 
@@ -722,8 +724,8 @@ jan-cli service status
 # Setup environment
 jan-cli dev setup
 
-# Create new service (future)
-jan-cli dev scaffold worker-service --template worker
+# Create new service from template
+jan-cli dev scaffold worker-service --template api
 
 # Generate API documentation
 jan-cli swagger generate --service llm-api
@@ -788,6 +790,6 @@ jan-cli swagger generate --service llm-api
 
 ---
 
-**Status:** Production Ready ✅  
-**Version:** 1.0.0  
+**Status:** Production Ready OK 
+**Version:** 1.0.0 
 **Cross-Platform:** Windows, Linux, macOS

@@ -9,7 +9,7 @@ The llm-api service uses OpenTelemetry for distributed tracing and metrics colle
 ## Architecture
 
 ```
-llm-api → OpenTelemetry SDK → OTLP Exporter → OTel Collector → Prometheus + Jaeger → Grafana
+llm-api -> OpenTelemetry SDK -> OTLP Exporter -> OTel Collector -> Prometheus + Jaeger -> Grafana
 ```
 
 ## Configuration

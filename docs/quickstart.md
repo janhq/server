@@ -31,7 +31,7 @@ make quickstart
 
 The setup wizard will guide you through:
 
-### 1️⃣ LLM Provider Setup
+### 1. LLM Provider Setup
 
 Choose your inference provider:
 
@@ -48,7 +48,7 @@ Choose your inference provider:
 - No GPU or HuggingFace token needed
 - **vLLM service will not be started** (uses less resources)
 
-### 2️⃣ MCP Search Tool Configuration
+### 2. MCP Search Tool Configuration
 
 **Note**: MCP Tools and Vector Store always run. This choice only affects the search functionality.
 
@@ -69,7 +69,7 @@ Choose search provider for MCP tools:
 - Disable search functionality only
 - MCP Tools and Vector Store still available for other features
 
-### 3️⃣ Media API Setup
+### 3. Media API Setup
 
 **Enable Media API**: For file uploads, image handling, and media management
 
@@ -80,14 +80,14 @@ Choose search provider for MCP tools:
 ### Flow 1: Full Local Setup (GPU)
 
 ```
-📦 LLM Provider Setup
+LLM Provider Setup
 Choose: [1] Local vLLM
 HF_TOKEN: hf_xxxxxxxxxxxxx
 
-🔍 MCP Search Tool Setup
+MCP Search Tool Setup
 Choose: [2] SearXNG (no API key needed)
 
-🖼️ Media API Setup
+Media API Setup
 Enable: [Y] Yes
 
 Result: Fully local, privacy-focused setup
@@ -96,16 +96,16 @@ Result: Fully local, privacy-focused setup
 ### Flow 2: Cloud API + Serper
 
 ```
-📦 LLM Provider Setup
+LLM Provider Setup
 Choose: [2] Remote API endpoint
 URL: https://api.openai.com/v1
 API Key: sk-xxxxxxxxxxxxx
 
-🔍 MCP Search Tool Setup
+MCP Search Tool Setup
 Choose: [1] Serper
 SERPER_API_KEY: xxxxxxxxxxxxx
 
-🖼️ Media API Setup
+Media API Setup
 Enable: [Y] Yes
 
 Result: Cloud-based inference with best search
@@ -114,15 +114,15 @@ Result: Cloud-based inference with best search
 ### Flow 3: Minimal Setup (No Search, No Media)
 
 ```
-📦 LLM Provider Setup
+LLM Provider Setup
 Choose: [2] Remote API endpoint
 URL: https://api.groq.com/openai/v1
 API Key: gsk_xxxxxxxxxxxxx
 
-🔍 MCP Search Tool Setup
+MCP Search Tool Setup
 Choose: [3] None (MCP Tools/Vector Store still run)
 
-🖼️ Media API Setup
+Media API Setup
 Enable: [N] No
 
 Result: Remote LLM + MCP Tools (no search) + No Media
@@ -167,7 +167,7 @@ $response = Invoke-RestMethod -Method Post -Uri http://localhost:8000/llm/auth/g
 $token = $response.access_token
 
 # Linux / macOS
-TOKEN=$(curl -X POST http://localhost:8000/llm/auth/guest-login | jq -r .access_token)
+TOKEN=$(curl -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
 ```
 
 ### 2. Chat Completion
@@ -175,14 +175,14 @@ TOKEN=$(curl -X POST http://localhost:8000/llm/auth/guest-login | jq -r .access_
 ```bash
 # Windows (PowerShell)
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/chat/completions `
-  -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
-  -Body '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
+ -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
+ -Body '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
 
 # Linux / macOS
 curl -X POST http://localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
+ -H "Authorization: Bearer $TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
 ## Common Commands
@@ -192,17 +192,17 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 make health-check
 
 # View logs
-make logs-llm-api        # LLM API logs
-make logs-mcp            # MCP tools logs
-make logs                # All logs
+make logs-llm-api # LLM API logs
+make logs-mcp # MCP tools logs
+make logs # All logs
 
 # Restart services
-make restart             # Restart all
-make restart-llm-api     # Restart specific service
+make restart # Restart all
+make restart-llm-api # Restart specific service
 
 # Stop services
-make down                # Stop and remove containers
-make stop                # Stop but keep containers
+make down # Stop and remove containers
+make stop # Stop but keep containers
 ```
 
 ## Updating Configuration
@@ -221,15 +221,19 @@ make quickstart
 If you prefer manual setup:
 
 ```bash
-# 1. Copy template
+# 1. Copy templates
 cp .env.template .env
+cp config/secrets.env.example config/secrets.env
 
-# 2. Edit .env manually
+# 2. Edit .env / config/secrets.env with your values
 nano .env
+nano config/secrets.env
 
 # 3. Run setup without prompts
-./jan-cli.ps1 dev setup      # Windows
-./jan-cli.sh dev setup       # Linux/macOS
+# Windows
+powershell -ExecutionPolicy Bypass -File .\jan-cli.ps1 dev setup
+# Linux / macOS
+./jan-cli.sh dev setup
 
 # 4. Start services
 make up-full
@@ -246,8 +250,8 @@ If you see port binding errors:
 netstat -ano | findstr "8000 8080 8085"
 
 # Linux/macOS
-lsof -i :8000
-lsof -i :8080
+lsof -i:8000
+lsof -i:8080
 ```
 
 ### Services Not Starting
@@ -263,7 +267,7 @@ make logs-error
 # Full reset
 make down
 make clean
-docker system prune -a  # Warning: removes all Docker data
+docker system prune -a # Warning: removes all Docker data
 make quickstart
 ```
 
@@ -282,13 +286,13 @@ nvidia-smi
 
 ## Next Steps
 
-- 📖 [API Documentation](http://localhost:8000/v1/swagger/)
-- 🔧 [Development Guide](docs/guides/development.md)
-- 🚀 [Deployment Guide](docs/guides/deployment.md)
-- 🧪 [Testing Guide](docs/guides/testing.md)
+- [API Documentation](http://localhost:8000/v1/swagger/)
+- [Development Guide](guides/development.md)
+- [Deployment Guide](guides/deployment.md)
+- [Testing Guide](guides/testing.md)
 
 ## Getting Help
 
 - **Issues**: [GitHub Issues](https://github.com/janhq/jan-server/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/janhq/jan-server/discussions)
-- **Documentation**: [docs/](docs/)
+- **Documentation**: [Documentation Hub](README.md)

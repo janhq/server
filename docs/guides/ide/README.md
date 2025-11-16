@@ -6,12 +6,12 @@ IDE-specific configuration and setup guides for Jan Server development.
 
 ### Visual Studio Code
 - **[VS Code Guide](vscode.md)** - Complete VS Code setup including:
-  - Debug configurations for LLM API and MCP Tools
-  - VS Code tasks for service management
-  - Environment variable configuration
-  - Provider configuration (YAML vs legacy)
-  - Common workflows and troubleshooting
-  - Configuration file reference
+ - Debug configurations for LLM API and MCP Tools
+ - VS Code tasks for service management
+ - Environment variable configuration
+ - Provider configuration (YAML vs legacy)
+ - Common workflows and troubleshooting
+ - Configuration file reference
 
 **Ready-to-use configuration files:**
 - **[launch.json](launch.json)** - Copy to `.vscode/launch.json`
@@ -20,8 +20,9 @@ IDE-specific configuration and setup guides for Jan Server development.
 **Quick setup:**
 ```bash
 # From project root
-cp docs/guides/ide/launch.json .vscode/
-cp docs/guides/ide/tasks.json .vscode/
+mkdir -p .vscode
+cp docs/guides/ide/launch.json .vscode/launch.json
+cp docs/guides/ide/tasks.json .vscode/tasks.json
 # Restart VS Code and press F5
 ```
 
@@ -43,9 +44,10 @@ Configuration guides for other IDEs coming soon:
 
 **Currently using another IDE?** The core development workflow works with any editor:
 ```bash
-make setup          # Initial setup
-make hybrid-dev     # Start infrastructure
-make start-llm-api  # Run service natively
+make setup        # Initial setup (.env + docker/.env)
+make dev-full     # Start infrastructure + services with host routing
+./jan-cli.sh dev run llm-api   # Run service natively (macOS/Linux)
+.\jan-cli.ps1 dev run llm-api  # Run service natively (Windows)
 ```
 
 See [Development Guide](../development.md) for editor-agnostic workflows.
@@ -57,7 +59,7 @@ Using a different IDE? We welcome contributions for additional IDE configuration
 **What to include:**
 - Debug configuration setup
 - Build tasks
-- Test runner integration  
+- Test runner integration 
 - Environment variable management
 - Hot reload setup
 - Common workflows

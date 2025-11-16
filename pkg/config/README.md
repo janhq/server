@@ -14,27 +14,27 @@ All configuration is defined canonically in Go structs (`pkg/config/types.go`). 
 
 ```
 pkg/config/
-├── types.go              # 🌟 Canonical source of truth (Go structs)
-├── codegen/
-│   ├── schema.go         # JSON Schema generator
-│   └── yaml.go           # YAML defaults generator
-└── loader.go             # Configuration loader (Sprint 2)
++-- types.go              # Canonical source of truth (Go structs)
++-- codegen/
+|   +-- schema.go         # JSON Schema generator
+|   +-- yaml.go           # YAML defaults generator
++-- loader.go             # Configuration loader (Sprint 2)
 
 cmd/config-generate/
-└── main.go               # Code generation CLI tool
++-- main.go               # Code generation CLI tool
 
 config/
-├── schema/               # Generated JSON schemas
-│   ├── config.schema.json
-│   ├── infrastructure.schema.json
-│   ├── services.schema.json
-│   ├── inference.schema.json
-│   └── monitoring.schema.json
-├── defaults.yaml         # Generated default configuration
-└── environments/         # Environment-specific overrides
-    ├── development.yaml
-    ├── staging.yaml
-    └── production.yaml
++-- schema/               # Generated JSON schemas
+|   +-- config.schema.json
+|   +-- infrastructure.schema.json
+|   +-- services.schema.json
+|   +-- inference.schema.json
+|   +-- monitoring.schema.json
++-- defaults.yaml         # Generated default configuration
++-- environments/         # Environment-specific overrides
+    +-- development.yaml
+    +-- staging.yaml
+    +-- production.yaml
 ```
 
 ## Usage

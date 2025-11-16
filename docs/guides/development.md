@@ -1,511 +1,184 @@
-# Jan Server - Development Guide
+# Development Guide
 
-Welcome to the Jan Server development guide! This document provides comprehensive information for developers working on the jan-server project.
+How to set up, run, and iterate on Jan Server locally. All commands below are available in the repository today (Makefile + jan-cli), so you can copy/paste them as-is.
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Project Structure](#project-structure)
-3. [Development Workflows](#development-workflows)
-4. [Configuration](#configuration)
-5. [Testing](#testing)
-6. [Troubleshooting](#troubleshooting)
+1. [Prerequisites](#prerequisites)
+2. [Quick Start](#quick-start)
+3. [Access Points](#access-points)
+4. [Project Layout](#project-layout)
+5. [Development Workflows](#development-workflows)
+6. [Configuration](#configuration)
+7. [Database & Tooling](#database--tooling)
+8. [Testing](#testing)
+9. [Troubleshooting & Next Steps](#troubleshooting--next-steps)
+
+## Prerequisites
+
+Install these before running any commands:
+
+- **Docker Desktop 24+** with Docker Compose V2
+- **GNU Make** (built in on macOS/Linux, install via Chocolatey/Brew on Windows)
+- **Go 1.21+** � only required when editing Go code or using `jan-cli`
+- **Newman** (`npm install -g newman`) � required for the Postman-based integration suites
+
+> Tip: `make setup` uses `jan-cli dev setup` to verify Docker, copy `.env.template` to `.env`, and create `docker/.env` automatically.
 
 ## Quick Start
 
-### Prerequisites
-
-- **Docker** & **Docker Compose V2** (required)
-- **Make** (required for convenience)
-- **Go 1.25+** (for hybrid development)
-- **Newman** (for integration tests)
-
-### Initial Setup
-
 ```bash
-# 1. Clone the repository
+# 1. Clone and enter the repo
 git clone https://github.com/janhq/jan-server.git
 cd jan-server
 
-# 2. Run setup script
+# 2. Create .env, docker/.env, and Docker networks
 make setup
 
-# 3. Start all services
+# 3. Start the full stack (infra + APIs + MCP + optional vLLM)
 make up-full
 
-# 4. Verify services are running
+# 4. Verify everything is healthy
 make health-check
+
+# 5. Tail logs or iterate
+make logs          # all containers
+docker compose ps  # status
 ```
 
-### Access Points
+- **Stop containers**: `make down`
+- **Remove volumes**: `make down-clean`
+- **Restart a single service**: `make restart-api`, `make restart-kong`, `make restart-keycloak`
 
-After starting services:
+## Access Points
 
-- **LLM API**: http://localhost:8080
-- **Media API**: http://localhost:8285
-- **Keycloak**: http://localhost:8085 (admin/admin)
-- **Kong Gateway**: http://localhost:8000
-- **MCP Tools**: http://localhost:8091
-- **SearXNG**: http://localhost:8086
-- **Vector Store**: http://localhost:3015
-- **SandboxFusion**: http://localhost:3010
-- **Grafana**: http://localhost:3001 (admin/admin) - if monitoring enabled
+| Service | URL | Notes |
+|---------|-----|-------|
+| Kong Gateway | http://localhost:8000 | Single entry point for all APIs |
+| LLM API | http://localhost:8080 | OpenAI-compatible API, `/healthz` for checks |
+| Response API | http://localhost:8082 | Multi-step orchestration |
+| Media API | http://localhost:8285 | File upload/management service |
+| MCP Tools | http://localhost:8091 | Native MCP tool bridge |
+| Keycloak | http://localhost:8085 | Admin/Admin in development |
+| PostgreSQL | localhost:5432 | Database user `jan_user` / password from `.env` |
+| Grafana | http://localhost:3001 | Start with `make monitor-up` |
+| Prometheus | http://localhost:9090 | Monitoring profile |
+| Jaeger | http://localhost:16686 | Tracing profile |
 
-## Project Structure
+## Project Layout
 
 ```
 jan-server/
-├── services/
-│   ├── llm-api/           # Main LLM API service (Go)
-│   ├── media-api/         # Media upload and management (Go)
-│   ├── response-api/      # Response API service (Go)
-│   └── mcp-tools/         # MCP tools integration service (Go)
-├── scripts/
-│   ├── lib/               # Helper scripts (bash & PowerShell)
-│   ├── setup.sh/.ps1      # Initial setup scripts
-├── config/
-│   ├── defaults.env       # Default configuration
-│   ├── development.env    # Development environment
-│   ├── testing.env        # Testing environment
-├── docker/
-│   ├── infrastructure.yml # Core infrastructure (DB, Auth, Gateway)
-│   ├── services-api.yml   # LLM API service
-│   ├── services-mcp.yml   # MCP services
-│   ├── inference.yml      # vLLM GPU/CPU inference
-│   └── observability.yml  # Monitoring stack
-├── docker-compose.yml     # Main compose file (includes docker/*.yml)
-└── Makefile               # Build system with all targets
-
++-- services/              # llm-api, media-api, response-api, mcp-tools, template-api
++-- cmd/jan-cli/           # jan-cli sources (`./jan-cli.sh`, `.\\jan-cli.ps1` wrappers)
++-- pkg/config/            # Single source of truth for config defaults and schema
++-- docker/                # Compose fragments (infrastructure, services, dev-full, observability)
++-- docker compose.yml     # Root compose file (includes docker/*.yml via profiles)
++-- docker compose.dev-full.yml # Extra compose overrides for dev-full
++-- kong/                  # Gateway configuration (kong.yml + kong-dev-full.yml)
++-- docs/                  # Documentation (guides, architecture, configuration)
++-- Makefile               # Canonical automation entry point
++-- .env.template          # Copy to .env and edit per environment
 ```
 
 ## Development Workflows
 
-### 1. Standard Docker Development
-
-Best for: Full integration testing, production-like environment
+### Full Docker Stack (default)
 
 ```bash
-# Start all services
-make up-full
-
-# View logs
-make logs-api          # API logs only
-make logs-mcp          # MCP logs only
-make logs              # All logs
-
-# Restart specific service
-make restart-api
-make restart-kong
-
-# Stop everything
-make down
+make up-full        # start everything defined by COMPOSE_PROFILES in .env
+make logs           # follow logs for every service
+make logs-api       # only API services
+make logs-mcp       # MCP stack
+make down           # stop and remove containers
 ```
 
-### 2. Hybrid Development (Recommended for Active Development)
+Use this mode for integration testing and parity with CI. `COMPOSE_PROFILES` controls which Compose profiles (`infra,api,mcp,full`) load�edit `.env` if you want to disable GPU/vLLM locally.
 
-Best for: Debugging, hot-reloading, native IDE integration
+### Dev-Full Mode (hybrid debugging)
 
-#### Hybrid MCP Development
+`dev-full` keeps every dependency in Docker but allows you to stop any container and run the same service on your host.
 
 ```bash
-# 1. Start MCP infrastructure
-make hybrid-dev-mcp
-
-# 2. Run MCP Tools natively
-make hybrid-run-mcp
+make dev-full                 # start stack with host.docker.internal upstreams
+# stop the Docker container you want to replace
+docker compose stop llm-api
+# run the service from source (wrapper stops the container automatically on start)
+./jan-cli.sh dev run llm-api  # Linux/macOS
+.\jan-cli.ps1 dev run llm-api # Windows PowerShell
 ```
 
-#### Debugging with Delve
+- Repeat the same flow for `media-api`, `response-api`, or `mcp-tools`
+- Kong automatically routes requests to `host.docker.internal:<port>` while the host process is healthy
+- Exit with `Ctrl+C`, then `docker compose start llm-api` to hand control back to Docker
+- Use `make dev-full-stop` to stop containers without removing them; `make dev-full-down` removes them
+
+See [Dev-Full Mode](dev-full-mode.md) for deeper explanations and IDE integration tips.
+
+### Running Services Directly (without dev-full)
+
+You can run a service completely outside Docker by providing the same environment variables from `.env`:
 
 ```bash
-# Terminal 1: Start infrastructure
-make hybrid-infra-up
+# Example for llm-api
+docker compose up -d api-db keycloak kong   # ensure infra is running
+cd services/llm-api
+export DB_DSN="postgres://jan_user:${POSTGRES_PASSWORD}@localhost:5432/jan_llm_api?sslmode=disable"
+export KEYCLOAK_BASE_URL="http://localhost:8085"
+export JWKS_URL="http://localhost:8085/realms/jan/protocol/openid-connect/certs"
+export ISSUER="http://localhost:8085/realms/jan"
+export HTTP_PORT=8080
+export LOG_LEVEL=debug
 
-# Terminal 2: Run with debugger
-make hybrid-debug-api    # API on port 2345
-make hybrid-debug-mcp    # MCP on port 2346
-
-# Connect your IDE debugger to localhost:2345 or localhost:2346
+go run ./cmd/server
 ```
 
-### 3. Testing Workflow
-
-```bash
-# Setup test environment
-make test-setup
-
-# Run all tests
-make test-all              # Integration tests
-make test                  # Unit tests
-make test-coverage         # With coverage report
-
-# Run specific test suites
-make test-auth             # Authentication tests
-make test-conversations    # Conversation API tests
-make test-mcp-integration  # MCP integration tests
-
-# Debug tests
-make newman-debug
-
-# Cleanup
-make test-teardown
-```
+> Windows users can run `.\jan-cli.ps1 dev run llm-api --env .env` to load variables automatically.
 
 ## Configuration
 
-Jan Server uses a **centralized, type-safe configuration system** that combines YAML defaults with environment variable overrides.
-
-### Quick Configuration Guide
-
-```bash
-# Validate configuration
-jan-cli config validate
-
-# View effective configuration
-jan-cli config export
-
-# Show specific service config
-jan-cli config show llm-api
-
-# Check for configuration drift (CI/CD)
-make config-drift-check
-```
-
-See [Configuration System Documentation](../configuration/README.md) for complete details.
-
-### Configuration Loading Order
-
-Configuration is loaded with this precedence (highest to lowest):
-
-1. **Environment Variables** (highest priority)
-2. **Environment-specific YAML** (`config/production.yaml`, etc.)
-3. **Base YAML Defaults** (`config/defaults.yaml`)
-
-### Common Configuration Tasks
-
-#### Using Configuration in Code
-
-```go
-import "jan-server/pkg/config"
-
-func main() {
-    // Load configuration
-    cfg, err := config.Load()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Get service-specific config
-    serviceCfg, _ := cfg.GetServiceConfig("llm-api")
-
-    // Use typed configuration
-    server := &http.Server{
-        Addr:         fmt.Sprintf(":%d", serviceCfg.HTTP.Port),
-        ReadTimeout:  serviceCfg.HTTP.Timeout,
-        WriteTimeout: serviceCfg.HTTP.Timeout,
-    }
-}
-```
-
-#### Overriding Configuration
-
-Environment-specific YAML files (`config/development.yaml`, `config/production.yaml`):
-
-```yaml
-# config/production.yaml - Override only what's different
-environment: production
-
-services:
-  llm-api:
-    database:
-      max_open_conns: 100
-    observability:
-      enabled: true
-```
-
-Environment variables (highest priority):
+- Copy `.env.template` to `.env` (or run `make setup`) and edit secrets like `HF_TOKEN`, `SERPER_API_KEY`, and `POSTGRES_PASSWORD`
+- `make setup` also writes `docker/.env`, so Compose and jan-cli use the same values
+- `pkg/config/defaults.yaml` is the canonical configuration, generated from Go structs in `pkg/config/types.go`
+- Helpful jan-cli commands:
 
 ```bash
-# Override specific values
-export LLM_API_HTTP_PORT=9090
-export LLM_API_DATABASE_DSN=postgres://user:pass@prod-db:5432/db
-export LLM_API_OBSERVABILITY_ENABLED=true
+jan-cli config validate --file config/defaults.yaml
+jan-cli config show --path services.llm-api
+jan-cli config export --format env --output config/generated.env
 ```
 
-### Environment Files (Legacy)
+## Database & Tooling
 
-Some services still use the traditional `.env` approach during migration:
+```bash
+make db-migrate    # Apply Go migrations for llm-api
+make db-reset      # Drop + recreate tables (uses docker compose)
+make db-console    # Opens psql inside the api-db container
 
-| File | Purpose |
-|------|---------|
-| `.env.template` | Template with all variables documented |
-| `config/defaults.env` | Default values (being phased out) |
-| `config/development.env` | Local Docker development |
-| `config/testing.env` | Integration test configuration |
-
-**Note:** New services should use the centralized config system at `pkg/config/`. See [migration guide](../configuration/service-migration-strategy.md).
-
-### Key Configuration Areas
-
-#### Database Configuration
-
-```yaml
-# config/defaults.yaml
-services:
-  llm-api:
-    database:
-      dsn: postgres://jan_user:jan_password@localhost:5432/jan_llm_api
-      max_idle_conns: 10
-      max_open_conns: 30
-      conn_max_lifetime: 30m
+# Direct Docker examples
+docker compose logs api-db
+psql "postgres://jan_user:${POSTGRES_PASSWORD}@localhost:5432/jan_llm_api?sslmode=disable"
 ```
 
-#### Authentication
-
-```yaml
-services:
-  llm-api:
-    auth:
-      enabled: true
-      issuer: http://localhost:8085/realms/jan
-      audience: jan-client
-      jwks_url: http://localhost:8085/realms/jan/protocol/openid-connect/certs
-```
-
-#### HTTP Configuration
-
-```yaml
-services:
-  llm-api:
-    http:
-      port: 8080
-      timeout: 30s
-      max_body_size: 10485760  # 10 MB
-```
-
-#### Observability
-
-```yaml
-services:
-  llm-api:
-    observability:
-      enabled: false
-      endpoint: http://localhost:4318
-      service_name: llm-api
-```
+For backups and restores use `make db-backup` / `make db-restore`. The Makefile targets wrap `docker compose` so they work on Windows, macOS, and Linux.
 
 ## Testing
 
-### Unit Tests
+- **Full integration suite**: `make test-all` (runs every Postman collection listed in the Makefile)
+- **Focused suites**: `make test-auth`, `make test-conversations`, `make test-response`, `make test-media`, `make test-mcp-integration`, `make test-e2e`
+- **Unit tests**: run them from each service directory (`go test ./...`)
+- **Cross-platform smoke test**: `./tests/test-unix.sh` (verifies jan-cli and core Makefile targets)
 
-```bash
-# Run all unit tests
-make test
+See [Testing Guide](testing.md) for platform details, CI coverage, and troubleshooting tips.
 
-# Run tests for specific service
-make test-api
-make test-mcp
+## Troubleshooting & Next Steps
 
-# Generate coverage report
-make test-coverage
-# Opens coverage.html in browser
-```
+1. `make health-check` � verifies infrastructure, API, MCP, and optional services
+2. `make logs` or `docker compose logs <service>` � inspect failures quickly
+3. `make restart-kong` / `make restart-keycloak` � common fixes for gateway/auth issues
+4. `make monitor-up` � bring up Grafana/Prometheus/Jaeger if you need observability while debugging
 
-### Integration Tests
+Need more help? Review [Hybrid Mode](hybrid-mode.md), [Dev-Full Mode](dev-full-mode.md), [Testing](testing.md), [Troubleshooting](troubleshooting.md), and the configuration docs under `docs/configuration/`.
 
-Integration tests use Newman (Postman CLI) to test the full API:
 
-```bash
-# Run all integration tests
-make test-all
-
-# Run specific test suites
-make test-auth              # OAuth/OIDC authentication
-make test-conversations     # Conversation CRUD operations
-make test-response          # Response API tests
-make test-media             # Media API tests
-make test-mcp-integration   # MCP tools functionality
-make test-e2e               # Gateway end-to-end tests
-```
-
-### CI/CD
-
-```bash
-# Run full CI pipeline locally
-make ci-test    # All tests
-make ci-lint    # Linting
-make ci-build   # Build verification
-```
-
-## Makefile Commands Reference
-
-### Quick Reference
-
-```bash
-make help              # Show all commands
-make help-core         # Setup & environment commands
-make help-build        # Build & quality commands
-make help-run          # Service management commands
-make help-test         # Testing commands
-make help-hybrid       # Hybrid development commands
-make help-dev          # Developer utility commands
-```
-
-### Most Used Commands
-
-| Command | Description |
-|---------|-------------|
-| `make setup` | Initial project setup |
-| `make up-full` | Start all services |
-| `make down` | Stop all services |
-| `make logs-api` | View API logs |
-| `make test-all` | Run all integration tests |
-| `make health-check` | Check service health |
-| `make hybrid-dev-api` | Start hybrid API development |
-| `make swagger` | Generate API documentation |
-
-## Troubleshooting
-
-### Services Won't Start
-
-```bash
-# Check Docker is running
-make check-deps
-
-# Check service status
-make dev-status
-
-# Reset everything
-make dev-reset
-```
-
-### Database Issues
-
-```bash
-# Reset database
-make db-reset
-
-# View database logs
-docker compose logs api-db
-
-# Open database console
-make db-console
-```
-
-### Port Conflicts
-
-If you see "port already in use" errors:
-
-```bash
-# Check what's using the ports
-# Windows
-netstat -ano | findstr ":8080"
-
-# Linux/Mac
-lsof -i :8080
-
-# Use different ports by modifying .env:
-HTTP_PORT=8081
-KEYCLOAK_HTTP_PORT=8086
-```
-
-### Docker Issues
-
-```bash
-# Clean up Docker system
-make docker-prune
-
-# Remove all networks
-make network-clean
-make network-create
-
-# Remove volumes ( DELETES DATA)
-make volumes-clean
-```
-
-### Test Failures
-
-```bash
-# Run tests with debugging
-make newman-debug
-
-# Check service health before testing
-make health-check
-
-# View error logs
-make logs-error
-```
-
-## Best Practices
-
-### 1. Always Use Environment Files
-
-Don't hardcode configuration. Use `.env` files and switch between environments:
-
-```bash
-# Development
-make env-switch ENV=development
-make up-full
-
-# Testing
-make env-switch ENV=testing
-make test-all
-```
-
-### 2. Use Hybrid Mode for Active Development
-
-Faster iteration, better debugging:
-
-```bash
-make hybrid-dev-api
-# In another terminal:
-make hybrid-run-api
-make hybrid-run-media
-```
-
-### 3. Run Tests Before Committing
-
-```bash
-make fmt          # Format code
-make lint         # Check for issues
-make test         # Unit tests
-make test-all     # Integration tests
-```
-
-### 4. Keep Documentation Updated
-
-```bash
-# After API changes, regenerate swagger
-make swagger
-
-# After schema changes
-make db-migrate
-```
-
-### 5. Clean Up Regularly
-
-```bash
-# Clean build artifacts
-make dev-clean
-
-# Clean Docker resources
-make docker-prune
-```
-
-## Additional Resources
-
-- [Testing Guide](TESTING.md) - Comprehensive testing documentation
-- [Hybrid Mode Guide](HYBRID_MODE.md) - Detailed hybrid development workflow
-- [Architecture Documentation](architecture.md) - System architecture overview
-- [MCP Integration](../services/mcp-tools/README.md) - MCP tools documentation
-
-## Getting Help
-
-1. Check this documentation
-2. Run `make help` for command reference
-3. Check logs: `make logs-error`
-4. Review [troubleshooting](#troubleshooting) section
-5. Ask in team chat or create an issue
-
----
 

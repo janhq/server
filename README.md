@@ -6,26 +6,44 @@
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev/)
 [![Docker](https://img.shields.io/badge/Docker-required-2496ED?logo=docker)](https://www.docker.com/)
 
+## Prerequisites
+
+Before running Jan Server locally make sure you have:
+
+- **Docker Desktop** (Windows/macOS) or **Docker Engine + docker compose V2** (Linux)
+- **Make** (installed by default on Linux/macOS, [install on Windows](https://gnuwin32.sourceforge.net/packages/make.htm))
+- **Git** for cloning the repository
+- **8 GB RAM minimum** (12 GB recommended for all services)
+- Optional: **NVIDIA GPU + recent drivers** if you plan to run local vLLM inference
+
 ## Quick Start
 
 ```bash
-# Interactive setup (prompts for configuration)
+# Clone and enter the repo
+git clone https://github.com/janhq/jan-server.git
+cd jan-server
+
+# Interactive setup (runs jan-cli wizard and docker compose)
 make quickstart
 ```
 
-**Configuration wizard will guide you through:**
-- 📦 LLM Provider (Local GPU or Remote API)
-- 🔍 Search Engine (Serper, SearXNG, or None)
-- 🖼️ Media API (Enable/Disable)
+The `quickstart` target wraps `jan-cli` and guides you through:
+- Selecting the LLM provider (local vLLM vs remote OpenAI-compatible endpoint)
+- Choosing the MCP search provider (Serper, SearXNG, or disabled)
+- Enabling or disabling the Media API
 
-**Manual setup:**
+Need to rerun the wizard? Execute `make quickstart` again and accept the prompt to update your `.env`.
+
+Prefer a scripted setup? Run:
+
 ```bash
-make setup && make up-full
+make setup   # Generates/updates .env via jan-cli
+make up-full # Starts every service defined in docker-compose.yml
 ```
 
-**Full guide**: [Quickstart Documentation](docs/QUICKSTART.md)
+**More detail**: [Quickstart Documentation](docs/quickstart.md)
 
-**Services running at:**
+**Services running after `make up-full`:**
 - **API Gateway**: http://localhost:8000 (Kong)
 - **LLM API**: http://localhost:8080 (OpenAI-compatible)
 - **Response API**: http://localhost:8082 (Multi-step orchestration)
@@ -34,7 +52,7 @@ make setup && make up-full
 - **API Documentation**: http://localhost:8000/v1/swagger/
 - **Keycloak Console**: http://localhost:8085 (admin/admin)
 
-> Keycloak now runs directly from the official `quay.io/keycloak/keycloak:24.0.5` image with our realm/import scripts bind-mounted at runtime—no bundled Keycloak source tree is required.
+> Keycloak now runs directly from the official `quay.io/keycloak/keycloak:24.0.5` image with our realm/import scripts bind-mounted at runtime - no bundled Keycloak source tree is required.
 
 **Full setup guide**: [Getting Started](docs/getting-started/README.md)
 
@@ -51,35 +69,35 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 
 ## Features
 
--  **OpenAI-compatible chat completions API** with streaming support
--  **Response API** for multi-step tool orchestration (max depth: 8, timeout: 45s)
--  **Media API** with S3 storage, `jan_*` ID system, and presigned URLs
--  **MCP tools** (google_search, web scraping, code execution via SandboxFusion)
--  **Conversation & message management** with PostgreSQL persistence
--  **Guest & user authentication** via Keycloak OIDC enforced by the Kong gateway (JWT + custom API key plugin); request guest tokens from `POST /llm/auth/guest-login`
--  **API gateway routing** via Kong (v3.5)
--  **Distributed tracing** with Jaeger and OpenTelemetry
--  **Metrics & dashboards** with Prometheus + Grafana
--  **Development mode** with host.docker.internal support for flexible debugging
--  **Comprehensive testing suite** with 6 Newman/Postman collections
--  **Service template system** for rapid microservice creation
+- **OpenAI-compatible chat completions API** with streaming support
+- **Response API** for multi-step tool orchestration (max depth: 8, timeout: 45s)
+- **Media API** with S3 storage, jan_* ID system, and presigned URLs
+- **MCP tools** (google_search, web scraping, code execution via SandboxFusion)
+- **Conversation and message management** with PostgreSQL persistence
+- **Guest and user authentication** via Keycloak OIDC enforced by Kong gateway (JWT + custom API key plugin)
+- **API gateway routing** via Kong v3.5
+- **Distributed tracing** with Jaeger and OpenTelemetry
+- **Metrics and dashboards** with Prometheus and Grafana
+- **Development mode** with host.docker.internal support for flexible debugging
+- **Comprehensive testing suite** with 6 Newman/Postman collections
+- **Service template system** for rapid microservice creation
 
 ## Documentation
 
 Primary entry points:
-- [docs/README.md](docs/README.md) - section overview
-- [docs/INDEX.md](docs/INDEX.md) - full navigation map
-- [docs/services.md](docs/services.md) - service responsibilities and ports
+- [docs/README.md](docs/README.md) - Documentation hub overview
+- [docs/index.md](docs/index.md) - Navigation map grouped by audience
+- [docs/architecture/services.md](docs/architecture/services.md) - Service responsibilities and ports
 - [docs/api/README.md](docs/api/README.md) - API reference hub
-- [docs/getting-started/README.md](docs/getting-started/README.md) - five minute setup
-- [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) - Make command cheat sheet
+- [docs/getting-started/README.md](docs/getting-started/README.md) - Five minute setup
+- [docs/quickstart.md](docs/quickstart.md) - Interactive setup walkthrough and commands
 
 Governance and quality:
-- [docs/DOCUMENTATION_CHECKLIST.md](docs/DOCUMENTATION_CHECKLIST.md) - release gating list
-- [docs/AUDIT_SUMMARY.md](docs/AUDIT_SUMMARY.md) - latest audit findings
-- [docs/PROJECT_COMPLETION_REPORT.md](docs/PROJECT_COMPLETION_REPORT.md) - change log for this refresh
-- [CONTRIBUTING.md](CONTRIBUTING.md) - development workflow expectations
-- [SECURITY.md](SECURITY.md) - disclosure and hardening guidance
+- [DOCUMENTATION_QUALITY_REPORT.md](DOCUMENTATION_QUALITY_REPORT.md) - Recent audit summary and metrics
+- [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
+- [docs-improve.todo](docs-improve.todo) - Active documentation improvement tracker
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow expectations
+- [docs/architecture/security.md](docs/architecture/security.md) - Security posture and hardening guidance
 
 ## Project Structure
 
@@ -121,7 +139,7 @@ Key directories:
 | Media API | jan_* IDs, S3 ingest, media resolution | 8285 | `services/media-api` | `docs/api/media-api/README.md` |
 | MCP Tools | Model Context Protocol tools (search, scrape, file search, python) | 8091 | `services/mcp-tools` | `docs/api/mcp-tools/README.md` |
 
-See [docs/services.md](docs/services.md) for dependency graphs and integration notes.
+See [docs/architecture/services.md](docs/architecture/services.md) for dependency graphs and integration notes.
 
 ## Service Template
 
@@ -144,7 +162,7 @@ Create new microservices quickly with the template system:
 
 **Documentation:**
 - Template guide: `docs/guides/services-template.md`
-- Template README: `services/template-api/NEW_SERVICE_GUIDE.md`
+- Template README: `docs/guides/services-template.md`
 
 ## Development
 
@@ -271,7 +289,7 @@ jan-cli dev scaffold my-service      # Create new service from template
 ```
 
 **Documentation:** 
-- Complete guide: [docs/configuration/JAN-CLI.md](docs/configuration/JAN-CLI.md)
+- Complete guide: [docs/guides/jan-cli.md](docs/guides/jan-cli.md)
 - Command reference: [cmd/jan-cli/README.md](cmd/jan-cli/README.md)
 
 ## API Examples
@@ -505,10 +523,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Support
 
-- 📚 [Documentation](docs/README.md)
-- 🐛 [Issue Tracker](https://github.com/janhq/jan-server/issues)
-- 💬 [Discussions](https://github.com/janhq/jan-server/discussions)
+- Documentation: [docs/README.md](docs/README.md)
+- Issue Tracker: https://github.com/janhq/jan-server/issues
+- Discussions: https://github.com/janhq/jan-server/discussions
 
 ---
 
 **Quick Start**: `make setup && make up-full` | **Documentation**: [docs/](docs/) | **API Docs**: http://localhost:8000/v1/swagger/
+

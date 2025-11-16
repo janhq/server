@@ -1,40 +1,25 @@
 # Testing Guide
 
-**Last Updated**: January 2025  
-**Status**: Production Ready ✅
+**Last Updated**: January 2025
 
-Complete guide for testing Jan Server across all platforms (Windows, Linux, macOS).
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Quick Start](#quick-start)
-3. [Platform Support](#platform-support)
-4. [CI/CD Testing](#cicd-testing)
-5. [Local Testing](#local-testing)
-6. [Manual Testing](#manual-testing)
-7. [Docker Testing](#docker-testing)
-8. [Platform-Specific Fixes](#platform-specific-fixes)
-9. [Troubleshooting](#troubleshooting)
+How to test Jan Server on Windows, Linux, and macOS.
 
 ---
 
-## Overview
+## Quick Summary
 
-Jan Server supports cross-platform development with comprehensive testing on:
-- **Windows** (PowerShell 5.1+) - CLI and build tests
-- **Linux** (Bash) - Full stack with Docker
-- **macOS** (Bash/Zsh) - Full stack with Docker
+Jan Server works on all major platforms:
+- **Windows** - PowerShell scripts and build tools
+- **Linux** - Full Docker support
+- **macOS** - Full Docker support
 
-### What Gets Tested
+### What We Test
 
-- ✅ **jan-cli commands** - Configuration, service management, development tools
-- ✅ **Makefile targets** - Build automation, Docker orchestration
-- ✅ **Docker integration** - Service deployment and health checks
-- ✅ **Authentication** - JWT, API keys, OAuth flows
-- ✅ **Cross-platform compatibility** - Path handling, command syntax
+- Command-line tools (jan-cli)
+- Build process (Makefile)
+- Docker containers
+- Authentication (tokens, API keys)
+- Cross-platform compatibility
 
 ---
 
@@ -62,7 +47,7 @@ Tests run automatically on GitHub Actions for:
 - Pull requests modifying CLI tools, services, tests, or configuration
 - Pushes to `main` or `feat/v2-config-refactor` branches
 
-View results: **GitHub → Actions → Cross-Platform Testing**
+View results: **GitHub -> Actions -> Cross-Platform Testing**
 
 ---
 
@@ -71,13 +56,13 @@ View results: **GitHub → Actions → Cross-Platform Testing**
 ### Windows
 
 **Supported:**
-- ✅ jan-cli commands (all)
-- ✅ Makefile build targets
-- ✅ Configuration management
-- ✅ Local Docker Desktop
+- OK jan-cli commands (all)
+- OK Makefile build targets
+- OK Configuration management
+- OK Local Docker Desktop
 
 **Not Supported in CI:**
-- ❌ Docker integration (GitHub Actions limitation)
+- [X] Docker integration (GitHub Actions limitation)
 - Docker tests run on Ubuntu CI instead
 
 **Shell:** PowerShell 5.1+ or Git Bash
@@ -85,19 +70,19 @@ View results: **GitHub → Actions → Cross-Platform Testing**
 ### Linux (Ubuntu, Debian, etc.)
 
 **Supported:**
-- ✅ jan-cli commands (all)
-- ✅ Makefile targets (all)
-- ✅ Docker integration (native)
-- ✅ Full authentication testing
+- OK jan-cli commands (all)
+- OK Makefile targets (all)
+- OK Docker integration (native)
+- OK Full authentication testing
 
 **Shell:** Bash 4.0+
 
 ### macOS
 
 **Supported:**
-- ✅ jan-cli commands (all)
-- ✅ Makefile targets (all)
-- ✅ Docker integration (via Docker Desktop or Colima)
+- OK jan-cli commands (all)
+- OK Makefile targets (all)
+- OK Docker integration (via Docker Desktop or Colima)
 
 **Limitations in CI:**
 - Docker setup on GitHub Actions runners is optional (may fail)
@@ -116,13 +101,13 @@ View results: **GitHub → Actions → Cross-Platform Testing**
 
 **Triggers:**
 - Pull requests modifying:
-  - `cmd/jan-cli/**`
-  - `Makefile`
-  - Wrapper scripts (`jan-cli.sh`, `jan-cli.ps1`)
-  - Services or tests
+ - `cmd/jan-cli/**`
+ - `Makefile`
+ - Wrapper scripts (`jan-cli.sh`, `jan-cli.ps1`)
+ - Services or tests
 - Pushes to:
-  - `main` branch
-  - `feat/v2-config-refactor` branch
+ - `main` branch
+ - `feat/v2-config-refactor` branch
 
 **Test Matrix:**
 - **Ubuntu** (latest) - Full Docker integration tests
@@ -133,10 +118,10 @@ View results: **GitHub → Actions → Cross-Platform Testing**
 
 | Platform | Docker Support | Method | Notes |
 |----------|---------------|--------|-------|
-| **Ubuntu** | ✅ Full | Native | Pre-installed, most reliable |
-| **macOS** | ⚠️ Optional | Colima | Setup may fail, not critical |
-| **Windows** | ❌ Not available | N/A | Docker tests run on Ubuntu |
-| **Local Dev** | ✅ Full | Docker Desktop | All platforms supported |
+| **Ubuntu** | OK Full | Native | Pre-installed, most reliable |
+| **macOS** | WARNING Optional | Colima | Setup may fail, not critical |
+| **Windows** | [X] Not available | N/A | Docker tests run on Ubuntu |
+| **Local Dev** | OK Full | Docker Desktop | All platforms supported |
 
 **Why Ubuntu for Docker tests?**
 - Native Docker support (no setup time)
@@ -160,12 +145,12 @@ View results: **GitHub → Actions → Cross-Platform Testing**
 **Location:** `tests/test-unix.sh`
 
 **Features:**
-- ✅ 16 comprehensive tests
-- ✅ Color-coded output (green=pass, red=fail)
-- ✅ Automatic prerequisite checking (Go, Docker, Make)
-- ✅ Binary and config file verification
-- ✅ Detailed summary with system information
-- ✅ CI/CD compatible (exit code 0/1)
+- OK 16 comprehensive tests
+- OK Color-coded output (green=pass, red=fail)
+- OK Automatic prerequisite checking (Go, Docker, Make)
+- OK Binary and config file verification
+- OK Detailed summary with system information
+- OK CI/CD compatible (exit code 0/1)
 
 **Usage:**
 ```bash
@@ -181,7 +166,7 @@ chmod +x tests/test-unix.sh
 2. jan-cli wrapper: Executable permissions and functionality
 3. jan-cli commands: help, dev setup, config commands, service list, swagger
 4. Makefile targets: setup, build targets, clean-build
-5. Verification: .env file, config schemas, binaries, auto-rebuild
+5. Verification:.env file, config schemas, binaries, auto-rebuild
 
 ### Option 2: Manual Testing
 
@@ -233,25 +218,25 @@ make clean-build
 
 | Command | Windows | Linux | macOS | Notes |
 |---------|---------|-------|-------|-------|
-| `jan-cli --help` | ✅ | ✅ | ✅ | Shows all commands |
-| `jan-cli dev setup` | ✅ | ✅ | ✅ | Creates directories, networks, .env |
-| `jan-cli config generate` | ✅ | ✅ | ✅ | Generates schemas and defaults.yaml |
-| `jan-cli config validate` | ✅ | ✅ | ✅ | Validates YAML configuration |
-| `jan-cli config show` | ✅ | ✅ | ✅ | Displays merged configuration |
-| `jan-cli config export --format env` | ✅ | ✅ | ✅ | Exports as environment variables |
-| `jan-cli service list` | ✅ | ✅ | ✅ | Lists all services with ports |
-| `jan-cli swagger generate --service llm-api` | ✅ | ✅ | ✅ | Generates OpenAPI docs |
+| `jan-cli --help` | OK | OK | OK | Shows all commands |
+| `jan-cli dev setup` | OK | OK | OK | Creates directories, networks,.env |
+| `jan-cli config generate` | OK | OK | OK | Generates schemas and defaults.yaml |
+| `jan-cli config validate` | OK | OK | OK | Validates YAML configuration |
+| `jan-cli config show` | OK | OK | OK | Displays merged configuration |
+| `jan-cli config export --format env` | OK | OK | OK | Exports as environment variables |
+| `jan-cli service list` | OK | OK | OK | Lists all services with ports |
+| `jan-cli swagger generate --service llm-api` | OK | OK | OK | Generates OpenAPI docs |
 
 #### Makefile Targets (All Platforms)
 
 | Target | Windows | Linux | macOS | Notes |
 |--------|---------|-------|-------|-------|
-| `make setup` | ✅ | ✅ | ✅ | Delegates to jan-cli dev setup |
-| `make config-generate` | ✅ | ✅ | ✅ | Uses jan-cli config generate |
-| `make build-llm-api` | ✅ | ✅ | ✅ | Cross-platform build |
-| `make build-media-api` | ✅ | ✅ | ✅ | Cross-platform build |
-| `make build-mcp` | ✅ | ✅ | ✅ | Cross-platform build |
-| `make clean-build` | ✅ | ✅ | ✅ | Platform-specific cleanup |
+| `make setup` | OK | OK | OK | Delegates to jan-cli dev setup |
+| `make config-generate` | OK | OK | OK | Uses jan-cli config generate |
+| `make build-llm-api` | OK | OK | OK | Cross-platform build |
+| `make build-media-api` | OK | OK | OK | Cross-platform build |
+| `make build-mcp` | OK | OK | OK | Cross-platform build |
+| `make clean-build` | OK | OK | OK | Platform-specific cleanup |
 
 ---
 
@@ -330,11 +315,11 @@ colima start --cpu 4 --memory 8 --disk 100
 
 # For CI/CD (conservative settings)
 colima start \
-  --cpu 2 \
-  --memory 4 \
-  --disk 20 \
-  --vm-type=vz \
-  --mount-type=virtiofs
+ --cpu 2 \
+ --memory 4 \
+ --disk 20 \
+ --vm-type=vz \
+ --mount-type=virtiofs
 
 # Verify
 docker info
@@ -366,9 +351,9 @@ docker compose version
 build-llm-api:
 	@echo "Building LLM API..."
 ifeq ($(OS),Windows_NT)
-	@cd services/llm-api && go build -o bin/llm-api.exe ./cmd/server
+	@cd services/llm-api && go build -o bin/llm-api.exe./cmd/server
 else
-	@cd services/llm-api && go build -o bin/llm-api ./cmd/server
+	@cd services/llm-api && go build -o bin/llm-api./cmd/server
 endif
 ```
 
@@ -404,16 +389,16 @@ endif
 ```powershell
 $needsRebuild = $false
 Get-ChildItem -Path $CLIDir -Filter "*.go" -Recurse | ForEach-Object {
-    if ($_.LastWriteTime -gt $binaryTime) {
-        $needsRebuild = $true
-    }
+ if ($_.LastWriteTime -gt $binaryTime) {
+ $needsRebuild = $true
+ }
 }
 ```
 
 **Unix (jan-cli.sh):**
 ```bash
-if find "$CLI_DIR" -name "*.go" -type f -newer "$BINARY" | grep -q .; then
-    echo "Detected changes in source files. Rebuilding..."
+if find "$CLI_DIR" -name "*.go" -type f -newer "$BINARY" | grep -q.; then
+ echo "Detected changes in source files. Rebuilding..."
 fi
 ```
 
@@ -424,8 +409,8 @@ fi
 **Fix:** Platform detection in Go:
 
 ```go
-func execCommandSilent(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+func execCommandSilent(name string, args...string) error {
+	cmd:= exec.Command(name, args...)
 	return cmd.Run()
 }
 
@@ -444,10 +429,10 @@ if isWindows() {
 **Fix:** Made Docker checks optional in `cmd/jan-cli/cmd_dev.go`:
 
 ```go
-dockerAvailable := isDockerAvailable()
+dockerAvailable:= isDockerAvailable()
 if !dockerAvailable {
-	fmt.Println("⚠️  WARNING: Docker is not available")
-	fmt.Println("   Some features will be skipped")
+	fmt.Println("WARNING WARNING: Docker is not available")
+	fmt.Println(" Some features will be skipped")
 	// Continue with CLI-only setup
 }
 
@@ -479,8 +464,8 @@ sudo usermod -aG docker $USER
 # Then logout and login
 
 # macOS: Start Docker Desktop or Colima
-open -a Docker  # Docker Desktop
-colima start    # Colima
+open -a Docker # Docker Desktop
+colima start # Colima
 ```
 
 ### Go Not Found
@@ -577,7 +562,7 @@ After pushing:
 
 ## Summary
 
-### ✅ What Works
+### OK What Works
 
 - All core `jan-cli` commands on Windows, Linux, macOS
 - Makefile build targets (cross-platform)
@@ -586,7 +571,7 @@ After pushing:
 - Configuration management and validation
 - Service orchestration and health checks
 
-### ⚠️ Platform Limitations
+### WARNING Platform Limitations
 
 **Windows:**
 - Docker not available in GitHub Actions CI
@@ -600,13 +585,13 @@ After pushing:
 **Linux:**
 - Full compatibility, no known limitations
 
-### 📋 Testing Coverage
+### Docs Testing Coverage
 
-- ✅ CLI commands: All platforms
-- ✅ Build targets: All platforms
-- ✅ Docker integration: Linux (primary), macOS (secondary), Windows (local only)
-- ✅ Authentication: Full (Ubuntu CI)
-- ✅ API integration: Full (Ubuntu CI)
+- OK CLI commands: All platforms
+- OK Build targets: All platforms
+- OK Docker integration: Linux (primary), macOS (secondary), Windows (local only)
+- OK Authentication: Full (Ubuntu CI)
+- OK API integration: Full (Ubuntu CI)
 
 ---
 
@@ -620,8 +605,8 @@ After pushing:
 ---
 
 **Tested Platforms:**
-- ✅ Windows 11 PowerShell 5.1
-- ✅ Ubuntu 22.04+ (GitHub Actions)
-- ✅ macOS 14+ (GitHub Actions)
+- OK Windows 11 PowerShell 5.1
+- OK Ubuntu 22.04+ (GitHub Actions)
+- OK macOS 14+ (GitHub Actions)
 
 **CI/CD:** GitHub Actions workflow at `.github/workflows/cross-platform-test.yml`

@@ -5,37 +5,37 @@ The `mcp-tools` service now supports bridging to external MCP (Model Context Pro
 ## Architecture
 
 ```
-┌─────────────────┐
-│   AI Model/     │
-│   LLM Client    │
-└────────┬────────┘
-         │ MCP Request
-         ▼
-┌─────────────────────────────────────┐
-│      mcp-tools (Bridge Service)     │
-│  ┌───────────────────────────────┐  │
-│  │  Internal Tools (Serper)      │  │
-│  └───────────────────────────────┘  │
-│  ┌───────────────────────────────┐  │
-│  │  External Provider Bridges    │  │
-│  │  - Code Sandbox MCP           │  │
-│  │  - Playwright MCP             │  │
-│  │  - SearXNG (future)           │  │
-│  └───────────────────────────────┘  │
-└─────────────────────────────────────┘
-         │ Proxied MCP Calls
-         ▼
-┌──────────────────────────────────────┐
-│   External MCP Servers (separate)    │
-│  ┌────────────────────────────────┐  │
-│  │  code-sandbox-mcp:3000/mcp     │  │
-│  │  (Execute code in sandboxes)   │  │
-│  └────────────────────────────────┘  │
-│  ┌────────────────────────────────┐  │
-│  │  playwright-mcp:3000/mcp           │  │
-│  │  (Browser automation)          │  │
-│  └────────────────────────────────┘  │
-└──────────────────────────────────────┘
++-----------------+
+|   AI Model/     |
+|   LLM Client    |
++--------+--------+
+         | MCP Request
+         v
++-------------------------------------+
+|      mcp-tools (Bridge Service)     |
+|  +-------------------------------+  |
+|  |  Internal Tools (Serper)      |  |
+|  +-------------------------------+  |
+|  +-------------------------------+  |
+|  |  External Provider Bridges    |  |
+|  |  - Code Sandbox MCP           |  |
+|  |  - Playwright MCP             |  |
+|  |  - SearXNG (future)           |  |
+|  +-------------------------------+  |
++-------------------------------------+
+         | Proxied MCP Calls
+         v
++--------------------------------------+
+|   External MCP Servers (separate)    |
+|  +--------------------------------+  |
+|  |  code-sandbox-mcp:3000/mcp     |  |
+|  |  (Execute code in sandboxes)   |  |
+|  +--------------------------------+  |
+|  +--------------------------------+  |
+|  |  playwright-mcp:3000/mcp           |  |
+|  |  (Browser automation)          |  |
+|  +--------------------------------+  |
++--------------------------------------+
 ```
 
 ## Quick Start
@@ -159,19 +159,19 @@ mcp-tools:
 
 ### Initialization Flow
 
-1. **mcp-tools starts** → Loads `configs/mcp-providers.yml`
-2. **For each enabled provider** → Creates a Bridge instance
-3. **Bridge initialization** → Sends `initialize` MCP request to provider
-4. **Fetch tool list** → Calls `tools/list` on each provider
-5. **Register proxy tools** → Adds prefixed tools (e.g., `playwright_screenshot`) to main MCP server
+1. **mcp-tools starts** -> Loads `configs/mcp-providers.yml`
+2. **For each enabled provider** -> Creates a Bridge instance
+3. **Bridge initialization** -> Sends `initialize` MCP request to provider
+4. **Fetch tool list** -> Calls `tools/list` on each provider
+5. **Register proxy tools** -> Adds prefixed tools (e.g., `playwright_screenshot`) to main MCP server
 
 ### Tool Call Flow
 
-1. **Client calls mcp-tools** → `POST /v1/mcp` with `tools/call` method
-2. **mcp-tools identifies provider** → Based on tool name prefix
-3. **Forward to provider** → Bridge sends MCP `tools/call` request to external server
-4. **Provider executes** → Code Sandbox runs code, Playwright automates browser, etc.
-5. **Return result** → Bridge forwards response back to client
+1. **Client calls mcp-tools** -> `POST /v1/mcp` with `tools/call` method
+2. **mcp-tools identifies provider** -> Based on tool name prefix
+3. **Forward to provider** -> Bridge sends MCP `tools/call` request to external server
+4. **Provider executes** -> Code Sandbox runs code, Playwright automates browser, etc.
+5. **Return result** -> Bridge forwards response back to client
 
 ### Tool Naming Convention
 
@@ -292,10 +292,10 @@ The bridge supports these MCP protocol methods:
 | `tools/list` | List available tools |  Supported |
 | `tools/call` | Execute a tool |  Supported |
 | `ping` | Health check |  Supported |
-| `prompts/list` | List prompts | 🚧 TODO |
-| `prompts/call` | Execute prompt | 🚧 TODO |
-| `resources/list` | List resources | 🚧 TODO |
-| `resources/read` | Read resource | 🚧 TODO |
+| `prompts/list` | List prompts | Work TODO |
+| `prompts/call` | Execute prompt | Work TODO |
+| `resources/list` | List resources | Work TODO |
+| `resources/read` | Read resource | Work TODO |
 
 ## References
 

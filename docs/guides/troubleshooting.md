@@ -1,17 +1,16 @@
 # Troubleshooting Guide
 
-Solutions to common issues when developing and deploying Jan Server.
+Common problems and how to fix them.
 
-## Table of Contents
+## Quick Fixes
 
-1. [Service Startup Issues](#service-startup-issues)
-2. [Database Issues](#database-issues)
-3. [API Issues](#api-issues)
-4. [Authentication Issues](#authentication-issues)
-5. [Docker Issues](#docker-issues)
-6. [Kubernetes Issues](#kubernetes-issues)
-7. [Performance Issues](#performance-issues)
-8. [Getting Help](#getting-help)
+1. [Services won't start](#service-startup-issues)
+2. [Database errors](#database-issues)
+3. [API not responding](#api-issues)
+4. [Login problems](#authentication-issues)
+5. [Docker problems](#docker-issues)
+6. [Kubernetes problems](#kubernetes-issues)
+7. [Slow performance](#performance-issues)
 
 ## Service Startup Issues
 
@@ -22,51 +21,49 @@ Solutions to common issues when developing and deploying Jan Server.
 **Solutions**:
 ```bash
 # Find what's using the port (Linux/macOS)
-lsof -i :8080
-lsof -i :8082
-lsof -i :8285
-lsof -i :8091
+lsof -i:8080
+lsof -i:8082
+lsof -i:8285
+lsof -i:8091
 
 # Find what's using the port (Windows)
-netstat -ano | findstr :8080
+netstat -ano | findstr:8080
 taskkill /PID <PID> /F
 
-# Or change ports in .env
+# Or change ports in.env
 HTTP_PORT=8081
 RESPONSE_API_PORT=8083
 MEDIA_API_PORT=8286
 ```
 
-### Service Fails to Start
+### Service Crashes on Startup
 
-**Error**: Container exits immediately after starting
+**Problem**: Container starts then immediately stops
 
-**Debug Steps**:
+**How to diagnose**:
 ```bash
-# View logs
-make logs-llm-api
-make logs-response-api
-make logs-media-api
+# Check the logs
+make logs-api
 make logs-mcp
 
-# Or with docker directly
+# Or use Docker directly
 docker logs <container-id>
 ```
 
-**Common Causes**:
-- Missing environment variables
-- Database not ready
-- Incorrect configuration
+**Common causes**:
+- Missing required settings in .env file
+- Database isn't ready yet
+- Wrong configuration values
 
 **Fix**:
 ```bash
-# Verify all required env vars are set
-cat .env | grep -E "HTTP_PORT|DATABASE|API_KEY"
+# Check your .env file has all required values
+cat .env
 
-# Wait for database to be ready
+# Make sure database is running
 make health-check
 
-# Restart service
+# Restart the service
 docker restart <container-name>
 ```
 
@@ -101,8 +98,8 @@ docker exec llm-api nslookup media-api
 # Check if PostgreSQL is running
 docker ps | grep postgres
 
-# Check database credentials in .env
-cat .env | grep DATABASE
+# Check database credentials in.env
+cat.env | grep DATABASE
 
 # Test connection
 docker exec api-db psql -U jan_user -d jan_llm_api -c "SELECT 1"
@@ -135,7 +132,7 @@ make db-migrate
 ```bash
 # View migrations
 docker exec api-db psql -U jan_user -d jan_llm_api \
-  -c "SELECT name, version FROM schema_migrations"
+ -c "SELECT name, version FROM schema_migrations"
 
 # Reset database (WARNING: destroys data!)
 make db-reset
@@ -174,13 +171,13 @@ curl -X POST http://localhost:8000/llm/auth/guest-login
 
 # Use token in requests
 curl -H "Authorization: Bearer <token>" \
-  http://localhost:8000/v1/models
+ http://localhost:8000/v1/models
 
 # Check Keycloak is running
 docker ps | grep keycloak
 
 # Verify token is valid
-jwt decode <token>  # requires jwt-cli
+jwt decode <token> # requires jwt-cli
 ```
 
 ### 404 Not Found
@@ -190,14 +187,14 @@ jwt decode <token>  # requires jwt-cli
 **Check**:
 ```bash
 # Verify service is running and healthy
-curl http://localhost:8080/healthz      # LLM API
-curl http://localhost:8082/healthz      # Response API
-curl http://localhost:8285/healthz      # Media API
-curl http://localhost:8091/healthz      # MCP Tools
+curl http://localhost:8080/healthz # LLM API
+curl http://localhost:8082/healthz # Response API
+curl http://localhost:8285/healthz # Media API
+curl http://localhost:8091/healthz # MCP Tools
 
 # Verify Kong is routing correctly
-curl http://localhost:8000/                # Kong health
-curl http://localhost:8000/v1/models       # Via Kong
+curl http://localhost:8000/ # Kong health
+curl http://localhost:8000/v1/models # Via Kong
 ```
 
 ### Timeout Errors
@@ -214,7 +211,7 @@ MEDIA_REMOTE_FETCH_TIMEOUT=30s
 docker stats llm-api media-api response-api mcp-tools
 
 # Look for stuck processes
-make logs-llm-api | grep -i timeout
+make logs-api | grep -i timeout
 ```
 
 ### 500 Internal Server Error
@@ -271,7 +268,7 @@ jwt decode <token>
 
 # For user auth, check credentials
 curl -X POST http://localhost:8085/auth/realms/jan/protocol/openid-connect/token \
-  -d "client_id=llm-api&grant_type=password&username=admin&password=admin"
+ -d "client_id=llm-api&grant_type=password&username=admin&password=admin"
 ```
 
 ## Docker Issues
@@ -354,11 +351,11 @@ minikube image ls | grep jan
 
 # Rebuild image
 cd services/llm-api
-docker build -t jan/llm-api:latest .
+docker build -t jan/llm-api:latest.
 minikube image load jan/llm-api:latest
 
 # Or update imagePullPolicy in values.yaml
-imagePullPolicy: Never  # For minikube
+imagePullPolicy: Never # For minikube
 ```
 
 ### Service Not Accessible
@@ -419,10 +416,10 @@ docker logs llm-api | grep -i error
 ```bash
 # Check database performance
 docker exec api-db psql -U jan_user -d jan_llm_api \
-  -c "SELECT query, calls, total_time FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10"
+ -c "SELECT query, calls, total_time FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10"
 
 # Enable query logging
-# Set LOG_LEVEL=debug in .env
+# Set LOG_LEVEL=debug in.env
 
 # Use monitoring stack for traces
 make monitor-up
@@ -449,7 +446,7 @@ make health-check
 make logs > debug-logs.txt
 
 # Configuration (without secrets)
-cat .env | grep -v _KEY | grep -v _PASSWORD > config.txt
+cat.env | grep -v _KEY | grep -v _PASSWORD > config.txt
 
 # Docker system status
 docker system df

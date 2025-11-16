@@ -15,14 +15,14 @@ The plugin:
 
 ```
 Client Request (X-API-Key: sk_xxx)
-       ↓
+       v
 Kong Gateway (keycloak-apikey plugin)
-       ↓
+       v
 LLM-API (/auth/validate-api-key)
-       ↓
+       v
 Keycloak (validate hash in user attributes)
-       ↓
-Kong injects headers → Downstream Service
+       v
+Kong injects headers -> Downstream Service
 ```
 
 ## Configuration
@@ -62,33 +62,33 @@ This allows:
 ### 1. JWT Only
 ```
 Authorization: Bearer <jwt_token>
-→ JWT plugin validates
-→ keycloak-apikey plugin skips (no API key)
-→ Request authorized
+-> JWT plugin validates
+-> keycloak-apikey plugin skips (no API key)
+-> Request authorized
 ```
 
 ### 2. API Key Only
 ```
 X-API-Key: sk_abc123...
-→ JWT plugin skips (no JWT)
-→ keycloak-apikey plugin validates
-→ Request authorized
+-> JWT plugin skips (no JWT)
+-> keycloak-apikey plugin validates
+-> Request authorized
 ```
 
 ### 3. Both JWT + API Key
 ```
 Authorization: Bearer <jwt_token>
 X-API-Key: sk_abc123...
-→ JWT plugin validates first
-→ keycloak-apikey plugin validates API key
-→ Request authorized (both must be valid)
+-> JWT plugin validates first
+-> keycloak-apikey plugin validates API key
+-> Request authorized (both must be valid)
 ```
 
 ### 4. Neither
 ```
 (no auth headers)
-→ Both plugins skip
-→ request-termination plugin returns 401
+-> Both plugins skip
+-> request-termination plugin returns 401
 ```
 
 ## Local Development
@@ -150,11 +150,11 @@ The plugin calls `POST /auth/validate-api-key`:
 
 ## Security Features
 
-✅ **SHA-256 Hashed** - Keys stored as hash in Keycloak
-✅ **Show Once** - Plain key shown only at creation
-✅ **Hidden from Services** - `hide_credentials: true` removes header
-✅ **Centralized** - All services protected by single plugin
-✅ **Rate Limited** - Authenticated consumer enables per-user limits
+OK **SHA-256 Hashed** - Keys stored as hash in Keycloak
+OK **Show Once** - Plain key shown only at creation
+OK **Hidden from Services** - `hide_credentials: true` removes header
+OK **Centralized** - All services protected by single plugin
+OK **Rate Limited** - Authenticated consumer enables per-user limits
 
 ## Troubleshooting
 

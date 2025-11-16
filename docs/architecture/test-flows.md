@@ -8,14 +8,15 @@ This document provides visual representations of test flows, dependencies, and s
 
 ## Overview
 
-The jan-server test suite consists of 5 major Postman collections with 100+ individual test cases covering:
+The jan-server test suite consists of **6** Postman collections with 100+ individual test cases covering:
 - Authentication flows (guest, JWT, API keys)
 - Conversation management and projects
 - Tool orchestration via MCP
 - Media file operations
 - Response generation with tool calling
+- Full regression sweep (`test-all.postman.json`)
 
-All tests follow dependency chains: Health → Auth → Setup → Main Tests → Cleanup
+All tests follow dependency chains: Health -> Auth -> Setup -> Main Tests -> Cleanup
 
 For complete system architecture diagrams, see [System Design](system-design.md).
 
@@ -29,16 +30,16 @@ For complete system architecture diagrams, see [System Design](system-design.md)
 
 ```
 Health Checks
-    ↓
-Setup [Guest Token] → [Keycloak Admin] → [Create User] → [Set Password]
-    ↓
+ v
+Setup [Guest Token] -> [Keycloak Admin] -> [Create User] -> [Set Password]
+ v
 Main Tests (Parallel)
-├─ LLM API - Guest Token     [List Models, Get Details, Chat]
-├─ LLM API - User Token      [List Models]
-├─ Guest Login Flow          [Request Token, Upgrade Account]
-├─ JWT Login Flow            [Keycloak Auth, User Management]
-└─ API Key Flow              [Create, List, Use, Revoke]
-    ↓
++- LLM API - Guest Token [List Models, Get Details, Chat]
++- LLM API - User Token [List Models]
++- Guest Login Flow [Request Token, Upgrade Account]
++- JWT Login Flow [Keycloak Auth, User Management]
++- API Key Flow [Create, List, Use, Revoke]
+ v
 Cleanup [Delete User]
 ```
 
@@ -52,24 +53,24 @@ Cleanup [Delete User]
 
 ```
 Health & Auth Setup
-    ↓
+ v
 Model Discovery [List Available Models]
-    ↓
+ v
 Project Management (Parallel)
-├─ Create Projects (3 types)
-├─ CRUD Operations
-├─ List & Pagination
-├─ Update (Name, Instructions, Favorite, Archive)
-└─ Validation Tests
-    ↓
++- Create Projects (3 types)
++- CRUD Operations
++- List & Pagination
++- Update (Name, Instructions, Favorite, Archive)
++- Validation Tests
+ v
 Conversation Flow
-├─ Create Conversation
-├─ Verify Title
-├─ Start Chat (First Message)
-├─ Continue Chat (Follow-ups)
-├─ Get Details
-└─ List Conversations
-    ↓
++- Create Conversation
++- Verify Title
++- Start Chat (First Message)
++- Continue Chat (Follow-ups)
++- Get Details
++- List Conversations
+ v
 Cleanup [Delete All Resources]
 ```
 
@@ -83,15 +84,15 @@ Cleanup [Delete All Resources]
 
 ```
 Guest Authentication
-    ↓
+ v
 Tool Discovery [List Available Tools]
-    ↓
+ v
 Individual Tool Tests
-├─ Serper Search          [Query with domain filters]
-├─ Web Scraping           [Scrape URLs]
-├─ File Search Index      [Index & Query documents]
-├─ Python Execution       [Sandboxed code execution]
-└─ SearXNG Direct         [Meta-search integration]
++- Serper Search [Query with domain filters]
++- Web Scraping [Scrape URLs]
++- File Search Index [Index & Query documents]
++- Python Execution [Sandboxed code execution]
++- SearXNG Direct [Meta-search integration]
 ```
 
 **2 Flows, 8+ Test Cases**
@@ -104,17 +105,17 @@ Individual Tool Tests
 
 ```
 Authentication
-    ↓
+ v
 Upload Operations
-├─ Presigned URL Generation
-├─ Remote URL Ingestion
-├─ Data URL Ingestion
-└─ Deduplication Testing
-    ↓
++- Presigned URL Generation
++- Remote URL Ingestion
++- Data URL Ingestion
++- Deduplication Testing
+ v
 Resolution & Download
-├─ Payload Resolution (with jan_* placeholders)
-├─ Direct Stream Download
-└─ Error Cases (404, 400, 401)
++- Payload Resolution (with jan_* placeholders)
++- Direct Stream Download
++- Error Cases (404, 400, 401)
 ```
 
 **11 Test Cases**
@@ -127,23 +128,49 @@ Resolution & Download
 
 ```
 Authentication & Setup
-    ↓
+ v
 Health & Service Checks
-├─ Response API Health
-├─ MCP Tools Availability
-└─ LLM API Smoke Test
-    ↓
++- Response API Health
++- MCP Tools Availability
++- LLM API Smoke Test
+ v
 Response Generation (Parallel)
-├─ Basic Text Responses     [No tools]
-├─ Single Tool Calling      [Search integration]
-├─ Multi-Step Tool Chains   [Search + Scrape]
-├─ File Search Workflows    [Index + Query]
-├─ Conversation Continuity  [Multi-turn with context]
-├─ Error Handling           [Invalid tools, missing params]
-└─ Complex Scenarios        [Search + Scrape + Analyze]
++- Basic Text Responses [No tools]
++- Single Tool Calling [Search integration]
++- Multi-Step Tool Chains [Search + Scrape]
++- File Search Workflows [Index + Query]
++- Conversation Continuity [Multi-turn with context]
++- Error Handling [Invalid tools, missing params]
++- Complex Scenarios [Search + Scrape + Analyze]
 ```
 
 **9 Flows, 25+ Test Cases**
+
+---
+
+### 6. Full Regression (`test-all.postman.json`)
+
+**Focus**: Executes all other collections sequentially for CI/regression.
+
+```
+Bootstrap (Health + Auth)
+ v
+[Auth Collection]
+ v
+[Conversations Collection]
+ v
+[Media Collection]
+ v
+[MCP Tools Collection]
+ v
+[Response API Collection]
+ v
+Cleanup + Report
+```
+
+**1 Flow, 100+ Assertions**
+
+Use this collection when running `make test-all` or in CI pipelines-it reuses the shared environment file and preserves the dependency order shown above.
 
 ---
 
@@ -152,27 +179,27 @@ Response Generation (Parallel)
 ### Authentication Sequence
 
 ```
-Test Runner                  Services
-    │                            │
-    ├─→ Health Check         →   LLM API
-    ←─ 200 OK                ←─┤
-    │                            │
-    ├─→ Guest Login          →   /auth/guest-login
-    ←─ {access_token, ...}   ←─┤
-    │                            │
-    ├─→ Get Keycloak Token   →   Keycloak
-    ←─ {admin_token}         ←─┤
-    │                            │
-    ├─→ Create User          →   /admin/realms/{realm}/users
-    ←─ 201 Created           ←─┤
-    │                            │
-    ├─→ Set Password         →   /admin/realms/{realm}/users/{id}
-    ←─ 204 No Content        ←─┤
-    │                            │
-    ├─→ Obtain User Token    →   /realms/{realm}/token
-    ←─ {user_token}          ←─┤
-    │                            │
-    └─→ Main Tests           →   [Services]
+Test Runner Services
+ | |
+ +--> Health Check -> LLM API
+ <-- 200 OK <--+
+ | |
+ +--> Guest Login -> /auth/guest-login
+ <-- {access_token,...} <--+
+ | |
+ +--> Get Keycloak Token -> Keycloak
+ <-- {admin_token} <--+
+ | |
+ +--> Create User -> /admin/realms/{realm}/users
+ <-- 201 Created <--+
+ | |
+ +--> Set Password -> /admin/realms/{realm}/users/{id}
+ <-- 204 No Content <--+
+ | |
+ +--> Obtain User Token -> /realms/{realm}/token
+ <-- {user_token} <--+
+ | |
+ +--> Main Tests -> [Services]
 ```
 
 ---
@@ -180,29 +207,29 @@ Test Runner                  Services
 ### Conversation Flow
 
 ```
-Test Runner                  Services
-    │                            │
-    ├─→ Authenticate         →   LLM API
-    ←─ {access_token}        ←─┤
-    │                            │
-    ├─→ List Models          →   /v1/models
-    ←─ [{model}, ...]        ←─┤
-    │                            │
-    ├─→ Create Project       →   /v1/projects
-    ←─ {project_id}          ←─┤
-    │                            │
-    ├─→ Create Conversation  →   /v1/conversations
-    ←─ {conversation_id}     ←─┤
-    │                            │
-    ├─→ Start Chat           →   /v1/chat/completions
-    │   (with conversation)       (with conversation.id)
-    ←─ {message, choices}    ←─┤
-    │                            │
-    ├─→ Continue Chat        →   /v1/chat/completions
-    │   (with history)            (with prior messages)
-    ←─ {message, choices}    ←─┤
-    │                            │
-    └─→ Cleanup              →   [Delete Resources]
+Test Runner Services
+ | |
+ +--> Authenticate -> LLM API
+ <-- {access_token} <--+
+ | |
+ +--> List Models -> /v1/models
+ <-- [{model},...] <--+
+ | |
+ +--> Create Project -> /v1/projects
+ <-- {project_id} <--+
+ | |
+ +--> Create Conversation -> /v1/conversations
+ <-- {conversation_id} <--+
+ | |
+ +--> Start Chat -> /v1/chat/completions
+ | (with conversation) (with conversation.id)
+ <-- {message, choices} <--+
+ | |
+ +--> Continue Chat -> /v1/chat/completions
+ | (with history) (with prior messages)
+ <-- {message, choices} <--+
+ | |
+ +--> Cleanup -> [Delete Resources]
 ```
 
 ---
@@ -210,32 +237,32 @@ Test Runner                  Services
 ### Response API with Tool Calling
 
 ```
-Test Runner                  Services
-    │                            │
-    ├─→ Health Checks        →   Response API, MCP Tools
-    ←─ OK                    ←─┤
-    │                            │
-    ├─→ Create Response      →   Response API
-    │   (with tool config)        /responses (POST)
-    ←─ {response_id}         ←─┤
-    │                            │
-    │ Response Service Calls Tools (Internal)
-    │                        ┌→  MCP Tools
-    │                        │   /tools/call (search)
-    │                        │   ← {results}
-    │                        │
-    │                        ├→  MCP Tools
-    │                        │   /tools/call (scrape)
-    │                        │   ← {content}
-    │                        │
-    │                        └→  LLM API
-    │                            /v1/chat/completions
-    │                            ← {final_response}
-    │
-    ├─→ Get Response         →   /responses/{id}
-    ←─ {id, content, ...}    ←─┤
-    │                            │
-    └─→ Verify Results       ✓   Success
+Test Runner Services
+ | |
+ +--> Health Checks -> Response API, MCP Tools
+ <-- OK <--+
+ | |
+ +--> Create Response -> Response API
+ | (with tool config) /responses (POST)
+ <-- {response_id} <--+
+ | |
+ | Response Service Calls Tools (Internal)
+ | +-> MCP Tools
+ | | /tools/call (search)
+ | | <- {results}
+ | |
+ | +-> MCP Tools
+ | | /tools/call (scrape)
+ | | <- {content}
+ | |
+ | +-> LLM API
+ | /v1/chat/completions
+ | <- {final_response}
+ |
+ +--> Get Response -> /responses/{id}
+ <-- {id, content,...} <--+
+ | |
+ +--> Verify Results OK Success
 ```
 
 ---
@@ -243,29 +270,29 @@ Test Runner                  Services
 ### Media Processing Flow
 
 ```
-Test Runner                  Services
-    │                            │
-    ├─→ Authenticate         →   LLM API
-    ←─ {access_token}        ←─┤
-    │                            │
-    ├─→ Get Presigned URL    →   Media API
-    ├─→ /media/presign           (Client uploads to S3/Object Storage)
-    ←─ {presigned_url}       ←─┤
-    │                            │
-    ├─→ Ingest from URL      →   Media API
-    ├─→ /media/ingest (source=url)
-    ←─ {media_id, hash}      ←─┤
-    │                            │
-    ├─→ Test Deduplication   →   Media API
-    ├─→ /media/ingest (same url)
-    ←─ {media_id: same, deduped: true} ←─┤
-    │                            │
-    ├─→ Resolve Placeholder  →   Media API
-    ├─→ /media/resolve           ({{jan_media_{id}}})
-    ←─ {content: resolved_url} ←─┤
-    │                            │
-    └─→ Download             →   Media API
-        /media/{id}              (Stream binary data)
+Test Runner Services
+ | |
+ +--> Authenticate -> LLM API
+ <-- {access_token} <--+
+ | |
+ +--> Get Presigned URL -> Media API
+ +--> /media/presign (Client uploads to S3/Object Storage)
+ <-- {presigned_url} <--+
+ | |
+ +--> Ingest from URL -> Media API
+ +--> /media/ingest (source=url)
+ <-- {media_id, hash} <--+
+ | |
+ +--> Test Deduplication -> Media API
+ +--> /media/ingest (same url)
+ <-- {media_id: same, deduped: true} <--+
+ | |
+ +--> Resolve Placeholder -> Media API
+ +--> /media/resolve ({{jan_media_{id}}})
+ <-- {content: resolved_url} <--+
+ | |
+ +--> Download -> Media API
+ /media/{id} (Stream binary data)
 ```
 
 ---
@@ -273,30 +300,30 @@ Test Runner                  Services
 ### MCP Tools Workflow
 
 ```
-Test Runner                  Services
-    │                            │
-    ├─→ List Tools           →   MCP Tools
-    │                            /tools/list
-    ←─ {tools: [...]}        ←─┤
-    │                            │
-    ├─→ Execute Serper       →   MCP Tools
-    │   /tools/call (search)      (calls Serper API)
-    ←─ {results: [...]}      ←─┤
-    │                            │
-    ├─→ Execute Scrape       →   MCP Tools
-    │   /tools/call (scrape)      (fetches URL content)
-    ←─ {content}             ←─┤
-    │                            │
-    ├─→ Index Documents      →   MCP Tools
-    │   /tools/call (index)       (builds search index)
-    ←─ {indexed_id, chunks}  ←─┤
-    │                            │
-    ├─→ Query Index          →   MCP Tools
-    │   /tools/call (query)       (searches index)
-    ←─ {results: [...]}      ←─┤
-    │                            │
-    └─→ Execute Python       →   MCP Tools
-        /tools/call (exec)        (sandboxed execution)
+Test Runner Services
+ | |
+ +--> List Tools -> MCP Tools
+ | /tools/list
+ <-- {tools: [...]} <--+
+ | |
+ +--> Execute Serper -> MCP Tools
+ | /tools/call (search) (calls Serper API)
+ <-- {results: [...]} <--+
+ | |
+ +--> Execute Scrape -> MCP Tools
+ | /tools/call (scrape) (fetches URL content)
+ <-- {content} <--+
+ | |
+ +--> Index Documents -> MCP Tools
+ | /tools/call (index) (builds search index)
+ <-- {indexed_id, chunks} <--+
+ | |
+ +--> Query Index -> MCP Tools
+ | /tools/call (query) (searches index)
+ <-- {results: [...]} <--+
+ | |
+ +--> Execute Python -> MCP Tools
+ /tools/call (exec) (sandboxed execution)
 ```
 
 ---
@@ -304,40 +331,40 @@ Test Runner                  Services
 ## Test Dependency Matrix
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│              TEST DEPENDENCY HIERARCHY                         │
-└────────────────────────────────────────────────────────────────┘
++----------------------------------------------------------------+
+| TEST DEPENDENCY HIERARCHY |
++----------------------------------------------------------------+
 
 Level 0: Health Checks
-└─ Verify all services are running
++- Verify all services are running
 
 Level 1: Authentication
-├─ Guest Token Generation
-├─ Keycloak Integration
-├─ JWT Token Generation
-└─ API Key Management
++- Guest Token Generation
++- Keycloak Integration
++- JWT Token Generation
++- API Key Management
 
 Level 2: Resource Discovery & Setup
-├─ List Available Models
-├─ Create Projects
-├─ Create Conversations
-└─ Initialize Test Data
++- List Available Models
++- Create Projects
++- Create Conversations
++- Initialize Test Data
 
 Level 3: Functional Tests (Can run in parallel)
-├─ Conversation Operations
-├─ Chat Completions
-├─ Tool Calling & Orchestration
-├─ Media File Operations
-└─ Response Generation
++- Conversation Operations
++- Chat Completions
++- Tool Calling & Orchestration
++- Media File Operations
++- Response Generation
 
 Level 4: Integration Tests
-├─ Multi-step Workflows
-├─ Cross-service Interactions
-├─ Conversation Continuity
-└─ Tool Chaining
++- Multi-step Workflows
++- Cross-service Interactions
++- Conversation Continuity
++- Tool Chaining
 
 Level 5: Cleanup
-└─ Delete All Test Resources
++- Delete All Test Resources
 ```
 
 ---
@@ -345,34 +372,34 @@ Level 5: Cleanup
 ## Service Communication Map
 
 ```
-                     ┌──────────────────────┐
-                     │   TEST RUNNER        │
-                     │  (Newman/Postman)    │
-                     └──────────────────────┘
-                                │
-                ┌───────────────┼───────────────┐
-                │               │               │
-                ↓               ↓               ↓
-         ┌────────────┐   ┌──────────┐   ┌──────────┐
-         │   Kong     │   │Keycloak  │   │SearXNG   │
-         │ (Gateway)  │   │(Auth)    │   │(Search)  │
-         └──────┬─────┘   └────┬─────┘   └────┬─────┘
-                │              │              │
-     ┌──────────┼──────────────┼──────────────┘
-     │          │              │
-     ↓          ↓              ↓
-┌──────────┐ ┌──────────┐ ┌────────────┐
-│ LLM API  │←→ MCP Tools │ (external)  │
-│ :8080    │ │ :8091    │            │
-└────┬─────┘ └─────┬────┘ └────────────┘
-     │             │
-     │    ┌────────┘
-     │    ↓
-     ├→ Media API :8081
-     │
-     ├→ Response API :8082
-     │
-     └→ PostgreSQL (persistent storage)
+ +----------------------+
+ | TEST RUNNER |
+ | (Newman/Postman) |
+ +----------------------+
+ |
+ +---------------+---------------+
+ | | |
+ v v v
+ +------------+ +----------+ +----------+
+ | Kong | |Keycloak | |SearXNG |
+ | (Gateway) | |(Auth) | |(Search) |
+ +------+-----+ +----+-----+ +----+-----+
+ | | |
+ +----------+--------------+--------------+
+ | | |
+ v v v
++----------+ +----------+ +------------+
+| LLM API |<--> MCP Tools | (external) |
+|:8080 | |:8091 | |
++----+-----+ +-----+----+ +------------+
+ | |
+ | +--------+
+ | v
+ +-> Media API:8081
+ |
+ +-> Response API:8082
+ |
+ +-> PostgreSQL (persistent storage)
 ```
 
 ---
@@ -380,36 +407,36 @@ Level 5: Cleanup
 ## Test Data Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                  POSTMAN COLLECTION VARIABLES                  │
-│                                                                 │
-│  SETUP PHASE
-│  ├─ guest_access_token ← /auth/guest-login
-│  ├─ test_user_id ← /admin/realms/jan/users
-│  ├─ kc_admin_access_token ← /realms/master/token
-│  └─ model_id ← /v1/models (first item)
-│                                                                 │
-│  LLM API PHASE
-│  ├─ project_id_1,2,3 ← /v1/projects (POST)
-│  ├─ conversation_id ← /v1/conversations (POST)
-│  └─ conversation_title ← GET /v1/conversations/{id}
-│                                                                 │
-│  RESPONSE API PHASE
-│  ├─ response_id ← /responses (POST with tools)
-│  ├─ tool_result ← MCP /tools/call
-│  └─ response_content ← GET /responses/{id}
-│                                                                 │
-│  MEDIA API PHASE
-│  ├─ presigned_url ← /media/presign
-│  ├─ media_id ← /media/ingest
-│  └─ resolved_content ← /media/resolve
-│                                                                 │
-│  CLEANUP PHASE
-│  ├─ DELETE /v1/conversations/{id}
-│  ├─ DELETE /v1/projects/{id}
-│  └─ DELETE /users/{test_user_id}
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+| POSTMAN COLLECTION VARIABLES |
+| |
+| SETUP PHASE
+| +- guest_access_token <- /auth/guest-login
+| +- test_user_id <- /admin/realms/jan/users
+| +- kc_admin_access_token <- /realms/master/token
+| +- model_id <- /v1/models (first item)
+| |
+| LLM API PHASE
+| +- project_id_1,2,3 <- /v1/projects (POST)
+| +- conversation_id <- /v1/conversations (POST)
+| +- conversation_title <- GET /v1/conversations/{id}
+| |
+| RESPONSE API PHASE
+| +- response_id <- /responses (POST with tools)
+| +- tool_result <- MCP /tools/call
+| +- response_content <- GET /responses/{id}
+| |
+| MEDIA API PHASE
+| +- presigned_url <- /media/presign
+| +- media_id <- /media/ingest
+| +- resolved_content <- /media/resolve
+| |
+| CLEANUP PHASE
+| +- DELETE /v1/conversations/{id}
+| +- DELETE /v1/projects/{id}
+| +- DELETE /users/{test_user_id}
+| |
++-----------------------------------------------------------------+
 ```
 
 ---
@@ -417,20 +444,20 @@ Level 5: Cleanup
 ## Error Handling Architecture
 
 ```
-┌────────────────────────┬──────────────┬─────────────────────────┐
-│ Error Scenario         │ HTTP Status  │ Test Assertion          │
-├────────────────────────┼──────────────┼─────────────────────────┤
-│ Service Unavailable    │ 503          │ Retry or Fail Fast      │
-│ Invalid Token          │ 401          │ Verify Rejection        │
-│ Insufficient Perms     │ 403          │ Verify Denial           │
-│ Resource Not Found     │ 404          │ Expected for cleanup    │
-│ Invalid Input          │ 400 or 422   │ Validate Error Message  │
-│ Resource Conflict      │ 409          │ Handle Duplicate Create │
-│ Rate Limited           │ 429          │ Implement Backoff       │
-│ Internal Error         │ 500          │ Retry or Report         │
-│ Timeout                │ -            │ Extend Timeout          │
-│ Connection Refused     │ -            │ Ensure Service Running  │
-└────────────────────────┴──────────────┴─────────────────────────┘
++------------------------+--------------+-------------------------+
+| Error Scenario | HTTP Status | Test Assertion |
++------------------------+--------------+-------------------------+
+| Service Unavailable | 503 | Retry or Fail Fast |
+| Invalid Token | 401 | Verify Rejection |
+| Insufficient Perms | 403 | Verify Denial |
+| Resource Not Found | 404 | Expected for cleanup |
+| Invalid Input | 400 or 422 | Validate Error Message |
+| Resource Conflict | 409 | Handle Duplicate Create |
+| Rate Limited | 429 | Implement Backoff |
+| Internal Error | 500 | Retry or Report |
+| Timeout | - | Extend Timeout |
+| Connection Refused | - | Ensure Service Running |
++------------------------+--------------+-------------------------+
 ```
 
 ---
@@ -438,56 +465,56 @@ Level 5: Cleanup
 ## Workflow State Machine
 
 ```
-    START
-      │
-      ↓
-┌──────────────┐
-│Health Check  │──NO──→ FAIL (Service Down)
-└──────┬───────┘
-       │YES
-       ↓
-┌──────────────────┐
-│Authenticate      │──NO──→ FAIL (Auth Error)
-│(Get Token)       │
-└──────┬───────────┘
-       │YES
-       ↓
-┌──────────────────┐
-│Setup Resources   │──NO──→ FAIL (Setup Error)
-│(Projects, Docs)  │
-└──────┬───────────┘
-       │YES
-       ↓
-┌──────────────────────────────────────────┐
-│Execute Main Tests (Parallel/Serial)      │
-│• Conversations                           │
-│• Tool Calls                              │
-│• Media Operations                        │
-│• Error Scenarios                         │
-└──────┬───────────────────────────────────┘
-       │
-  ┌────┴──────┐
-  │YES    NO  │
-  ↓           ↓
-┌────────┐ ┌────────┐
-│CLEANUP │ │CLEANUP │
-│SUCCESS │ │& FAIL  │
-│ Tests  │ │ Tests  │
-└────┬───┘ └────┬───┘
-     │          │
-     └────┬─────┘
-          ↓
-┌──────────────────┐
-│Generate Report   │
-│• Pass/Fail       │
-│• Assertions      │
-│• Timing          │
-│• Coverage        │
-└──────┬───────────┘
-       ↓
-    ┌─────┐
-    │ END │
-    └─────┘
+ START
+ |
+ v
++--------------+
+|Health Check |--NO---> FAIL (Service Down)
++------+-------+
+ |YES
+ v
++------------------+
+|Authenticate |--NO---> FAIL (Auth Error)
+|(Get Token) |
++------+-----------+
+ |YES
+ v
++------------------+
+|Setup Resources |--NO---> FAIL (Setup Error)
+|(Projects, Docs) |
++------+-----------+
+ |YES
+ v
++------------------------------------------+
+|Execute Main Tests (Parallel/Serial) |
+|- Conversations |
+|- Tool Calls |
+|- Media Operations |
+|- Error Scenarios |
++------+-----------------------------------+
+ |
+ +----+------+
+ |YES NO |
+ v v
++--------+ +--------+
+|CLEANUP | |CLEANUP |
+|SUCCESS | |& FAIL |
+| Tests | | Tests |
++----+---+ +----+---+
+ | |
+ +----+-----+
+ v
++------------------+
+|Generate Report |
+|- Pass/Fail |
+|- Assertions |
+|- Timing |
+|- Coverage |
++------+-----------+
+ v
+ +-----+
+ | END |
+ +-----+
 ```
 
 ---
@@ -495,21 +522,21 @@ Level 5: Cleanup
 ## Test Execution Timeline
 
 ```
-Timeline:    0s              5s              10s             15s             20s
+Timeline: 0s 5s 10s 15s 20s
 
-Auth Flow:   [Health ]→[Auth ]→[Models ]→[Setup                    ]
-                                           ↓
-Conversations: ┏━━━━━━━━━━━━━━━━━[Project Mgmt                    ]
-               ┃                   ↓
-               ┃     [Conversation Create→Get→Chat→Continue       ]
-                                    ↓
-Media API:     ┃     [Ingest→Dedup→Resolve→Download  ]
-               ┃                   ↓
-Response API:  ┃     [Basic Response][Tool Call][Multi-step]
-               ┃                   ↓
-MCP Tools:     ┃     [Search][Scrape][IndexQuery][Python]
-               ┃
-Cleanup:       ┗━━━━━━━━━━━━━━━[Delete Resources]
+Auth Flow: [Health ]->[Auth ]->[Models ]->[Setup ]
+ v
+Conversations: +-----------------[Project Mgmt ]
+ | v
+ | [Conversation Create->Get->Chat->Continue ]
+ v
+Media API: | [Ingest->Dedup->Resolve->Download ]
+ | v
+Response API: | [Basic Response][Tool Call][Multi-step]
+ | v
+MCP Tools: | [Search][Scrape][IndexQuery][Python]
+ |
+Cleanup: +---------------[Delete Resources]
 
 Total: ~15-25 seconds (depends on service latency)
 ```
@@ -529,7 +556,7 @@ Total: ~15-25 seconds (depends on service latency)
 | Media Upload | 3 | URL, DataURL, Dedup |
 | Media Download | 2 | Streaming, Error Cases |
 | Error Handling | 5 | Invalid Input, Missing Auth |
-| **TOTAL** | **53+** | **Comprehensive** |
+| **TOTAL** | **100+** | **Comprehensive (see `test-all.postman.json`)** |
 
 ---
 
@@ -570,7 +597,10 @@ See [Data Flow](data-flow.md) for:
 
 ---
 
-**Last Updated**: November 11, 2025  
-**Document Type**: Architecture Reference - Testing  
-**Target Audience**: QA Engineers, Developers, DevOps  
+**Last Updated**: November 11, 2025 
+**Document Type**: Architecture Reference - Testing 
+**Target Audience**: QA Engineers, Developers, DevOps 
 **Maintainer**: Jan-Server Team
+
+
+

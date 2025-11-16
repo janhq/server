@@ -32,7 +32,7 @@
                 "CODE_SANDBOX_URL": "http://localhost:3000/mcp",
                 "PLAYWRIGHT_URL": "http://localhost:3000"
             },
-            "preLaunchTask": "Start All Services For LLM API Debug",
+            "preLaunchTask": "Start Dev-Full Stack",
             "console": "integratedTerminal",
             "dlvLoadConfig": {
                 "followPointers": true,
@@ -59,7 +59,7 @@
                 "LOG_FORMAT": "console",
                 "OTEL_EXPORTER_OTLP_ENDPOINT": ""
             },
-            "preLaunchTask": "Start All Services For MCP Debug",
+            "preLaunchTask": "Start Dev-Full Stack",
             "console": "integratedTerminal",
             "dlvLoadConfig": {
                 "followPointers": true,

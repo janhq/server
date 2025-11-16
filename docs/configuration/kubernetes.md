@@ -15,12 +15,12 @@ The K8s values generator maps Jan Server's unified configuration to Helm chart v
 
 ```
 config/defaults.yaml
-      ↓
-  Config Loader
-      ↓
-Values Generator ----→ values-development.yaml (1 replica, minimal resources)
-      ├-----------→ values-staging.yaml (2 replicas, moderate resources)
-      └-----------→ values-production.yaml (3 replicas, full resources, persistence)
+ v
+ Config Loader
+ v
+Values Generator -----> values-dev.yaml (1 replica, minimal resources)
+ +------------> values-prod.yaml (3 replicas, full resources, persistence)
+(Add values-staging.yaml as needed by copying values-dev.yaml)
 ```
 
 ## Generated Structure
@@ -28,12 +28,12 @@ Values Generator ----→ values-development.yaml (1 replica, minimal resources)
 ### Global Values
 ```yaml
 global:
-  environment: development
-  imagePullPolicy: IfNotPresent
-  labels:
-    app.kubernetes.io/name: jan-server
-    app.kubernetes.io/version: 1.0.0
-    app.kubernetes.io/environment: development
+ environment: development
+ imagePullPolicy: IfNotPresent
+ labels:
+ app.kubernetes.io/name: jan-server
+ app.kubernetes.io/version: 1.0.0
+ app.kubernetes.io/environment: development
 ```
 
 ### Service Values
@@ -47,72 +47,72 @@ Each service gets:
 Example:
 ```yaml
 services:
-  llm-api:
-    enabled: true
-    replicaCount: 2
-    image:
-      repository: jan-llm-api
-      tag: 1.0.0
-    service:
-      type: ClusterIP
-      port: 8080
-      targetPort: 8080
-    resources:
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-      requests:
-        cpu: 500m
-        memory: 512Mi
-    healthChecks:
-      livenessProbe:
-        httpGet:
-          path: /health
-          port: 8080
-        initialDelaySeconds: 30
-      readinessProbe:
-        httpGet:
-          path: /health
-          port: 8080
-        initialDelaySeconds: 10
-    configMap:
-      LOG_LEVEL: info
-      LOG_FORMAT: json
-    secrets:
-      - database-credentials
-      - keycloak-credentials
+ llm-api:
+ enabled: true
+ replicaCount: 2
+ image:
+ repository: jan-llm-api
+ tag: 1.0.0
+ service:
+ type: ClusterIP
+ port: 8080
+ targetPort: 8080
+ resources:
+ limits:
+ cpu: 1000m
+ memory: 1Gi
+ requests:
+ cpu: 500m
+ memory: 512Mi
+ healthChecks:
+ livenessProbe:
+ httpGet:
+ path: /health
+ port: 8080
+ initialDelaySeconds: 30
+ readinessProbe:
+ httpGet:
+ path: /health
+ port: 8080
+ initialDelaySeconds: 10
+ configMap:
+ LOG_LEVEL: info
+ LOG_FORMAT: json
+ secrets:
+ - database-credentials
+ - keycloak-credentials
 ```
 
 ### Infrastructure Values
 Database and auth configuration:
 ```yaml
 infrastructure:
-  database:
-    postgres:
-      enabled: true
-      host: api-db
-      port: 5432
-      database: jan_llm_api
-      user: jan_user
-      passwordSecret: postgres-password
-      maxConnections: 100
-      resources:
-        limits:
-          cpu: 2000m
-          memory: 2Gi
-      persistence:
-        enabled: true
-        size: 10Gi
-  auth:
-    keycloak:
-      enabled: true
-      baseURL: http://keycloak:8085
-      adminUser: admin
-      passwordSecret: keycloak-admin-password
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 1Gi
+ database:
+ postgres:
+ enabled: true
+ host: api-db
+ port: 5432
+ database: jan_llm_api
+ user: jan_user
+ passwordSecret: postgres-password
+ maxConnections: 100
+ resources:
+ limits:
+ cpu: 2000m
+ memory: 2Gi
+ persistence:
+ enabled: true
+ size: 10Gi
+ auth:
+ keycloak:
+ enabled: true
+ baseURL: http://keycloak:8085
+ adminUser: admin
+ passwordSecret: keycloak-admin-password
+ resources:
+ limits:
+ cpu: 1000m
+ memory: 1Gi
 ```
 
 ## Environment Profiles
@@ -147,25 +147,25 @@ infrastructure:
 package main
 
 import (
-    "context"
-    "github.com/janhq/jan-server/pkg/config"
-    "github.com/janhq/jan-server/pkg/config/k8s"
+ "context"
+ "github.com/janhq/jan-server/pkg/config"
+ "github.com/janhq/jan-server/pkg/config/k8s"
 )
 
 func main() {
-    // Load configuration
-    loader := config.NewConfigLoader("development", "config/defaults.yaml")
-    cfg, _ := loader.Load(context.Background())
+ // Load configuration
+ loader:= config.NewConfigLoader("development", "config/defaults.yaml")
+ cfg, _:= loader.Load(context.Background())
 
-    // Create generator
-    generator := k8s.NewValuesGenerator(cfg)
+ // Create generator
+ generator:= k8s.NewValuesGenerator(cfg)
 
-    // Generate base values
-    generator.GenerateToFile("values.yaml")
+ // Generate base values
+ generator.GenerateToFile("values.yaml")
 
-    // Generate with environment overrides
-    values, _ := generator.GenerateWithOverrides("production")
-    // Use values...
+ // Generate with environment overrides
+ values, _:= generator.GenerateWithOverrides("production")
+ // Use values...
 }
 ```
 
@@ -200,19 +200,19 @@ Generates:
 Secret references in values:
 ```yaml
 services:
-  llm-api:
-    secrets:
-      - database-credentials  # → maps to K8s Secret
-      - keycloak-credentials
+ llm-api:
+ secrets:
+ - database-credentials # -> maps to K8s Secret
+ - keycloak-credentials
 ```
 
 You must create K8s secrets separately:
 ```bash
 kubectl create secret generic database-credentials \
-  --from-literal=password=<db-password>
+ --from-literal=password=<db-password>
 
 kubectl create secret generic keycloak-credentials \
-  --from-literal=admin-password=<keycloak-password>
+ --from-literal=admin-password=<keycloak-password>
 ```
 
 Secrets are managed by DevOps via Kubernetes Secrets, HashiCorp Vault, or environment variables.
@@ -252,21 +252,21 @@ For production workloads:
 Generated probes:
 ```yaml
 livenessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
+ httpGet:
+ path: /health
+ port: 8080
+ initialDelaySeconds: 30
+ periodSeconds: 10
+ timeoutSeconds: 5
+ failureThreshold: 3
 readinessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 3
-  failureThreshold: 3
+ httpGet:
+ path: /health
+ port: 8080
+ initialDelaySeconds: 10
+ periodSeconds: 5
+ timeoutSeconds: 3
+ failureThreshold: 3
 ```
 
 ## Integration with Helm
@@ -279,7 +279,7 @@ go run pkg/config/k8s/examples/generate_values.go
 
 # Install chart with generated values
 helm install jan-server k8s/jan-server \
-  -f pkg/config/k8s/examples/values-prod.yaml
+ -f pkg/config/k8s/examples/values-prod.yaml
 ```
 
 ### Override Specific Values
@@ -287,23 +287,23 @@ helm install jan-server k8s/jan-server \
 ```bash
 # Use generated base + custom overrides
 helm install jan-server k8s/jan-server \
-  -f values-prod.yaml \
-  --set services.llm-api.replicaCount=5
+ -f values-prod.yaml \
+ --set services.llm-api.replicaCount=5
 ```
 
 ### CI/CD Integration
 
 ```yaml
-# .github/workflows/deploy.yml
+#.github/workflows/deploy.yml
 - name: Generate Helm Values
-  run: |
-    go run pkg/config/k8s/examples/generate_values.go
-    
+ run: |
+ go run pkg/config/k8s/examples/generate_values.go
+ 
 - name: Deploy to K8s
-  run: |
-    helm upgrade --install jan-server k8s/jan-server \
-      -f values-prod.yaml \
-      --namespace jan-server
+ run: |
+ helm upgrade --install jan-server k8s/jan-server \
+ -f values-prod.yaml \
+ --namespace jan-server
 ```
 
 ## Limitations

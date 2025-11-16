@@ -1,7 +1,5 @@
 basePath: /
 definitions:
-  handlers.JSONPayload:
-    type: object
   handlers.ingestResponse:
     properties:
       bytes:
@@ -16,11 +14,20 @@ definitions:
         type: string
     type: object
   handlers.resolveRequest:
+    properties:
+      payload:
+        items:
+          type: integer
+        type: array
+    required:
+    - payload
     type: object
   handlers.resolveResponse:
     properties:
       payload:
-        $ref: '#/definitions/handlers.JSONPayload'
+        items:
+          type: integer
+        type: array
     type: object
   media.IngestRequest:
     properties:
@@ -160,7 +167,7 @@ paths:
       consumes:
       - application/json
       description: Generates a presigned upload URL and reserves a jan_id. Client
-        uploads directly to S3 using the URL.
+        uploads directly to S3 using the URL. Not available for local storage.
       parameters:
       - description: Upload preparation request
         in: body
@@ -177,6 +184,12 @@ paths:
             $ref: '#/definitions/media.UploadPreparation'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "501":
+          description: Not Implemented
           schema:
             additionalProperties:
               type: string
@@ -214,6 +227,40 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Resolve jan_* placeholders
+      tags:
+      - media
+  /v1/media/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Accepts multipart file upload for local storage. Alternative to
+        presigned uploads.
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: User ID
+        in: formData
+        name: user_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ingestResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Direct file upload
       tags:
       - media
 securityDefinitions:
