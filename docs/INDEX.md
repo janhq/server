@@ -35,22 +35,27 @@ Development & Contributions
 │   ├── Hybrid Mode (Native + Docker)
 │   ├── Building Services
 │   └── Configuration Management
+├── [Jan CLI Guide](guides/jan-cli.md)
+│   ├── Installation & Setup
+│   ├── Configuration Management
+│   ├── Service Operations
+│   ├── Development Tools
+│   └── Cross-Platform Support
 ├── [Configuration System](configuration/README.md)
 │   ├── Type-Safe YAML + Env Vars
-│   ├── CLI Tools (jan-cli)
 │   ├── K8s Values Generation
 │   ├── Validation & Drift Detection
 │   └── Service Migration Guide
 ├── [Testing Guide](guides/testing.md)
-│   ├── Unit Testing
-│   ├── Integration Testing
-│   ├── Test Suites (6 total)
-│   └── Coverage Reporting
+│   ├── Cross-Platform Testing
+│   ├── CI/CD Testing
+│   ├── Local Testing Scripts
+│   └── Docker Integration Tests
 ├── [IDE Setup](guides/ide/)
 │   └── VS Code Debugging & Configuration
 ├── [Service Creation](guides/services-template.md)
 │   └── Build a new microservice
-├── [Service Overview](services.md)
+├── [Service Overview](architecture/services.md)
 │   └── Ports, dependencies, and data flow
 ├── [Troubleshooting](guides/troubleshooting.md)
 │   └── Common issues & solutions
@@ -186,6 +191,9 @@ Architecture & System Design
 #### ...test my changes
 → [Testing Guide](guides/testing.md)
 
+#### ...use the CLI tool
+→ [Jan CLI Guide](guides/jan-cli.md)
+
 #### ...use hybrid mode (native + Docker)
 → [Hybrid Mode Guide](guides/hybrid-mode.md)
 
@@ -247,7 +255,8 @@ Architecture & System Design
 
 ### Guides
 - 💻 [docs/guides/development.md](guides/development.md) - Local development
-- 🧪 [docs/guides/testing.md](guides/testing.md) - Testing procedures
+- 🧪 [docs/guides/testing.md](guides/testing.md) - Cross-platform testing
+- 🛠️ [docs/guides/jan-cli.md](guides/jan-cli.md) - Jan CLI tool guide
 - 🚀 [docs/guides/deployment.md](guides/deployment.md) - Deployment guide
 - 📊 [docs/guides/monitoring.md](guides/monitoring.md) - Observability stack
 - 🔄 [docs/guides/hybrid-mode.md](guides/hybrid-mode.md) - Native development

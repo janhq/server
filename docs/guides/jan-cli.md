@@ -1,8 +1,8 @@
 # Jan CLI - Complete Guide
 
-**Date:** November 15, 2025  
-**Status:** Production Ready ✅  
-**Version:** 1.0.0
+**Last Updated**: January 2025  
+**Status**: Production Ready ✅  
+**Version**: 1.0.0
 
 Complete documentation for the Jan CLI tool - installation, usage, commands, and technical details.
 
@@ -20,7 +20,6 @@ Complete documentation for the Jan CLI tool - installation, usage, commands, and
 8. [Troubleshooting](#troubleshooting)
 9. [Shell Completion](#shell-completion)
 10. [Technical Details](#technical-details)
-11. [Migration from jan-config](#migration-from-jan-config)
 
 ---
 
@@ -215,7 +214,7 @@ jan-cli (root)
 │   ├── validate    - Validate configuration files
 │   ├── export      - Export configuration
 │   ├── show        - Display configuration values
-│   └── k8s-values  - Generate Kubernetes Helm values
+│   └── generate    - Generate schemas and defaults
 ├── service (service operations)
 │   ├── list        - List all services
 │   ├── logs        - Show service logs
@@ -223,6 +222,8 @@ jan-cli (root)
 ├── dev (development tools)
 │   ├── setup       - Initialize development environment
 │   └── scaffold    - Generate new service from template
+├── swagger (API documentation)
+│   └── generate    - Generate OpenAPI documentation
 └── completion (shell completions)
     ├── bash
     ├── zsh
@@ -321,36 +322,21 @@ jan-cli config show llm-api --env production
 - `--format <format>` - Output format (yaml, json)
 - `--env <environment>` - Environment
 
-### config k8s-values
+### config generate
 
-Generate Kubernetes Helm values from configuration:
+Generate JSON schemas and defaults.yaml:
 
 ```bash
-# Generate for development
-jan-cli config k8s-values --env development
+# Generate all schemas
+jan-cli config generate
 
-# Generate for production
-jan-cli config k8s-values --env production
-
-# Save to file
-jan-cli config k8s-values --env production --output k8s/values-prod.yaml
-
-# Override values
-jan-cli config k8s-values --env production \
-  --set services.llm-api.replicas=3 \
-  --set services.llm-api.resources.limits.memory=4Gi
-```
-
-**Flags:**
-- `--env <environment>` - Environment (required)
-- `--output <file>` - Output file (default: stdout)
-- `--set <key=value>` - Override values
-
-**Use Case:**
-```bash
-# Generate and deploy
-jan-cli config k8s-values --env production > k8s/values-prod.yaml
-helm upgrade jan-server k8s/jan-server -f k8s/values-prod.yaml
+# Generates:
+# - config/schema/config.schema.json
+# - config/schema/inference.schema.json
+# - config/schema/infrastructure.schema.json
+# - config/schema/monitoring.schema.json
+# - config/schema/services.schema.json
+# - config/defaults.yaml
 ```
 
 ---
@@ -415,17 +401,22 @@ The `dev` subcommand provides development utilities.
 
 ### dev setup
 
-Initialize development environment (placeholder for future implementation):
+Initialize development environment:
 
 ```bash
 jan-cli dev setup
 ```
 
-**Planned functionality:**
-- Install dependencies
-- Setup local databases
-- Configure environment variables
-- Initialize development tools
+**What it does:**
+1. Creates required directories (logs/, tmp/, uploads/)
+2. Creates Docker networks (jan-network, jan-dev)
+3. Generates .env file from templates
+4. Optional: Sets up Docker environment
+
+**Features:**
+- ✅ Cross-platform (Windows, Linux, macOS)
+- ✅ Docker optional (warns if not available)
+- ✅ Idempotent (safe to run multiple times)
 
 ### dev scaffold
 
@@ -444,6 +435,30 @@ jan-cli dev scaffold worker-service --template worker --port 8999
 - Create boilerplate code
 - Setup configuration
 - Add to docker-compose
+
+---
+
+## Swagger Documentation
+
+The `swagger` subcommand generates OpenAPI documentation.
+
+### swagger generate
+
+Generate OpenAPI/Swagger documentation for services:
+
+```bash
+# Generate for specific service
+jan-cli swagger generate --service llm-api
+jan-cli swagger generate --service media-api
+
+# Generates:
+# - services/llm-api/docs/swagger.yaml
+# - services/llm-api/docs/swagger.json
+```
+
+**Requirements:**
+- Service must have Swagger annotations in code
+- `swag` CLI tool must be installed (`go install github.com/swaggo/swag/cmd/swag@latest`)
 
 ---
 
@@ -622,9 +637,12 @@ require (
 ```
 cmd/jan-cli/
 ├── main.go              # Root command and initialization
-├── cmd_config.go        # Configuration management (344 lines)
-├── cmd_service.go       # Service operations (80 lines)
-├── cmd_dev.go           # Development tools (70 lines)
+├── cmd_config.go        # Configuration management
+├── cmd_service.go       # Service operations
+├── cmd_dev.go           # Development tools
+├── cmd_setup.go         # Interactive setup wizard
+├── cmd_swagger.go       # Swagger generation
+├── utils.go             # Utility functions
 ├── go.mod               # Go module dependencies
 └── README.md            # CLI documentation
 ```
@@ -651,188 +669,64 @@ GOOS=windows GOARCH=amd64 go build -o jan-cli.exe
 
 **Binary Size:** ~10MB (includes dependencies)
 
-### Installation Scripts
+### Wrapper Scripts
 
-**PowerShell Script:** `scripts/install-cli.ps1`
-- Builds jan-cli binary
-- Creates `%USERPROFILE%\bin` if needed
-- Copies binary with proper path handling
-- Checks if bin directory is in PATH
-- Shows detailed PATH setup instructions
+**PowerShell (jan-cli.ps1):**
+- Auto-builds if binary missing or outdated
+- Checks all `*.go` files for changes
+- Supports all jan-cli commands
+- Works on Windows PowerShell 5.1+
 
-**Bash Script:** `scripts/install-cli.sh`
-- Builds jan-cli binary
-- Creates `~/bin` if needed
-- Copies and sets execute permissions
-- Checks if bin directory is in PATH
-- Shows detailed PATH setup instructions
+**Bash (jan-cli.sh):**
+- Auto-builds if binary missing or outdated
+- Checks all `*.go` files for changes
+- Supports all jan-cli commands
+- Works on Linux/macOS with Bash 3.2+
 
 ---
 
-## Migration from jan-config
+## Examples
 
-### Background
+### Configuration Workflow
 
-Jan CLI was refactored from `jan-config` to provide a more professional, extensible command-line interface.
-
-### Changes Made
-
-**Before (jan-config):**
 ```bash
-jan-config validate
-jan-config export
-jan-config show llm-api
+# Generate schemas and defaults
+jan-cli config generate
+
+# Validate configuration
+jan-cli config validate --env production
+
+# Export as environment variables
+jan-cli config export --format env --env production > .env.production
+
+# Show specific service config
+jan-cli config show llm-api --format json
 ```
 
-**After (jan-cli):**
+### Service Management
+
 ```bash
-jan-cli config validate
-jan-cli config export
-jan-cli config show llm-api
+# List all services
 jan-cli service list
+
+# View logs (future)
+jan-cli service logs llm-api --follow
+
+# Check health (future)
+jan-cli service status
+```
+
+### Development Setup
+
+```bash
+# Setup environment
 jan-cli dev setup
-```
 
-### Breaking Changes
+# Create new service (future)
+jan-cli dev scaffold worker-service --template worker
 
-**Direct CLI usage:**
-- All `jan-config` commands moved under `jan-cli config` subcommand
-- New subcommands added: `service`, `dev`
-- Global flags syntax remains the same
-
-**No breaking changes for:**
-- Make targets (`make config-generate`, `make config-test`, etc.)
-- CI/CD pipelines using Make
-- Documented workflows
-
-### Migration Steps
-
-**Update scripts:**
-```bash
-# Replace in scripts/automation
-- jan-config validate
-+ jan-cli config validate
-
-# Replace exports
-- eval $(jan-config export)
-+ eval $(jan-cli config export)
-```
-
-**Update CI/CD:**
-```yaml
-# Before
-- name: Validate config
-  run: jan-config validate
-
-# After
-- name: Validate config
-  run: jan-cli config validate
-```
-
-**Update documentation:**
-- Update command examples
-- Update integration guides
-- Update troubleshooting docs
-
-### Features Preserved
-
-All original `jan-config` functionality is preserved:
-
-✅ Configuration file validation  
-✅ Multiple export formats (env, docker-env, json, yaml)  
-✅ Configuration display with path navigation  
-✅ Kubernetes Helm values generation  
-
-### New Features Added
-
-🎉 Service operations (list, logs, status)  
-🎉 Development tools (setup, scaffold)  
-🎉 Auto-completion for all shells  
-🎉 Professional help text  
-🎉 Extensible architecture  
-
----
-
-## FAQ
-
-### Q: Do I need to install globally?
-
-**A:** No, you can use wrapper scripts (`./jan-cli.sh` or `.\jan-cli.ps1`) from the project root without installation.
-
-### Q: Can I install to a different location?
-
-**A:** Yes, but you'll need to modify `scripts/install-cli.ps1` or `scripts/install-cli.sh` to change the installation path. The default is `~/bin` for Unix and `%USERPROFILE%\bin` for Windows.
-
-### Q: Will this conflict with other tools?
-
-**A:** The command is named `jan-cli` which is unlikely to conflict with existing tools. If you have a naming conflict, you can create an alias with a different name.
-
-### Q: How do I update the CLI after code changes?
-
-**A:** Run `make cli-install` again. It rebuilds and reinstalls the binary.
-
-### Q: Can I use this in CI/CD?
-
-**A:** Yes! Use wrapper scripts in CI/CD:
-```yaml
-- name: Validate config
-  run: ./jan-cli.sh config validate
-```
-
-Or install globally:
-```yaml
-- name: Install CLI
-  run: make cli-install && export PATH="$PATH:$HOME/bin"
-
-- name: Validate
-  run: jan-cli config validate
-```
-
-### Q: Why does `make cli-install` use PowerShell on Windows?
-
-**A:** Make on Windows typically uses `sh` shell, which has limited Windows path handling. Using PowerShell ensures proper path handling with `%USERPROFILE%` and backslashes.
-
-### Q: How do I uninstall?
-
-**A:** Remove the binary:
-```bash
-# Linux/macOS
-rm ~/bin/jan-cli
-
-# Windows
-Remove-Item $env:USERPROFILE\bin\jan-cli.exe
-```
-
-Then remove the PATH export from your shell profile.
-
----
-
-## Upgrading
-
-### Update to Latest Version
-
-After pulling latest code:
-
-```bash
-# Reinstall
-make cli-install
-```
-
-This rebuilds the binary with latest changes and reinstalls it.
-
-### Check for Updates
-
-```bash
-# Pull latest code
-git pull
-
-# Check if rebuild needed
-cd cmd/jan-cli
-go mod tidy
-
-# Reinstall
-cd ../..
-make cli-install
+# Generate API documentation
+jan-cli swagger generate --service llm-api
 ```
 
 ---
@@ -862,49 +756,6 @@ make cli-install
 
 ---
 
-## Examples
-
-### Configuration Workflow
-
-```bash
-# Validate before deploying
-jan-cli config validate --env production
-
-# Export as environment variables
-jan-cli config export --format env --env production > .env.production
-
-# Show specific service config
-jan-cli config show llm-api --format json
-
-# Generate Kubernetes values
-jan-cli config k8s-values --env production --output k8s/values-prod.yaml
-```
-
-### Service Management
-
-```bash
-# List all services
-jan-cli service list
-
-# View logs (future)
-jan-cli service logs llm-api --follow
-
-# Check health (future)
-jan-cli service status
-```
-
-### Development Setup
-
-```bash
-# Setup environment (future)
-jan-cli dev setup
-
-# Create new service (future)
-jan-cli dev scaffold worker-service --template worker
-```
-
----
-
 ## Summary
 
 **Quick Reference:**
@@ -919,15 +770,24 @@ jan-cli dev scaffold worker-service --template worker
 3. Use `jan-cli` from anywhere
 4. Run `make cli-install` again after updates
 
-**Documentation:**
-- **Full CLI Docs:** [cmd/jan-cli/README.md](../../cmd/jan-cli/README.md)
-- **Configuration Guide:** [README.md](./README.md)
-- **Development Guide:** [../guides/development.md](../guides/development.md)
+**Key Commands:**
+- `jan-cli config validate` - Validate configuration
+- `jan-cli config generate` - Generate schemas
+- `jan-cli service list` - List services
+- `jan-cli dev setup` - Setup environment
+- `jan-cli swagger generate --service <name>` - Generate API docs
 
 ---
 
-**Status:** Production Ready  
-**Version:** 1.0.0  
-**Last Updated:** November 15, 2025
+## Related Documentation
 
-For issues or questions, see the [troubleshooting section](#troubleshooting) or check the main configuration documentation.
+- [Testing Guide](testing.md) - Cross-platform testing procedures
+- [Configuration System](../configuration/README.md) - Configuration management
+- [Development Guide](development.md) - Local development setup
+- [Architecture Overview](../architecture/README.md) - System design
+
+---
+
+**Status:** Production Ready ✅  
+**Version:** 1.0.0  
+**Cross-Platform:** Windows, Linux, macOS

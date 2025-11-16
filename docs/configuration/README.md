@@ -61,11 +61,15 @@ jan-cli config export > effective-config.yaml
 # Show specific service config
 jan-cli config show llm-api
 
-# Generate Kubernetes values
-jan-cli config k8s-values --env production > k8s/values-prod.yaml
+# Generate configuration files
+jan-cli config generate
 ```
 
-## Documentation
+**For complete jan-cli documentation, see [Jan CLI Guide](../guides/jan-cli.md)**
+
+## Documentation Structure
+
+This directory contains configuration system implementation details:
 
 | Document | Description |
 |----------|-------------|
@@ -74,6 +78,10 @@ jan-cli config k8s-values --env production > k8s/values-prod.yaml
 | [docker-compose-generation.md](docker-compose-generation.md) | Docker Compose integration |
 | [k8s-values-generation.md](k8s-values-generation.md) | Kubernetes Helm values generation |
 | [service-migration-strategy.md](service-migration-strategy.md) | Migrating services to new config system |
+
+**For user-facing documentation:**
+- **[Jan CLI Guide](../guides/jan-cli.md)** - Command-line tool for configuration management
+- **[Testing Guide](../guides/testing.md)** - Cross-platform testing procedures
 
 ## Configuration Files
 
