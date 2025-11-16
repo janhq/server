@@ -188,7 +188,7 @@ config-help:
 	@echo "  1. Update pkg/config/types.go with your configuration changes"
 	@echo "  2. Run 'make config-generate' to regenerate all files"
 	@echo "  3. Run 'make config-test' to verify changes"
-	@echo "  4. Use 'make config-drift-check' in CI to prevent drift"
+	@echo "  4. Use 'make config-drift-check' in CI to prevent drift  "
 
 # --- CLI Tool ---
 
