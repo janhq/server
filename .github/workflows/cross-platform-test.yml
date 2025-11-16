@@ -55,14 +55,13 @@ jobs:
           brew install docker colima
           
           # Start Colima with conservative settings for GitHub Actions
-          # GitHub Actions macOS runners have limited resources
+          # Use native ARM64 architecture (macos-latest runners are ARM64)
           colima start \
             --cpu 2 \
             --memory 4 \
             --disk 20 \
             --vm-type=vz \
-            --mount-type=virtiofs \
-            --arch x86_64
+            --mount-type=virtiofs
           
           # Wait for Docker to be ready with longer timeout
           echo "Waiting for Docker to be ready..."

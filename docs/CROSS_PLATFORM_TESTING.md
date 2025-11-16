@@ -322,7 +322,7 @@ docker compose version
 - `--disk 20/100`: Disk space in GB (20 for CI, 100+ for local)
 - `--vm-type=vz`: Use Virtualization.framework (more stable on macOS)
 - `--mount-type=virtiofs`: Better file sharing performance
-- `--arch x86_64`: Ensure compatibility with runners
+- **Note**: No `--arch` flag needed - uses native architecture (ARM64 on M1/M2/M3 Macs, x86_64 on Intel)
 
 **Our CI/CD uses Colima** because:
 - ✅ Free and open source
