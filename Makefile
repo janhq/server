@@ -37,8 +37,8 @@
 #   8. HEALTH CHECKS             - Service health validation
 #
 # Documentation:
-#   📖 docs/guides/development.md - Complete development guide
-#   📖 README.md                  - Project overview and quick reference
+#   docs/guides/development.md - Complete development guide
+#   README.md                  - Project overview and quick reference
 #
 # ============================================================================================================
 # VARIABLES
