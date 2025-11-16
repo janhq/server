@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/janhq/jan-server/pkg/config/codegen"
 )
 
 // TestConfigDrift verifies that generated configuration files match the source Go structs.
@@ -19,18 +21,26 @@ func TestConfigDrift(t *testing.T) {
 
 	// Run config generation
 	t.Log("Regenerating configuration files...")
-	cmd := exec.Command("go", "run", "./cmd/config-generate/main.go", "-output", "config")
-	cmd.Dir = projectRoot
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to generate config: %v\nOutput: %s", err, output)
+	configDir := filepath.Join(projectRoot, "config")
+
+	// Generate JSON schemas
+	schemaDir := filepath.Join(configDir, "schema")
+	if err := codegen.GenerateJSONSchema(schemaDir); err != nil {
+		t.Fatalf("Failed to generate JSON schemas: %v", err)
 	}
-	t.Logf("Generation output: %s", output)
+
+	// Generate YAML defaults
+	defaultsPath := filepath.Join(configDir, "defaults.yaml")
+	if err := codegen.GenerateDefaultsYAML(defaultsPath); err != nil {
+		t.Fatalf("Failed to generate YAML defaults: %v", err)
+	}
+
+	t.Log("Configuration files regenerated successfully")
 
 	// Check for git differences
-	cmd = exec.Command("git", "diff", "--exit-code", "config/schema", "config/defaults.yaml")
+	cmd := exec.Command("git", "diff", "--exit-code", "config/schema", "config/defaults.yaml")
 	cmd.Dir = projectRoot
-	output, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 
 	if err != nil {
 		t.Errorf("Configuration drift detected!\n\n"+

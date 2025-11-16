@@ -166,6 +166,77 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/callback": {
+            "get": {
+                "description": "Handles the OAuth2 callback from Keycloak, exchanges authorization code for JWT tokens",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Handle Keycloak OAuth2 callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code from Keycloak",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "State parameter for CSRF protection",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JWT tokens",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "access_token": {
+                                    "type": "string"
+                                },
+                                "expires_in": {
+                                    "type": "integer"
+                                },
+                                "refresh_token": {
+                                    "type": "string"
+                                },
+                                "token_type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing code or state",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid state parameter",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to exchange code for tokens",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/guest-login": {
             "post": {
                 "description": "Creates a temporary guest user account and returns JWT tokens. Guest users have limited access and can be upgraded to full accounts later.",
@@ -188,6 +259,51 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error - failed to create guest user",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "get": {
+                "description": "Returns the Keycloak authorization URL for frontend to redirect users. Supports OAuth2 authorization code flow with PKCE.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Initiate Keycloak OAuth2 login",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "URL to redirect after successful login",
+                        "name": "redirect_url",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Authorization URL and state parameter",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "authorization_url": {
+                                    "type": "string"
+                                },
+                                "state": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to initiate login",
                         "schema": {
                             "$ref": "#/definitions/responses.ErrorResponse"
                         }
@@ -276,7 +392,7 @@ const docTemplate = `{
             }
         },
         "/auth/refresh-token": {
-            "get": {
+            "post": {
                 "description": "Exchanges a valid refresh token for a new access token. Refresh token must be provided in Authorization header or refresh_token cookie.",
                 "consumes": [
                     "application/json"
@@ -290,10 +406,12 @@ const docTemplate = `{
                 "summary": "Refresh access token",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer refresh_token",
-                        "name": "Authorization",
-                        "in": "header"
+                        "description": "Refresh token (can also be in Authorization header)",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -311,6 +429,62 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/revoke": {
+            "post": {
+                "description": "Revokes a refresh token to invalidate it",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Revoke Keycloak refresh token",
+                "parameters": [
+                    {
+                        "description": "Token to revoke",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "refresh_token": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token revoked successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Keycloak OAuth is not configured",
                         "schema": {
                             "$ref": "#/definitions/responses.ErrorResponse"
                         }
@@ -368,6 +542,58 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/validate": {
+            "post": {
+                "description": "Validates an access token against Keycloak's userinfo endpoint",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Validate Keycloak access token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token is valid with user information",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "user_info": {
+                                    "type": "object"
+                                },
+                                "valid": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or expired token",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Keycloak OAuth is not configured",
                         "schema": {
                             "$ref": "#/definitions/responses.ErrorResponse"
                         }
@@ -3181,6 +3407,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "project_id": {
+                    "type": "string"
+                },
                 "referrer": {
                     "type": "string"
                 },
@@ -3299,6 +3528,9 @@ const docTemplate = `{
                     }
                 },
                 "object": {
+                    "type": "string"
+                },
+                "project_id": {
                     "type": "string"
                 },
                 "referrer": {

@@ -335,7 +335,7 @@ type VLLMConfig struct {
 	Enabled bool `yaml:"enabled" json:"enabled" env:"VLLM_ENABLED" envDefault:"true" description:"Enable vLLM inference"`
 
 	// vLLM port
-	Port int `yaml:"port" json:"port" env:"VLLM_PORT" envDefault:"8001" jsonschema:"minimum=1,maximum=65535" description:"vLLM HTTP port"`
+	Port int `yaml:"port" json:"port" env:"VLLM_PORT" envDefault:"8101" jsonschema:"minimum=1,maximum=65535" description:"vLLM HTTP port"`
 
 	// Model to load
 	Model string `yaml:"model" json:"model" env:"VLLM_MODEL" envDefault:"Qwen/Qwen2.5-0.5B-Instruct" description:"vLLM model name"`

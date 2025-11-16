@@ -697,6 +697,8 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      project_id:
+        type: string
       referrer:
         type: string
       title:
@@ -774,6 +776,8 @@ definitions:
           type: string
         type: object
       object:
+        type: string
+      project_id:
         type: string
       referrer:
         type: string
@@ -1776,6 +1780,54 @@ paths:
       summary: Delete API key
       tags:
       - Authentication API
+  /auth/callback:
+    get:
+      consumes:
+      - application/json
+      description: Handles the OAuth2 callback from Keycloak, exchanges authorization
+        code for JWT tokens
+      parameters:
+      - description: Authorization code from Keycloak
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State parameter for CSRF protection
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT tokens
+          schema:
+            properties:
+              access_token:
+                type: string
+              expires_in:
+                type: integer
+              refresh_token:
+                type: string
+              token_type:
+                type: string
+            type: object
+        "400":
+          description: Missing code or state
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Invalid state parameter
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to exchange code for tokens
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Handle Keycloak OAuth2 callback
+      tags:
+      - Authentication API
   /auth/guest-login:
     post:
       consumes:
@@ -1794,6 +1846,36 @@ paths:
           schema:
             $ref: '#/definitions/responses.ErrorResponse'
       summary: Create guest user account
+      tags:
+      - Authentication API
+  /auth/login:
+    get:
+      consumes:
+      - application/json
+      description: Returns the Keycloak authorization URL for frontend to redirect
+        users. Supports OAuth2 authorization code flow with PKCE.
+      parameters:
+      - description: URL to redirect after successful login
+        in: query
+        name: redirect_url
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authorization URL and state parameter
+          schema:
+            properties:
+              authorization_url:
+                type: string
+              state:
+                type: string
+            type: object
+        "500":
+          description: Failed to initiate login
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Initiate Keycloak OAuth2 login
       tags:
       - Authentication API
   /auth/logout:
@@ -1849,16 +1931,17 @@ paths:
       tags:
       - Authentication API
   /auth/refresh-token:
-    get:
+    post:
       consumes:
       - application/json
       description: Exchanges a valid refresh token for a new access token. Refresh
         token must be provided in Authorization header or refresh_token cookie.
       parameters:
-      - description: Bearer refresh_token
-        in: header
-        name: Authorization
-        type: string
+      - description: Refresh token (can also be in Authorization header)
+        in: body
+        name: refresh_token
+        schema:
+          type: string
       produces:
       - application/json
       responses:
@@ -1875,6 +1958,42 @@ paths:
           schema:
             $ref: '#/definitions/responses.ErrorResponse'
       summary: Refresh access token
+      tags:
+      - Authentication API
+  /auth/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Revokes a refresh token to invalidate it
+      parameters:
+      - description: Token to revoke
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            refresh_token:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token revoked successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Keycloak OAuth is not configured
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Revoke Keycloak refresh token
       tags:
       - Authentication API
   /auth/upgrade:
@@ -1912,6 +2031,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Upgrade guest to permanent account
+      tags:
+      - Authentication API
+  /auth/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validates an access token against Keycloak's userinfo endpoint
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token is valid with user information
+          schema:
+            properties:
+              user_info:
+                type: object
+              valid:
+                type: boolean
+            type: object
+        "401":
+          description: Invalid or expired token
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Keycloak OAuth is not configured
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Validate Keycloak access token
       tags:
       - Authentication API
   /auth/validate-api-key:

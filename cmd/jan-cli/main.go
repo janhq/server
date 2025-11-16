@@ -24,6 +24,9 @@ var rootCmd = &cobra.Command{
 It provides tools for configuration management, service operations,
 database management, deployment, and development workflows.
 
+Quick Start:
+  jan-cli setup-and-run          # Interactive setup and start all services
+
 Examples:
   # Configuration management
   jan-cli config validate
@@ -43,6 +46,9 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(serviceCmd)
 	rootCmd.AddCommand(devCmd)
+	rootCmd.AddCommand(swaggerCmd)
+	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(setupAndRunCmd)
 
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 	rootCmd.PersistentFlags().String("config-dir", "config", "Configuration directory")

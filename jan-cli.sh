@@ -8,8 +8,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="${SCRIPT_DIR}/cmd/jan-cli"
 CLI_BINARY="${CLI_DIR}/jan-cli"
 
-# Build if binary doesn't exist or source is newer
-if [ ! -f "${CLI_BINARY}" ] || [ "${CLI_DIR}/main.go" -nt "${CLI_BINARY}" ]; then
+# Build if binary doesn't exist or any .go source is newer
+needs_build=false
+if [ ! -f "${CLI_BINARY}" ]; then
+    needs_build=true
+else
+    # Check if any .go file is newer than the binary
+    while IFS= read -r -d '' gofile; do
+        if [ "$gofile" -nt "${CLI_BINARY}" ]; then
+            needs_build=true
+            break
+        fi
+    done < <(find "${CLI_DIR}" -maxdepth 1 -name "*.go" -print0)
+fi
+
+if [ "$needs_build" = true ]; then
     echo "Building jan-cli..." >&2
     cd "${CLI_DIR}"
     go build -o jan-cli .

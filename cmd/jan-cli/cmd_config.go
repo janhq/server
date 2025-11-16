@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/janhq/jan-server/pkg/config/codegen"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -15,6 +16,13 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Configuration management commands",
 	Long:  `Manage Jan Server configuration files, validate, export, and inspect config values.`,
+}
+
+var configGenerateCmd = &cobra.Command{
+	Use:   "generate",
+	Short: "Generate configuration files from Go structs",
+	Long:  `Generate JSON Schema and YAML defaults from Go struct definitions in pkg/config/types.go.`,
+	RunE:  runConfigGenerate,
 }
 
 var configValidateCmd = &cobra.Command{
@@ -46,10 +54,16 @@ var configK8sCmd = &cobra.Command{
 }
 
 func init() {
+	configCmd.AddCommand(configGenerateCmd)
 	configCmd.AddCommand(configValidateCmd)
 	configCmd.AddCommand(configExportCmd)
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configK8sCmd)
+
+	// generate flags
+	configGenerateCmd.Flags().StringP("output", "o", "config", "Output directory for generated files")
+	configGenerateCmd.Flags().Bool("schema-only", false, "Generate only JSON schemas")
+	configGenerateCmd.Flags().Bool("yaml-only", false, "Generate only YAML defaults")
 
 	// validate flags
 	configValidateCmd.Flags().StringP("file", "f", "config/defaults.yaml", "Config file to validate")
@@ -71,6 +85,39 @@ func init() {
 	configK8sCmd.Flags().StringP("env", "e", "development", "Environment (development, production, etc.)")
 	configK8sCmd.Flags().StringP("output", "o", "", "Output file (default: stdout)")
 	configK8sCmd.Flags().StringSlice("set", []string{}, "Override values (key=value)")
+}
+
+func runConfigGenerate(cmd *cobra.Command, args []string) error {
+	outputDir, _ := cmd.Flags().GetString("output")
+	schemaOnly, _ := cmd.Flags().GetBool("schema-only")
+	yamlOnly, _ := cmd.Flags().GetBool("yaml-only")
+
+	fmt.Println("Starting configuration code generation...")
+
+	// Determine what to generate
+	generateSchema := !yamlOnly
+	generateYAML := !schemaOnly
+
+	// Generate JSON Schema
+	if generateSchema {
+		schemaDir := filepath.Join(outputDir, "schema")
+		fmt.Printf("Generating JSON Schema files in %s...\n", schemaDir)
+		if err := codegen.GenerateJSONSchema(schemaDir); err != nil {
+			return fmt.Errorf("generate JSON schema: %w", err)
+		}
+	}
+
+	// Generate YAML defaults
+	if generateYAML {
+		defaultsPath := filepath.Join(outputDir, "defaults.yaml")
+		fmt.Printf("Generating YAML defaults in %s...\n", defaultsPath)
+		if err := codegen.GenerateDefaultsYAML(defaultsPath); err != nil {
+			return fmt.Errorf("generate YAML defaults: %w", err)
+		}
+	}
+
+	fmt.Println("✓ Configuration generation complete!")
+	return nil
 }
 
 func runConfigValidate(cmd *cobra.Command, args []string) error {

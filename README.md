@@ -9,8 +9,21 @@
 ## Quick Start
 
 ```bash
+# Interactive setup (prompts for configuration)
+make quickstart
+```
+
+**Configuration wizard will guide you through:**
+- 📦 LLM Provider (Local GPU or Remote API)
+- 🔍 Search Engine (Serper, SearXNG, or None)
+- 🖼️ Media API (Enable/Disable)
+
+**Manual setup:**
+```bash
 make setup && make up-full
 ```
+
+**Full guide**: [Quickstart Documentation](docs/QUICKSTART.md)
 
 **Services running at:**
 - **API Gateway**: http://localhost:8000 (Kong)

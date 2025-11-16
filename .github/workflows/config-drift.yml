@@ -6,7 +6,7 @@ on:
       - 'pkg/config/**'
       - 'config/schema/**'
       - 'config/defaults.yaml'
-      - 'cmd/config-generate/**'
+      - 'cmd/jan-cli/cmd_config.go'
   push:
     branches:
       - main
@@ -14,7 +14,7 @@ on:
       - 'pkg/config/**'
       - 'config/schema/**'
       - 'config/defaults.yaml'
-      - 'cmd/config-generate/**'
+      - 'cmd/jan-cli/cmd_config.go'
 
 jobs:
   check-drift:

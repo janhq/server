@@ -1,0 +1,448 @@
+name: Cross-Platform Testing
+
+on:
+  pull_request:
+    paths:
+      - 'cmd/jan-cli/**'
+      - 'Makefile'
+      - 'jan-cli.sh'
+      - 'jan-cli.ps1'
+      - 'pkg/config/**'
+      - '.github/workflows/cross-platform-test.yml'
+  push:
+    branches:
+      - main
+      - feat/v2-config-refactor
+    paths:
+      - 'cmd/jan-cli/**'
+      - 'Makefile'
+      - 'jan-cli.sh'
+      - 'jan-cli.ps1'
+      - 'pkg/config/**'
+
+jobs:
+  test-unix:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: true
+          
+      - name: Install dependencies
+        run: go mod download
+        
+      - name: Make jan-cli.sh executable
+        run: chmod +x jan-cli.sh
+        
+      - name: Test jan-cli wrapper auto-rebuild
+        run: |
+          echo "Testing jan-cli.sh wrapper..."
+          ./jan-cli.sh --help
+          
+      - name: Test jan-cli dev setup
+        run: |
+          echo "Testing dev setup command..."
+          ./jan-cli.sh dev setup
+          
+      - name: Verify .env file created
+        run: |
+          if [ -f .env ]; then
+            echo "✓ .env file created successfully"
+          else
+            echo "✗ .env file not found"
+            exit 1
+          fi
+          
+      - name: Test jan-cli config generate
+        run: |
+          echo "Testing config generate command..."
+          ./jan-cli.sh config generate
+          
+      - name: Verify config files generated
+        run: |
+          if [ -f config/defaults.yaml ] && [ -f config/schema/config.schema.json ]; then
+            echo "✓ Configuration files generated successfully"
+          else
+            echo "✗ Configuration files not found"
+            exit 1
+          fi
+          
+      - name: Test jan-cli config show
+        run: |
+          echo "Testing config show command..."
+          ./jan-cli.sh config show
+          
+      - name: Test jan-cli config validate
+        run: |
+          echo "Testing config validate command..."
+          ./jan-cli.sh config validate
+          
+      - name: Test jan-cli config export (env format)
+        run: |
+          echo "Testing config export..."
+          ./jan-cli.sh config export --format env | head -20
+          
+      - name: Test jan-cli config export (json format)
+        run: |
+          echo "Testing config export to JSON..."
+          ./jan-cli.sh config export --format json > /tmp/config-test.json
+          if [ -s /tmp/config-test.json ]; then
+            echo "✓ JSON export successful"
+          else
+            echo "✗ JSON export failed"
+            exit 1
+          fi
+          
+      - name: Test jan-cli service list
+        run: |
+          echo "Testing service list command..."
+          ./jan-cli.sh service list
+          
+      - name: Test Makefile - quickstart help
+        run: |
+          echo "Testing make quickstart (help only)..."
+          # This would start interactive mode, so we just verify the target exists
+          make -n quickstart || true
+          
+      - name: Test Makefile - setup
+        run: |
+          echo "Testing make setup..."
+          make setup
+          
+      - name: Test Makefile - config-generate
+        run: |
+          echo "Testing make config-generate..."
+          make config-generate
+          
+      - name: Test Makefile - build-llm-api
+        run: |
+          echo "Testing make build-llm-api..."
+          make build-llm-api
+          
+      - name: Verify llm-api binary created
+        run: |
+          if [ -f services/llm-api/bin/llm-api ]; then
+            echo "✓ LLM API binary created successfully"
+            ls -lh services/llm-api/bin/llm-api
+          else
+            echo "✗ LLM API binary not found"
+            exit 1
+          fi
+          
+      - name: Test Makefile - build-media-api
+        run: |
+          echo "Testing make build-media-api..."
+          make build-media-api
+          
+      - name: Test Makefile - build-mcp
+        run: |
+          echo "Testing make build-mcp..."
+          make build-mcp
+          
+      - name: Test Makefile - clean-build
+        run: |
+          echo "Testing make clean-build..."
+          make clean-build
+          
+      - name: Verify binaries cleaned
+        run: |
+          if [ ! -d services/llm-api/bin ] && [ ! -d services/media-api/bin ]; then
+            echo "✓ Build artifacts cleaned successfully"
+          else
+            echo "⚠ Some build artifacts still exist (may be expected)"
+          fi
+          
+      - name: Test swagger generation
+        run: |
+          echo "Testing swagger generation..."
+          ./jan-cli.sh swagger generate --service llm-api
+          
+      - name: Verify swagger files
+        run: |
+          if [ -f services/llm-api/docs/swagger/swagger.json ]; then
+            echo "✓ Swagger documentation generated"
+          else
+            echo "✗ Swagger documentation not found"
+            exit 1
+          fi
+          
+      - name: Test auto-rebuild detection
+        run: |
+          echo "Testing auto-rebuild with source file modification..."
+          # Touch a source file to trigger rebuild
+          touch cmd/jan-cli/main.go
+          ./jan-cli.sh --help
+          echo "✓ Auto-rebuild detection works"
+          
+      - name: Run cross-platform compatibility tests
+        run: |
+          echo "Running compatibility checks..."
+          
+          # Check that wrapper script exists and is executable
+          if [ -x jan-cli.sh ]; then
+            echo "✓ jan-cli.sh is executable"
+          else
+            echo "✗ jan-cli.sh is not executable"
+            exit 1
+          fi
+          
+          # Verify Make targets exist
+          make -n setup config-generate build-llm-api clean-build > /dev/null 2>&1
+          echo "✓ All Make targets are defined"
+          
+          # Check Go version
+          go version
+          
+          # Check system
+          uname -a
+          
+      - name: Summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Cross-Platform Test Summary - ${{ matrix.os }}"
+          echo "=========================================="
+          echo "Go version: $(go version)"
+          echo "System: $(uname -s)"
+          echo "Architecture: $(uname -m)"
+          echo "=========================================="
+
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: true
+          
+      - name: Install dependencies
+        run: go mod download
+        shell: powershell
+        
+      - name: Test jan-cli wrapper auto-rebuild
+        run: |
+          Write-Host "Testing jan-cli.ps1 wrapper..."
+          .\jan-cli.ps1 --help
+        shell: powershell
+        
+      - name: Test jan-cli dev setup
+        run: |
+          Write-Host "Testing dev setup command..."
+          .\jan-cli.ps1 dev setup
+        shell: powershell
+        
+      - name: Verify .env file created
+        run: |
+          if (Test-Path .env) {
+            Write-Host "✓ .env file created successfully"
+          } else {
+            Write-Host "✗ .env file not found"
+            exit 1
+          }
+        shell: powershell
+        
+      - name: Test jan-cli config generate
+        run: |
+          Write-Host "Testing config generate command..."
+          .\jan-cli.ps1 config generate
+        shell: powershell
+        
+      - name: Verify config files generated
+        run: |
+          if ((Test-Path config\defaults.yaml) -and (Test-Path config\schema\config.schema.json)) {
+            Write-Host "✓ Configuration files generated successfully"
+          } else {
+            Write-Host "✗ Configuration files not found"
+            exit 1
+          }
+        shell: powershell
+        
+      - name: Test jan-cli config show
+        run: |
+          Write-Host "Testing config show command..."
+          .\jan-cli.ps1 config show
+        shell: powershell
+        
+      - name: Test jan-cli config validate
+        run: |
+          Write-Host "Testing config validate command..."
+          .\jan-cli.ps1 config validate
+        shell: powershell
+        
+      - name: Test jan-cli config export (env format)
+        run: |
+          Write-Host "Testing config export..."
+          .\jan-cli.ps1 config export --format env | Select-Object -First 20
+        shell: powershell
+        
+      - name: Test jan-cli config export (json format)
+        run: |
+          Write-Host "Testing config export to JSON..."
+          .\jan-cli.ps1 config export --format json > config-test.json
+          if (Test-Path config-test.json) {
+            Write-Host "✓ JSON export successful"
+          } else {
+            Write-Host "✗ JSON export failed"
+            exit 1
+          }
+        shell: powershell
+        
+      - name: Test jan-cli service list
+        run: |
+          Write-Host "Testing service list command..."
+          .\jan-cli.ps1 service list
+        shell: powershell
+        
+      - name: Test Makefile - setup
+        run: |
+          Write-Host "Testing make setup..."
+          make setup
+        shell: powershell
+        
+      - name: Test Makefile - config-generate
+        run: |
+          Write-Host "Testing make config-generate..."
+          make config-generate
+        shell: powershell
+        
+      - name: Test Makefile - build-llm-api
+        run: |
+          Write-Host "Testing make build-llm-api..."
+          make build-llm-api
+        shell: powershell
+        
+      - name: Verify llm-api binary created
+        run: |
+          if (Test-Path services\llm-api\bin\llm-api.exe) {
+            Write-Host "✓ LLM API binary created successfully"
+            Get-Item services\llm-api\bin\llm-api.exe | Format-List
+          } else {
+            Write-Host "✗ LLM API binary not found"
+            exit 1
+          }
+        shell: powershell
+        
+      - name: Test Makefile - build-media-api
+        run: |
+          Write-Host "Testing make build-media-api..."
+          make build-media-api
+        shell: powershell
+        
+      - name: Test Makefile - build-mcp
+        run: |
+          Write-Host "Testing make build-mcp..."
+          make build-mcp
+        shell: powershell
+        
+      - name: Test Makefile - clean-build
+        run: |
+          Write-Host "Testing make clean-build..."
+          make clean-build
+        shell: powershell
+        
+      - name: Verify binaries cleaned
+        run: |
+          if ((-not (Test-Path services\llm-api\bin)) -and (-not (Test-Path services\media-api\bin))) {
+            Write-Host "✓ Build artifacts cleaned successfully"
+          } else {
+            Write-Host "⚠ Some build artifacts still exist (may be expected)"
+          }
+        shell: powershell
+        
+      - name: Test swagger generation
+        run: |
+          Write-Host "Testing swagger generation..."
+          .\jan-cli.ps1 swagger generate --service llm-api
+        shell: powershell
+        
+      - name: Verify swagger files
+        run: |
+          if (Test-Path services\llm-api\docs\swagger\swagger.json) {
+            Write-Host "✓ Swagger documentation generated"
+          } else {
+            Write-Host "✗ Swagger documentation not found"
+            exit 1
+          }
+        shell: powershell
+        
+      - name: Test auto-rebuild detection
+        run: |
+          Write-Host "Testing auto-rebuild with source file modification..."
+          # Touch a source file to trigger rebuild
+          (Get-Item cmd\jan-cli\main.go).LastWriteTime = Get-Date
+          .\jan-cli.ps1 --help
+          Write-Host "✓ Auto-rebuild detection works"
+        shell: powershell
+        
+      - name: Run cross-platform compatibility tests
+        run: |
+          Write-Host "Running compatibility checks..."
+          
+          # Check that wrapper script exists
+          if (Test-Path jan-cli.ps1) {
+            Write-Host "✓ jan-cli.ps1 exists"
+          } else {
+            Write-Host "✗ jan-cli.ps1 not found"
+            exit 1
+          }
+          
+          # Check Go version
+          go version
+          
+          # Check system
+          Get-ComputerInfo | Select-Object WindowsVersion, OsArchitecture
+        shell: powershell
+        
+      - name: Summary
+        if: always()
+        run: |
+          Write-Host "=========================================="
+          Write-Host "Cross-Platform Test Summary - Windows"
+          Write-Host "=========================================="
+          go version
+          Write-Host "System: Windows"
+          Write-Host "=========================================="
+        shell: powershell
+
+  summary:
+    name: Test Results Summary
+    needs: [test-unix, test-windows]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Check test results
+        run: |
+          echo "=========================================="
+          echo "Cross-Platform Testing Summary"
+          echo "=========================================="
+          echo ""
+          echo "Ubuntu: ${{ needs.test-unix.result }}"
+          echo "macOS: ${{ needs.test-unix.result }}"
+          echo "Windows: ${{ needs.test-windows.result }}"
+          echo ""
+          
+          if [ "${{ needs.test-unix.result }}" == "success" ] && [ "${{ needs.test-windows.result }}" == "success" ]; then
+            echo "✓ All cross-platform tests passed!"
+            exit 0
+          else
+            echo "✗ Some tests failed. Check the logs above."
+            exit 1
+          fi

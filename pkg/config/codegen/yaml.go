@@ -167,7 +167,7 @@ func buildDefaultConfig() *config.Config {
 		Inference: config.InferenceConfig{
 			VLLM: config.VLLMConfig{
 				Enabled:        true,
-				Port:           8001,
+				Port:           8101,
 				Model:          "Qwen/Qwen2.5-0.5B-Instruct",
 				ServedName:     "qwen2.5-0.5b-instruct",
 				GPUUtilization: 0.66,

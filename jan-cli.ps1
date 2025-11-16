@@ -12,11 +12,15 @@ $MainGo = Join-Path $CliDir "main.go"
 $needsBuild = $false
 if (-not (Test-Path $CliBinary)) {
     $needsBuild = $true
-} elseif (Test-Path $MainGo) {
+} else {
+    # Check if any .go file is newer than the binary
     $binaryTime = (Get-Item $CliBinary).LastWriteTime
-    $sourceTime = (Get-Item $MainGo).LastWriteTime
-    if ($sourceTime -gt $binaryTime) {
-        $needsBuild = $true
+    $goFiles = Get-ChildItem -Path $CliDir -Filter "*.go"
+    foreach ($goFile in $goFiles) {
+        if ($goFile.LastWriteTime -gt $binaryTime) {
+            $needsBuild = $true
+            break
+        }
     }
 }
 
