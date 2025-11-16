@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"encoding/json"
@@ -88,7 +88,10 @@ func init() {
 }
 
 func runConfigGenerate(cmd *cobra.Command, args []string) error {
-	outputDir, _ := cmd.Flags().GetString("output")
+	outputDir, err := resolveOutputDir(cmd)
+	if err != nil {
+		return fmt.Errorf("resolve output directory: %w", err)
+	}
 	schemaOnly, _ := cmd.Flags().GetBool("schema-only")
 	yamlOnly, _ := cmd.Flags().GetBool("yaml-only")
 
@@ -125,8 +128,18 @@ func runConfigValidate(cmd *cobra.Command, args []string) error {
 	schemaFile, _ := cmd.Flags().GetString("schema")
 	env, _ := cmd.Flags().GetString("env")
 
+	configPath, err := resolveConfigFile(cmd, configFile)
+	if err != nil {
+		return fmt.Errorf("resolve config file: %w", err)
+	}
+
+	configDir, err := getConfigDir(cmd)
+	if err != nil {
+		return fmt.Errorf("resolve config directory: %w", err)
+	}
+
 	fmt.Printf("Validating configuration...\n")
-	fmt.Printf("  Config: %s\n", configFile)
+	fmt.Printf("  Config: %s\n", configPath)
 	if env != "" {
 		fmt.Printf("  Environment: %s\n", env)
 	}
@@ -135,7 +148,7 @@ func runConfigValidate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load config file
-	data, err := os.ReadFile(configFile)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("read config file: %w", err)
 	}
@@ -148,7 +161,7 @@ func runConfigValidate(cmd *cobra.Command, args []string) error {
 
 	// If environment specified, merge environment overrides
 	if env != "" {
-		envFile := filepath.Join("config", env+".yaml")
+		envFile := filepath.Join(configDir, env+".yaml")
 		if _, err := os.Stat(envFile); err == nil {
 			envData, err := os.ReadFile(envFile)
 			if err != nil {
@@ -194,8 +207,13 @@ func runConfigExport(cmd *cobra.Command, args []string) error {
 	prefix, _ := cmd.Flags().GetString("prefix")
 	outputFile, _ := cmd.Flags().GetString("output")
 
+	configPath, err := resolveConfigFile(cmd, configFile)
+	if err != nil {
+		return fmt.Errorf("resolve config file: %w", err)
+	}
+
 	// Load config
-	data, err := os.ReadFile(configFile)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("read config file: %w", err)
 	}
@@ -246,6 +264,11 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	path, _ := cmd.Flags().GetString("path")
 	format, _ := cmd.Flags().GetString("format")
 
+	configPath, err := resolveConfigFile(cmd, configFile)
+	if err != nil {
+		return fmt.Errorf("resolve config file: %w", err)
+	}
+
 	// If service specified in args, use it as path
 	if len(args) > 0 {
 		if path == "" {
@@ -254,7 +277,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load config
-	data, err := os.ReadFile(configFile)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("read config file: %w", err)
 	}

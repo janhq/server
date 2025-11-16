@@ -273,3 +273,6 @@ cmd/server/__debug_bin*
 # Docker and Kubernetes secrets
 docker-compose.override.yml
 docker-compose.*.local.yml
+
+# jan-cli generated config artifacts
+cmd/jan-cli/config/
