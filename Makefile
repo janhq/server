@@ -62,7 +62,7 @@ MEDIA_API_KEY ?= changeme-media-key
 # SECTION 1: SETUP & ENVIRONMENT
 # ============================================================================================================
 
-.PHONY: setup check-deps install-deps ensure-docker-env setup-and-run quickstart
+.PHONY: setup check-deps install-deps setup-and-run quickstart
 
 setup-and-run quickstart:
 	@echo "Starting interactive setup and run..."
@@ -79,11 +79,6 @@ ifeq ($(OS),Windows_NT)
 else
 	@bash jan-cli.sh dev setup
 endif
-
-# Ensure docker/.env exists by copying from root .env
-ensure-docker-env:
-	@if not exist docker mkdir docker 2>nul
-	@copy /Y .env docker\.env >nul 2>&1 || echo Skipped copying .env
 
 check-deps:
 	@echo "Checking dependencies..."
@@ -143,9 +138,13 @@ build-all:
 
 clean-build:
 	@echo "Cleaning build artifacts..."
+ifeq ($(OS),Windows_NT)
 	@if exist services\llm-api\bin rmdir /s /q services\llm-api\bin 2>nul
 	@if exist services\media-api\bin rmdir /s /q services\media-api\bin 2>nul
 	@if exist services\mcp-tools\bin rmdir /s /q services\mcp-tools\bin 2>nul
+else
+	@rm -rf services/llm-api/bin services/media-api/bin services/mcp-tools/bin
+endif
 	@echo "✓ Build artifacts cleaned"
 
 # --- Configuration Management ---
@@ -401,7 +400,7 @@ logs-vllm:
 
 .PHONY: up-full down-full restart-full logs stop down down-clean dev-full dev-full-down dev-full-stop
 
-up-full: ensure-docker-env ## Start full stack (all services in Docker)
+up-full: ## Start full stack (all services in Docker)
 	@echo "Starting services (based on COMPOSE_PROFILES in .env)..."
 	$(COMPOSE) up -d
 	@echo " Services started"
@@ -652,7 +651,7 @@ endif
 
 .PHONY: dev-full dev-full-stop dev-full-down
 
-dev-full: ensure-docker-env ## Start development full stack with host.docker.internal support
+dev-full: ## Start development full stack with host.docker.internal support
 	@echo "Starting development full stack with host.docker.internal support..."
 	@echo ""
 	@echo "This mode allows you to:"

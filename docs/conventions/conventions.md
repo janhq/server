@@ -38,6 +38,7 @@
 - Exported symbols: `PascalCase`. Unexported: `camelCase`.
 - Database columns: `snake_case`.
 - Avoid stuttering (`provider.ID`, not `provider.ProviderID`).
+- Avoid single word naming, must meaningful, easy to read and understand
 
 ### Git & Commits
 - Conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, etc.

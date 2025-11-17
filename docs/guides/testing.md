@@ -25,33 +25,29 @@ Jan Server works on all major platforms:
 
 ## Quick Start
 
-### Automated Testing (Recommended)
+### Manual Testing
 
 **Unix/Linux/macOS:**
 ```bash
-# Run comprehensive test suite
-./tests/test-unix.sh
+# Basic jan-cli commands
+./jan-cli.sh --help
+./jan-cli.sh dev setup
+./jan-cli.sh config generate
+./jan-cli.sh config validate
+./jan-cli.sh config show
+./jan-cli.sh service list
+./jan-cli.sh swagger generate --service llm-api
+
+# Makefile targets
+make setup
+make build-llm-api
+make build-media-api
+make build-mcp
+make clean-build
 ```
 
 **Windows:**
 ```powershell
-# Run individual tests
-.\jan-cli.ps1 dev setup
-.\jan-cli.ps1 config validate
-make build-llm-api
-```
-
-### CI/CD Testing
-
-Tests run automatically on GitHub Actions for:
-- Pull requests modifying CLI tools, services, tests, or configuration
-- Pushes to `main` or `feat/v2-config-refactor` branches
-
-View results: **GitHub -> Actions -> Cross-Platform Testing**
-
----
-
-## Platform Support
 
 ### Windows
 
@@ -93,104 +89,11 @@ View results: **GitHub -> Actions -> Cross-Platform Testing**
 
 ---
 
-## CI/CD Testing
+## Integration Testing
 
-### GitHub Actions Workflow
+### Newman/Postman Collections
 
-**Location:** `.github/workflows/cross-platform-test.yml`
-
-**Triggers:**
-- Pull requests modifying:
- - `cmd/jan-cli/**`
- - `Makefile`
- - Wrapper scripts (`jan-cli.sh`, `jan-cli.ps1`)
- - Services or tests
-- Pushes to:
- - `main` branch
- - `feat/v2-config-refactor` branch
-
-**Test Matrix:**
-- **Ubuntu** (latest) - Full Docker integration tests
-- **macOS** (latest) - CLI and build tests
-- **Windows** (latest) - CLI and build tests
-
-### Docker Strategy by Platform
-
-| Platform | Docker Support | Method | Notes |
-|----------|---------------|--------|-------|
-| **Ubuntu** | OK Full | Native | Pre-installed, most reliable |
-| **macOS** | WARNING Optional | Colima | Setup may fail, not critical |
-| **Windows** | [X] Not available | N/A | Docker tests run on Ubuntu |
-| **Local Dev** | OK Full | Docker Desktop | All platforms supported |
-
-**Why Ubuntu for Docker tests?**
-- Native Docker support (no setup time)
-- Most reliable and fast
-- Represents Linux production environment
-- Developers use Docker Desktop locally on Windows/macOS anyway
-
-### Viewing CI/CD Results
-
-1. Go to your repository on GitHub
-2. Click **Actions** tab
-3. Select **Cross-Platform Testing** workflow
-4. View test results for all platforms
-
----
-
-## Local Testing
-
-### Option 1: Automated Test Script (Unix/Linux/macOS)
-
-**Location:** `tests/test-unix.sh`
-
-**Features:**
-- OK 16 comprehensive tests
-- OK Color-coded output (green=pass, red=fail)
-- OK Automatic prerequisite checking (Go, Docker, Make)
-- OK Binary and config file verification
-- OK Detailed summary with system information
-- OK CI/CD compatible (exit code 0/1)
-
-**Usage:**
-```bash
-# Make executable (first time only)
-chmod +x tests/test-unix.sh
-
-# Run all tests
-./tests/test-unix.sh
-```
-
-**What It Tests:**
-1. Prerequisites: Go, Docker, Make installation
-2. jan-cli wrapper: Executable permissions and functionality
-3. jan-cli commands: help, dev setup, config commands, service list, swagger
-4. Makefile targets: setup, build targets, clean-build
-5. Verification:.env file, config schemas, binaries, auto-rebuild
-
-### Option 2: Manual Testing
-
-**Unix/Linux/macOS:**
-```bash
-# Basic jan-cli commands
-./jan-cli.sh --help
-./jan-cli.sh dev setup
-./jan-cli.sh config generate
-./jan-cli.sh config validate
-./jan-cli.sh config show
-./jan-cli.sh service list
-./jan-cli.sh swagger generate --service llm-api
-
-# Makefile targets
-make setup
-make build-llm-api
-make build-media-api
-make build-mcp
-make clean-build
-```
-
-**Windows:**
-```powershell
+**Authentication Tests:**
 # Basic jan-cli commands
 .\jan-cli.ps1 --help
 .\jan-cli.ps1 dev setup
@@ -450,7 +353,6 @@ if dockerAvailable {
 
 ```bash
 chmod +x jan-cli.sh
-chmod +x tests/test-unix.sh
 ```
 
 ### Docker Commands Fail
@@ -537,26 +439,23 @@ When adding new functionality:
 3. Verify wrapper scripts auto-rebuild correctly
 4. Check that both `jan-cli` and `make` interfaces work
 
-### 4. Run Tests Before Pushing
+### 4. Manual Testing Before Pushing
 
 **Unix/Linux/macOS:**
 ```bash
-./tests/test-unix.sh
+# Test basic commands
+./jan-cli.sh --help
+./jan-cli.sh config validate
+make build-llm-api
 ```
 
 **Windows:**
 ```powershell
-.\jan-cli.ps1 dev setup
+# Test basic commands
+.\jan-cli.ps1 --help
 .\jan-cli.ps1 config validate
 make build-llm-api
 ```
-
-### 5. Review CI/CD Results
-
-After pushing:
-1. Check GitHub Actions for test results
-2. Review all three platform results (Ubuntu, macOS, Windows)
-3. Fix any platform-specific failures
 
 ---
 
@@ -567,20 +466,17 @@ After pushing:
 - All core `jan-cli` commands on Windows, Linux, macOS
 - Makefile build targets (cross-platform)
 - Docker integration on Linux/macOS (and Windows local)
-- Automated CI/CD testing on GitHub Actions
 - Configuration management and validation
 - Service orchestration and health checks
 
 ### WARNING Platform Limitations
 
 **Windows:**
-- Docker not available in GitHub Actions CI
 - Requires Git Bash or WSL for Makefile
 - Binary names need `.exe` extension
 
 **macOS:**
-- Docker setup in CI is optional (may fail with Colima)
-- Primary Docker testing happens on Ubuntu CI
+- Requires Docker Desktop or Colima for Docker support
 
 **Linux:**
 - Full compatibility, no known limitations
@@ -589,9 +485,9 @@ After pushing:
 
 - OK CLI commands: All platforms
 - OK Build targets: All platforms
-- OK Docker integration: Linux (primary), macOS (secondary), Windows (local only)
-- OK Authentication: Full (Ubuntu CI)
-- OK API integration: Full (Ubuntu CI)
+- OK Docker integration: Linux/macOS/Windows (with Docker Desktop)
+- OK Authentication: Newman/Postman collections
+- OK API integration: Newman/Postman collections
 
 ---
 
@@ -606,7 +502,5 @@ After pushing:
 
 **Tested Platforms:**
 - OK Windows 11 PowerShell 5.1
-- OK Ubuntu 22.04+ (GitHub Actions)
-- OK macOS 14+ (GitHub Actions)
-
-**CI/CD:** GitHub Actions workflow at `.github/workflows/cross-platform-test.yml`
+- OK Ubuntu 22.04+
+- OK macOS 14+
