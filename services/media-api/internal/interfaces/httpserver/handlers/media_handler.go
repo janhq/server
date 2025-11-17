@@ -11,6 +11,8 @@ import (
 
 	"jan-server/services/media-api/internal/config"
 	domain "jan-server/services/media-api/internal/domain/media"
+	"jan-server/services/media-api/internal/interfaces/httpserver/responses"
+	"jan-server/services/media-api/internal/utils/platformerrors"
 )
 
 // MediaHandler exposes media endpoints.
@@ -61,14 +63,14 @@ type JSONPayload = json.RawMessage
 func (h *MediaHandler) Ingest(c *gin.Context) {
 	var req domain.IngestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		responses.HandleNewError(c, platformerrors.ErrorTypeValidation, "invalid request body", "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d")
 		return
 	}
 
 	obj, dedup, err := h.service.Ingest(c.Request.Context(), req)
 	if err != nil {
 		h.log.Error().Err(err).Msg("ingest failed")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		responses.HandleError(c, err, "failed to ingest media")
 		return
 	}
 
@@ -102,14 +104,14 @@ func (h *MediaHandler) Ingest(c *gin.Context) {
 func (h *MediaHandler) Resolve(c *gin.Context) {
 	var req resolveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		responses.HandleNewError(c, platformerrors.ErrorTypeValidation, "invalid request body", "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e")
 		return
 	}
 
 	out, err := h.service.ResolvePayload(c.Request.Context(), json.RawMessage(req.Payload))
 	if err != nil {
 		h.log.Error().Err(err).Msg("resolve failed")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		responses.HandleError(c, err, "failed to resolve media payload")
 		return
 	}
 
@@ -140,14 +142,14 @@ func (h *MediaHandler) PrepareUpload(c *gin.Context) {
 
 	var req domain.PrepareUploadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		responses.HandleNewError(c, platformerrors.ErrorTypeValidation, "invalid request body", "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f")
 		return
 	}
 
 	prep, err := h.service.PrepareUpload(c.Request.Context(), req.MimeType, req.UserID)
 	if err != nil {
 		h.log.Error().Err(err).Msg("prepare upload failed")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		responses.HandleError(c, err, "failed to prepare upload")
 		return
 	}
 
@@ -170,7 +172,7 @@ func (h *MediaHandler) GetPresignedURL(c *gin.Context) {
 	url, err := h.service.Presign(c.Request.Context(), id)
 	if err != nil {
 		h.log.Error().Err(err).Str("id", id).Msg("presign failed")
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		responses.HandleError(c, err, "failed to generate presigned URL")
 		return
 	}
 

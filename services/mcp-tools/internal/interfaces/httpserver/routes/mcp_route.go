@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
-	"jan-server/services/mcp-tools/interfaces/httpserver/responses"
+	"jan-server/services/mcp-tools/internal/interfaces/httpserver/responses"
 	"jan-server/services/mcp-tools/utils/platformerrors"
 )
 

@@ -39,7 +39,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateResponseRequest"
+                            "$ref": "#/definitions/requests.CreateResponseRequest"
                         }
                     }
                 ],
@@ -47,7 +47,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     },
                     "400": {
@@ -84,7 +84,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     },
                     "404": {
@@ -119,7 +119,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     }
                 }
@@ -147,7 +147,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     }
                 }
@@ -186,13 +186,16 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.CreateResponseRequest": {
+        "requests.CreateResponseRequest": {
             "type": "object",
             "required": [
                 "input",
                 "model"
             ],
             "properties": {
+                "background": {
+                    "type": "boolean"
+                },
                 "conversation": {
                     "type": "string"
                 },
@@ -210,6 +213,9 @@ const docTemplate = `{
                 "previous_response_id": {
                     "type": "string"
                 },
+                "store": {
+                    "type": "boolean"
+                },
                 "stream": {
                     "type": "boolean"
                 },
@@ -220,12 +226,12 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "tool_choice": {
-                    "$ref": "#/definitions/dto.ToolChoice"
+                    "$ref": "#/definitions/requests.ToolChoice"
                 },
                 "tools": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ToolDefinition"
+                        "$ref": "#/definitions/requests.ToolDefinition"
                     }
                 },
                 "user": {
@@ -233,47 +239,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ResponsePayload": {
-            "type": "object",
-            "properties": {
-                "conversation_id": {
-                    "type": "string"
-                },
-                "created": {
-                    "type": "integer"
-                },
-                "error": {},
-                "id": {
-                    "type": "string"
-                },
-                "input": {},
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "model": {
-                    "type": "string"
-                },
-                "object": {
-                    "type": "string"
-                },
-                "output": {},
-                "previous_response_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "stream": {
-                    "type": "boolean"
-                },
-                "system_prompt": {
-                    "type": "string"
-                },
-                "usage": {}
-            }
-        },
-        "dto.ToolChoice": {
+        "requests.ToolChoice": {
             "type": "object",
             "properties": {
                 "function": {
@@ -289,18 +255,18 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ToolDefinition": {
+        "requests.ToolDefinition": {
             "type": "object",
             "properties": {
                 "function": {
-                    "$ref": "#/definitions/dto.ToolFunctionDefinition"
+                    "$ref": "#/definitions/requests.ToolFunctionDefinition"
                 },
                 "type": {
                     "type": "string"
                 }
             }
         },
-        "dto.ToolFunctionDefinition": {
+        "requests.ToolFunctionDefinition": {
             "type": "object",
             "properties": {
                 "description": {
@@ -325,6 +291,56 @@ const docTemplate = `{
                 "status": {
                     "type": "string"
                 }
+            }
+        },
+        "responses.ResponsePayload": {
+            "type": "object",
+            "properties": {
+                "background": {
+                    "type": "boolean"
+                },
+                "conversation_id": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "description": "Same as Created, for compatibility",
+                    "type": "integer"
+                },
+                "error": {},
+                "id": {
+                    "type": "string"
+                },
+                "input": {},
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "model": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "output": {},
+                "previous_response_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "store": {
+                    "type": "boolean"
+                },
+                "stream": {
+                    "type": "boolean"
+                },
+                "system_prompt": {
+                    "type": "string"
+                },
+                "usage": {}
             }
         }
     },

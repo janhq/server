@@ -1,4 +1,4 @@
-package dto
+package requests
 
 // ToolFunctionDefinition describes a function passed to OpenAI compatible APIs.
 type ToolFunctionDefinition struct {

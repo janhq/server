@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	domainsearch "jan-server/services/mcp-tools/domain/search"
-	"jan-server/services/mcp-tools/infrastructure/vectorstore"
+	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
+	"jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/utils/mcp"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"

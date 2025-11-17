@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 
-	"jan-server/services/mcp-tools/infrastructure/config"
+	"jan-server/services/mcp-tools/internal/infrastructure/config"
 )
 
 type Validator struct {

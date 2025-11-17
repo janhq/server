@@ -14,7 +14,8 @@ import (
 	"jan-server/services/response-api/internal/domain/llm"
 	"jan-server/services/response-api/internal/domain/response"
 	"jan-server/services/response-api/internal/domain/tool"
-	"jan-server/services/response-api/internal/interfaces/httpserver/dto"
+	"jan-server/services/response-api/internal/interfaces/httpserver/requests"
+	"jan-server/services/response-api/internal/interfaces/httpserver/responses"
 )
 
 // ResponseHandler exposes HTTP entrypoints for the Responses API.
@@ -37,12 +38,12 @@ func NewResponseHandler(service response.Service, log zerolog.Logger) *ResponseH
 // @Tags Responses
 // @Accept json
 // @Produce json
-// @Param request body dto.CreateResponseRequest true "Create request"
-// @Success 200 {object} dto.ResponsePayload
+// @Param request body requests.CreateResponseRequest true "Create request"
+// @Success 200 {object} responses.ResponsePayload
 // @Failure 400 {object} map[string]string
 // @Router /v1/responses [post]
 func (h *ResponseHandler) Create(c *gin.Context) {
-	var req dto.CreateResponseRequest
+	var req requests.CreateResponseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -108,7 +109,7 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.FromDomain(resp))
+	c.JSON(http.StatusOK, responses.FromDomain(resp))
 }
 
 // Get handles GET /v1/responses/:id
@@ -116,7 +117,7 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 // @Tags Responses
 // @Produce json
 // @Param response_id path string true "Response ID"
-// @Success 200 {object} dto.ResponsePayload
+// @Success 200 {object} responses.ResponsePayload
 // @Failure 404 {object} map[string]string
 // @Router /v1/responses/{response_id} [get]
 func (h *ResponseHandler) Get(c *gin.Context) {
@@ -126,7 +127,7 @@ func (h *ResponseHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, dto.FromDomain(resp))
+	c.JSON(http.StatusOK, responses.FromDomain(resp))
 }
 
 // Cancel handles POST /v1/responses/:id/cancel
@@ -134,7 +135,7 @@ func (h *ResponseHandler) Get(c *gin.Context) {
 // @Tags Responses
 // @Produce json
 // @Param response_id path string true "Response ID"
-// @Success 200 {object} dto.ResponsePayload
+// @Success 200 {object} responses.ResponsePayload
 // @Router /v1/responses/{response_id}/cancel [post]
 func (h *ResponseHandler) Cancel(c *gin.Context) {
 	id := c.Param("response_id")
@@ -143,7 +144,7 @@ func (h *ResponseHandler) Cancel(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, dto.FromDomain(resp))
+	c.JSON(http.StatusOK, responses.FromDomain(resp))
 }
 
 // Delete handles DELETE /v1/responses/:id
@@ -151,7 +152,7 @@ func (h *ResponseHandler) Cancel(c *gin.Context) {
 // @Tags Responses
 // @Produce json
 // @Param response_id path string true "Response ID"
-// @Success 200 {object} dto.ResponsePayload
+// @Success 200 {object} responses.ResponsePayload
 // @Router /v1/responses/{response_id} [delete]
 func (h *ResponseHandler) Delete(c *gin.Context) {
 	h.Cancel(c)
@@ -220,7 +221,7 @@ func extractSubject(c *gin.Context) string {
 	return ""
 }
 
-func mapTools(tools []dto.ToolDefinition) []llm.ToolDefinition {
+func mapTools(tools []requests.ToolDefinition) []llm.ToolDefinition {
 	if len(tools) == 0 {
 		return nil
 	}
@@ -238,7 +239,7 @@ func mapTools(tools []dto.ToolDefinition) []llm.ToolDefinition {
 	return result
 }
 
-func mapToolChoice(choice *dto.ToolChoice) *llm.ToolChoice {
+func mapToolChoice(choice *requests.ToolChoice) *llm.ToolChoice {
 	if choice == nil {
 		return nil
 	}
@@ -270,7 +271,7 @@ func newSSEObserver(w http.ResponseWriter, flusher http.Flusher, log zerolog.Log
 
 func (o *sseObserver) OnResponseCreated(resp *response.Response) {
 	o.responseID = resp.PublicID
-	o.sendEvent("response.created", dto.FromDomain(resp))
+	o.sendEvent("response.created", responses.FromDomain(resp))
 }
 
 func (o *sseObserver) OnDelta(delta llm.ChatCompletionDelta) {
@@ -303,7 +304,7 @@ func (o *sseObserver) OnToolResult(callID string, result *tool.Result) {
 }
 
 func (o *sseObserver) SendCompleted(resp *response.Response) {
-	o.sendEvent("response.completed", dto.FromDomain(resp))
+	o.sendEvent("response.completed", responses.FromDomain(resp))
 }
 
 func (o *sseObserver) SendError(err error) {

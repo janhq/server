@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	domainsearch "jan-server/services/mcp-tools/domain/search"
+	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"jan-server/services/mcp-tools/infrastructure/mcpprovider"
+	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"

@@ -3,12 +3,12 @@ package conversation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"gorm.io/gorm"
 
 	domain "jan-server/services/response-api/internal/domain/conversation"
 	"jan-server/services/response-api/internal/infrastructure/database/entities"
+	"jan-server/services/response-api/internal/utils/platformerrors"
 )
 
 // ItemRepository persists conversation items.
@@ -31,7 +31,14 @@ func (r *ItemRepository) BulkInsert(ctx context.Context, items []domain.Item) er
 	for _, item := range items {
 		content, err := marshalJSON(item.Content)
 		if err != nil {
-			return fmt.Errorf("marshal conversation item: %w", err)
+			return platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeInternal,
+				"failed to marshal conversation item",
+				err,
+				"6k7j8i9h-0f1a-2b3c-4d5e-6f7a8b9c0d1e",
+			)
 		}
 		rows = append(rows, entities.ConversationItem{
 			ConversationID: item.ConversationID,
@@ -43,7 +50,17 @@ func (r *ItemRepository) BulkInsert(ctx context.Context, items []domain.Item) er
 		})
 	}
 
-	return r.db.WithContext(ctx).Create(&rows).Error
+	if err := r.db.WithContext(ctx).Create(&rows).Error; err != nil {
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to bulk insert conversation items",
+			err,
+			"7l8k9j0i-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+		)
+	}
+	return nil
 }
 
 // ListByConversationID returns items ordered by sequence.
@@ -53,7 +70,14 @@ func (r *ItemRepository) ListByConversationID(ctx context.Context, conversationI
 		Where("conversation_id = ?", conversationID).
 		Order("sequence ASC").
 		Find(&rows).Error; err != nil {
-		return nil, err
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to list conversation items",
+			err,
+			"8m9l0k1j-2b3c-4d5e-6f7a-8b9c0d1e2f3a",
+		)
 	}
 
 	items := make([]domain.Item, 0, len(rows))

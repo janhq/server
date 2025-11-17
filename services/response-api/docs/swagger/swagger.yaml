@@ -1,7 +1,9 @@
 basePath: /
 definitions:
-  dto.CreateResponseRequest:
+  requests.CreateResponseRequest:
     properties:
+      background:
+        type: boolean
       conversation:
         type: string
       input: {}
@@ -14,6 +16,8 @@ definitions:
         type: string
       previous_response_id:
         type: string
+      store:
+        type: boolean
       stream:
         type: boolean
       system_prompt:
@@ -21,10 +25,10 @@ definitions:
       temperature:
         type: number
       tool_choice:
-        $ref: '#/definitions/dto.ToolChoice'
+        $ref: '#/definitions/requests.ToolChoice'
       tools:
         items:
-          $ref: '#/definitions/dto.ToolDefinition'
+          $ref: '#/definitions/requests.ToolDefinition'
         type: array
       user:
         type: string
@@ -32,11 +36,51 @@ definitions:
     - input
     - model
     type: object
-  dto.ResponsePayload:
+  requests.ToolChoice:
     properties:
+      function:
+        properties:
+          name:
+            type: string
+        type: object
+      type:
+        type: string
+    type: object
+  requests.ToolDefinition:
+    properties:
+      function:
+        $ref: '#/definitions/requests.ToolFunctionDefinition'
+      type:
+        type: string
+    type: object
+  requests.ToolFunctionDefinition:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      parameters:
+        additionalProperties: true
+        type: object
+    type: object
+  response.ConversationItem:
+    properties:
+      content: {}
+      role:
+        type: string
+      status:
+        type: string
+    type: object
+  responses.ResponsePayload:
+    properties:
+      background:
+        type: boolean
       conversation_id:
         type: string
       created:
+        type: integer
+      created_at:
+        description: Same as Created, for compatibility
         type: integer
       error: {}
       id:
@@ -54,46 +98,13 @@ definitions:
         type: string
       status:
         type: string
+      store:
+        type: boolean
       stream:
         type: boolean
       system_prompt:
         type: string
       usage: {}
-    type: object
-  dto.ToolChoice:
-    properties:
-      function:
-        properties:
-          name:
-            type: string
-        type: object
-      type:
-        type: string
-    type: object
-  dto.ToolDefinition:
-    properties:
-      function:
-        $ref: '#/definitions/dto.ToolFunctionDefinition'
-      type:
-        type: string
-    type: object
-  dto.ToolFunctionDefinition:
-    properties:
-      description:
-        type: string
-      name:
-        type: string
-      parameters:
-        additionalProperties: true
-        type: object
-    type: object
-  response.ConversationItem:
-    properties:
-      content: {}
-      role:
-        type: string
-      status:
-        type: string
     type: object
 info:
   contact:
@@ -115,14 +126,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.CreateResponseRequest'
+          $ref: '#/definitions/requests.CreateResponseRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.ResponsePayload'
+            $ref: '#/definitions/responses.ResponsePayload'
         "400":
           description: Bad Request
           schema:
@@ -146,7 +157,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.ResponsePayload'
+            $ref: '#/definitions/responses.ResponsePayload'
       summary: Delete/Cancel a response
       tags:
       - Responses
@@ -163,7 +174,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.ResponsePayload'
+            $ref: '#/definitions/responses.ResponsePayload'
         "404":
           description: Not Found
           schema:
@@ -187,7 +198,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.ResponsePayload'
+            $ref: '#/definitions/responses.ResponsePayload'
       summary: Cancel a response
       tags:
       - Responses
