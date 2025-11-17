@@ -20,3 +20,8 @@ type ToolExecution struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
+
+// TableName specifies the table name for ToolExecution.
+func (ToolExecution) TableName() string {
+	return "tool_executions"
+}

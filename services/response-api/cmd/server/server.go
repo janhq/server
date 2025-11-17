@@ -20,9 +20,12 @@ import (
 	"jan-server/services/response-api/internal/infrastructure/logger"
 	"jan-server/services/response-api/internal/infrastructure/mcp"
 	"jan-server/services/response-api/internal/infrastructure/observability"
+	"jan-server/services/response-api/internal/infrastructure/queue"
 	conversationrepo "jan-server/services/response-api/internal/infrastructure/repository/conversation"
 	respRepo "jan-server/services/response-api/internal/infrastructure/repository/response"
 	"jan-server/services/response-api/internal/interfaces/httpserver"
+	"jan-server/services/response-api/internal/webhook"
+	"jan-server/services/response-api/internal/worker"
 )
 
 // @title Response API
@@ -102,6 +105,10 @@ func main() {
 	mcpClient := mcp.NewClient(cfg.MCPToolsURL)
 	orchestrator := tool.NewOrchestrator(llmClient, mcpClient, cfg.MaxToolDepth, cfg.ToolTimeout)
 
+	// Initialize webhook service
+	webhookService := webhook.NewHTTPService(log)
+
+	// Initialize response service with webhook support
 	responseService := response.NewService(
 		responseRepository,
 		conversationRepository,
@@ -109,8 +116,28 @@ func main() {
 		responseRepository,
 		orchestrator,
 		mcpClient,
+		webhookService,
 		log,
 	)
+
+	// Initialize background task infrastructure
+	taskQueue := queue.NewPostgresQueue(db, log)
+	workerPool := worker.NewPool(
+		taskQueue,
+		responseService,
+		worker.Config{
+			WorkerCount: cfg.BackgroundWorkerCount,
+			TaskTimeout: cfg.BackgroundTaskTimeout,
+		},
+		log,
+	)
+
+	// Start worker pool
+	workerPool.Start(ctx)
+	defer func() {
+		log.Info().Msg("stopping worker pool")
+		workerPool.Stop()
+	}()
 
 	httpServer := httpserver.New(cfg, log, responseService, authValidator)
 	app := NewApplication(httpServer, log)

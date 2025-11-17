@@ -12,7 +12,7 @@ The `services/template-api` directory contains a production-ready skeleton for n
 ## Getting Started
 1. Run `jan-cli dev scaffold my-service` (or copy `services/template-api` manually).
 2. Update `go.mod`, the service section inside `.env.template`, and `cmd/server/server.go` with your service-specific names and dependencies.
-3. Configure the database DSN (rename `TEMPLATE_DATABASE_URL`) and run `go run ./cmd/server` once so migrations seed the database.
+3. Configure the database DSN (`DB_POSTGRESQL_WRITE_DSN`) and run `go run ./cmd/server` once so migrations seed the database.
 4. Decide whether to enable JWT auth (`AUTH_ENABLED`, `AUTH_ISSUER`, `ACCOUNT`, `AUTH_JWKS_URL`).
 5. Register your handlers inside `internal/interfaces/httpserver`.
 6. Add domain packages and migrations as needed.

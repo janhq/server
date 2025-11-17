@@ -31,6 +31,8 @@ type CreateResponseRequest struct {
 	Tools              []ToolDefinition       `json:"tools,omitempty"`
 	ToolChoice         *ToolChoice            `json:"tool_choice,omitempty"`
 	Stream             *bool                  `json:"stream,omitempty"`
+	Background         *bool                  `json:"background,omitempty"`
+	Store              *bool                  `json:"store,omitempty"`
 	PreviousResponseID *string                `json:"previous_response_id,omitempty"`
 	Conversation       *string                `json:"conversation,omitempty"`
 	Metadata           map[string]interface{} `json:"metadata,omitempty"`

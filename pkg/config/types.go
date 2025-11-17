@@ -291,10 +291,10 @@ type S3Config struct {
 	Bucket string `yaml:"bucket" json:"bucket" env:"MEDIA_S3_BUCKET" envDefault:"platform-dev" description:"S3 bucket name"`
 
 	// S3 access key (from secrets)
-	AccessKey string `yaml:"access_key,omitempty" json:"access_key,omitempty" env:"MEDIA_S3_ACCESS_KEY" description:"S3 access key (from secret provider)"`
+	AccessKey string `yaml:"access_key,omitempty" json:"access_key,omitempty" env:"MEDIA_S3_ACCESS_KEY_ID" description:"S3 access key ID (AWS standard naming)"`
 
 	// S3 secret key (from secrets)
-	SecretKey string `yaml:"secret_key,omitempty" json:"secret_key,omitempty" env:"MEDIA_S3_SECRET_KEY" description:"S3 secret key (from secret provider)"`
+	SecretKey string `yaml:"secret_key,omitempty" json:"secret_key,omitempty" env:"MEDIA_S3_SECRET_ACCESS_KEY" description:"S3 secret access key (AWS standard naming)"`
 
 	// Use path-style addressing
 	UsePathStyle bool `yaml:"use_path_style" json:"use_path_style" env:"MEDIA_S3_USE_PATH_STYLE" envDefault:"true" description:"Use S3 path-style addressing"`

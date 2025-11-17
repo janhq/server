@@ -223,16 +223,18 @@ LOG_LEVEL=debug
 
 ```bash
 # Database
-DATABASE_URL=postgres://media:media@localhost:5432/media_api?sslmode=disable
+DB_POSTGRESQL_WRITE_DSN=postgres://media:media@localhost:5432/media_api?sslmode=disable
 
-# S3 Storage (Required)
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_BUCKET=your-bucket
-S3_ACCESS_KEY=your-access-key
-S3_SECRET_KEY=your-secret-key
+# S3 Storage (Required - AWS Standard Naming)
+MEDIA_S3_ENDPOINT=https://s3.amazonaws.com
+MEDIA_S3_REGION=us-east-1
+MEDIA_S3_BUCKET=your-bucket
+MEDIA_S3_ACCESS_KEY_ID=your-access-key-id
+MEDIA_S3_SECRET_ACCESS_KEY=your-secret-access-key
+MEDIA_S3_USE_PATH_STYLE=false
 
 # Server
-HTTP_PORT=8081
+MEDIA_API_PORT=8285
 LOG_LEVEL=info
 ```
 

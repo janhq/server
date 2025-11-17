@@ -30,7 +30,17 @@ func Connect(cfg Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("database DSN is empty")
 	}
 
-	if err := ensureDatabaseExists(cfg.DSN); err != nil {
+	// Add search_path to DSN if not present
+	dsn := cfg.DSN
+	if !strings.Contains(dsn, "search_path") {
+		separator := "?"
+		if strings.Contains(dsn, "?") {
+			separator = "&"
+		}
+		dsn = dsn + separator + "search_path=media_api"
+	}
+
+	if err := ensureDatabaseExists(dsn); err != nil {
 		return nil, fmt.Errorf("ensure database: %w", err)
 	}
 
@@ -38,7 +48,7 @@ func Connect(cfg Config) (*gorm.DB, error) {
 		cfg.LogLevel = gormlogger.Warn
 	}
 
-	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		PrepareStmt: true,
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,

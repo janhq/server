@@ -40,7 +40,15 @@ type Config struct {
 
 	// Tool Execution
 	MaxToolDepth int           `env:"RESPONSE_MAX_TOOL_DEPTH" envDefault:"8"`
-	ToolTimeout  time.Duration `env:"TOOL_EXECUTION_TIMEOUT" envDefault:"45s"`
+	ToolTimeout  time.Duration `env:"TOOL_EXECUTION_TIMEOUT" envDefault:"300s"`
+
+	// Background Task Processing
+	BackgroundWorkerCount  int           `env:"BACKGROUND_WORKER_COUNT" envDefault:"4"`
+	BackgroundTaskTimeout  time.Duration `env:"BACKGROUND_TASK_TIMEOUT" envDefault:"600s"`
+	BackgroundPollInterval time.Duration `env:"BACKGROUND_POLL_INTERVAL" envDefault:"2s"`
+	WebhookTimeout         time.Duration `env:"WEBHOOK_TIMEOUT" envDefault:"10s"`
+	WebhookMaxRetries      int           `env:"WEBHOOK_MAX_RETRIES" envDefault:"3"`
+	WebhookRetryDelay      time.Duration `env:"WEBHOOK_RETRY_DELAY" envDefault:"2s"`
 }
 
 // Load parses environment variables into Config.
@@ -64,7 +72,7 @@ func Load() (*Config, error) {
 	}
 
 	if cfg.ToolTimeout <= 0 {
-		cfg.ToolTimeout = 45 * time.Second
+		cfg.ToolTimeout = 300 * time.Second
 	}
 
 	return cfg, nil

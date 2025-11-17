@@ -28,7 +28,7 @@ type Config struct {
 	EnableTracing   bool          `env:"ENABLE_TRACING" envDefault:"false"`
 	OTLPEndpoint    string        `env:"OTEL_EXPORTER_OTLP_ENDPOINT" envDefault:""`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"10s"`
-	DatabaseURL     string        `env:"TEMPLATE_DATABASE_URL" envDefault:"postgres://postgres:postgres@localhost:5432/template_api?sslmode=disable"`
+	DatabaseURL     string        `env:"DB_POSTGRESQL_WRITE_DSN" envDefault:"postgres://postgres:postgres@localhost:5432/template_api?sslmode=disable"`
 	DBMaxIdleConns  int           `env:"DB_MAX_IDLE_CONNS" envDefault:"5"`
 	DBMaxOpenConns  int           `env:"DB_MAX_OPEN_CONNS" envDefault:"15"`
 	DBConnLifetime  time.Duration `env:"DB_CONN_MAX_LIFETIME" envDefault:"30m"`

@@ -142,12 +142,17 @@ func mapToEntity(resp *domain.Response) (*entities.Response, error) {
 		Output:             output,
 		Status:             string(resp.Status),
 		Stream:             resp.Stream,
+		Background:         resp.Background,
+		Store:              resp.Store,
+		APIKey:             resp.APIKey,
 		Metadata:           metadata,
 		Usage:              usage,
 		Error:              errJSON,
 		ConversationID:     resp.ConversationID,
 		PreviousResponseID: resp.PreviousResponseID,
 		Object:             resp.Object,
+		QueuedAt:           resp.QueuedAt,
+		StartedAt:          resp.StartedAt,
 		CompletedAt:        resp.CompletedAt,
 		CancelledAt:        resp.CancelledAt,
 		FailedAt:           resp.FailedAt,
@@ -162,10 +167,15 @@ func mapFromEntity(entity *entities.Response, resp *domain.Response) error {
 	resp.SystemPrompt = entity.SystemPrompt
 	resp.Status = domain.Status(entity.Status)
 	resp.Stream = entity.Stream
+	resp.Background = entity.Background
+	resp.Store = entity.Store
+	resp.APIKey = entity.APIKey
 	resp.ConversationID = entity.ConversationID
 	resp.PreviousResponseID = entity.PreviousResponseID
 	resp.CreatedAt = entity.CreatedAt
 	resp.UpdatedAt = entity.UpdatedAt
+	resp.QueuedAt = entity.QueuedAt
+	resp.StartedAt = entity.StartedAt
 	resp.CompletedAt = entity.CompletedAt
 	resp.CancelledAt = entity.CancelledAt
 	resp.FailedAt = entity.FailedAt

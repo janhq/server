@@ -57,6 +57,24 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 	}
 
 	stream := req.Stream != nil && *req.Stream
+	background := req.Background != nil && *req.Background
+	store := req.Store != nil && *req.Store
+
+	// Validate background mode constraints
+	if background && !store {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "background mode requires store=true"})
+		return
+	}
+
+	// Extract API key for background tasks (supports both X-API-Key and Authorization)
+	apiKey := strings.TrimSpace(c.GetHeader("X-API-Key"))
+	if apiKey == "" {
+		apiKey = strings.TrimSpace(c.GetHeader("Authorization"))
+	}
+	var apiKeyPtr *string
+	if apiKey != "" {
+		apiKeyPtr = &apiKey
+	}
 
 	params := response.CreateParams{
 		UserID:             userID,
@@ -66,6 +84,9 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 		Temperature:        req.Temperature,
 		MaxTokens:          req.MaxTokens,
 		Stream:             stream,
+		Background:         background,
+		Store:              store,
+		APIKey:             apiKeyPtr,
 		ToolChoice:         mapToolChoice(req.ToolChoice),
 		Tools:              mapTools(req.Tools),
 		PreviousResponseID: req.PreviousResponseID,
@@ -73,7 +94,7 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 		Metadata:           req.Metadata,
 	}
 
-	authCtx := llm.ContextWithAuthToken(c.Request.Context(), strings.TrimSpace(c.GetHeader("Authorization")))
+	authCtx := llm.ContextWithAuthToken(c.Request.Context(), apiKey)
 	c.Request = c.Request.WithContext(authCtx)
 
 	if stream {
