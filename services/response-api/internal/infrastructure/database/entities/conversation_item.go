@@ -16,3 +16,8 @@ type ConversationItem struct {
 	Sequence       int            `gorm:"index"`
 	CreatedAt      time.Time
 }
+
+// TableName specifies the table name for ConversationItem.
+func (ConversationItem) TableName() string {
+	return "conversation_items"
+}

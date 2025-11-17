@@ -35,7 +35,7 @@ func (q *PostgresQueue) Dequeue(ctx context.Context) (*Task, error) {
 	var entity entities.Response
 
 	err := q.db.WithContext(ctx).
-		Raw("SELECT * FROM response WHERE status = ? AND background = ? ORDER BY queued_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED", "queued", true).
+		Raw("SELECT * FROM responses WHERE status = ? AND background = ? ORDER BY queued_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED", "queued", true).
 		Scan(&entity).Error
 
 	if err != nil {

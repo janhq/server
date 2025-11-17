@@ -7,6 +7,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// TableName specifies the table name for Response.
+func (Response) TableName() string {
+	return "responses"
+}
+
 // Response represents the persisted response record.
 type Response struct {
 	ID                 uint           `gorm:"primaryKey"`
