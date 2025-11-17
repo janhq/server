@@ -275,23 +275,23 @@ func (v *KeycloakValidator) Ready() bool {
 	return true
 }
 
-func jwtNumericTime(raw any) time.Time {
-	switch t := raw.(type) {
+func jwtNumericTime(value any) time.Time {
+	switch timeValue := value.(type) {
 	case float64:
-		return time.Unix(int64(t), 0).UTC()
+		return time.Unix(int64(timeValue), 0).UTC()
 	case int64:
-		return time.Unix(t, 0).UTC()
+		return time.Unix(timeValue, 0).UTC()
 	case json.Number:
-		if v, err := t.Int64(); err == nil {
-			return time.Unix(v, 0).UTC()
+		if unixTime, err := timeValue.Int64(); err == nil {
+			return time.Unix(unixTime, 0).UTC()
 		}
 	}
 	return time.Time{}
 }
 
-func claimString(raw any) string {
-	if s, ok := raw.(string); ok {
-		return s
+func claimString(value any) string {
+	if str, ok := value.(string); ok {
+		return str
 	}
 	return ""
 }

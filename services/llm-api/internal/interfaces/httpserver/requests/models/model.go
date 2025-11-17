@@ -114,24 +114,24 @@ func (r *BulkToggleCatalogsRequest) Normalize() {
 }
 
 // trimWhitespace is a helper function to trim whitespace
-func trimWhitespace(s string) string {
+func trimWhitespace(input string) string {
 	// Trim leading and trailing whitespace
 	result := ""
 	start := 0
-	end := len(s) - 1
+	end := len(input) - 1
 
 	// Find first non-space character
-	for start <= end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+	for start <= end && (input[start] == ' ' || input[start] == '\t' || input[start] == '\n' || input[start] == '\r') {
 		start++
 	}
 
 	// Find last non-space character
-	for end >= start && (s[end] == ' ' || s[end] == '\t' || s[end] == '\n' || s[end] == '\r') {
+	for end >= start && (input[end] == ' ' || input[end] == '\t' || input[end] == '\n' || input[end] == '\r') {
 		end--
 	}
 
 	if start <= end {
-		result = s[start : end+1]
+		result = input[start : end+1]
 	}
 
 	return result

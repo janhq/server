@@ -10,31 +10,31 @@ import (
 // ReflectToMCPOptions converts a struct definition into MCP tool options using
 // reflection metadata. It parses json and jsonschema tags to construct the
 // appropriate argument definitions for the mark3labs MCP server SDK.
-func ReflectToMCPOptions(description string, v interface{}) []mcpgo.ToolOption {
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
+func ReflectToMCPOptions(description string, structValue interface{}) []mcpgo.ToolOption {
+	structType := reflect.TypeOf(structValue)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
 	}
 
 	opts := []mcpgo.ToolOption{
 		mcpgo.WithDescription(description),
 	}
 
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
 
-		jsonTag := f.Tag.Get("json")
+		jsonTag := field.Tag.Get("json")
 		if jsonTag == "" || jsonTag == "-" {
 			continue
 		}
 
 		name := strings.Split(jsonTag, ",")[0]
 
-		jsSchema := f.Tag.Get("jsonschema")
+		jsSchema := field.Tag.Get("jsonschema")
 		required := strings.Contains(jsSchema, "required")
 		desc := extractDescription(jsSchema)
 
-		baseType := f.Type
+		baseType := field.Type
 		if baseType.Kind() == reflect.Ptr {
 			baseType = baseType.Elem()
 		}

@@ -28,11 +28,11 @@ func New(cfg *config.Config) zerolog.Logger {
 	return base
 }
 
-func parseLevel(raw string) zerolog.Level {
-	if raw == "" {
+func parseLevel(levelString string) zerolog.Level {
+	if levelString == "" {
 		return zerolog.InfoLevel
 	}
-	level, err := zerolog.ParseLevel(strings.ToLower(raw))
+	level, err := zerolog.ParseLevel(strings.ToLower(levelString))
 	if err != nil {
 		return zerolog.InfoLevel
 	}

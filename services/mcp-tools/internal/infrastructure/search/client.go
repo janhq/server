@@ -554,8 +554,8 @@ func applyDomainFilter(query string, domains []string) string {
 	return fmt.Sprintf("(%s) (%s)", query, filterExpr)
 }
 
-func extractVisibleText(raw []byte) string {
-	doc, err := html.Parse(strings.NewReader(string(raw)))
+func extractVisibleText(htmlBytes []byte) string {
+	doc, err := html.Parse(strings.NewReader(string(htmlBytes)))
 	if err != nil {
 		return ""
 	}

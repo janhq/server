@@ -38,11 +38,11 @@ import (
 // @in header
 // @name Authorization
 type Application struct {
-	httpServer *httpserver.HttpServer
+	httpServer *httpserver.HTTPServer
 	log        zerolog.Logger
 }
 
-func NewApplication(httpServer *httpserver.HttpServer, log zerolog.Logger) *Application {
+func NewApplication(httpServer *httpserver.HTTPServer, log zerolog.Logger) *Application {
 	return &Application{
 		httpServer: httpServer,
 		log:        log,

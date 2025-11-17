@@ -17,7 +17,7 @@ import (
 	_ "jan-server/services/llm-api/docs/swagger"
 )
 
-type HttpServer struct {
+type HTTPServer struct {
 	engine    *gin.Engine
 	infra     *infrastructure.Infrastructure
 	v1Route   *v1.V1Route
@@ -25,7 +25,7 @@ type HttpServer struct {
 	config    *config.Config
 }
 
-func (s *HttpServer) bindSwagger() {
+func (s *HTTPServer) bindSwagger() {
 	g := s.engine.Group("/")
 
 	// Serve swagger UI with custom URL pointing to combined swagger if available
@@ -45,9 +45,9 @@ func NewHttpServer(
 	authRoute *auth.AuthRoute,
 	infra *infrastructure.Infrastructure,
 	cfg *config.Config,
-) *HttpServer {
+) *HTTPServer {
 	gin.SetMode(gin.ReleaseMode)
-	server := HttpServer{
+	server := HTTPServer{
 		gin.New(),
 		infra,
 		v1Route,
@@ -76,7 +76,7 @@ func NewHttpServer(
 	return &server
 }
 
-func (httpServer *HttpServer) Run() error {
+func (httpServer *HTTPServer) Run() error {
 	// Public routes (no auth required)
 	root := httpServer.engine.Group("/")
 

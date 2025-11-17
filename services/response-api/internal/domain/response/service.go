@@ -461,8 +461,8 @@ func normalizeContent(content interface{}) map[string]interface{} {
 	}
 }
 
-func mapToChatMessage(raw interface{}) (llm.ChatMessage, error) {
-	payload, ok := raw.(map[string]interface{})
+func mapToChatMessage(messageData interface{}) (llm.ChatMessage, error) {
+	payload, ok := messageData.(map[string]interface{})
 	if !ok {
 		return llm.ChatMessage{}, errors.New("input items must be objects with role/content")
 	}
