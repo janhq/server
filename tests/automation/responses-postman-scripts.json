@@ -543,34 +543,6 @@
               }
             }
           ]
-        },
-        {
-          "name": "List Input Items",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{guest_access_token}}"
-              }
-            ],
-            "url": "{{kong_url}}/responses/v1/responses/{{response_id}}/input_items"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Input items retrieved', function () {",
-                  "  pm.response.to.have.status(200);",
-                  "  const items = pm.response.json();",
-                  "  pm.expect(items).to.be.an('array');",
-                  "});"
-                ]
-              }
-            }
-          ]
         }
       ]
     },

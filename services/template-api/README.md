@@ -28,7 +28,7 @@ Set configuration values via exported environment variables or by editing the re
 
 ## Database
 
-- Point `TEMPLATE_DATABASE_URL` at your PostgreSQL instance (default assumes `postgres:postgres@localhost:5432/template_api`).
+- Point `DB_POSTGRESQL_WRITE_DSN` at your PostgreSQL instance (default assumes `postgres:postgres@localhost:5432/template_api`).
 - On startup the service runs GORM auto-migrations for the `samples` table and seeds a single row, which powers the `/v1/sample` endpoint.
 
 ## Authentication

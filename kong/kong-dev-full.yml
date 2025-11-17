@@ -302,9 +302,9 @@ services:
               
   - name: response-api-svc
     host: response-api-upstream
-    connect_timeout: 60000
-    write_timeout: 60000
-    read_timeout: 60000
+    connect_timeout: 900000
+    write_timeout: 900000
+    read_timeout: 900000
     retries: 3
     tags: [response, api]
     routes:

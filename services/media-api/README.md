@@ -140,7 +140,7 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | `MEDIA_DATABASE_URL` | Postgres DSN for metadata. |
 | `MEDIA_S3_ENDPOINT` | S3-compatible endpoint (`https://s3.menlo.ai`). |
 | `MEDIA_S3_PUBLIC_ENDPOINT` | Optional public endpoint used when returning presigned URLs (e.g., `http://localhost:9000`). |
-| `MEDIA_S3_ACCESS_KEY` / `MEDIA_S3_SECRET_KEY` | Credentials (`XXXXX` / `YYYY`). |
+| `MEDIA_S3_ACCESS_KEY_ID` / `MEDIA_S3_SECRET_ACCESS_KEY` | Credentials (`XXXXX` / `YYYY`). |
 | `MEDIA_S3_BUCKET` | Target bucket (`platform-dev`). |
 | `MEDIA_MAX_BYTES` | Max upload size (default 20 MB). |
 | `MEDIA_S3_PRESIGN_TTL` | Lifespan of presigned URLs (default 5 min). |

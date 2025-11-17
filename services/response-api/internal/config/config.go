@@ -40,7 +40,7 @@ type Config struct {
 
 	// Tool Execution
 	MaxToolDepth int           `env:"RESPONSE_MAX_TOOL_DEPTH" envDefault:"8"`
-	ToolTimeout  time.Duration `env:"TOOL_EXECUTION_TIMEOUT" envDefault:"45s"`
+	ToolTimeout  time.Duration `env:"TOOL_EXECUTION_TIMEOUT" envDefault:"300s"`
 }
 
 // Load parses environment variables into Config.
@@ -64,7 +64,7 @@ func Load() (*Config, error) {
 	}
 
 	if cfg.ToolTimeout <= 0 {
-		cfg.ToolTimeout = 45 * time.Second
+		cfg.ToolTimeout = 300 * time.Second
 	}
 
 	return cfg, nil

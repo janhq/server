@@ -28,17 +28,20 @@ func NewClient(baseURL string) *Client {
 		httpClient: resty.New().
 			SetBaseURL(baseURL).
 			SetHeader("Content-Type", "application/json").
-			SetTimeout(75 * time.Second),
+			SetTimeout(900 * time.Second),
 		baseURL: baseURL,
 	}
 }
 
 // CreateChatCompletion calls llm-api /v1/chat/completions.
 func (c *Client) CreateChatCompletion(ctx context.Context, req llm.ChatCompletionRequest) (*llm.ChatCompletionResponse, error) {
+	// Convert to API-compatible format with string content
+	apiReq := convertToAPIRequest(req)
+
 	var completion llm.ChatCompletionResponse
 	request := c.httpClient.R().
 		SetContext(ctx).
-		SetBody(req).
+		SetBody(apiReq).
 		SetResult(&completion)
 
 	if token := llm.AuthTokenFromContext(ctx); token != "" {
@@ -76,7 +79,7 @@ func (c *Client) CreateChatCompletionStream(ctx context.Context, req llm.ChatCom
 		httpReq.Header.Set("Authorization", token)
 	}
 
-	httpClient := &http.Client{Timeout: 120 * time.Second}
+	httpClient := &http.Client{Timeout: 900 * time.Second}
 	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
@@ -96,6 +99,48 @@ func (c *Client) CreateChatCompletionStream(ctx context.Context, req llm.ChatCom
 
 // Ensure interface compliance.
 var _ llm.Provider = (*Client)(nil)
+
+// convertToAPIRequest converts domain types to API-compatible format.
+// This ensures Content is always a string as expected by LLM API.
+func convertToAPIRequest(req llm.ChatCompletionRequest) map[string]interface{} {
+	// Convert messages with string content
+	messages := make([]map[string]interface{}, len(req.Messages))
+	for i, msg := range req.Messages {
+		messages[i] = map[string]interface{}{
+			"role":    msg.Role,
+			"content": msg.GetContentAsString(), // Convert content to string
+		}
+
+		if len(msg.ToolCalls) > 0 {
+			messages[i]["tool_calls"] = msg.ToolCalls
+		}
+
+		if msg.ToolCallID != nil {
+			messages[i]["tool_call_id"] = *msg.ToolCallID
+		}
+	}
+
+	apiReq := map[string]interface{}{
+		"model":    req.Model,
+		"messages": messages,
+		"stream":   req.Stream,
+	}
+
+	if len(req.Tools) > 0 {
+		apiReq["tools"] = req.Tools
+	}
+	if req.ToolChoice != nil {
+		apiReq["tool_choice"] = req.ToolChoice
+	}
+	if req.Temperature != nil {
+		apiReq["temperature"] = *req.Temperature
+	}
+	if req.MaxTokens != nil {
+		apiReq["max_tokens"] = *req.MaxTokens
+	}
+
+	return apiReq
+}
 
 // sseStream implements llm.Stream backed by http.Response body with SSE parsing.
 type sseStream struct {

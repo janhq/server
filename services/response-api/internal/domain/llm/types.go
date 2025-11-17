@@ -36,6 +36,21 @@ type ChatMessage struct {
 	ToolCallID *string     `json:"tool_call_id,omitempty"`
 }
 
+// GetContentAsString returns the content as a string, converting if necessary.
+// This ensures compatibility with OpenAI SDK which expects string content.
+func (m *ChatMessage) GetContentAsString() string {
+	switch v := m.Content.(type) {
+	case string:
+		return v
+	case nil:
+		return ""
+	default:
+		// Marshal complex content (arrays, objects) to JSON string
+		contentBytes, _ := json.Marshal(v)
+		return string(contentBytes)
+	}
+}
+
 // ToolCall mirrors the OpenAI tool call format.
 type ToolCall struct {
 	ID       string       `json:"id"`
