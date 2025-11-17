@@ -7,6 +7,7 @@ type ResponsePayload struct {
 	ID                 string                 `json:"id"`
 	Object             string                 `json:"object"`
 	Created            int64                  `json:"created"`
+	CreatedAt          int64                  `json:"created_at"` // Same as Created, for compatibility
 	Model              string                 `json:"model"`
 	Status             string                 `json:"status"`
 	Input              interface{}            `json:"input"`
@@ -17,15 +18,19 @@ type ResponsePayload struct {
 	PreviousResponseID *string                `json:"previous_response_id,omitempty"`
 	SystemPrompt       *string                `json:"system_prompt,omitempty"`
 	Stream             bool                   `json:"stream"`
+	Background         bool                   `json:"background"`
+	Store              bool                   `json:"store"`
 	Error              interface{}            `json:"error,omitempty"`
 }
 
 // FromDomain maps the domain response to DTO.
 func FromDomain(r *response.Response) ResponsePayload {
+	createdUnix := r.CreatedAt.Unix()
 	return ResponsePayload{
 		ID:                 r.PublicID,
 		Object:             r.Object,
-		Created:            r.CreatedAt.Unix(),
+		Created:            createdUnix,
+		CreatedAt:          createdUnix, // Duplicate for compatibility
 		Model:              r.Model,
 		Status:             string(r.Status),
 		Input:              r.Input,
@@ -36,6 +41,8 @@ func FromDomain(r *response.Response) ResponsePayload {
 		PreviousResponseID: r.PreviousResponseID,
 		SystemPrompt:       r.SystemPrompt,
 		Stream:             r.Stream,
+		Background:         r.Background,
+		Store:              r.Store,
 		Error:              r.Error,
 	}
 }

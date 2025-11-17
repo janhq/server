@@ -45,7 +45,13 @@ func (c *Client) CreateChatCompletion(ctx context.Context, req llm.ChatCompletio
 		SetResult(&completion)
 
 	if token := llm.AuthTokenFromContext(ctx); token != "" {
-		request.SetHeader("Authorization", token)
+		// If token starts with "Bearer ", use Authorization header
+		// Otherwise, treat as X-API-Key
+		if strings.HasPrefix(token, "Bearer ") {
+			request.SetHeader("Authorization", token)
+		} else {
+			request.SetHeader("X-API-Key", token)
+		}
 	}
 
 	resp, err := request.Post("/v1/chat/completions")
@@ -76,7 +82,13 @@ func (c *Client) CreateChatCompletionStream(ctx context.Context, req llm.ChatCom
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "text/event-stream")
 	if token := llm.AuthTokenFromContext(ctx); token != "" {
-		httpReq.Header.Set("Authorization", token)
+		// If token starts with "Bearer ", use Authorization header
+		// Otherwise, treat as X-API-Key
+		if strings.HasPrefix(token, "Bearer ") {
+			httpReq.Header.Set("Authorization", token)
+		} else {
+			httpReq.Header.Set("X-API-Key", token)
+		}
 	}
 
 	httpClient := &http.Client{Timeout: 900 * time.Second}

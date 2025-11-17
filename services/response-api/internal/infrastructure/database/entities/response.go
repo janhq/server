@@ -16,8 +16,11 @@ type Response struct {
 	SystemPrompt       *string        `gorm:"type:text"`
 	Input              datatypes.JSON `gorm:"type:jsonb"`
 	Output             datatypes.JSON `gorm:"type:jsonb"`
-	Status             string         `gorm:"size:32"`
+	Status             string         `gorm:"size:32;index:idx_status"`
 	Stream             bool
+	Background         bool           `gorm:"default:false"`
+	Store              bool           `gorm:"default:false"`
+	APIKey             *string        `gorm:"type:text"` // Store API key (X-API-Key or Bearer token) for background tasks
 	Metadata           datatypes.JSON `gorm:"type:jsonb"`
 	Usage              datatypes.JSON `gorm:"type:jsonb"`
 	Error              datatypes.JSON `gorm:"type:jsonb"`
@@ -27,6 +30,8 @@ type Response struct {
 	Object             string  `gorm:"size:32"`
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	QueuedAt           *time.Time
+	StartedAt          *time.Time
 	CompletedAt        *time.Time
 	CancelledAt        *time.Time
 	FailedAt           *time.Time
