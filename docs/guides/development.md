@@ -20,8 +20,8 @@ Install these before running any commands:
 
 - **Docker Desktop 24+** with Docker Compose V2
 - **GNU Make** (built in on macOS/Linux, install via Chocolatey/Brew on Windows)
-- **Go 1.21+** � only required when editing Go code or using `jan-cli`
-- **Newman** (`npm install -g newman`) � required for the Postman-based integration suites
+- **Go 1.21+**  only required when editing Go code or using `jan-cli`
+- **Newman** (`npm install -g newman`)  required for the Postman-based integration suites
 
 > Tip: `make setup` uses `jan-cli dev setup` to verify Docker, copy `.env.template` to `.env`, and create `docker/.env` automatically.
 
@@ -93,7 +93,7 @@ make logs-mcp       # MCP stack
 make down           # stop and remove containers
 ```
 
-Use this mode for integration testing and parity with CI. `COMPOSE_PROFILES` controls which Compose profiles (`infra,api,mcp,full`) load�edit `.env` if you want to disable GPU/vLLM locally.
+Use this mode for integration testing and parity with CI. `COMPOSE_PROFILES` controls which Compose profiles (`infra,api,mcp,full`) loadedit `.env` if you want to disable GPU/vLLM locally.
 
 ### Dev-Full Mode (hybrid debugging)
 
@@ -172,10 +172,10 @@ See [Testing Guide](testing.md) for platform details, CI coverage, and troublesh
 
 ## Troubleshooting & Next Steps
 
-1. `make health-check` � verifies infrastructure, API, MCP, and optional services
-2. `make logs` or `docker compose logs <service>` � inspect failures quickly
-3. `make restart-kong` / `make restart-keycloak` � common fixes for gateway/auth issues
-4. `make monitor-up` � bring up Grafana/Prometheus/Jaeger if you need observability while debugging
+1. `make health-check`  verifies infrastructure, API, MCP, and optional services
+2. `make logs` or `docker compose logs <service>`  inspect failures quickly
+3. `make restart-kong` / `make restart-keycloak`  common fixes for gateway/auth issues
+4. `make monitor-up`  bring up Grafana/Prometheus/Jaeger if you need observability while debugging
 
 Need more help? Review [Hybrid Mode](hybrid-mode.md), [Dev-Full Mode](dev-full-mode.md), [Testing](testing.md), [Troubleshooting](troubleshooting.md), and the configuration docs under `docs/configuration/`.
 

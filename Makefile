@@ -612,7 +612,7 @@ test-e2e:
 		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
 		--verbose \
 		--reporters cli
-	@echo "�o. Gateway end-to-end tests passed"
+	@echo "o. Gateway end-to-end tests passed"
 
 newman-debug:
 	@echo "Running authentication tests with debug output..."
