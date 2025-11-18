@@ -19,16 +19,21 @@ var globalConfig *Config
 // Config holds all environment backed configuration for llm-api.
 type Config struct {
 	// HTTP Server
-	HTTPPort    int    `env:"HTTP_PORT" envDefault:"8080"`
-	MetricsPort int    `env:"METRICS_PORT" envDefault:"9091"`
-	DatabaseURL string `env:"DATABASE_URL,notEmpty"`
+	HTTPPort    int `env:"HTTP_PORT" envDefault:"8080"`
+	MetricsPort int `env:"METRICS_PORT" envDefault:"9091"`
+
+	// Database - Read/Write Split (required, no defaults)
+	DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN,notEmpty"`
+	DBPostgresqlRead1DSN string `env:"DB_POSTGRESQL_READ1_DSN"` // Optional read replica
 
 	// Keycloak / Auth
 	KeycloakBaseURL     string        `env:"KEYCLOAK_BASE_URL,notEmpty"`
+	KeycloakPublicURL   string        `env:"KEYCLOAK_PUBLIC_URL"` // Browser-accessible URL (defaults to KeycloakBaseURL)
 	KeycloakRealm       string        `env:"KEYCLOAK_REALM" envDefault:"jan"`
 	BackendClientID     string        `env:"BACKEND_CLIENT_ID,notEmpty"`
 	BackendClientSecret string        `env:"BACKEND_CLIENT_SECRET,notEmpty"`
-	TargetClientID      string        `env:"TARGET_CLIENT_ID,notEmpty"`
+	Client              string        `env:"CLIENT,notEmpty"`
+	OAuthRedirectURI    string        `env:"OAUTH_REDIRECT_URI,notEmpty"`
 	GuestRole           string        `env:"GUEST_ROLE" envDefault:"guest"`
 	KeycloakAdminUser   string        `env:"KEYCLOAK_ADMIN"`
 	KeycloakAdminPass   string        `env:"KEYCLOAK_ADMIN_PASSWORD"`
@@ -38,7 +43,7 @@ type Config struct {
 	JWKSURL             string        `env:"JWKS_URL"`
 	OIDCDiscoveryURL    string        `env:"OIDC_DISCOVERY_URL"`
 	Issuer              string        `env:"ISSUER,notEmpty"`
-	Audience            string        `env:"AUDIENCE,notEmpty"`
+	Account             string        `env:"ACCOUNT,notEmpty"`
 	RefreshJWKSInterval time.Duration `env:"JWKS_REFRESH_INTERVAL" envDefault:"5m"`
 	AuthClockSkew       time.Duration `env:"AUTH_CLOCK_SKEW" envDefault:"60s"`
 
@@ -49,10 +54,6 @@ type Config struct {
 	APIKeyMaxPerUser int           `env:"API_KEY_MAX_PER_USER" envDefault:"5"`
 	APIKeyPrefix     string        `env:"API_KEY_PREFIX" envDefault:"sk_live"`
 	KongAdminURL     string        `env:"KONG_ADMIN_URL" envDefault:"http://kong:8001"`
-
-	// PostgreSQL
-	DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN"`
-	DBPostgresqlRead1DSN string `env:"DB_POSTGRESQL_READ1_DSN"`
 
 	// Model Provider
 	ModelProviderSecret       string                   `env:"MODEL_PROVIDER_SECRET" envDefault:"jan-model-provider-secret-2024"`
@@ -100,6 +101,11 @@ func Load() (*Config, error) {
 	cfg.JanProviderConfigSet = strings.TrimSpace(cfg.JanProviderConfigSet)
 	if cfg.JanProviderConfigSet == "" {
 		cfg.JanProviderConfigSet = "default"
+	}
+
+	// Default KeycloakPublicURL to KeycloakBaseURL if not set
+	if cfg.KeycloakPublicURL == "" {
+		cfg.KeycloakPublicURL = cfg.KeycloakBaseURL
 	}
 
 	if cfg.JanProviderConfigsEnabled {
@@ -203,6 +209,21 @@ func (c *Config) ResolveJWKSURL(ctx context.Context) (string, error) {
 	}
 
 	return doc.JWKSURL, nil
+}
+
+// GetDatabaseWriteDSN returns the write database connection string.
+func (c *Config) GetDatabaseWriteDSN() string {
+	return c.DBPostgresqlWriteDSN
+}
+
+// GetDatabaseReadDSN returns the read database connection string.
+// If DB_POSTGRESQL_READ1_DSN is set, it returns that.
+// Otherwise, falls back to write DSN (no replica configured).
+func (c *Config) GetDatabaseReadDSN() string {
+	if c.DBPostgresqlRead1DSN != "" {
+		return c.DBPostgresqlRead1DSN
+	}
+	return c.GetDatabaseWriteDSN()
 }
 
 // GetGlobal returns the global config instance for backwards compatibility.

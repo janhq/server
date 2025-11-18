@@ -1,45 +1,62 @@
 # MCP Tools API Documentation
 
-The MCP Tools API provides Model Context Protocol tools for web search, scraping, and code execution.
+The MCP Tools API provides AI tools for web search, web scraping, and code execution.
 
 ## Quick Start
 
-### Base URL
-- **Local**: http://localhost:8091
-- **Via Gateway**: http://localhost:8000/api/mcp
-- **Docker**: http://mcp-tools:8091
+### URLs
+- **Direct access**: http://localhost:8091
+- **Through gateway**: http://localhost:8000/v1/mcp (Kong also exposes `/mcp/*` and forwards to `/v1/...`)
+- **Inside Docker**: http://mcp-tools:8091
 
-## Key Features
+## Available Tools
+- **google_search** - Serper/SearXNG-backed web search with optional filters and location hints
+- **scrape** - Fetch and parse a web page, optionally returning Markdown
+- **file_search_index** / **file_search_query** - Lightweight vector store to index custom text and run similarity queries
+- **python_exec** - Execute trusted code through SandboxFusion (optional approval flag)
+- **External providers** - Additional tools declared in [`services/mcp-tools/mcp-providers.md`](../../services/mcp-tools/mcp-providers.md) are loaded automatically
 
-- **JSON-RPC 2.0 Protocol** - Standard protocol for tool interaction
-- **Web Search** - Google search via Serper API
-- **Web Scraping** - Extract content from URLs
-- **Code Execution** - Execute code in sandboxed environment (SandboxFusion)
-- **Tool Discovery** - List available tools and parameters
-- **Error Handling** - Comprehensive error responses
+## How It Works
+
+All tools use JSON-RPC 2.0 protocol. You send a request with tool name and parameters, get back results.
 
 ## Service Ports & Configuration
 
-| Component | Port | Environment Variable |
-|-----------|------|---------------------|
-| **HTTP Server** | 8091 | `HTTP_PORT` |
-| **Serper API** | 443 | `SERPER_API_KEY` |
-| **SandboxFusion** | 8080 | `SANDBOX_URL` |
+| Component | Port | Key Environment Variables |
+|-----------|------|--------------------------|
+| **HTTP Server** | 8091 | `MCP_TOOLS_HTTP_PORT` |
+| **Search Providers** | 443 | `SERPER_API_KEY`, `MCP_SEARCH_ENGINE`, `SEARXNG_URL` |
+| **Vector Store** | 3015 | `VECTOR_STORE_URL` |
+| **SandboxFusion** | 8080 | `SANDBOXFUSION_URL`, `MCP_SANDBOX_REQUIRE_APPROVAL` |
 
 ### Required Environment Variables
 
 ```bash
-HTTP_PORT=8091                                      # HTTP listen port
-SERPER_API_KEY=your_serper_api_key                 # Serper API key
-OTEL_ENABLED=false                                 # OpenTelemetry
+MCP_TOOLS_HTTP_PORT=8091
+SERPER_API_KEY=your_serper_api_key
+MCP_SEARCH_ENGINE=serper             # serper | searxng | offline
+SEARXNG_URL=http://searxng:8080      # used when MCP_SEARCH_ENGINE=searxng
+VECTOR_STORE_URL=http://vector-store-mcp:3015
+SANDBOXFUSION_URL=http://sandbox-fusion:8080
+OTEL_ENABLED=false
+
+# Auth (optional)
+AUTH_ENABLED=true
+AUTH_ISSUER=http://localhost:8085/realms/jan
+ACCOUNT=account
+AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
 ```
 
 ### Optional Configuration
 
 ```bash
-LOG_LEVEL=info                                     # debug, info, warn, error
-SANDBOX_URL=http://localhost:3010                 # SandboxFusion URL
-SANDBOX_TIMEOUT=30s                               # Execution timeout
+MCP_TOOLS_LOG_LEVEL=info
+MCP_TOOLS_LOG_FORMAT=json          # json | console
+SANDBOXFUSION_TIMEOUT=30s
+SERPER_DOMAIN_FILTER=example.com,another.com
+SERPER_LOCATION_HINT=California, United States
+SERPER_OFFLINE_MODE=false
+MCP_SANDBOX_REQUIRE_APPROVAL=true  # force clients to set `approved: true`
 ```
 
 ## JSON-RPC 2.0 Protocol
@@ -50,16 +67,16 @@ All tool calls use JSON-RPC 2.0 format.
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "tool_name",
-    "arguments": {
-      "arg1": "value1",
-      "arg2": "value2"
-    }
-  }
+ "jsonrpc": "2.0",
+ "id": 1,
+ "method": "tools/call",
+ "params": {
+ "name": "tool_name",
+ "arguments": {
+ "arg1": "value1",
+ "arg2": "value2"
+ }
+ }
 }
 ```
 
@@ -67,12 +84,12 @@ All tool calls use JSON-RPC 2.0 format.
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "content": "Tool output",
-    "is_error": false
-  }
+ "jsonrpc": "2.0",
+ "id": 1,
+ "result": {
+ "content": "Tool output",
+ "is_error": false
+ }
 }
 ```
 
@@ -80,91 +97,73 @@ All tool calls use JSON-RPC 2.0 format.
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": 1,
-  "error": {
-    "code": -32603,
-    "message": "Internal error",
-    "data": "Tool execution failed"
-  }
+ "jsonrpc": "2.0",
+ "id": 1,
+ "error": {
+ "code": -32603,
+ "message": "Internal error",
+ "data": "Tool execution failed"
+ }
 }
 ```
 
-## Main Endpoints
+## MCP Endpoint (`POST /v1/mcp`)
 
-### Call Tool
-
-**POST** `/v1/mcp`
-
-Execute a tool using JSON-RPC 2.0.
+All JSON-RPC requests (initialize, tools/list, tools/call, prompts/list, etc.) go through a single streaming endpoint. When calling through Kong, use `http://localhost:8000/v1/mcp`; direct calls go to `http://localhost:8091/v1/mcp`.
 
 ```bash
-curl -X POST http://localhost:8091/v1/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "google_search",
-      "arguments": {
-        "q": "latest AI news",
-        "num": 5
-      }
-    }
-  }'
+curl -N http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 1,
+ "method": "tools/list"
+ }'
 ```
 
-### List Tools
-
-**GET** `/v1/mcp/tools`
-
-Get all available tools and their signatures.
-
-```bash
-curl http://localhost:8091/v1/mcp/tools
-```
+Because the service uses `mcp-go`'s streaming HTTP server, responses are sent as Server-Sent Events (SSE). For simple calls you can omit `-N`, but streaming keeps the connection open for multi-part results (tool deltas, long-running sandbox jobs, etc.).
 
 **Response:**
 ```json
 {
-  "tools": [
-    {
-      "name": "google_search",
-      "description": "Search Google for query results",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "q": {"type": "string", "description": "Search query"},
-          "num": {"type": "integer", "description": "Number of results", "default": 10}
-        },
-        "required": ["q"]
-      }
-    },
-    {
-      "name": "web_scraper",
-      "description": "Extract content from a URL",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "url": {"type": "string", "description": "URL to scrape"}
-        },
-        "required": ["url"]
-      }
-    },
-    {
-      "name": "code_executor",
-      "description": "Execute code in a sandboxed environment",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "code": {"type": "string", "description": "Code to execute"},
-          "language": {"type": "string", "enum": ["python", "javascript"], "default": "python"}
-        },
-        "required": ["code"]
-      }
-    }
-  ]
+ "tools": [
+ {
+ "name": "google_search",
+ "description": "Search Google for query results",
+ "inputSchema": {
+ "type": "object",
+ "properties": {
+ "q": {"type": "string", "description": "Search query"},
+ "num": {"type": "integer", "description": "Number of results", "default": 10}
+ },
+ "required": ["q"]
+ }
+ },
+ {
+ "name": "scrape",
+ "description": "Extract content from a URL",
+ "inputSchema": {
+ "type": "object",
+ "properties": {
+ "url": {"type": "string", "description": "URL to scrape"}
+ },
+ "required": ["url"]
+ }
+ },
+ {
+ "name": "python_exec",
+ "description": "Execute code in a sandboxed environment",
+ "inputSchema": {
+ "type": "object",
+ "properties": {
+ "code": {"type": "string", "description": "Code to execute"},
+ "language": {"type": "string", "enum": ["python", "javascript"], "default": "python"}
+ },
+ "required": ["code"]
+ }
+ }
+ ]
 }
 ```
 
@@ -173,127 +172,11 @@ curl http://localhost:8091/v1/mcp/tools
 **GET** `/healthz`
 
 ```bash
+# Via gateway
+curl http://localhost:8000/mcp/healthz
+
+# Direct
 curl http://localhost:8091/healthz
-```
-
-## Available Tools
-
-### 1. Google Search
-
-**Tool Name**: `google_search`
-
-Search the web using Serper API.
-
-```bash
-curl -X POST http://localhost:8091/v1/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "google_search",
-      "arguments": {
-        "q": "Python async programming",
-        "num": 5
-      }
-    }
-  }'
-```
-
-**Parameters:**
-- `q` (required) - Search query
-- `num` (optional) - Number of results (default: 10, max: 20)
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "content": "[{\"title\":\"...\",\"link\":\"...\",\"snippet\":\"...\"}, ...]",
-    "is_error": false
-  }
-}
-```
-
-### 2. Web Scraper
-
-**Tool Name**: `web_scraper`
-
-Extract text content from a URL.
-
-```bash
-curl -X POST http://localhost:8091/v1/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "web_scraper",
-      "arguments": {
-        "url": "https://example.com/article"
-      }
-    }
-  }'
-```
-
-**Parameters:**
-- `url` (required) - URL to scrape
-- `selector` (optional) - CSS selector for specific content
-- `timeout` (optional) - Timeout in seconds (default: 10)
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "content": "Extracted page content...",
-    "is_error": false
-  }
-}
-```
-
-### 3. Code Executor
-
-**Tool Name**: `code_executor`
-
-Execute code in a sandboxed environment (SandboxFusion).
-
-```bash
-curl -X POST http://localhost:8091/v1/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "code_executor",
-      "arguments": {
-        "code": "import math\nprint(math.sqrt(16))",
-        "language": "python"
-      }
-    }
-  }'
-```
-
-**Parameters:**
-- `code` (required) - Code to execute
-- `language` (optional) - "python" or "javascript" (default: "python")
-- `timeout` (optional) - Timeout in seconds (default: 30)
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "content": "4.0",
-    "is_error": false
-  }
-}
 ```
 
 ## Integration with Response API
@@ -302,17 +185,19 @@ The Response API uses MCP Tools for multi-step orchestration:
 
 ```bash
 # Response API automatically calls MCP tools
-curl -X POST http://localhost:8082/v1/responses \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o-mini",
-    "input": "Search for Python async programming and summarize top 3 results"
-  }'
+curl -X POST http://localhost:8000/responses/v1/responses \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "model": "gpt-4o-mini",
+ "input": "Search for Python async programming and summarize top 3 results",
+ "stream": true
+ }'
 
 # Response API orchestrates:
-# 1. Call google_search tool
-# 2. Pass results to LLM API for summarization
-# 3. Return final response
+# 1. Call google_search
+# 2. Optionally call scrape/file_search_query
+# 3. Stream deltas as the LLM produces the final response
 ```
 
 ## Tool Chaining (via Response API)
@@ -321,11 +206,11 @@ The Response API enables tool chaining:
 
 ```
 google_search 
-    ↓
-web_scraper (on each result)
-    ↓
-code_executor (if needed for analysis)
-    ↓
+ v
+scrape (on each result)
+ v
+python_exec (if needed for analysis)
+ v
 LLM API (final generation)
 ```
 
@@ -343,65 +228,119 @@ LLM API (final generation)
 | -32603 | Internal error | Tool execution failed |
 | -32000 | Timeout | Tool execution timeout |
 
-## Usage Examples
-
-### Example 1: Search and Get First Result
-
-```bash
-# Search
-curl -X POST http://localhost:8091/v1/mcp \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"google_search","arguments":{"q":"Python documentation","num":1}}}'
-
-# Then scrape top result
-curl -X POST http://localhost:8091/v1/mcp \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"web_scraper","arguments":{"url":"https://docs.python.org"}}}'
-```
-
-### Example 2: Execute Python Code
-
-```bash
-curl -X POST http://localhost:8091/v1/mcp \
-  -d '{
-    "jsonrpc":"2.0",
-    "id":1,
-    "method":"tools/call",
-    "params":{
-      "name":"code_executor",
-      "arguments":{
-        "code":"data = [1,2,3,4,5]\nprint(f\"Sum: {sum(data)}, Avg: {sum(data)/len(data)}\")",
-        "language":"python"
-      }
-    }
-  }'
-```
-
-### Example 3: Via Response API (Automated Orchestration)
-
-```bash
-curl -X POST http://localhost:8082/v1/responses \
-  -d '{
-    "model":"gpt-4o-mini",
-    "input":"Find current Bitcoin price and explain its recent trend"
-  }'
-
-# Automatically orchestrates:
-# 1. google_search("Bitcoin price today")
-# 2. web_scraper(on top result)
-# 3. LLM generation with extracted data
-```
-
 ## Related Services
 
 - **Response API** (Port 8082) - Tool orchestration
 - **LLM API** (Port 8080) - Final generation
 - **Kong Gateway** (Port 8000) - API routing
 - **SandboxFusion** - Code execution sandbox
-- **Serper API** - Web search provider
+- **Serper / SearXNG** - Web search providers
+- **Provider Configuration**: [services/mcp-tools/mcp-providers.md](../../services/mcp-tools/mcp-providers.md)
 
 ## See Also
 
 - [Response API Documentation](../response-api/)
 - [LLM API Documentation](../llm-api/)
 - [Architecture Overview](../../architecture/)
-- [MCP Integration Guide](./integration.md)
-- [MCP Providers](./providers.md)
+- [Response API Documentation](../response-api/)
+- [LLM API Documentation](../llm-api/)
+- [Architecture Overview](../../architecture/)
+- [Provider Configuration](../../services/mcp-tools/mcp-providers.md)
+### Example: List Available Tools
+
+```bash
+curl -s http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 42,
+ "method": "tools/list"
+ }' | jq
+```
+
+### Example: `google_search`
+
+```bash
+curl -s http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 2,
+ "method": "tools/call",
+ "params": {
+ "name": "google_search",
+ "arguments": {"q": "latest AI news", "num": 5}
+ }
+ }'
+```
+
+### Example: `scrape`
+
+```bash
+curl -s http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 3,
+ "method": "tools/call",
+ "params": {
+ "name": "scrape",
+ "arguments": {"url": "https://docs.python.org/3/", "includeMarkdown": true}
+ }
+ }'
+```
+
+### Example: Vector Store
+
+```bash
+# Index a note
+curl -s http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 4,
+ "method": "tools/call",
+ "params": {
+ "name": "file_search_index",
+ "arguments": {
+   "document_id": "notes-1",
+   "text": "Menlo Platform docs live in jan-server/docs/*",
+   "tags": ["docs","menlo"]
+ }
+ }
+ }'
+
+# Query it later
+curl -s http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 5,
+ "method": "tools/call",
+ "params": {
+ "name": "file_search_query",
+ }
+ }'
+```
+
+### Example: Sandbox (`python_exec`)
+
+```bash
+curl -s http://localhost:8000/v1/mcp \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 6,
+ "method": "tools/call",
+ "params": {
+ "name": "python_exec",
+ "arguments": {"code": "import math; print(math.pi)"}
+ }
+ }'
+```

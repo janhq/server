@@ -11,20 +11,18 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"jan-server/services/media-api/internal/config"
-	"jan-server/services/media-api/internal/infrastructure/auth"
 	domain "jan-server/services/media-api/internal/domain/media"
+	"jan-server/services/media-api/internal/infrastructure/auth"
 	"jan-server/services/media-api/internal/infrastructure/database"
 	"jan-server/services/media-api/internal/infrastructure/logger"
 	repo "jan-server/services/media-api/internal/infrastructure/repository/media"
-	"jan-server/services/media-api/internal/infrastructure/storage"
 	"jan-server/services/media-api/internal/interfaces/httpserver"
 )
 
 var mediaSet = wire.NewSet(
 	repo.NewRepository,
 	wire.Bind(new(domain.Repository), new(*repo.Repository)),
-	storage.NewS3Storage,
-	wire.Bind(new(domain.Storage), new(*storage.S3Storage)),
+	provideStorage,
 	domain.NewService,
 )
 
@@ -45,7 +43,7 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 
 func newDatabaseConfig(cfg *config.Config) database.Config {
 	return database.Config{
-		DSN:             cfg.DatabaseURL,
+		DSN:             cfg.GetDatabaseWriteDSN(),
 		MaxIdleConns:    cfg.DBMaxIdleConns,
 		MaxOpenConns:    cfg.DBMaxOpenConns,
 		ConnMaxLifetime: cfg.DBConnLifetime,
@@ -62,4 +60,22 @@ func newGormDB(ctx context.Context, cfg database.Config, log zerolog.Logger) (*g
 		return nil, err
 	}
 	return db, nil
+}
+
+// provideStorage creates the appropriate storage backend based on configuration.
+func provideStorage(ctx context.Context, cfg *config.Config, log zerolog.Logger) (domain.Storage, error) {
+	if cfg.IsLocalStorage() {
+		localStorage, err := storage.NewLocalStorage(cfg, log)
+		if err != nil {
+			return nil, err
+		}
+		return localStorage, nil
+	}
+
+	// Default to S3 storage
+	s3Storage, err := storage.NewS3Storage(ctx, cfg, log)
+	if err != nil {
+		return nil, err
+	}
+	return s3Storage, nil
 }

@@ -29,45 +29,49 @@ git clone https://github.com/janhq/jan-server.git
 cd jan-server
 ```
 
-### 2. Configure Environment
+### 2. Run the Setup Wizard (Recommended)
 
 ```bash
-# Create .env file from template
-make env-create
-# or manually copy
-cp .env.template .env
-
-# Edit .env and set required values:
-# - SERPER_API_KEY (get from https://serper.dev)
-# - HF_TOKEN (get from https://huggingface.co/settings/tokens)
-# - Other passwords/secrets as needed
+make quickstart
 ```
 
-### 3. Run Setup
+`make quickstart` launches the `jan-cli` wizard. It prompts for your LLM provider (local vLLM vs remote API), MCP search provider, and Media API preference, then writes `.env` plus `config/secrets.env`. When configuration finishes it automatically starts Docker Compose. Re-run the command anytime to update settings (answer **Y** when asked to overwrite `.env`).
+
+### Manual configuration (if you cannot run the wizard)
 
 ```bash
+# Copy templates
+cp .env.template .env
+cp config/secrets.env.example config/secrets.env
+
+# Edit with your values
+nano .env
+nano config/secrets.env
+
+# Populate defaults and validate
 make setup
 ```
 
-This command will:
-- Check dependencies (Docker, Make)
-- Create necessary directories
-- Validate configuration
-- Pull required Docker images
+`make setup` uses `jan-cli` in non-interactive mode to check dependencies, ensure directories exist, and pull base images.
 
-### 4. Start Services
+**Configuration details:**
+- Canonical defaults live in `config/defaults.yaml` (generated from Go structs)
+- Secrets belong in `config/secrets.env` (copied from `config/secrets.env.example`)
+- Environment templates (Docker/Kubernetes) are documented in [Configuration System](../configuration/README.md)
+
+### 3. Start Services (skip if quickstart already did this)
 
 ```bash
 # Start full stack (CPU inference)
 make up-full
 
-# OR with GPU inference
-make up-gpu
+# Optional: start monitoring stack
+make monitor-up
 ```
 
 Wait for all services to start (30-60 seconds). You can monitor progress with:
 ```bash
-make logs-llm-api
+make logs
 ```
 
 ### 5. Verify Installation
@@ -86,8 +90,10 @@ Once running, you can access:
 |---------|-----|-------------|
 | **API Gateway** | http://localhost:8000 | - |
 | **API Documentation** | http://localhost:8000/v1/swagger/ | - |
-| **LLM API** | http://localhost:8080 | - |
+| **LLM API** | http://localhost:8080 | `Authorization: Bearer <token>` |
+| **Response API** | http://localhost:8082 | `Authorization: Bearer <token>` |
 | **Media API** | http://localhost:8285 | `Authorization: Bearer <token>` |
+| **MCP Tools** | http://localhost:8091 | `Authorization: Bearer <token>` |
 | **Keycloak Console** | http://localhost:8085 | admin/admin |
 | **Grafana Dashboards** | http://localhost:3001 | admin/admin (after `make monitor-up`) |
 | **Prometheus** | http://localhost:9090 | - (after `make monitor-up`) |
@@ -106,9 +112,9 @@ All traffic to `http://localhost:8000` flows through the Kong gateway, which val
 Response:
 ```json
 {
-  "access_token": "eyJhbGci...",
-  "refresh_token": "eyJhbGci...",
-  "expires_in": 300
+ "access_token": "eyJhbGci...",
+ "refresh_token": "eyJhbGci...",
+ "expires_in": 300
 }
 ```
 
@@ -116,30 +122,30 @@ Response:
 
 ```bash
 curl -X POST http://localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "jan-v1-4b",
-    "messages": [
-      {"role": "user", "content": "What is the capital of France?"}
-    ],
-    "stream": false
-  }'
+ -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "model": "jan-v1-4b",
+ "messages": [
+ {"role": "user", "content": "What is the capital of France?"}
+ ],
+ "stream": false
+ }'
 ```
 
 ### 3. Try Streaming
 
 ```bash
 curl -X POST http://localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "jan-v1-4b",
-    "messages": [
-      {"role": "user", "content": "Tell me a short story"}
-    ],
-    "stream": true
-  }'
+ -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "model": "jan-v1-4b",
+ "messages": [
+ {"role": "user", "content": "Tell me a short story"}
+ ],
+ "stream": true
+ }'
 ```
 
 ### 4. Use MCP Tools
@@ -147,27 +153,27 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```bash
 # List available tools
 curl -X POST http://localhost:8000/v1/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/list"
-  }'
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 1,
+ "method": "tools/list"
+ }'
 
 # Google search
 curl -X POST http://localhost:8000/v1/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 2,
-    "method": "tools/call",
-    "params": {
-      "name": "google_search",
-      "arguments": {
-        "q": "latest AI news"
-      }
-    }
-  }'
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 2,
+ "method": "tools/call",
+ "params": {
+ "name": "google_search",
+ "arguments": {
+ "q": "latest AI news"
+ }
+ }
+ }'
 ```
 
 ## Enable Monitoring (Optional)
@@ -187,20 +193,21 @@ Access:
 
 ```bash
 # View logs
-make logs-llm-api         # API logs
-make logs-error           # Error logs only
+make logs        # All services
+make logs-api    # API profile (LLM, Response, Media)
+make logs-mcp    # MCP Tools profile
 
 # Check status
-make health-check         # All services health
-make dev-status           # Detailed status
+make health-check # Hit health endpoints
+docker compose ps # Container status
 
 # Restart services
-make restart              # Restart all
-make restart-llm-api      # Restart API only
+make restart-full   # Restart everything
+make restart-api    # Restart API profile
 
 # Stop services
-make down                 # Stop all (keeps data)
-make clean                # Stop and remove all data
+make down       # Stop all containers (keeps volumes)
+make down-clean # Stop containers and remove volumes
 ```
 
 ## Troubleshooting
@@ -213,14 +220,15 @@ docker --version
 docker compose version
 
 # Check status
-make dev-status
+make health-check
+docker compose ps
 
 # View errors
-make logs-error
+make logs
 
 # Full reset
 make down
-make clean
+make down-clean
 make setup
 make up-full
 ```
@@ -235,9 +243,9 @@ If you get port binding errors:
 netstat -ano | findstr "8000 8080 8085"
 
 # macOS/Linux:
-lsof -i :8000
-lsof -i :8080
-lsof -i :8085
+lsof -i:8000
+lsof -i:8080
+lsof -i:8085
 
 # Kill conflicting processes or change ports in .env
 ```
@@ -245,13 +253,13 @@ lsof -i :8085
 ### vLLM GPU issues
 
 ```bash
-# Verify GPU available
+# Verify GPU availability
 docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
-
-# If no GPU, use CPU mode
-make down
-make up-cpu
 ```
+
+If no GPU is detected:
+- Rerun `make quickstart` and choose the remote API option (skips local vLLM)
+- Or run `make up-vllm-cpu` to start the CPU-only vLLM profile when testing locally
 
 ### Database connection errors
 
@@ -277,30 +285,30 @@ make db-console
 Now that you have Jan Server running:
 
 1. **Explore the API**:
-   - [API Reference](../api/README.md)
-   - [API Examples](../api/llm-api/examples.md)
-   - [Swagger UI](http://localhost:8000/v1/swagger/)
+ - [API Reference](../api/README.md)
+ - [API Examples](../api/llm-api/examples.md)
+ - [Swagger UI](http://localhost:8000/v1/swagger/)
 
 2. **Learn Development**:
-   - [Development Guide](../guides/development.md)
-   - [Hybrid Mode](../guides/hybrid-mode.md) (recommended for development)
-   - [Testing Guide](../guides/testing.md)
+ - [Development Guide](../guides/development.md)
+ - [Hybrid Mode](../guides/hybrid-mode.md) (recommended for development)
+ - [Testing Guide](../guides/testing.md)
 
 3. **Understand Architecture**:
-   - [Architecture Overview](../architecture/README.md)
-   - [System Design](../architecture/system-design.md)
-   - [Security Model](../architecture/security.md)
+ - [Architecture Overview](../architecture/README.md)
+ - [System Design](../architecture/system-design.md)
+ - [Security Model](../architecture/security.md)
 
 4. **Deploy to Production**:
-   - [Deployment Guide](../guides/deployment.md)
-   - [Monitoring Guide](../guides/monitoring.md)
+ - [Deployment Guide](../guides/deployment.md)
+ - [Monitoring Guide](../guides/monitoring.md)
 
 ## Need Help?
 
-- 📚 [Full Documentation](../README.md)
-- 🐛 [Report Issues](https://github.com/janhq/jan-server/issues)
-- 💬 [Discussions](https://github.com/janhq/jan-server/discussions)
-- 🔍 [Troubleshooting Guide](../guides/troubleshooting.md)
+- [Full Documentation](../README.md)
+- [Report Issues](https://github.com/janhq/jan-server/issues)
+- [Discussions](https://github.com/janhq/jan-server/discussions)
+- [Troubleshooting Guide](../guides/troubleshooting.md)
 
 ---
 

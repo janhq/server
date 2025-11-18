@@ -756,8 +756,8 @@ func (c *ChatCompletionClient) BaseURL() string {
 	return c.baseURL
 }
 
-func normalizeBaseURL(base string) string {
-	trimmed := strings.TrimSpace(base)
+func normalizeBaseURL(baseURL string) string {
+	trimmed := strings.TrimSpace(baseURL)
 	trimmed = strings.TrimRight(trimmed, "/")
 	return trimmed
 }

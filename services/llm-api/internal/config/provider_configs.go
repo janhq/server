@@ -51,7 +51,7 @@ func (c *ProviderBootstrapConfig) ProvidersForSet(name string) []ProviderBootstr
 // LoadProviderBootstrapConfig parses the yaml file at the provided path.
 func LoadProviderBootstrapConfig(path string) (*ProviderBootstrapConfig, error) {
 	if strings.TrimSpace(path) == "" {
-		return nil, errors.New("provider config path is empty")
+		return nil, errors.New("provider config path is empty!!!")
 	}
 
 	cleanPath := filepath.Clean(path)

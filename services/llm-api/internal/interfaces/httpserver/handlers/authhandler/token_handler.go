@@ -45,6 +45,7 @@ type GetMeResponse struct {
 	Email      string `json:"email,omitempty"`
 	Subject    string `json:"subject"`
 	AuthMethod string `json:"auth_method"`
+	Name       string `json:"name,omitempty"`
 }
 
 // Logout removes authentication tokens
@@ -83,9 +84,16 @@ func (h *TokenHandler) GetMe(c *gin.Context) {
 		return
 	}
 
+	// Use username as name if name is empty
+	name := principal.Name
+	if name == "" {
+		name = principal.Username
+	}
+
 	c.JSON(http.StatusOK, GetMeResponse{
 		ID:         principal.ID,
 		Username:   principal.Username,
+		Name:       name,
 		Email:      principal.Email,
 		Subject:    principal.Subject,
 		AuthMethod: string(principal.AuthMethod),
@@ -142,16 +150,7 @@ func (h *TokenHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	// Set new refresh token as cookie if we got a new one
-	if tokens.RefreshToken != "" {
-		expiresAt := time.Now().Add(time.Duration(tokens.ExpiresIn) * time.Second)
-		http.SetCookie(c.Writer, responses.NewCookieWithSecurity(
-			RefreshTokenCookieName,
-			tokens.RefreshToken,
-			expiresAt,
-		))
-	}
-
+	// Return tokens in JSON response (token-based authentication, not cookies)
 	c.JSON(http.StatusOK, AccessTokenResponse{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,

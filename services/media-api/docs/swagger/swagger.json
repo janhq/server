@@ -56,6 +56,63 @@
                 }
             }
         },
+        "/v1/media/prepare-upload": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Generates a presigned upload URL and reserves a jan_id. Client uploads directly to S3 using the URL. Not available for local storage.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Request presigned upload URL",
+                "parameters": [
+                    {
+                        "description": "Upload preparation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/media.PrepareUploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/media.UploadPreparation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/media/resolve": {
             "post": {
                 "security": [
@@ -90,6 +147,58 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handlers.resolveResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/media/upload": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Accepts multipart file upload for local storage. Alternative to presigned uploads.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Direct file upload",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ingestResponse"
                         }
                     },
                     "400": {
@@ -143,6 +252,50 @@
                     }
                 }
             }
+        },
+        "/v1/media/{id}/presign": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns a temporary signed URL for downloading media by jan_id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Get presigned download URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Media ID (jan_xxx)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -159,6 +312,9 @@
                     "type": "string"
                 },
                 "mime": {
+                    "type": "string"
+                },
+                "presigned_url": {
                     "type": "string"
                 }
             }
@@ -205,6 +361,20 @@
                 }
             }
         },
+        "media.PrepareUploadRequest": {
+            "type": "object",
+            "required": [
+                "mime_type"
+            ],
+            "properties": {
+                "mime_type": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "media.Source": {
             "type": "object",
             "required": [
@@ -218,6 +388,24 @@
                     "type": "string"
                 },
                 "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "media.UploadPreparation": {
+            "type": "object",
+            "properties": {
+                "expires_in": {
+                    "description": "seconds",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "upload_url": {
                     "type": "string"
                 }
             }

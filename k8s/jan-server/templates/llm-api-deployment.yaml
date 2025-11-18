@@ -69,10 +69,10 @@ spec:
           value: {{ .Values.llmApi.env.BACKEND_CLIENT_ID | quote }}
         - name: BACKEND_CLIENT_SECRET
           value: {{ .Values.llmApi.env.BACKEND_CLIENT_SECRET | quote }}
-        - name: TARGET_CLIENT_ID
-          value: {{ .Values.llmApi.env.TARGET_CLIENT_ID | quote }}
-        - name: AUDIENCE
-          value: {{ .Values.llmApi.env.AUDIENCE | quote }}
+        - name: CLIENT
+          value: {{ .Values.llmApi.env.CLIENT | quote }}
+        - name: ACCOUNT
+          value: {{ .Values.llmApi.env.ACCOUNT | quote }}
         - name: JWKS_URL
           value: {{ tpl .Values.llmApi.env.JWKS_URL . | quote }}
         - name: ISSUER

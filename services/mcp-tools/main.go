@@ -8,16 +8,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 
-	domainsearch "jan-server/services/mcp-tools/domain/search"
-	"jan-server/services/mcp-tools/infrastructure/auth"
-	"jan-server/services/mcp-tools/infrastructure/config"
-	"jan-server/services/mcp-tools/infrastructure/logger"
-	"jan-server/services/mcp-tools/infrastructure/mcpprovider"
-	sandboxfusionclient "jan-server/services/mcp-tools/infrastructure/sandboxfusion"
-	searchclient "jan-server/services/mcp-tools/infrastructure/search"
-	vectorstoreclient "jan-server/services/mcp-tools/infrastructure/vectorstore"
-	"jan-server/services/mcp-tools/interfaces/httpserver/middlewares"
-	"jan-server/services/mcp-tools/interfaces/httpserver/routes"
+	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
+	"jan-server/services/mcp-tools/internal/infrastructure/auth"
+	"jan-server/services/mcp-tools/internal/infrastructure/config"
+	"jan-server/services/mcp-tools/internal/infrastructure/logger"
+	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
+	sandboxfusionclient "jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
+	searchclient "jan-server/services/mcp-tools/internal/infrastructure/search"
+	vectorstoreclient "jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
+	"jan-server/services/mcp-tools/internal/interfaces/httpserver/middlewares"
+	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes"
 )
 
 // @title Jan Server MCP Tools Service

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Media API Automation",
-    "description": "Comprehensive Postman collection for media-api endpoints including upload, deduplication, resolution, presigning, and download flows. Adjust collection variables (media_api_url, media_service_key) to match your environment before running with newman.",
+    "description": "Comprehensive Postman collection for media-api endpoints including upload, deduplication, resolution, presigning, and download flows via Kong gateway. All requests go through kong_url.",
     "_postman_id": "media-api-automation-collection",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -24,9 +24,9 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{llm_api_url}}/auth/guest-login",
+              "raw": "{{kong_url}}/auth/guest-login",
               "host": [
-                "{{llm_api_url}}"
+                "{{kong_url}}"
               ],
               "path": [
                 "auth",
@@ -70,9 +70,9 @@
           }
         ],
         "url": {
-          "raw": "{{media_api_url}}/healthz",
+          "raw": "{{kong_url}}/media/healthz",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "healthz"
@@ -121,9 +121,9 @@
           "raw": "{\n  \"mime_type\": \"image/png\",\n  \"user_id\": \"automation\"\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media/prepare-upload",
+          "raw": "{{kong_url}}/media/v1/media/prepare-upload",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -199,9 +199,9 @@
           "raw": "{\n  \"source\": {\n    \"type\": \"remote_url\",\n    \"url\": \"https://www.jan.ai/_next/static/media/cute-robot-flying.1479447f.png\"\n  },\n  \"filename\": \"httpbin.png\",\n  \"user_id\": \"automation\"\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media",
+          "raw": "{{kong_url}}/media/v1/media",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -288,9 +288,9 @@
           "raw": "{\n  \"source\": {\n    \"type\": \"data_url\",\n    \"data_url\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\n  },\n  \"filename\": \"test-pixel.png\",\n  \"user_id\": \"automation\"\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media",
+          "raw": "{{kong_url}}/media/v1/media",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -364,9 +364,9 @@
           "raw": "{\n  \"source\": {\n    \"type\": \"data_url\",\n    \"data_url\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\n  },\n  \"filename\": \"test-pixel-duplicate.png\",\n  \"user_id\": \"automation\"\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media",
+          "raw": "{{kong_url}}/media/v1/media",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -423,9 +423,9 @@
           "raw": "{\n  \"payload\": {\n    \"messages\": [\n      {\n        \"role\": \"user\",\n        \"content\": [\n          {\n            \"type\": \"text\",\n            \"text\": \"What's in this image?\"\n          },\n          {\n            \"type\": \"image_url\",\n            \"image_url\": {\n              \"url\": \"data:image/png;{{latest_media_id}}\"\n            }\n          }\n        ]\n      }\n    ]\n  }\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media/resolve",
+          "raw": "{{kong_url}}/media/v1/media/resolve",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -488,9 +488,9 @@
           }
         ],
         "url": {
-          "raw": "{{media_api_url}}/v1/media/{{latest_media_id}}",
+          "raw": "{{kong_url}}/media/v1/media/{{latest_media_id}}",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -536,6 +536,72 @@
       "response": []
     },
     {
+      "name": "Get Presigned URL (Dedicated Endpoint)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{media_access_token}}"
+          },
+          {
+            "key": "X-Media-Service-Key",
+            "value": "{{media_service_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{kong_url}}/media/v1/media/{{latest_media_id}}/presign",
+          "host": [
+            "{{kong_url}}/media"
+          ],
+          "path": [
+            "v1",
+            "media",
+            "{{latest_media_id}}",
+            "presign"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('presign successful', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var data = pm.response.json();",
+              "",
+              "pm.test('response contains media id', function () {",
+              "    pm.expect(data).to.have.property('id');",
+              "    pm.expect(data.id).to.equal(pm.collectionVariables.get('latest_media_id'));",
+              "});",
+              "",
+              "pm.test('response contains presigned URL', function () {",
+              "    pm.expect(data).to.have.property('url');",
+              "    pm.expect(data.url).to.be.a('string');",
+              "    pm.expect(data.url).to.match(/https?:\\/\\//);",
+              "});",
+              "",
+              "pm.test('response contains expires_in', function () {",
+              "    pm.expect(data).to.have.property('expires_in');",
+              "    pm.expect(data.expires_in).to.be.a('number');",
+              "    pm.expect(data.expires_in).to.be.above(0);",
+              "});",
+              "",
+              "// Store the presigned URL for potential downstream use",
+              "if (data.url) {",
+              "    pm.collectionVariables.set('latest_presigned_url', data.url);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
       "name": "Get Nonexistent Media (404 Test)",
       "request": {
         "method": "GET",
@@ -550,9 +616,9 @@
           }
         ],
         "url": {
-          "raw": "{{media_api_url}}/v1/media/jan_nonexistent123",
+          "raw": "{{kong_url}}/media/v1/media/jan_nonexistent123",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -604,9 +670,9 @@
           "raw": "{\n  \"source\": {\n    \"type\": \"invalid_type\",\n    \"url\": \"https://example.com/image.png\"\n  },\n  \"user_id\": \"automation\"\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media",
+          "raw": "{{kong_url}}/media/v1/media",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -650,9 +716,9 @@
           "raw": "{\n  \"source\": {\n    \"type\": \"remote_url\",\n    \"url\": \"https://www.jan.ai/_next/static/media/cute-robot-flying.1479447f.png\"\n  },\n  \"user_id\": \"automation\"\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media",
+          "raw": "{{kong_url}}/media/v1/media",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -698,9 +764,9 @@
           "raw": "{\n  \"payload\": {\n    \"messages\": [\n      {\n        \"role\": \"user\",\n        \"content\": \"Hello, this message has no media placeholders.\"\n      }\n    ]\n  }\n}"
         },
         "url": {
-          "raw": "{{media_api_url}}/v1/media/resolve",
+          "raw": "{{kong_url}}/media/v1/media/resolve",
           "host": [
-            "{{media_api_url}}"
+            "{{kong_url}}/media"
           ],
           "path": [
             "v1",
@@ -738,8 +804,8 @@
   ],
   "variable": [
     {
-      "key": "media_api_url",
-      "value": "http://localhost:8285"
+      "key": "kong_url",
+      "value": "http://localhost:8000"
     },
     {
       "key": "media_service_key",
@@ -784,10 +850,6 @@
     {
       "key": "media_user_id",
       "value": ""
-    },
-    {
-      "key": "llm_api_url",
-      "value": "http://localhost:8000/llm"
     }
   ]
 }

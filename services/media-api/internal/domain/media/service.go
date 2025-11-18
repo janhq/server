@@ -46,6 +46,7 @@ type Storage interface {
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
 	PresignPut(ctx context.Context, key string, contentType string, ttl time.Duration) (string, error)
 	Download(ctx context.Context, key string) (io.ReadCloser, string, error)
+	SupportsPresignedUploads() bool
 }
 
 // Service orchestrates media ingestion and retrieval.
@@ -271,6 +272,11 @@ func (s *Service) externalizeURL(raw string) string {
 	}
 
 	return target.String()
+}
+
+// SupportsPresignedUploads returns whether the storage backend supports presigned upload URLs.
+func (s *Service) SupportsPresignedUploads() bool {
+	return s.storage.SupportsPresignedUploads()
 }
 
 func joinPublicPath(basePath, objectPath string) string {

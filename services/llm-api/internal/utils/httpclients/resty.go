@@ -9,24 +9,24 @@ import (
 	"resty.dev/v3"
 )
 
-type RequestId struct{}
-type HttpClientStartsAt struct{}
-type HttpClientRequestBody struct{}
+type RequestID struct{}
+type HTTPClientStartsAt struct{}
+type HTTPClientRequestBody struct{}
 
 func NewClient(clientName string) *resty.Client {
 	client := resty.New()
 	client.AddRequestMiddleware(func(c *resty.Client, r *resty.Request) error {
 		start := time.Now()
-		ctx := context.WithValue(r.Context(), HttpClientStartsAt{}, start)
-		ctx = context.WithValue(ctx, HttpClientRequestBody{}, r.Body)
+		ctx := context.WithValue(r.Context(), HTTPClientStartsAt{}, start)
+		ctx = context.WithValue(ctx, HTTPClientRequestBody{}, r.Body)
 		r.SetContext(ctx)
 		return nil
 	})
 	client.AddResponseMiddleware(func(c *resty.Client, r *resty.Response) error {
 		log := logger.GetLogger()
-		requestID := r.Request.Context().Value(RequestId{})
-		startTime, _ := r.Request.Context().Value(HttpClientStartsAt{}).(time.Time)
-		requestBody := r.Request.Context().Value(HttpClientRequestBody{})
+		requestID := r.Request.Context().Value(RequestID{})
+		startTime, _ := r.Request.Context().Value(HTTPClientStartsAt{}).(time.Time)
+		requestBody := r.Request.Context().Value(HTTPClientRequestBody{})
 		latency := time.Since(startTime)
 		var responseBody any
 		if !r.Request.DoNotParseResponse {

@@ -22,7 +22,7 @@ type Client struct {
 	realm               string
 	backendClientID     string
 	backendClientSecret string
-	targetClientID      string
+	clientID            string
 	guestRole           string
 	httpClient          *http.Client
 	logger              zerolog.Logger
@@ -34,7 +34,7 @@ type Client struct {
 }
 
 // NewClient constructs a Keycloak client.
-func NewClient(baseURL, realm, backendClientID, backendClientSecret, targetClientID, guestRole string, httpClient *http.Client, logger zerolog.Logger, adminUsername, adminPassword, adminRealm, adminClientID, adminClientSecret string) *Client {
+func NewClient(baseURL, realm, backendClientID, backendClientSecret, clientID, guestRole string, httpClient *http.Client, logger zerolog.Logger, adminUsername, adminPassword, adminRealm, adminClientID, adminClientSecret string) *Client {
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 15 * time.Second}
 	}
@@ -43,7 +43,7 @@ func NewClient(baseURL, realm, backendClientID, backendClientSecret, targetClien
 		realm:               realm,
 		backendClientID:     backendClientID,
 		backendClientSecret: backendClientSecret,
-		targetClientID:      targetClientID,
+		clientID:            clientID,
 		guestRole:           guestRole,
 		httpClient:          httpClient,
 		logger:              logger,
@@ -69,6 +69,7 @@ type TokenSet struct {
 type GuestCredentials struct {
 	UserID      string   `json:"user_id"`
 	Username    string   `json:"username"`
+	Email       string   `json:"email,omitempty"`
 	PrincipalID string   `json:"pid"`
 	Tokens      TokenSet `json:"tokens"`
 }
@@ -76,7 +77,7 @@ type GuestCredentials struct {
 // UpgradePayload describes the upgrade request body.
 type UpgradePayload struct {
 	Username string `json:"username"`
-	Email    string `json:"email"`
+	Email    string `json:"email" binding:"required,email"` // Required to overwrite temporary email
 	FullName string `json:"full_name"`
 }
 
@@ -89,26 +90,7 @@ func (c *Client) CreateGuest(ctx context.Context) (*GuestCredentials, error) {
 				Err(err).
 				Msg("admin credentials present but password grant failed, falling back to service account")
 		} else {
-			user, err := c.createGuestUser(ctx, adminToken.AccessToken)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := c.assignGuestRole(ctx, adminToken.AccessToken, user.UserID); err != nil {
-				return nil, err
-			}
-
-			password := strings.ReplaceAll(uuid.NewString(), "-", "")
-			if err := c.setUserPassword(ctx, adminToken.AccessToken, user.UserID, password); err != nil {
-				return nil, err
-			}
-
-			tokens, err := c.passwordGrantTokens(ctx, user.Username, password)
-			if err != nil {
-				return nil, err
-			}
-			user.Tokens = *tokens
-			return user, nil
+			return c.createGuestWithPasswordGrant(ctx, adminToken.AccessToken)
 		}
 	}
 
@@ -117,19 +99,30 @@ func (c *Client) CreateGuest(ctx context.Context) (*GuestCredentials, error) {
 		return nil, err
 	}
 
-	user, err := c.createGuestUser(ctx, serviceToken.AccessToken)
+	adminToken := c.adminAccessToken(ctx, serviceToken.AccessToken)
+	return c.createGuestWithPasswordGrant(ctx, adminToken)
+}
+
+func (c *Client) createGuestWithPasswordGrant(ctx context.Context, adminToken string) (*GuestCredentials, error) {
+	user, err := c.createGuestUser(ctx, adminToken)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := c.assignGuestRole(ctx, serviceToken.AccessToken, user.UserID); err != nil {
+	if err := c.assignGuestRole(ctx, adminToken, user.UserID); err != nil {
 		return nil, err
 	}
 
-	tokens, err := c.exchangeForUser(ctx, serviceToken.AccessToken, user.UserID)
+	password := strings.ReplaceAll(uuid.NewString(), "-", "")
+	if err := c.setUserPassword(ctx, adminToken, user.UserID, password); err != nil {
+		return nil, err
+	}
+
+	tokens, err := c.passwordGrantTokens(ctx, user.Email, password)
 	if err != nil {
 		return nil, err
 	}
+
 	user.Tokens = *tokens
 	return user, nil
 }
@@ -169,11 +162,13 @@ func (c *Client) UpgradeUser(ctx context.Context, userID string, payload Upgrade
 
 	// Note: username is read-only by default in Keycloak after user creation
 	// Only update email, firstName, and attributes to avoid "error-user-attribute-read-only"
+	// When upgrading, we overwrite the temporary email (e.g., guest-xxx@temp.jan.ai) with the real email
 	update := map[string]any{
-		"attributes": attributes,
-		"email":      payload.Email,
-		"firstName":  payload.FullName,
-		"enabled":    true,
+		"attributes":    attributes,
+		"email":         payload.Email,
+		"emailVerified": true, // Mark email as verified when upgrading from guest
+		"firstName":     payload.FullName,
+		"enabled":       true,
 	}
 
 	body, err := json.Marshal(update)
@@ -309,8 +304,13 @@ func (c *Client) adminAccessToken(ctx context.Context, serviceToken string) stri
 
 func (c *Client) createGuestUser(ctx context.Context, adminToken string) (*GuestCredentials, error) {
 	username := "guest-" + uuid.NewString()
+	// Generate temporary email for guest user (required by Keycloak when duplicateEmailsAllowed is false)
+	// Format: guest-{uuid}@temp.jan.ai to clearly identify as temporary
+	tempEmail := username + "@temp.jan.ai"
+
 	userPayload := map[string]any{
 		"username":   username,
+		"email":      tempEmail,
 		"enabled":    true,
 		"attributes": map[string][]string{"guest": {"true"}},
 	}
@@ -350,6 +350,7 @@ func (c *Client) createGuestUser(ctx context.Context, adminToken string) (*Guest
 	return &GuestCredentials{
 		UserID:      userID,
 		Username:    username,
+		Email:       tempEmail,
 		PrincipalID: userID,
 	}, nil
 }
@@ -419,11 +420,14 @@ func (c *Client) setUserPassword(ctx context.Context, adminToken, userID, passwo
 	return nil
 }
 
-func (c *Client) passwordGrantTokens(ctx context.Context, username, password string) (*TokenSet, error) {
+func (c *Client) passwordGrantTokens(ctx context.Context, email, password string) (*TokenSet, error) {
 	values := url.Values{}
 	values.Set("grant_type", "password")
-	values.Set("client_id", c.targetClientID)
-	values.Set("username", username)
+	values.Set("client_id", c.clientID)
+	if c.clientID == c.backendClientID && c.backendClientSecret != "" {
+		values.Set("client_secret", c.backendClientSecret)
+	}
+	values.Set("username", email)
 	values.Set("password", password)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))
@@ -485,7 +489,10 @@ func (c *Client) exchangeForUser(ctx context.Context, adminToken, userID string)
 	values.Set("subject_token", adminToken)
 	values.Set("requested_subject", userID)
 	values.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
-	values.Set("audience", c.targetClientID)
+	if c.clientID != "" {
+		values.Set("audience", c.clientID)
+	}
+	// Request tokens scoped for the frontend client so they pass audience/azp validation
 	values.Set("scope", "openid profile email")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))
@@ -557,7 +564,7 @@ func (c *Client) adminTokenEndpoint() string {
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenSet, error) {
 	values := url.Values{}
 	values.Set("grant_type", "refresh_token")
-	values.Set("client_id", c.targetClientID)
+	values.Set("client_id", c.clientID)
 	values.Set("refresh_token", refreshToken)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))
@@ -752,6 +759,69 @@ type APIKeyUserInfo struct {
 	Roles     []string `json:"roles"`
 }
 
+// KeycloakUser represents a user in Keycloak
+type KeycloakUser struct {
+	ID        string   `json:"id"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email"`
+	FirstName string   `json:"firstName"`
+	LastName  string   `json:"lastName"`
+	Enabled   bool     `json:"enabled"`
+	Roles     []string `json:"roles,omitempty"`
+}
+
+// GetUserBySubject retrieves a user from Keycloak by their subject (user ID)
+func (c *Client) GetUserBySubject(ctx context.Context, subject string) (*KeycloakUser, error) {
+	if strings.TrimSpace(subject) == "" {
+		return nil, errors.New("subject required")
+	}
+
+	serviceToken, err := c.serviceAccountToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get service token: %w", err)
+	}
+
+	adminToken := c.adminAccessToken(ctx, serviceToken.AccessToken)
+
+	// Get user by ID (subject is the Keycloak user ID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/users/%s", url.PathEscape(subject))), nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		return nil, errors.New("user not found in keycloak")
+	}
+
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("get user failed: %s", strings.TrimSpace(string(payload)))
+	}
+
+	var rawUser map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&rawUser); err != nil {
+		return nil, fmt.Errorf("decode user: %w", err)
+	}
+
+	user := &KeycloakUser{
+		ID:        getString(rawUser, "id"),
+		Username:  getString(rawUser, "username"),
+		Email:     getString(rawUser, "email"),
+		FirstName: getString(rawUser, "firstName"),
+		LastName:  getString(rawUser, "lastName"),
+		Enabled:   getBool(rawUser, "enabled"),
+	}
+
+	return user, nil
+}
+
 // ValidateAPIKeyHash validates an API key hash and returns user information
 func (c *Client) ValidateAPIKeyHash(ctx context.Context, keyHash string) (*APIKeyUserInfo, error) {
 	serviceToken, err := c.serviceAccountToken(ctx)
@@ -829,4 +899,13 @@ func getString(m map[string]any, key string) string {
 		}
 	}
 	return ""
+}
+
+func getBool(m map[string]any, key string) bool {
+	if v, ok := m[key]; ok {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return false
 }

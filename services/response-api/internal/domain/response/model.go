@@ -13,6 +13,7 @@ type Status string
 
 const (
 	StatusPending    Status = "pending"
+	StatusQueued     Status = "queued"
 	StatusInProgress Status = "in_progress"
 	StatusCompleted  Status = "completed"
 	StatusFailed     Status = "failed"
@@ -31,14 +32,19 @@ type Response struct {
 	Output               interface{}            `json:"output,omitempty"`
 	Status               Status                 `json:"status"`
 	Stream               bool                   `json:"stream"`
+	Background           bool                   `json:"background"`
+	Store                bool                   `json:"store"`
+	APIKey               *string                `json:"-"` // API key (X-API-Key or Bearer token) for background LLM calls
 	Metadata             map[string]interface{} `json:"metadata,omitempty"`
 	Usage                *llm.Usage             `json:"usage,omitempty"`
 	Error                *ErrorDetails          `json:"error,omitempty"`
 	ConversationID       *uint                  `json:"-"`
 	ConversationPublicID *string                `json:"conversation_id,omitempty"`
 	PreviousResponseID   *string                `json:"previous_response_id,omitempty"`
-	CreatedAt            time.Time              `json:"created"`
+	CreatedAt            time.Time              `json:"created_at"`
 	UpdatedAt            time.Time              `json:"updated_at"`
+	QueuedAt             *time.Time             `json:"queued_at,omitempty"`
+	StartedAt            *time.Time             `json:"started_at,omitempty"`
 	CompletedAt          *time.Time             `json:"completed_at,omitempty"`
 	CancelledAt          *time.Time             `json:"cancelled_at,omitempty"`
 	FailedAt             *time.Time             `json:"failed_at,omitempty"`
@@ -59,6 +65,9 @@ type CreateParams struct {
 	Temperature        *float64
 	MaxTokens          *int
 	Stream             bool
+	Background         bool
+	Store              bool
+	APIKey             *string // API key (X-API-Key or Bearer token) for background LLM calls
 	ToolChoice         *llm.ToolChoice
 	Tools              []llm.ToolDefinition
 	PreviousResponseID *string

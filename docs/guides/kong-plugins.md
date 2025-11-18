@@ -6,13 +6,13 @@ This guide explains how to set up and use custom Kong plugins in the jan-server 
 
 ```
 kong/
-├── kong.yml                          # Main Kong declarative config
-├── kong-hybrid.yml                   # Hybrid mode config
-└── plugins/                          # Custom plugins directory
-    └── keycloak-apikey/              # API key validation plugin
-        ├── handler.lua               # Plugin logic
-        ├── schema.lua                # Configuration schema
-        └── README.md                 # Plugin documentation
++-- kong.yml # Main Kong declarative config
++-- kong-dev-full.yml # Dev-Full/Hybrid mode config (host routing)
++-- plugins/ # Custom plugins directory
+ +-- keycloak-apikey/ # API key validation plugin
+ +-- handler.lua # Plugin logic
+ +-- schema.lua # Configuration schema
+ +-- README.md # Plugin documentation
 ```
 
 ## Plugin Loading
@@ -23,11 +23,11 @@ Kong is configured to load custom plugins via environment variables:
 
 ```yaml
 environment:
-  KONG_PLUGINS: bundled,keycloak-apikey          # Load bundled + custom plugins
-  KONG_LUA_PACKAGE_PATH: /usr/local/kong/plugins/?.lua;;  # Plugin search path
+ KONG_PLUGINS: bundled,keycloak-apikey # Load bundled + custom plugins
+ KONG_LUA_PACKAGE_PATH: /usr/local/kong/plugins/?.lua;; # Plugin search path
 
 volumes:
-  - ../kong/plugins:/usr/local/kong/plugins:ro   # Mount plugins directory
+ -../kong/plugins:/usr/local/kong/plugins:ro # Mount plugins directory
 ```
 
 ### Verification
@@ -55,13 +55,13 @@ mkdir -p kong/plugins/my-plugin
 
 ```lua
 local MyPluginHandler = {
-  PRIORITY = 1000,  -- Plugin execution priority
-  VERSION = "1.0.0",
+ PRIORITY = 1000, -- Plugin execution priority
+ VERSION = "1.0.0",
 }
 
 function MyPluginHandler:access(conf)
-  -- Your plugin logic here
-  kong.log.info("My plugin executed!")
+ -- Your plugin logic here
+ kong.log.info("My plugin executed!")
 end
 
 return MyPluginHandler
@@ -71,19 +71,19 @@ return MyPluginHandler
 
 ```lua
 return {
-  name = "my-plugin",
-  fields = {
-    { config = {
-        type = "record",
-        fields = {
-          { my_setting = {
-              type = "string",
-              required = true,
-              default = "default_value",
-          }},
-        }
-    }},
-  },
+ name = "my-plugin",
+ fields = {
+ { config = {
+ type = "record",
+ fields = {
+ { my_setting = {
+ type = "string",
+ required = true,
+ default = "default_value",
+ }},
+ }
+ }},
+ },
 }
 ```
 
@@ -93,17 +93,17 @@ Update `docker/infrastructure.yml`:
 
 ```yaml
 environment:
-  KONG_PLUGINS: bundled,keycloak-apikey,my-plugin  # Add your plugin
+ KONG_PLUGINS: bundled,keycloak-apikey,my-plugin # Add your plugin
 ```
 
 ### 5. Use in kong.yml
 
 ```yaml
 plugins:
-  - name: my-plugin
-    tags: [custom]
-    config:
-      my_setting: "value"
+ - name: my-plugin
+ tags: [custom]
+ config:
+ my_setting: "value"
 ```
 
 ## Plugin Development Tips
@@ -113,7 +113,7 @@ plugins:
 1. **Enable debug logging:**
 ```yaml
 environment:
-  KONG_LOG_LEVEL: debug
+ KONG_LOG_LEVEL: debug
 ```
 
 2. **Watch logs in real-time:**
@@ -138,7 +138,7 @@ docker restart kong
 ```bash
 # Make test request
 curl -v http://localhost:8000/your-endpoint \
-  -H "X-Custom-Header: value"
+ -H "X-Custom-Header: value"
 
 # Check response headers
 curl -I http://localhost:8000/your-endpoint
@@ -151,14 +151,14 @@ Kong executes plugins in priority order (higher = earlier):
 ```
 2000+ - Pre-processing (e.g., request transformation)
 1000+ - Authentication (e.g., jwt: 1005, keycloak-apikey: 1002)
-500+  - Authorization
-100+  - Post-processing
+500+ - Authorization
+100+ - Post-processing
 ```
 
 Set priority in `handler.lua`:
 ```lua
 local MyPluginHandler = {
-  PRIORITY = 1002,  -- Your priority
+ PRIORITY = 1002, -- Your priority
 }
 ```
 
@@ -171,15 +171,15 @@ local http = require "resty.http"
 local httpc = http.new()
 
 local res, err = httpc:request_uri("http://service:8080/endpoint", {
-  method = "POST",
-  body = "data",
-  headers = {
-    ["Content-Type"] = "application/json",
-  },
+ method = "POST",
+ body = "data",
+ headers = {
+ ["Content-Type"] = "application/json",
+ },
 })
 
 if res.status == 200 then
-  kong.log.info("Request successful")
+ kong.log.info("Request successful")
 end
 ```
 
@@ -204,8 +204,8 @@ kong.service.request.clear_header("Authorization")
 ```lua
 -- Authenticate consumer for rate limiting
 kong.client.authenticate({
-  id = user_id,
-  custom_id = user_subject,
+ id = user_id,
+ custom_id = user_subject,
 })
 ```
 
@@ -214,7 +214,7 @@ kong.client.authenticate({
 ```lua
 -- Return error to client
 return kong.response.exit(401, {
-  message = "Unauthorized"
+ message = "Unauthorized"
 })
 ```
 

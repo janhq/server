@@ -8,25 +8,24 @@ package main
 
 import (
 	"context"
-
 	"github.com/google/wire"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	logger2 "gorm.io/gorm/logger"
-
 	"jan-server/services/response-api/internal/config"
-	"jan-server/services/response-api/internal/domain/conversation"
+	conversation2 "jan-server/services/response-api/internal/domain/conversation"
 	"jan-server/services/response-api/internal/domain/llm"
-	responseDomain "jan-server/services/response-api/internal/domain/response"
+	response2 "jan-server/services/response-api/internal/domain/response"
 	"jan-server/services/response-api/internal/domain/tool"
 	"jan-server/services/response-api/internal/infrastructure/auth"
 	"jan-server/services/response-api/internal/infrastructure/database"
 	"jan-server/services/response-api/internal/infrastructure/llmprovider"
 	"jan-server/services/response-api/internal/infrastructure/logger"
 	"jan-server/services/response-api/internal/infrastructure/mcp"
-	conversationrepo "jan-server/services/response-api/internal/infrastructure/repository/conversation"
-	responseRepo "jan-server/services/response-api/internal/infrastructure/repository/response"
+	"jan-server/services/response-api/internal/infrastructure/repository/conversation"
+	"jan-server/services/response-api/internal/infrastructure/repository/response"
 	"jan-server/services/response-api/internal/interfaces/httpserver"
+	"jan-server/services/response-api/internal/webhook"
 )
 
 // Injectors from wire.go:
@@ -43,13 +42,14 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	postgresRepository := responseRepo.NewPostgresRepository(db)
-	repository := conversationrepo.NewRepository(db)
-	itemRepository := conversationrepo.NewItemRepository(db)
+	postgresRepository := response.NewPostgresRepository(db)
+	repository := conversation.NewRepository(db)
+	itemRepository := conversation.NewItemRepository(db)
 	client := newLLMProvider(configConfig)
-	client2 := newMCPClient(configConfig)
-	orchestrator := newOrchestrator(configConfig, client, client2)
-	service := newResponseService(postgresRepository, repository, itemRepository, postgresRepository, orchestrator, client2, zerologLogger)
+	mcpClient := newMCPClient(configConfig)
+	orchestrator := newOrchestrator(configConfig, client, mcpClient)
+	httpService := newWebhookService(zerologLogger)
+	service := newResponseService(postgresRepository, repository, itemRepository, postgresRepository, orchestrator, mcpClient, httpService, zerologLogger)
 	validator, err := newAuthValidator(ctx, configConfig, zerologLogger)
 	if err != nil {
 		return nil, err
@@ -61,11 +61,13 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 
 // wire.go:
 
-var responseSet = wire.NewSet(responseRepo.NewPostgresRepository, wire.Bind(new(responseDomain.Repository), new(*responseRepo.PostgresRepository)), wire.Bind(new(responseDomain.ToolExecutionRepository), new(*responseRepo.PostgresRepository)), conversationrepo.NewRepository, wire.Bind(new(conversation.Repository), new(*conversationrepo.Repository)), conversationrepo.NewItemRepository, wire.Bind(new(conversation.ItemRepository), new(*conversationrepo.ItemRepository)), newLLMProvider, wire.Bind(new(llm.Provider), new(*llmprovider.Client)), newMCPClient, wire.Bind(new(tool.MCPClient), new(*mcp.Client)), newOrchestrator, newResponseService)
+var responseSet = wire.NewSet(response.NewPostgresRepository, wire.Bind(new(response2.Repository), new(*response.PostgresRepository)), wire.Bind(new(response2.ToolExecutionRepository), new(*response.PostgresRepository)), conversation.NewRepository, wire.Bind(new(conversation2.Repository), new(*conversation.Repository)), conversation.NewItemRepository, wire.Bind(new(conversation2.ItemRepository), new(*conversation.ItemRepository)), newLLMProvider, wire.Bind(new(llm.Provider), new(*llmprovider.Client)), newMCPClient, wire.Bind(new(tool.MCPClient), new(*mcp.Client)), newOrchestrator,
+	newWebhookService, wire.Bind(new(webhook.Service), new(*webhook.HTTPService)), newResponseService,
+)
 
 func newDatabaseConfig(cfg *config.Config) database.Config {
 	return database.Config{
-		DSN:             cfg.DatabaseURL,
+		DSN:             cfg.GetDatabaseWriteDSN(),
 		MaxIdleConns:    cfg.DBMaxIdleConns,
 		MaxOpenConns:    cfg.DBMaxOpenConns,
 		ConnMaxLifetime: cfg.DBConnLifetime,
@@ -100,6 +102,19 @@ func newOrchestrator(cfg *config.Config, provider llm.Provider, mcpClient tool.M
 	return tool.NewOrchestrator(provider, mcpClient, cfg.MaxToolDepth, cfg.ToolTimeout)
 }
 
-func newResponseService(repo responseDomain.Repository, conversations conversation.Repository, conversationItems conversation.ItemRepository, toolRepo responseDomain.ToolExecutionRepository, orchestrator *tool.Orchestrator, mcpClient tool.MCPClient, log zerolog.Logger) responseDomain.Service {
-	return responseDomain.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, log)
+func newWebhookService(log zerolog.Logger) *webhook.HTTPService {
+	return webhook.NewHTTPService(log)
+}
+
+func newResponseService(
+	repo response2.Repository,
+	conversations conversation2.Repository,
+	conversationItems conversation2.ItemRepository,
+	toolRepo response2.ToolExecutionRepository,
+	orchestrator *tool.Orchestrator,
+	mcpClient tool.MCPClient,
+	webhookService webhook.Service,
+	log zerolog.Logger,
+) response2.Service {
+	return response2.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, webhookService, log)
 }

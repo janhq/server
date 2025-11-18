@@ -61,8 +61,8 @@ spec:
           value: {{ .Values.mediaApi.env.AUTH_ENABLED | quote }}
         - name: AUTH_ISSUER
           value: {{ .Values.mediaApi.env.AUTH_ISSUER | quote }}
-        - name: AUTH_AUDIENCE
-          value: {{ .Values.mediaApi.env.AUTH_AUDIENCE | quote }}
+        - name: ACCOUNT
+          value: {{ .Values.mediaApi.env.ACCOUNT | quote }}
         - name: AUTH_JWKS_URL
           value: {{ .Values.mediaApi.env.AUTH_JWKS_URL | quote }}
         - name: MEDIA_DATABASE_URL
@@ -80,12 +80,12 @@ spec:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-media-api-secret
               key: s3-bucket
-        - name: MEDIA_S3_ACCESS_KEY
+        - name: MEDIA_S3_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-media-api-secret
               key: s3-access-key
-        - name: MEDIA_S3_SECRET_KEY
+        - name: MEDIA_S3_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-media-api-secret

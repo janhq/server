@@ -68,17 +68,17 @@ func Connect(cfg Config) (*gorm.DB, error) {
 }
 
 func ensureDatabaseExists(dsn string) error {
-	u, err := url.Parse(dsn)
+	parsedURL, err := url.Parse(dsn)
 	if err != nil {
 		return nil // non-URL formats are ignored
 	}
 
-	dbName := strings.TrimPrefix(u.Path, "/")
+	dbName := strings.TrimPrefix(parsedURL.Path, "/")
 	if dbName == "" || dbName == "postgres" {
 		return nil
 	}
 
-	adminURL := *u
+	adminURL := *parsedURL
 	adminURL.Path = "/postgres"
 
 	sqlDB, err := sql.Open("postgres", adminURL.String())

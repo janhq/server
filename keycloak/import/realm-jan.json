@@ -1,11 +1,17 @@
 {
   "realm": "jan",
   "enabled": true,
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "rememberMe": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "resetPasswordAllowed": true,
+  "resetPasswordAllowed": false,
+  "verifyEmail": false,
+  "registrationEmailAsUsername": true,
+  "requiredActions": [],
+  "attributes": {
+    "tokenExchangeEnabled": "true"
+  },
   "clients": [
     {
       "clientId": "backend",
@@ -15,46 +21,62 @@
       "bearerOnly": false,
       "secret": "backend-secret",
       "serviceAccountsEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "standardFlowEnabled": false,
-      "fullScopeAllowed": false,
-      "defaultClientScopes": [
-        "web-origins",
-        "profile",
-        "email",
-        "roles"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access"
-      ],
+      "fullScopeAllowed": true,
+      "authorizationServicesEnabled": true,
       "attributes": {
         "access.token.lifespan": "300",
-        "oauth2.device.authorization.grant.enabled": "true"
-      }
+        "oauth2.device.authorization.grant.enabled": "true",
+        "token.exchange.grant.enabled": "true"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
     },
     {
-      "clientId": "llm-api",
-      "name": "jan llm-api",
+      "clientId": "jan-client",
+      "name": "Jan Client",
       "protocol": "openid-connect",
       "publicClient": true,
+      "bearerOnly": false,
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "serviceAccountsEnabled": false,
-      "defaultClientScopes": [
-        "web-origins",
-        "profile",
-        "email",
-        "roles"
+      "implicitFlowEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:8000/auth/callback",
+        "http://localhost:8000/auth/google/callback",
+        "http://localhost:8080/auth/callback",
+        "http://localhost:8080/auth/google/callback",
+        "http://localhost:3000/*",
+        "http://localhost:3001/*",
+        "http://127.0.0.1:8000/auth/callback",
+        "http://127.0.0.1:8000/auth/google/callback",
+        "http://127.0.0.1:8080/auth/callback",
+        "http://127.0.0.1:8080/auth/google/callback",
+        "http://127.0.0.1:3000/*",
+        "http://127.0.0.1:3001/*",
+        "https://yourdomain.com/auth/callback",
+        "https://yourdomain.com/auth/google/callback"
       ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access"
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:8080",
+        "https://yourdomain.com"
       ],
       "attributes": {
-        "oauth2.device.authorization.grant.enabled": "true"
+        "oauth2.device.authorization.grant.enabled": "true",
+        "access.token.lifespan": "3600",
+        "refresh.token.lifespan": "2592000",
+        "token.exchange.grant.enabled": "true",
+        "pkce.code.challenge.method": "S256"
       },
       "protocolMappers": [
         {
@@ -111,27 +133,6 @@
       }
     ]
   },
-  "clientScopes": [
-    {
-      "name": "web-origins",
-      "description": "Allowed web origins",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "false",
-        "display.on.consent.screen": "false"
-      }
-    },
-    {
-      "name": "roles",
-      "description": "Realm roles",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true"
-      }
-    }
-  ],
-  "smtpServer": {},
   "internationalizationEnabled": false,
   "eventsEnabled": false
 }

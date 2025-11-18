@@ -8,7 +8,7 @@ Comprehensive guide for deploying Jan Server to various environments.
 - [Prerequisites](#prerequisites)
 - [Deployment Options](#deployment-options)
   - [Kubernetes (Recommended)](#kubernetes-recommended)
-  - [Docker Compose](#docker-compose)
+  - [Docker Compose](#docker compose)
   - [Hybrid Mode](#hybrid-mode)
 - [Environment Configuration](#environment-configuration)
 - [Security Considerations](#security-considerations)
@@ -146,22 +146,25 @@ helm install jan-server ./jan-server \
 
 ### Docker Compose
 
-For local development and testing environments.
+For local development and integration testing.
 
 #### Development Mode
 
 ```bash
-# Start infrastructure only
-make up
+# Start infrastructure only (PostgreSQL, Keycloak, Kong)
+make up-infra
 
-# With LLM API
-make up-llm-api
+# With API services (llm-api, media-api, response-api)
+make up-api
 
-# Full stack with Kong
+# With MCP services (mcp-tools, vector-store)
+make up-mcp
+
+# Full stack with Kong + APIs + MCP
 make up-full
 
-# With GPU inference
-make up-gpu
+# With GPU inference (local vLLM)
+make up-vllm-gpu
 ```
 
 **Complete guide:** See [Development Guide](development.md)
@@ -169,15 +172,11 @@ make up-gpu
 #### Testing Environment
 
 ```bash
-# Load testing configuration
-cp config/testing.env .env
-source .env
+cp .env.template .env                # ensure a clean env file
+# Edit .env and set: COMPOSE_PROFILES=infra,api,mcp
 
-# Start services
-docker compose up -d
-
-# Run tests
-make test-automation
+make up-full                         # start stack under test
+make test-all                        # run Newman suites
 ```
 
 ### Hybrid Mode
@@ -185,17 +184,15 @@ make test-automation
 For fast iteration during development:
 
 ```bash
-# Start infrastructure (PostgreSQL, Redis, Keycloak)
-docker compose --profile infrastructure up -d
+make dev-full                 # start stack with host routing
 
-# Run LLM API natively
-./scripts/hybrid-run-api.sh  # or .ps1 on Windows
+# Replace a service with a host-native process
+./jan-cli.sh dev run llm-api  # macOS/Linux
+.\jan-cli.ps1 dev run llm-api # Windows PowerShell
 
-# Run Media API natively
-./scripts/hybrid-run-media-api.sh
-
-# Run MCP Tools natively
-./scripts/hybrid-run-mcp.sh
+# Stop dev-full when done
+make dev-full-stop            # keep containers
+make dev-full-down            # remove containers
 ```
 
 **Complete guide:** See [Hybrid Mode Guide](hybrid-mode.md)
@@ -214,7 +211,7 @@ DATABASE_URL=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode
 KEYCLOAK_BASE_URL=http://localhost:8085
 BACKEND_CLIENT_ID=llm-api
 BACKEND_CLIENT_SECRET=your-secret
-TARGET_CLIENT_ID=jan-client
+CLIENT=jan-client
 
 # Optional
 JAN_DEFAULT_NODE_SETUP=false  # Disable if no Jan provider
@@ -226,16 +223,18 @@ LOG_LEVEL=debug
 
 ```bash
 # Database
-DATABASE_URL=postgres://media:media@localhost:5432/media_api?sslmode=disable
+DB_POSTGRESQL_WRITE_DSN=postgres://media:media@localhost:5432/media_api?sslmode=disable
 
-# S3 Storage (Required)
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_BUCKET=your-bucket
-S3_ACCESS_KEY=your-access-key
-S3_SECRET_KEY=your-secret-key
+# S3 Storage (Required - AWS Standard Naming)
+MEDIA_S3_ENDPOINT=https://s3.amazonaws.com
+MEDIA_S3_REGION=us-east-1
+MEDIA_S3_BUCKET=your-bucket
+MEDIA_S3_ACCESS_KEY_ID=your-access-key-id
+MEDIA_S3_SECRET_ACCESS_KEY=your-secret-access-key
+MEDIA_S3_USE_PATH_STYLE=false
 
 # Server
-HTTP_PORT=8081
+MEDIA_API_PORT=8285
 LOG_LEVEL=info
 ```
 

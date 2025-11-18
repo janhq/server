@@ -23,6 +23,7 @@ import (
 	conversationrepo "jan-server/services/response-api/internal/infrastructure/repository/conversation"
 	responseRepo "jan-server/services/response-api/internal/infrastructure/repository/response"
 	"jan-server/services/response-api/internal/interfaces/httpserver"
+	"jan-server/services/response-api/internal/webhook"
 )
 
 var responseSet = wire.NewSet(
@@ -38,6 +39,8 @@ var responseSet = wire.NewSet(
 	newMCPClient,
 	wire.Bind(new(tool.MCPClient), new(*mcp.Client)),
 	newOrchestrator,
+	newWebhookService,
+	wire.Bind(new(webhook.Service), new(*webhook.HTTPService)),
 	newResponseService,
 )
 
@@ -58,7 +61,7 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 
 func newDatabaseConfig(cfg *config.Config) database.Config {
 	return database.Config{
-		DSN:             cfg.DatabaseURL,
+		DSN:             cfg.GetDatabaseWriteDSN(),
 		MaxIdleConns:    cfg.DBMaxIdleConns,
 		MaxOpenConns:    cfg.DBMaxOpenConns,
 		ConnMaxLifetime: cfg.DBConnLifetime,
@@ -93,6 +96,10 @@ func newOrchestrator(cfg *config.Config, provider llm.Provider, mcpClient tool.M
 	return tool.NewOrchestrator(provider, mcpClient, cfg.MaxToolDepth, cfg.ToolTimeout)
 }
 
+func newWebhookService(log zerolog.Logger) *webhook.HTTPService {
+	return webhook.NewHTTPService(log)
+}
+
 func newResponseService(
 	repo responseDomain.Repository,
 	conversations conversation.Repository,
@@ -100,7 +107,8 @@ func newResponseService(
 	toolRepo responseDomain.ToolExecutionRepository,
 	orchestrator *tool.Orchestrator,
 	mcpClient tool.MCPClient,
+	webhookService webhook.Service,
 	log zerolog.Logger,
 ) responseDomain.Service {
-	return responseDomain.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, log)
+	return responseDomain.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, webhookService, log)
 }

@@ -197,13 +197,13 @@ func parseOwnerModelPair(raw string, fallbackVendor string) (vendor, model strin
 
 var nonAlnumDashDot = regexp.MustCompile(`[^a-z0-9\-\.:\/]`)
 
-func slug(s string) string {
-	s = strings.TrimSpace(strings.ToLower(s))
-	s = strings.ReplaceAll(s, "_", "-")
-	s = strings.Join(strings.Fields(s), "-")
-	s = nonAlnumDashDot.ReplaceAllString(s, "")
+func slug(input string) string {
+	output := strings.TrimSpace(strings.ToLower(input))
+	output = strings.ReplaceAll(output, "_", "-")
+	output = strings.Join(strings.Fields(output), "-")
+	output = nonAlnumDashDot.ReplaceAllString(output, "")
 	// collapse "meta-llama" common HF owner; keep dots/colons until we normalize them out above
-	return s
+	return output
 }
 
 func joinKM(vendor, model string) string {

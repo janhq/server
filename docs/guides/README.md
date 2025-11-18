@@ -48,38 +48,38 @@ Comprehensive how-to guides for working with Jan Server.
 ## Common Tasks
 
 ### Development Workflow
-
 ```bash
-# 1. Setup development environment
+# 1. Setup development environment (.env + docker/.env)
 make setup
-make hybrid-dev
 
-# 2. Run service natively
-cd services/llm-api
-air  # hot reload
+# 2. Start everything in Docker
+make up-full
 
-# 3. Make changes and test
-make test
+# 3. Switch a service to native mode (optional)
+docker compose stop llm-api
+./jan-cli.sh dev run llm-api   # macOS/Linux
+.\jan-cli.ps1 dev run llm-api  # Windows
 
-# 4. Run integration tests
-make test-all
+# 4. Run automated tests
+make test-all                  # Newman integration suites
+go test ./services/llm-api/... # Unit tests from source
 ```
 
-See [Development Guide](development.md) for details.
+Use [Development Guide](development.md) for the end-to-end workflow and [Dev-Full Mode](dev-full-mode.md) when you need host-native debugging.
 
 ### Testing Workflow
 
 ```bash
-# Unit tests
-make test
-
-# Integration tests  
+# Integration tests (runs all Postman collections)
 make test-all
 
 # Specific test suites
 make test-auth
 make test-conversations
 make test-mcp
+
+# Unit tests from source
+go test ./...
 ```
 
 See [Testing Guide](testing.md) for details.
@@ -104,11 +104,11 @@ See [Monitoring Guide](monitoring.md) for details.
 ## Getting Help
 
 Each guide includes:
--  Step-by-step instructions
--  Code examples
--  Common pitfalls
--  Troubleshooting tips
--  Related resources
+- Step-by-step instructions
+- Code examples
+- Common pitfalls
+- Troubleshooting tips
+- Related resources
 
 ### Need More Help?
 

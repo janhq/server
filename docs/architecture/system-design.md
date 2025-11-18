@@ -1,402 +1,118 @@
-# System Design# System Design
+# System Design
 
+This reference describes how the Jan Server components fit together. Use it when reviewing cross-service changes or planning deployments.
 
+## 1. System Overview
 
-**Generated**: November 11, 2025This document describes the overall system architecture of Jan Server.
+Jan Server is a microservices platform that exposes OpenAI-compatible APIs through Kong. Each service owns a focused domain:
 
+- **LLM API (8080)** - chat completions, conversations, projects, model catalog.
+- **Response API (8082)** - multi-step orchestration and MCP tool coordination.
+- **Media API (8285)** - binary ingestion, jan_* IDs, presigned URL management.
+- **MCP Tools (8091)** - JSON-RPC endpoint that proxies Serper/SearXNG search, scraping, file search, and SandboxFusion execution.
+- **Template API (8185)** - scaffold for new services (not part of the default stack).
+- **Shared infrastructure** - Kong (8000), Keycloak (8085), PostgreSQL, vLLM (8101), observability stack.
 
+Kong terminates TLS (in production), validates JWT/API keys, applies rate limits, and forwards requests to the internal services.
 
-This document describes the overall system architecture of Jan Server.[Full content from architecture.md lines 1-195 covering System Overview, Architecture Diagram, all layers, and network topology will be placed here]
+## 2. Architecture Layers
 
+| Layer | Components | Notes |
+|-------|------------|-------|
+| **Edge** | Kong Gateway, Keycloak | Centralized auth, rate limiting, guest-token endpoint. |
+| **Application** | LLM API, Response API, Media API, MCP Tools | Written in Go using Gin + zerolog, configured via `pkg/config`. |
+| **Tooling** | SearXNG, Serper, SandboxFusion, vector-store | Only accessible from MCP Tools. |
+| **Data/Storage** | PostgreSQL (`api-db`, `keycloak-db`), S3-compatible storage | Media files live in object storage; metadata lives in PostgreSQL. |
+| **Inference** | vLLM (local) or remote OpenAI-compatible providers | Selected per request using the provider metadata catalog. |
+| **Observability** | OpenTelemetry Collector, Prometheus, Grafana, Jaeger | Enabled with `OTEL_ENABLED=true` + `make monitor-up`. |
 
-
----For the complete implementation, please refer to the original `architecture.md` file which contains:
-
-- Detailed architecture diagrams (lines 9-195)
-
-## Overview- All system layers (Client, Gateway, Application, Inference, Authentication, Persistence, Observability)
-
-- Component interactions
-
-Jan Server is a modular, microservices-based LLM API platform with enterprise-grade authentication, API gateway routing, and flexible inference backend support. The system provides OpenAI-compatible API endpoints for chat completions, conversations, and model management.- Network topology
-
-
-
----This file should contain sections:
-
-- System Overview
-
-## System Architecture- Architecture Diagram (full ASCII diagram)
-
-- Layer Descriptions
-
-### Complete Ecosystem Diagram- Component Interactions
-
-- Network Topology
+## 3. Component Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         JAN-SERVER ECOSYSTEM                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                     EXTERNAL SERVICES (Optional)                     │  │
-│  ├─────────────────────────────────────────────────────────────────────┤  │
-│  │  • Keycloak (Auth Server)         [Port 8085]                       │  │
-│  │  • SearXNG (Meta Search)          [Port 8086]                       │  │
-│  │  • Serper API (Web Search)        [External]                        │  │
-│  │  • LLM Models (Inference)         [External/Local]                  │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                    ↓                                        │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                     KONG API GATEWAY (Port 8000)                     │  │
-│  │  Routes & rate-limits traffic to microservices                       │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                       ↙           ↓           ↘                            │
-│                                                                              │
-│  ┌──────────────────┐  ┌────────────────────┐  ┌─────────────────┐       │
-│  │   LLM API        │  │  Response API      │  │   Media API     │       │
-│  │  (Port 8080)     │  │ (Port 8082)        │  │  (Port 8081)    │       │
-│  │                  │  │                    │  │                 │       │
-│  │ • Auth & Tokens  │  │ • Tool Calling     │  │ • File Upload   │       │
-│  │ • Chat/Completion│  │ • Multi-turn Chat  │  │ • Deduplication │       │
-│  │ • Models         │  │ • MCP Integration  │  │ • Resolution    │       │
-│  │ • Projects       │  │ • Conversations    │  │ • Streaming     │       │
-│  │ • Conversations  │  │                    │  │                 │       │
-│  └──────────────────┘  └────────────────────┘  └─────────────────┘       │
-│         ↓                        ↓                       ↑                  │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │              MCP TOOLS SERVICE (Port 8091)                        │   │
-│  │  • Serper Search    • File Search Index    • SandboxFusion        │   │
-│  │  • Web Scraping     • Web Scraping         • Python Execution     │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-│                                    ↓                                       │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │                   DATABASE & STORAGE                              │   │
-│  │  • PostgreSQL (Conversations, Projects, Responses)                │   │
-│  │  • Vector DB (Optional - for semantic search)                     │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
+             +------------------------------+
+             |  External Clients / SDKs     |
+             +---------------+--------------+
+                             |
+                             v
+                   +-------------------+
+                   |   Kong Gateway    | 8000
+                   +---+---+----+------+ 
+                       |   |    |
+        +--------------+   |    +----------------+
+        |                  |                     |
+        v                  v                     v
+  +-----------+    +---------------+      +---------------+
+  |  LLM API  |    |  Response API |      |   Media API   |
+  | (8080)    |    |    (8082)     |      |    (8285)     |
+  +-----+-----+    +-------+-------+      +-------+-------+
+        |                  |                     |
+        |                  v                     |
+        |        +-------------------+           |
+        +------->|    MCP Tools      |<----------+
+                 |     (8091)        |
+                 +----+---+----+-----+
+                      |   |    |
+                      |   |    +--> SandboxFusion
+                      |   +-------> Vector Store
+                      +-----------> SearXNG / Serper
+
+Shared dependencies (not shown): PostgreSQL (api-db), S3/Object storage, Keycloak (JWT issuer), vLLM (8101).
 ```
 
-### Service Communication Map
+## 4. Request Lifecycles
 
-```
-                     ┌──────────────────────┐
-                     │   CLIENT/TEST        │
-                     │   (Browser/Newman)   │
-                     └──────────────────────┘
-                                │
-                ┌───────────────┼───────────────┐
-                │               │               │
-                ↓               ↓               ↓
-         ┌────────────┐   ┌──────────┐   ┌──────────┐
-         │   Kong     │   │Keycloak  │   │SearXNG   │
-         │ (Gateway)  │   │(Auth)    │   │(Search)  │
-         └──────┬─────┘   └────┬─────┘   └────┬─────┘
-                │              │              │
-     ┌──────────┼──────────────┼──────────────┘
-     │          │              │
-     ↓          ↓              ↓
-┌──────────┐ ┌──────────┐ ┌────────────┐
-│ LLM API  │←→ MCP Tools │ (external)  │
-│ :8080    │ │ :8091    │            │
-└────┬─────┘ └─────┬────┘ └────────────┘
-     │             │
-     │    ┌────────┘
-     │    ↓
-     ├→ Media API :8081
-     │
-     ├→ Response API :8082
-     │
-     └→ PostgreSQL (persistent storage)
-```
+### Chat Completions
+1. Client calls `POST /v1/chat/completions` on `http://localhost:8000`.
+2. Kong validates the JWT/API key and forwards to `llm-api:8080`.
+3. LLM API resolves `jan_*` placeholders via Media API, selects a provider (local vLLM or remote), and streams tokens back to the gateway.
+4. Conversations/projects are persisted in PostgreSQL.
+
+### Response Orchestration
+1. Client calls `POST /responses/v1/responses` (streaming optional).
+2. Response API loads the conversation context and iteratively issues `tools/list` / `tools/call` requests to MCP Tools.
+3. Tool executions are capped by `RESPONSE_MAX_TOOL_DEPTH` and `TOOL_EXECUTION_TIMEOUT`.
+4. Final synthesis is delegated to LLM API and streamed back to the caller.
+
+### Media Handling
+1. Upload via `POST /media/v1/media` (remote URL or data URL) or request a presigned upload with `POST /media/v1/media/prepare-upload`.
+2. Media API deduplicates content, issues a `jan_*` ID, and stores metadata in PostgreSQL.
+3. Other services embed the `jan_*` ID; LLM API resolves them to presigned URLs right before inference.
+
+### MCP JSON-RPC
+1. Response API or external automation sends JSON-RPC requests to `POST /v1/mcp`.
+2. MCP Tools validates the method (`tools/list`, `tools/call`, `prompts/*`, `resources/*`) and dispatches to the Serper/SearXNG/SandboxFusion clients.
+3. Results are returned as SSE events (streaming) or plain JSON when the response fits a single chunk.
+
+## 5. Data & Network Topology
+
+- Docker Compose defines two primary networks: `jan-server_default` (Kong + core services + databases) and `jan-server_mcp-network` (MCP-only helpers such as SearXNG, vector store, SandboxFusion).
+- Production deployments should mirror this split using Kubernetes namespaces or NetworkPolicies.
+- Persistent data:
+  - `api-db` (LLM/Response/Media metadata) - each service uses its own schema.
+  - `keycloak-db` - Keycloak realm and client configuration.
+  - Object storage (S3, MinIO, etc.) - Media files and presigned URLs.
+
+## 6. Deployment Modes
+
+| Mode | Description | Commands |
+|------|-------------|----------|
+| **Local (recommended)** | `make quickstart` prompts for providers, writes `.env`, and runs `docker compose up` with all services. | `make quickstart` |
+| **Profiles** | Start a subset of services (API only, MCP only, GPU inference). | `make up-api`, `make up-mcp`, `make up-gpu` |
+| **Monitoring stack** | Optional Prometheus/Grafana/Jaeger. | `make monitor-up` |
+| **Kubernetes** | Use `k8s/jan-server` Helm chart. Values mirror `pkg/config` defaults. | `helm install jan ./k8s/jan-server -f values.yaml` |
+
+## 7. Change Impact Checklist
+
+When modifying the system architecture:
+1. Update the relevant service README and API docs.
+2. Reflect new ports/paths in Kong configuration.
+3. Adjust `docs/architecture/services.md` and `docs/architecture/data-flow.md`.
+4. Regenerate configuration artifacts (`make config-generate`) if `pkg/config` changes.
+5. Update Kubernetes values and Helm defaults as needed.
 
 ---
 
-## Core Services
+**Maintainer:** Jan Server Architecture Group - **Last Reviewed:** November 2025
 
-### LLM API (Port 8080)
-- **Purpose**: Core API for chat completions, model management, conversations, and projects
-- **Technology**: Go + Gin framework
-- **Database**: PostgreSQL
-- **Features**:
-  - Guest and registered user authentication
-  - API key management
-  - Model listing and details
-  - Chat completions (OpenAI-compatible)
-  - Conversation lifecycle management
-  - Project organization
 
-### Response API (Port 8082)
-- **Purpose**: LLM response generation with tool orchestration
-- **Technology**: Go + Gin framework
-- **Features**:
-  - Response creation and retrieval
-  - Tool calling orchestration
-  - Multi-step workflows
-  - Conversation continuity
-  - Response streaming
 
-### Media API (Port 8081)
-- **Purpose**: Media file upload, storage, and management
-- **Technology**: Go + Gin framework
-- **Features**:
-  - Presigned URL generation
-  - Remote URL ingestion
-  - Data URL ingestion
-  - Content deduplication
-  - Placeholder resolution
-  - Media streaming
-
-### MCP Tools Service (Port 8091)
-- **Purpose**: Model Context Protocol tools integration
-- **Technology**: mark3labs/mcp-go v0.7.0
-- **Tools**:
-  - Serper (web search)
-  - Web scraping
-  - File search indexing
-  - Python code execution
-  - SearXNG integration
-
----
-
-## Infrastructure Services
-
-### Kong API Gateway (Port 8000)
-- **Purpose**: API routing, rate limiting, authentication
-- **Version**: Kong 3.5
-- **Features**:
-  - Request routing to microservices
-  - Rate limiting
-  - Authentication plugins
-  - API key management
-  - Request logging
-
-### Keycloak (Port 8085)
-- **Purpose**: OAuth2/OpenID Connect authentication
-- **Configuration**:
-  - Realm: `jan`
-  - Client: `llm-api` (public)
-  - User federation available
-
-### Database (Port 5432)
-- **Technology**: PostgreSQL 18
-- **Databases**:
-  - `jan_llm_api`: Main application data
-  - `keycloak`: Identity management
-- **Tables**:
-  - `conversations`: Conversation history
-  - `projects`: Project organization
-  - `responses`: Response storage
-  - `users`: User information
-  - `api_keys`: API key management
-
----
-
-## Architecture Layers
-
-### 1. Client Layer
-- Web browsers
-- Mobile clients
-- CLI tools (Newman for testing)
-
-### 2. Gateway Layer
-- Kong API Gateway (port 8000)
-- Rate limiting
-- Authentication plugins
-- Request routing
-
-### 3. Application Layer
-- **LLM API**: Core chat and conversation functionality
-- **Response API**: Response generation with tools
-- **Media API**: File management
-- **MCP Tools**: External tool integration
-
-### 4. Inference Layer
-- Local LLM models (via vLLM)
-- External LLM APIs (OpenAI, Anthropic, etc.)
-- Model inference endpoints
-
-### 5. Authentication Layer
-- Keycloak (OpenID Connect provider)
-- JWT token validation
-- API key management
-- User federation
-
-### 6. Persistence Layer
-- PostgreSQL (conversations, projects, responses)
-- Object storage (media files)
-- Vector database (optional semantic search)
-
-### 7. Integration Layer
-- Serper API (web search)
-- SearXNG (meta-search)
-- External LLM providers
-- File storage backends
-
----
-
-## Data Flow Patterns
-
-### Authentication Flow
-```
-Client
-  ↓
-[Guest Login / Keycloak]
-  ↓
-[Token Generation]
-  ↓
-[Token Validation at Gateway]
-  ↓
-[Service Access]
-```
-
-### Chat Completion Flow
-```
-Request
-  ↓
-[Authentication]
-  ↓
-[Conversation Lookup/Creation]
-  ↓
-[Message Routing]
-  ↓
-[Model Inference]
-  ↓
-[Response Storage]
-  ↓
-[Response Return]
-```
-
-### Tool Calling Flow
-```
-Request with Tools
-  ↓
-[Response Service]
-  ↓
-[Tool Discovery]
-  ↓
-[Tool Execution (MCP)]
-  ↓
-[Tool Result Processing]
-  ↓
-[LLM Reasoning with Results]
-  ↓
-[Final Response]
-```
-
-### Media Processing Flow
-```
-Media Request
-  ↓
-[Presigned URL / Direct Upload]
-  ↓
-[Deduplication Check]
-  ↓
-[Storage]
-  ↓
-[Placeholder Generation]
-  ↓
-[Resolution on Demand]
-```
-
----
-
-## Deployment Topology
-
-### Development (Docker Compose)
-```
-┌─────────────────────────────────────┐
-│ Docker Compose (Single Machine)     │
-├─────────────────────────────────────┤
-│ • All services in containers        │
-│ • Shared network                    │
-│ • Volume-based persistence          │
-│ • Suitable for: Local dev, testing  │
-└─────────────────────────────────────┘
-```
-
-### Production (Kubernetes)
-```
-┌──────────────────────────────────────────────────────────────┐
-│ Kubernetes Cluster                                           │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│ ┌─────────────┐  ┌────────────┐  ┌─────────────┐           │
-│ │  LLM API    │  │ Response   │  │ Media API   │ (Pods)   │
-│ │  (3x)       │  │ API (2x)   │  │ (2x)        │           │
-│ └─────────────┘  └────────────┘  └─────────────┘           │
-│                                                              │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Service Mesh (Optional - Istio)                          │ │
-│ │ • Traffic management                                     │ │
-│ │ • Security policies                                      │ │
-│ │ • Observability                                          │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ Persistent Storage                                       │ │
-│ │ • PostgreSQL (managed service)                           │ │
-│ │ • S3/Object Storage (media files)                        │ │
-│ │ • Vector DB (optional)                                   │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Scalability Considerations
-
-### Horizontal Scaling
-- **Stateless services**: LLM API, Response API, Media API
-- **Load balancing**: Kong gateway distributes traffic
-- **Database**: PostgreSQL connection pooling
-- **Cache**: Optional Redis for session management
-
-### Vertical Scaling
-- Increase container resources (CPU, memory)
-- PostgreSQL query optimization
-- Connection pool tuning
-- Database indexing strategy
-
----
-
-## Security Architecture
-
-### API Gateway Level
-- Rate limiting per API key
-- Request validation
-- CORS handling
-- SSL/TLS termination
-
-### Service Level
-- JWT token validation
-- Keycloak integration
-- API key verification
-- RBAC (Role-based Access Control)
-
-### Data Level
-- Encrypted connections (TLS)
-- Database encryption at rest
-- Sensitive data masking in logs
-- Access control per resource
-
----
-
-## Related Documentation
-
-- **Test Flows**: See `/docs/architecture/test-flows.md` for testing architecture
-- **Services Reference**: See `/docs/architecture/services.md` for detailed service specs
-- **Data Flow**: See `/docs/architecture/data-flow.md` for request patterns
-- **Security**: See `/docs/architecture/security.md` for security details
-- **Observability**: See `/docs/architecture/observability.md` for monitoring
-- **Testing Guide**: See `/docs/guides/testing.md` for test execution
-
----
-
-**Last Updated**: November 11, 2025  
-**Document Type**: Architecture Reference  
-**Target Audience**: Architects, Developers, DevOps  
-**Maintainer**: Jan-Server Team

@@ -14,6 +14,7 @@ import (
 	"jan-server/services/response-api/internal/domain/conversation"
 	"jan-server/services/response-api/internal/domain/llm"
 	"jan-server/services/response-api/internal/domain/tool"
+	"jan-server/services/response-api/internal/webhook"
 )
 
 // ServiceImpl provides the domain implementation.
@@ -24,6 +25,7 @@ type ServiceImpl struct {
 	toolExecutions    ToolExecutionRepository
 	orchestrator      *tool.Orchestrator
 	mcpClient         tool.MCPClient
+	webhookService    webhook.Service
 	log               zerolog.Logger
 }
 
@@ -35,6 +37,7 @@ func NewService(
 	toolExecutions ToolExecutionRepository,
 	orchestrator *tool.Orchestrator,
 	mcpClient tool.MCPClient,
+	webhookService webhook.Service,
 	log zerolog.Logger,
 ) *ServiceImpl {
 	return &ServiceImpl{
@@ -44,12 +47,98 @@ func NewService(
 		toolExecutions:    toolExecutions,
 		orchestrator:      orchestrator,
 		mcpClient:         mcpClient,
+		webhookService:    webhookService,
 		log:               log.With().Str("component", "response-service").Logger(),
 	}
 }
 
 // Create orchestrates a complete response lifecycle.
+// If Background=true, it enqueues the task and returns immediately.
+// Otherwise, it executes synchronously.
 func (s *ServiceImpl) Create(ctx context.Context, params CreateParams) (*Response, error) {
+	// Validate background constraints
+	if params.Background && !params.Store {
+		return nil, errors.New("background mode requires store=true")
+	}
+
+	if params.Background {
+		return s.createAsync(ctx, params)
+	}
+	return s.createSync(ctx, params)
+}
+
+// createAsync creates a response record with status=queued and returns immediately.
+func (s *ServiceImpl) createAsync(ctx context.Context, params CreateParams) (*Response, error) {
+	var conv *conversation.Conversation
+	var err error
+
+	// Handle conversation context
+	if params.PreviousResponseID != nil && strings.TrimSpace(*params.PreviousResponseID) != "" {
+		prevResp, err := s.responses.FindByPublicID(ctx, *params.PreviousResponseID)
+		if err != nil {
+			s.log.Warn().Err(err).Str("previous_response_id", *params.PreviousResponseID).Msg("failed to load previous response")
+		} else if prevResp.ConversationPublicID != nil {
+			conv, err = s.conversations.FindByPublicID(ctx, *prevResp.ConversationPublicID)
+			if err != nil {
+				s.log.Warn().Err(err).Str("conversation_id", *prevResp.ConversationPublicID).Msg("failed to load conversation")
+			}
+		}
+	}
+
+	if conv == nil {
+		if params.ConversationID != nil && strings.TrimSpace(*params.ConversationID) != "" {
+			conv, err = s.conversations.FindByPublicID(ctx, *params.ConversationID)
+			if err != nil {
+				return nil, fmt.Errorf("fetch conversation: %w", err)
+			}
+		} else {
+			conv = &conversation.Conversation{
+				PublicID: newPublicID("conv"),
+				UserID:   params.UserID,
+			}
+			if err := s.conversations.Create(ctx, conv); err != nil {
+				return nil, fmt.Errorf("create conversation: %w", err)
+			}
+		}
+	}
+
+	now := time.Now()
+	responseModel := &Response{
+		PublicID:             newPublicID("resp"),
+		Object:               "response",
+		UserID:               params.UserID,
+		Model:                params.Model,
+		SystemPrompt:         params.SystemPrompt,
+		Input:                params.Input,
+		Status:               StatusQueued,
+		Stream:               params.Stream,
+		Background:           params.Background,
+		Store:                params.Store,
+		APIKey:               params.APIKey, // Store API key for background execution
+		Metadata:             params.Metadata,
+		ConversationID:       &conv.ID,
+		ConversationPublicID: &conv.PublicID,
+		PreviousResponseID:   params.PreviousResponseID,
+		CreatedAt:            now,
+		UpdatedAt:            now,
+		QueuedAt:             &now,
+	}
+
+	if err := s.responses.Create(ctx, responseModel); err != nil {
+		return nil, fmt.Errorf("create response: %w", err)
+	}
+
+	s.log.Info().
+		Str("response_id", responseModel.PublicID).
+		Str("user_id", params.UserID).
+		Str("model", params.Model).
+		Msg("background response queued")
+
+	return responseModel, nil
+}
+
+// createSync executes the response synchronously (original behavior).
+func (s *ServiceImpl) createSync(ctx context.Context, params CreateParams) (*Response, error) {
 	var conv *conversation.Conversation
 	var err error
 
@@ -99,6 +188,8 @@ func (s *ServiceImpl) Create(ctx context.Context, params CreateParams) (*Respons
 		Input:                params.Input,
 		Status:               StatusInProgress,
 		Stream:               params.Stream,
+		Background:           params.Background,
+		Store:                params.Store,
 		Metadata:             params.Metadata,
 		ConversationID:       &conv.ID,
 		ConversationPublicID: &conv.PublicID,
@@ -186,19 +277,29 @@ func (s *ServiceImpl) GetByPublicID(ctx context.Context, publicID string) (*Resp
 }
 
 // Cancel marks the response as cancelled.
+// For queued tasks, this prevents them from being picked up by workers.
+// For in-progress tasks, workers should periodically check cancellation status.
 func (s *ServiceImpl) Cancel(ctx context.Context, publicID string) (*Response, error) {
 	resp, err := s.responses.FindByPublicID(ctx, publicID)
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.Status == StatusCompleted || resp.Status == StatusCancelled {
+	// Already in terminal state
+	if resp.Status == StatusCompleted || resp.Status == StatusCancelled || resp.Status == StatusFailed {
 		return resp, nil
 	}
 
+	// Cancel the response
 	if err := s.responses.MarkCancelled(ctx, resp); err != nil {
 		return nil, err
 	}
+
+	s.log.Info().
+		Str("response_id", resp.PublicID).
+		Str("previous_status", string(resp.Status)).
+		Msg("response cancelled")
+
 	return resp, nil
 }
 
@@ -360,8 +461,8 @@ func normalizeContent(content interface{}) map[string]interface{} {
 	}
 }
 
-func mapToChatMessage(raw interface{}) (llm.ChatMessage, error) {
-	payload, ok := raw.(map[string]interface{})
+func mapToChatMessage(messageData interface{}) (llm.ChatMessage, error) {
+	payload, ok := messageData.(map[string]interface{})
 	if !ok {
 		return llm.ChatMessage{}, errors.New("input items must be objects with role/content")
 	}
@@ -400,4 +501,133 @@ func shouldRetryWithoutTools(err error) bool {
 		return true
 	}
 	return false
+}
+
+// ExecuteBackground processes a queued background task.
+// This method is called by workers from the worker pool.
+func (s *ServiceImpl) ExecuteBackground(ctx context.Context, publicID string) error {
+	// Load the response record
+	resp, err := s.responses.FindByPublicID(ctx, publicID)
+	if err != nil {
+		return fmt.Errorf("failed to load response: %w", err)
+	}
+
+	// Verify it's in a processable state
+	if resp.Status != StatusInProgress {
+		return fmt.Errorf("response %s is not in_progress (current: %s)", publicID, resp.Status)
+	}
+
+	// Inject API key into context for LLM API calls
+	if resp.APIKey != nil && *resp.APIKey != "" {
+		ctx = llm.ContextWithAuthToken(ctx, *resp.APIKey)
+	}
+
+	// Load conversation for context
+	if resp.ConversationID == nil {
+		return errors.New("response has no conversation")
+	}
+	conv, err := s.conversations.FindByPublicID(ctx, *resp.ConversationPublicID)
+	if err != nil {
+		return fmt.Errorf("failed to load conversation: %w", err)
+	}
+
+	// Load conversation items (history)
+	existingItems, err := s.conversationItems.ListByConversationID(ctx, conv.ID)
+	if err != nil {
+		return fmt.Errorf("failed to load conversation items: %w", err)
+	}
+
+	// Build messages from history and current input
+	baseMessages, err := s.buildBaseMessages(resp.SystemPrompt, existingItems)
+	if err != nil {
+		return fmt.Errorf("build base messages: %w", err)
+	}
+
+	userMessages, convoItems, err := s.convertInputToMessages(conv.ID, len(existingItems), resp.Input)
+	if err != nil {
+		return fmt.Errorf("convert input: %w", err)
+	}
+	messages := append(baseMessages, userMessages...)
+	initialLength := len(messages)
+
+	// Load tool definitions
+	toolDefs, err := s.fetchAvailableTools(ctx)
+	if err != nil {
+		s.log.Warn().Err(err).Msg("Failed to load MCP tools, continuing without tools")
+		toolDefs = []llm.ToolDefinition{}
+	}
+
+	// Execute orchestration (no streaming in background mode)
+	execParams := tool.ExecuteParams{
+		Ctx:             ctx,
+		Model:           resp.Model,
+		Messages:        messages,
+		Temperature:     nil, // Use model defaults for background tasks
+		MaxTokens:       nil,
+		ToolDefinitions: toolDefs,
+		StreamObserver:  nil, // Background mode never streams
+	}
+
+	orchestratorResult, execErr := s.orchestrator.Execute(execParams)
+	if execErr != nil && shouldRetryWithoutTools(execErr) && len(toolDefs) > 0 {
+		s.log.Warn().Err(execErr).Str("response_id", resp.PublicID).Msg("llm provider rejected tool definitions, retrying without tools")
+		execParams.ToolDefinitions = nil
+		orchestratorResult, execErr = s.orchestrator.Execute(execParams)
+	}
+
+	// Update response status
+	now := time.Now()
+	if execErr != nil {
+		resp.Status = StatusFailed
+		resp.Error = &ErrorDetails{Message: execErr.Error()}
+		resp.CompletedAt = &now
+		resp.UpdatedAt = now
+	} else {
+		resp.Status = StatusCompleted
+		resp.Output = orchestratorResult.FinalMessage.Content
+		resp.Usage = orchestratorResult.Usage
+		resp.CompletedAt = &now
+		resp.UpdatedAt = now
+
+		// Record tool executions
+		if err := s.toolExecutions.RecordExecutions(ctx, resp.ID, orchestratorResult.Executions); err != nil {
+			s.log.Error().Err(err).Str("response_id", resp.PublicID).Msg("store tool executions failed")
+		}
+
+		// Record conversation items (skip initial messages, only store new ones)
+		newMessages := orchestratorResult.Messages[initialLength:]
+		newItems := append(convoItems, s.convertMessagesToItems(conv.ID, len(existingItems)+len(convoItems), newMessages)...)
+		if err := s.conversationItems.BulkInsert(ctx, newItems); err != nil {
+			s.log.Error().Err(err).Str("response_id", resp.PublicID).Msg("store conversation items failed")
+		}
+	}
+
+	// Persist final state
+	if err := s.responses.Update(ctx, resp); err != nil {
+		return fmt.Errorf("failed to update response: %w", err)
+	}
+
+	// Send webhook notifications (async, don't block on webhook failures)
+	go func() {
+		webhookCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if execErr != nil {
+			errorCode := "execution_failed"
+			errorMsg := execErr.Error()
+			if resp.Error != nil {
+				errorCode = resp.Error.Code
+				errorMsg = resp.Error.Message
+			}
+			if err := s.webhookService.NotifyFailed(webhookCtx, resp.PublicID, errorCode, errorMsg, resp.Metadata); err != nil {
+				s.log.Error().Err(err).Str("response_id", resp.PublicID).Msg("webhook notification failed")
+			}
+		} else {
+			if err := s.webhookService.NotifyCompleted(webhookCtx, resp.PublicID, resp.Output, resp.Metadata, resp.CompletedAt); err != nil {
+				s.log.Error().Err(err).Str("response_id", resp.PublicID).Msg("webhook notification failed")
+			}
+		}
+	}()
+
+	return execErr
 }

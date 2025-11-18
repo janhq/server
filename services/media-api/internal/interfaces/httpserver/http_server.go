@@ -18,8 +18,8 @@ import (
 	v1 "jan-server/services/media-api/internal/interfaces/httpserver/routes/v1"
 )
 
-// HttpServer wraps the gin engine with graceful shutdown helpers.
-type HttpServer struct {
+// HTTPServer wraps the gin engine with graceful shutdown helpers.
+type HTTPServer struct {
 	cfg    *config.Config
 	engine *gin.Engine
 	log    zerolog.Logger
@@ -27,7 +27,7 @@ type HttpServer struct {
 }
 
 // New constructs the HTTP server with default middleware and routes.
-func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, authValidator *auth.Validator) *HttpServer {
+func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, authValidator *auth.Validator) *HTTPServer {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -37,13 +37,20 @@ func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, a
 	engine.Use(gin.Recovery(), gin.Logger())
 
 	handlerProvider := handlers.NewProvider(cfg, mediaService, log)
-	routeProvider := v1.NewRoutes(handlerProvider)
+	routeProvider := v1.NewRoutes(handlerProvider, cfg)
+
+	// Register public routes (health checks, swagger) without authentication
+	registerPublicRoutes(engine, cfg, authValidator)
+
+	// Apply authentication middleware before protected routes
 	if authValidator != nil {
 		engine.Use(authValidator.Middleware())
 	}
-	registerCoreRoutes(engine, cfg, routeProvider, authValidator)
 
-	return &HttpServer{
+	// Register protected API routes
+	routeProvider.Register(engine.Group("/"))
+
+	return &HTTPServer{
 		cfg:    cfg,
 		engine: engine,
 		log:    log,
@@ -52,7 +59,7 @@ func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, a
 }
 
 // Run starts the HTTP listener and handles graceful shutdown via context cancellation.
-func (s *HttpServer) Run(ctx context.Context) error {
+func (s *HTTPServer) Run(ctx context.Context) error {
 	server := &http.Server{
 		Addr:    s.cfg.Addr(),
 		Handler: s.engine,
@@ -80,7 +87,7 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	return server.Shutdown(shutdownCtx)
 }
 
-func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routes *v1.Routes, authValidator *auth.Validator) {
+func registerPublicRoutes(engine *gin.Engine, cfg *config.Config, authValidator *auth.Validator) {
 	engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"service": cfg.ServiceName, "status": "ok"})
 	})
@@ -98,6 +105,4 @@ func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routes *v1.Route
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "initializing"})
 	})
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	routes.Register(engine.Group("/"))
 }

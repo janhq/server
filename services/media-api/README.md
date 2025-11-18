@@ -18,6 +18,7 @@
 ### Method 1: Direct Upload via API (Server-Proxied)
 
 Client uploads an image directly through the media-api (via data URL or remote URL) and receives:
+
 - `jan_id` - Persistent identifier for the media
 - `presigned_url` - Short-lived URL for immediate access (default 5 min TTL)
 
@@ -139,14 +140,14 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | `MEDIA_DATABASE_URL` | Postgres DSN for metadata. |
 | `MEDIA_S3_ENDPOINT` | S3-compatible endpoint (`https://s3.menlo.ai`). |
 | `MEDIA_S3_PUBLIC_ENDPOINT` | Optional public endpoint used when returning presigned URLs (e.g., `http://localhost:9000`). |
-| `MEDIA_S3_ACCESS_KEY` / `MEDIA_S3_SECRET_KEY` | Credentials (`XXXXX` / `YYYY`). |
+| `MEDIA_S3_ACCESS_KEY_ID` / `MEDIA_S3_SECRET_ACCESS_KEY` | Credentials (`XXXXX` / `YYYY`). |
 | `MEDIA_S3_BUCKET` | Target bucket (`platform-dev`). |
 | `MEDIA_MAX_BYTES` | Max upload size (default 20 MB). |
 | `MEDIA_S3_PRESIGN_TTL` | Lifespan of presigned URLs (default 5 min). |
 | `MEDIA_RETENTION_DAYS` | Metadata retention window. |
 | `AUTH_ENABLED` | Set to `true` to enforce Keycloak-issued JWTs (required in shared environments). |
 | `AUTH_ISSUER` | Expected Keycloak issuer claim (e.g., `http://localhost:8085/realms/jan`). |
-| `AUTH_AUDIENCE` | Audience or client ID the token is minted for (e.g., `jan-client`). |
+| `ACCOUNT` | Audience or client ID the token is minted for (e.g., `account`). |
 | `AUTH_JWKS_URL` | JWKS endpoint used to validate signatures (e.g., `http://keycloak:8085/realms/jan/protocol/openid-connect/certs`). |
 
 > If the S3 bucket or credentials are omitted the service still starts, but media upload/resolve endpoints will respond with `media storage backend is not configured` until valid `MEDIA_S3_*` values are provided.

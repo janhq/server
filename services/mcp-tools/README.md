@@ -16,32 +16,33 @@ A standalone **Model Context Protocol (MCP)** service that provides AI models wi
 
 `
 services/mcp-tools/
-├── domain/            # Business logic (transport-agnostic)
-│   └── search/        # Search service interfaces and types
-├── infrastructure/    # External systems integration
-│   ├── config/        # Configuration management
-│   ├── logger/        # Logging setup
-│   └── search/        # Serper, SearXNG, fallback clients
-├── interfaces/        # Delivery mechanisms
-│   └── httpserver/
-│       ├── middlewares/
-│       └── routes/    # MCP route handlers
-└── utils/
-    └── mcp/          # MCP helper functions
++-- domain/            # Business logic (transport-agnostic)
+|   +-- search/        # Search service interfaces and types
++-- infrastructure/    # External systems integration
+|   +-- config/        # Configuration management
+|   +-- logger/        # Logging setup
+|   +-- search/        # Serper, SearXNG, fallback clients
++-- interfaces/        # Delivery mechanisms
+|   +-- httpserver/
+|       +-- middlewares/
+|       +-- routes/    # MCP route handlers
++-- utils/
+    +-- mcp/          # MCP helper functions
 ``
 services/mcp-tools/
-├── domain/           # Business logic (transport-agnostic)
-│   └── serper/       # Serper service interfaces and types
-├── infrastructure/   # External systems integration
-│   ├── config/       # Configuration management
-│   ├── logger/       # Logging setup
-│   └── serper/       # Serper API client implementation
-├── interfaces/       # Delivery mechanisms
-│   └── httpserver/   # HTTP/MCP server
-│       ├── middlewares/
-│       └── routes/   # MCP route handlers
-└── utils/            # Utilities
-    └── mcp/          # MCP helper functions
++-- domain/           # Business logic (transport-agnostic)
+|   +-- serper/       # Serper service interfaces and types
++-- infrastructure/   # External systems integration
+|   +-- config/       # Configuration management
+|   +-- logger/       # Logging setup
+|   +-- serper/       # Serper API client implementation
++-- interfaces/       # Delivery mechanisms
+|   +-- httpserver/   # HTTP/MCP server
+|       +-- middlewares/
+|       +-- routes/   # MCP route handlers
++-- utils/            # Utilities
+    +-- mcp/          # MCP helper functions
+
 ```
 
 ## Available Tools
@@ -218,7 +219,7 @@ Supported MCP methods:
 
 ### Project Structure Follows Platform Conventions
 
-- **Clean Architecture** - Domain → Infrastructure → Interfaces
+- **Clean Architecture** - Domain -> Infrastructure -> Interfaces
 - **No HTTP in Domain** - Business logic is transport-agnostic
 - **Dependency Injection** - All dependencies injected
 - **Error Handling** - Structured error responses

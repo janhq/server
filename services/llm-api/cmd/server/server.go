@@ -17,7 +17,7 @@ import (
 )
 
 type Application struct {
-	httpServer *httpserver.HttpServer
+	httpServer *httpserver.HTTPServer
 	crontab    *crontab.Crontab
 }
 

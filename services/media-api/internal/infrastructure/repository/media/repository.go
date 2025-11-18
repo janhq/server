@@ -7,6 +7,7 @@ import (
 
 	domain "jan-server/services/media-api/internal/domain/media"
 	"jan-server/services/media-api/internal/infrastructure/database/entities"
+	"jan-server/services/media-api/internal/utils/platformerrors"
 )
 
 // Repository handles media object persistence.
@@ -25,7 +26,14 @@ func (r *Repository) FindByHash(ctx context.Context, hash string) (*domain.Media
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to find media by hash",
+			err,
+			"7a8f3d2e-4b1c-4a9e-8f7d-2c3e4f5a6b7c",
+		)
 	}
 	obj := mapEntity(entity)
 	return &obj, nil
@@ -42,7 +50,18 @@ func (r *Repository) Create(ctx context.Context, obj *domain.MediaObject) error 
 		CreatedBy:       obj.CreatedBy,
 		RetentionUntil:  obj.RetentionUntil,
 	}
-	return r.db.WithContext(ctx).Create(&entity).Error
+	err := r.db.WithContext(ctx).Create(&entity).Error
+	if err != nil {
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to create media object",
+			err,
+			"9b2e4f5a-6c7d-4e8f-9a0b-1c2d3e4f5a6b",
+		)
+	}
+	return nil
 }
 
 func (r *Repository) GetByID(ctx context.Context, id string) (*domain.MediaObject, error) {
@@ -50,9 +69,23 @@ func (r *Repository) GetByID(ctx context.Context, id string) (*domain.MediaObjec
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&entity).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, nil
+			return nil, platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeNotFound,
+				"media object not found",
+				err,
+				"1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+			)
 		}
-		return nil, err
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to get media by id",
+			err,
+			"2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a",
+		)
 	}
 	obj := mapEntity(entity)
 	return &obj, nil

@@ -18,8 +18,8 @@ import (
 	"jan-server/services/response-api/internal/interfaces/httpserver/routes"
 )
 
-// HttpServer wraps the gin engine with graceful shutdown helpers.
-type HttpServer struct {
+// HTTPServer wraps the gin engine with graceful shutdown helpers.
+type HTTPServer struct {
 	cfg         *config.Config
 	engine      *gin.Engine
 	log         zerolog.Logger
@@ -29,7 +29,7 @@ type HttpServer struct {
 }
 
 // New constructs the HTTP server with default middleware and routes.
-func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service, authValidator *auth.Validator) *HttpServer {
+func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service, authValidator *auth.Validator) *HTTPServer {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -38,14 +38,22 @@ func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service,
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 	engine.Use(gin.Logger())
+
+	handlerProvider := handlers.NewProvider(responseService, log)
+	routeProvider := routes.NewProvider(handlerProvider)
+
+	// Register public routes (health checks, swagger) without authentication
+	registerPublicRoutes(engine, cfg, authValidator)
+
+	// Apply authentication middleware before protected routes
 	if authValidator != nil {
 		engine.Use(authValidator.Middleware())
 	}
-	handlerProvider := handlers.NewProvider(responseService, log)
-	routeProvider := routes.NewProvider(handlerProvider)
-	registerCoreRoutes(engine, cfg, routeProvider, authValidator)
 
-	return &HttpServer{
+	// Register protected API routes
+	routeProvider.Register(engine)
+
+	return &HTTPServer{
 		cfg:         cfg,
 		engine:      engine,
 		log:         log,
@@ -56,7 +64,7 @@ func New(cfg *config.Config, log zerolog.Logger, responseService domain.Service,
 }
 
 // Run starts the HTTP listener and handles graceful shutdown via context cancellation.
-func (s *HttpServer) Run(ctx context.Context) error {
+func (s *HTTPServer) Run(ctx context.Context) error {
 	server := &http.Server{
 		Addr:    s.cfg.Addr(),
 		Handler: s.engine,
@@ -89,7 +97,7 @@ func (s *HttpServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *routes.Provider, authValidator *auth.Validator) {
+func registerPublicRoutes(engine *gin.Engine, cfg *config.Config, authValidator *auth.Validator) {
 	engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": cfg.ServiceName,
@@ -113,6 +121,4 @@ func registerCoreRoutes(engine *gin.Engine, cfg *config.Config, routeProvider *r
 	})
 
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	routeProvider.Register(engine)
 }

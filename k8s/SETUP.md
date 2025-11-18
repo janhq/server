@@ -55,7 +55,7 @@ minikube status
 ### Enable Kubernetes in Docker Desktop
 
 1. Open Docker Desktop
-2. Go to Settings → Kubernetes
+2. Go to Settings -> Kubernetes
 3. Check "Enable Kubernetes"
 4. Click "Apply & Restart"
 5. Wait for Kubernetes to start (green indicator)

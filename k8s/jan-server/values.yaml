@@ -164,8 +164,8 @@ keycloak:
   # Keycloak JWKS URL for JWT verification
   jwksUrl: "http://keycloak:8085/realms/jan/protocol/openid-connect/certs"
   
-  # Keycloak audience for JWT claims
-  audience: "jan-client"
+  # Keycloak account/audience for JWT claims
+  account: "account"
 
 ## ============================================================================
 ## Kong API Gateway
@@ -269,8 +269,8 @@ llmApi:
     KEYCLOAK_REALM: "jan"
     BACKEND_CLIENT_ID: "llm-api"
     BACKEND_CLIENT_SECRET: "llm-api-secret"
-    TARGET_CLIENT_ID: "jan-client"
-    AUDIENCE: "jan-client"
+    CLIENT: "jan-client"
+    ACCOUNT: "account"
     JWKS_URL: "http://{{ .Release.Name }}-keycloak:8085/realms/jan/protocol/openid-connect/certs"
     ISSUER: "http://{{ .Release.Name }}-keycloak:8085/realms/jan"
   
@@ -332,7 +332,7 @@ mediaApi:
     MEDIA_S3_REGION: "us-west-2"
     AUTH_ENABLED: "true"
     AUTH_ISSUER: "http://localhost:8085/realms/jan"
-    AUTH_AUDIENCE: "jan-client"
+    ACCOUNT: "account"
     AUTH_JWKS_URL: "http://keycloak:8085/realms/jan/protocol/openid-connect/certs"
   
   secrets:

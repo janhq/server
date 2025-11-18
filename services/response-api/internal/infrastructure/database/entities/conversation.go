@@ -15,3 +15,8 @@ type Conversation struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+// TableName specifies the table name for Conversation.
+func (Conversation) TableName() string {
+	return "conversations"
+}

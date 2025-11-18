@@ -125,7 +125,7 @@ func containsString(list []string, target string) bool {
 }
 
 func normalizeURL(baseURL string) string {
-	s := strings.TrimSpace(baseURL)
-	s = strings.TrimRight(s, "/")
-	return s
+	normalized := strings.TrimSpace(baseURL)
+	normalized = strings.TrimRight(normalized, "/")
+	return normalized
 }

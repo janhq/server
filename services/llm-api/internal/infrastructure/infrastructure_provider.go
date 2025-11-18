@@ -34,7 +34,7 @@ func ProvideKeycloakClient(cfg *config.Config, log zerolog.Logger) *keycloak.Cli
 		cfg.KeycloakRealm,
 		cfg.BackendClientID,
 		cfg.BackendClientSecret,
-		cfg.TargetClientID,
+		cfg.Client,
 		cfg.GuestRole,
 		&http.Client{},
 		log,
@@ -59,8 +59,8 @@ func ProvideKeycloakValidator(cfg *config.Config, log zerolog.Logger) (*auth.Key
 		context.Background(),
 		jwksURL,
 		cfg.Issuer,
-		cfg.Audience,
-		cfg.TargetClientID,
+		cfg.Account,
+		cfg.Client,
 		cfg.RefreshJWKSInterval,
 		cfg.AuthClockSkew,
 		log,
@@ -69,7 +69,7 @@ func ProvideKeycloakValidator(cfg *config.Config, log zerolog.Logger) (*auth.Key
 
 // ProvideDatabase provides a database connection
 func ProvideDatabase(cfg *config.Config, log zerolog.Logger) (*gorm.DB, error) {
-	db, err := database.NewDB(cfg.DatabaseURL)
+	db, err := database.NewDB(cfg.GetDatabaseWriteDSN())
 	if err != nil {
 		return nil, err
 	}

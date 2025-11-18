@@ -30,11 +30,11 @@ import (
 // @in header
 // @name X-Media-Service-Key
 type Application struct {
-	httpServer *httpserver.HttpServer
+	httpServer *httpserver.HTTPServer
 	log        zerolog.Logger
 }
 
-func NewApplication(httpServer *httpserver.HttpServer, log zerolog.Logger) *Application {
+func NewApplication(httpServer *httpserver.HTTPServer, log zerolog.Logger) *Application {
 	return &Application{
 		httpServer: httpServer,
 		log:        log,
@@ -71,7 +71,7 @@ func main() {
 	}()
 
 	db, err := database.Connect(database.Config{
-		DSN:             cfg.DatabaseURL,
+		DSN:             cfg.GetDatabaseWriteDSN(),
 		MaxIdleConns:    cfg.DBMaxIdleConns,
 		MaxOpenConns:    cfg.DBMaxOpenConns,
 		ConnMaxLifetime: cfg.DBConnLifetime,

@@ -1,9 +1,12 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Reference Go microservice skeleton for Jan Server",
+        "description": "Orchestrates LLM responses with MCP tool integration, conversation context, and streaming support.",
         "title": "Response API",
-        "contact": {},
+        "contact": {
+            "name": "Jan Server Team",
+            "url": "https://github.com/janhq/jan-server"
+        },
         "version": "1.0"
     },
     "basePath": "/",
@@ -28,7 +31,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateResponseRequest"
+                            "$ref": "#/definitions/requests.CreateResponseRequest"
                         }
                     }
                 ],
@@ -36,7 +39,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     },
                     "400": {
@@ -73,7 +76,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     },
                     "404": {
@@ -108,7 +111,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     }
                 }
@@ -136,7 +139,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ResponsePayload"
+                            "$ref": "#/definitions/responses.ResponsePayload"
                         }
                     }
                 }
@@ -164,8 +167,10 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.ConversationItem"
+                            }
                         }
                     }
                 }
@@ -173,13 +178,16 @@
         }
     },
     "definitions": {
-        "dto.CreateResponseRequest": {
+        "requests.CreateResponseRequest": {
             "type": "object",
             "required": [
                 "input",
                 "model"
             ],
             "properties": {
+                "background": {
+                    "type": "boolean"
+                },
                 "conversation": {
                     "type": "string"
                 },
@@ -197,6 +205,9 @@
                 "previous_response_id": {
                     "type": "string"
                 },
+                "store": {
+                    "type": "boolean"
+                },
                 "stream": {
                     "type": "boolean"
                 },
@@ -207,12 +218,12 @@
                     "type": "number"
                 },
                 "tool_choice": {
-                    "$ref": "#/definitions/dto.ToolChoice"
+                    "$ref": "#/definitions/requests.ToolChoice"
                 },
                 "tools": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ToolDefinition"
+                        "$ref": "#/definitions/requests.ToolDefinition"
                     }
                 },
                 "user": {
@@ -220,13 +231,74 @@
                 }
             }
         },
-        "dto.ResponsePayload": {
+        "requests.ToolChoice": {
             "type": "object",
             "properties": {
+                "function": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ToolDefinition": {
+            "type": "object",
+            "properties": {
+                "function": {
+                    "$ref": "#/definitions/requests.ToolFunctionDefinition"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ToolFunctionDefinition": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "response.ConversationItem": {
+            "type": "object",
+            "properties": {
+                "content": {},
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "responses.ResponsePayload": {
+            "type": "object",
+            "properties": {
+                "background": {
+                    "type": "boolean"
+                },
                 "conversation_id": {
                     "type": "string"
                 },
                 "created": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "description": "Same as Created, for compatibility",
                     "type": "integer"
                 },
                 "error": {},
@@ -251,6 +323,9 @@
                 "status": {
                     "type": "string"
                 },
+                "store": {
+                    "type": "boolean"
+                },
                 "stream": {
                     "type": "boolean"
                 },
@@ -259,48 +334,13 @@
                 },
                 "usage": {}
             }
-        },
-        "dto.ToolChoice": {
-            "type": "object",
-            "properties": {
-                "function": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.ToolDefinition": {
-            "type": "object",
-            "properties": {
-                "function": {
-                    "$ref": "#/definitions/dto.ToolFunctionDefinition"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.ToolFunctionDefinition": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parameters": {
-                    "type": "object",
-                    "additionalProperties": true
-                }
-            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

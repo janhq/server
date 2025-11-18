@@ -23,45 +23,47 @@ The routes define **OR logic**: requests are accepted if either the JWT or API k
 
 ```
 Client
-  └──> Kong Gateway (`/llm/*`)
-        ├── JWT Plugin (Keycloak)
-        │     └──> Valid token → Add `X-Auth-Method: jwt`, inject user headers → Upstream
-        ├── API Key Plugin (`keycloak-apikey`)
-        │     └──> Forward `X-API-Key` to `llm-api/auth/validate-api-key`
-        │            └──> LLM API hashes key, consults Keycloak → Valid → Inject headers + `X-Auth-Method: apikey`
-        └── Request-termination (fallback) → Return 401
+ +--> Kong Gateway (`/llm/*`)
+ +-- JWT Plugin (Keycloak)
+ | +--> Valid token -> Add `X-Auth-Method: jwt`, inject user headers -> Upstream
+ +-- API Key Plugin (`keycloak-apikey`)
+ | +--> Forward `X-API-Key` to `llm-api/auth/validate-api-key`
+ | +--> LLM API hashes key, consults Keycloak -> Valid -> Inject headers + `X-Auth-Method: apikey`
+ +-- Request-termination (fallback) -> Return 401
 ```
 
 ## 3. Guest Tokens
 
 - **Endpoint**: `POST /llm/auth/guest-login` exposed through Kong (`/llm/auth/guest-login` route). This endpoint creates a temporary Keycloak user and returns `access_token`, `refresh_token`, and metadata. Guest tokens are meant for quick local testing; they honor rate limits and expire around 5 minutes.
+- **Temporary Email**: Guest users are automatically assigned a temporary email in the format `guest-{uuid}@temp.jan.ai` to satisfy Keycloak's email requirements. This temporary email is replaced with the real email when the guest account is upgraded via `POST /auth/upgrade`.
 - **Usage**: Include `Authorization: Bearer <token>` on `/v1/*` calls or sent via Kong using `curl -X POST http://localhost:8000/llm/auth/guest-login`. Kong forwards the request to `llm-api` and enforces the auth plugin (JWT may succeed immediately after issuance).
-- **Refresh**: Call `/llm/auth/refresh-token` or rely on Kong’s JWT verification for new tokens in production flows.
+- **Upgrade**: Call `POST /auth/upgrade` with the guest token to convert to a permanent account. The upgrade endpoint overwrites the temporary email with a real email and marks it as verified, and changes the `guest` attribute from `true` to `false`.
+- **Refresh**: Call `/llm/auth/refresh-token` or rely on Kong's JWT verification for new tokens in production flows.
 
 ## 4. API Key Lifecycle
 
 - **Format**: Keys use the `sk_` prefix plus 32 random characters. The shared secret is shown only once (on creation). Services store only the SHA-256 hash inside Keycloak user attributes and PostgreSQL (`api_keys` table from `000001_init_schema.up.sql`).
 - **Endpoints** (require JWT auth):
-  - `POST /auth/api-keys` – Create a new API key tied to the authenticated user.
-  - `GET /auth/api-keys` – List active keys for the calling user.
-  - `DELETE /auth/api-keys/{id}` – Revoke a key.
-  - `POST /auth/validate-api-key` – Public validation endpoint called by Kong’s plugin.
+ - `POST /auth/api-keys` - Create a new API key tied to the authenticated user.
+ - `GET /auth/api-keys` - List active keys for the calling user.
+ - `DELETE /auth/api-keys/{id}` - Revoke a key.
+ - `POST /auth/validate-api-key` - Public validation endpoint called by Kong's plugin.
 - **Validation Flow**:
-  1. Kong receives `X-API-Key` from the client.
-  2. `keycloak-apikey` calls `http://llm-api:8080/auth/validate-api-key`.
-  3. LLM API hashes the key, compares it against Keycloak attributes, and responds with user data (or `401` when invalid).
-  4. Kong injects user headers and marks the request as authenticated (can now enforce rate limits per consumer).
+ 1. Kong receives `X-API-Key` from the client.
+ 2. `keycloak-apikey` calls `http://llm-api:8080/auth/validate-api-key`.
+ 3. LLM API hashes the key, compares it against Keycloak attributes, and responds with user data (or `401` when invalid).
+ 4. Kong injects user headers and marks the request as authenticated (can now enforce rate limits per consumer).
 
 ## 5. Keycloak Integration Notes
 
 - **JWKS**: The Kong `jwt` plugin fetches the Keycloak JWKS manually (no dynamic JWKS refresh). Rotate Keycloak signing keys via a manual Kong restart or redeploy the gateway.
 - **Admin API**: Credentials (JWT secrets) live only in the Kong Admin API and are never committed to Git. The gateway does not create consumers dynamically in DB-less mode, which keeps configuration declarative (`kong.yml`).
-- **Guest users**: Each guest login request creates a temporary Keycloak user flagged for easy cleanup. Upgrade and refresh flows use the same `jan` realm policies as regular users.
+- **Guest users**: Each guest login request creates a temporary Keycloak user with a temporary email (`guest-{uuid}@temp.jan.ai`) and the `guest` attribute set to `true`. These users can be upgraded to permanent accounts via `/auth/upgrade`, which replaces the temporary email with a real one and toggles the `guest` flag to `false`. Upgrade and refresh flows use the same `jan` realm policies as regular users.
 
 ## 6. Environment & Deployment Guidance
 
 - **Overlays**: Use environment-specific Kong overlays (`docker`, `k8s/jan-server/templates`, etc.) to toggle TLS verification (`ssl_verify: false` in development, `true` plus CA bundles in staging/prod).
-- **Rate limiting**: Kong enforces per-IP limits at the gateway plus per-consumer bucketed limits where a consumer is resolved either from JWT claims (`iss` → `keycloak-issuer`) or from API key metadata.
+- **Rate limiting**: Kong enforces per-IP limits at the gateway plus per-consumer bucketed limits where a consumer is resolved either from JWT claims (`iss` -> `keycloak-issuer`) or from API key metadata.
 - **Plugin loading**: Custom `keycloak-apikey` code lives in `kong/plugins/keycloak-apikey/` (handler + schema + README). Compose mounts `../kong/plugins:/usr/local/kong/plugins:ro` and sets `KONG_PLUGINS: bundled,keycloak-apikey`.
 - **Credentials**: The plugin uses `hide_credentials: true` so backend services never see the raw `X-API-Key`.
 

@@ -13,6 +13,7 @@ import (
 	domain "jan-server/services/response-api/internal/domain/response"
 	"jan-server/services/response-api/internal/domain/tool"
 	"jan-server/services/response-api/internal/infrastructure/database/entities"
+	"jan-server/services/response-api/internal/utils/platformerrors"
 )
 
 // PostgresRepository provides persistence for responses.
@@ -29,11 +30,25 @@ func NewPostgresRepository(db *gorm.DB) *PostgresRepository {
 func (r *PostgresRepository) Create(ctx context.Context, resp *domain.Response) error {
 	entity, err := mapToEntity(resp)
 	if err != nil {
-		return err
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeInternal,
+			"failed to map response to entity",
+			err,
+			"5a6b7c8d-9e0f-4a1b-2c3d-4e5f6a7b8c9d",
+		)
 	}
 
 	if err := r.db.WithContext(ctx).Create(entity).Error; err != nil {
-		return err
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to create response",
+			err,
+			"6b7c8d9e-0f1a-4b2c-3d4e-5f6a7b8c9d0e",
+		)
 	}
 
 	return mapFromEntity(entity, resp)
@@ -43,12 +58,26 @@ func (r *PostgresRepository) Create(ctx context.Context, resp *domain.Response) 
 func (r *PostgresRepository) Update(ctx context.Context, resp *domain.Response) error {
 	entity, err := mapToEntity(resp)
 	if err != nil {
-		return err
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeInternal,
+			"failed to map response to entity for update",
+			err,
+			"7c8d9e0f-1a2b-4c3d-4e5f-6a7b8c9d0e1f",
+		)
 	}
 	entity.ID = resp.ID
 
 	if err := r.db.WithContext(ctx).Model(&entities.Response{ID: resp.ID}).Updates(entity).Error; err != nil {
-		return err
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to update response",
+			err,
+			"8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a",
+		)
 	}
 	return nil
 }
@@ -60,7 +89,24 @@ func (r *PostgresRepository) FindByPublicID(ctx context.Context, publicID string
 		Preload("Conversation").
 		Where("public_id = ?", publicID).
 		First(&entity).Error; err != nil {
-		return nil, err
+		if err == gorm.ErrRecordNotFound {
+			return nil, platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeNotFound,
+				"response not found",
+				err,
+				"9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+			)
+		}
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to find response by public id",
+			err,
+			"0f1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+		)
 	}
 
 	resp := &domain.Response{}
@@ -142,12 +188,17 @@ func mapToEntity(resp *domain.Response) (*entities.Response, error) {
 		Output:             output,
 		Status:             string(resp.Status),
 		Stream:             resp.Stream,
+		Background:         resp.Background,
+		Store:              resp.Store,
+		APIKey:             resp.APIKey,
 		Metadata:           metadata,
 		Usage:              usage,
 		Error:              errJSON,
 		ConversationID:     resp.ConversationID,
 		PreviousResponseID: resp.PreviousResponseID,
 		Object:             resp.Object,
+		QueuedAt:           resp.QueuedAt,
+		StartedAt:          resp.StartedAt,
 		CompletedAt:        resp.CompletedAt,
 		CancelledAt:        resp.CancelledAt,
 		FailedAt:           resp.FailedAt,
@@ -162,10 +213,15 @@ func mapFromEntity(entity *entities.Response, resp *domain.Response) error {
 	resp.SystemPrompt = entity.SystemPrompt
 	resp.Status = domain.Status(entity.Status)
 	resp.Stream = entity.Stream
+	resp.Background = entity.Background
+	resp.Store = entity.Store
+	resp.APIKey = entity.APIKey
 	resp.ConversationID = entity.ConversationID
 	resp.PreviousResponseID = entity.PreviousResponseID
 	resp.CreatedAt = entity.CreatedAt
 	resp.UpdatedAt = entity.UpdatedAt
+	resp.QueuedAt = entity.QueuedAt
+	resp.StartedAt = entity.StartedAt
 	resp.CompletedAt = entity.CompletedAt
 	resp.CancelledAt = entity.CancelledAt
 	resp.FailedAt = entity.FailedAt
