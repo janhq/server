@@ -8,7 +8,7 @@ on:
       - "services/mcp-tools/**"
       - "services/media-api/**"
       - "services/response-api/**"
-      - .github/workflows/dev.yml
+      - .github/workflows/prod.yml
       - .github/workflows/template-docker.yml
 
 jobs:
@@ -25,6 +25,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: release
           filters: |
             llm-api:
               - 'services/llm-api/**'
