@@ -79,6 +79,53 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("setup failed: %w", err)
 	}
 
+	// Ask about monitoring setup
+	if !skipPrompts {
+		fmt.Println()
+		fmt.Println("=" + strings.Repeat("=", 50))
+		fmt.Println("📊 Monitoring Stack Setup (Optional)")
+		fmt.Println()
+		fmt.Println("Would you like to set up the monitoring stack?")
+		fmt.Println("This includes:")
+		fmt.Println("  • Prometheus (metrics)")
+		fmt.Println("  • Grafana (dashboards)")
+		fmt.Println("  • Jaeger (distributed tracing)")
+		fmt.Println("  • OpenTelemetry Collector")
+		fmt.Println()
+		fmt.Print("Set up monitoring? (y/N): ")
+
+		reader := bufio.NewReader(os.Stdin)
+		monitorResponse, _ := reader.ReadString('\n')
+		monitorResponse = strings.TrimSpace(strings.ToLower(monitorResponse))
+
+		if monitorResponse == "y" || monitorResponse == "yes" {
+			fmt.Println()
+			fmt.Println("🔧 Installing monitoring dependencies...")
+
+			// Enable tracing in .env
+			if err := updateEnvVariable(envPath, "OTEL_ENABLED", "true"); err != nil {
+				fmt.Println("⚠️  Warning: Failed to enable OTEL_ENABLED in .env")
+			} else {
+				fmt.Println("✓ Enabled telemetry collection (OTEL_ENABLED=true)")
+			}
+
+			if err := execCommand("make", "monitor-dev"); err != nil {
+				fmt.Println("⚠️  Warning: Failed to start monitoring stack")
+				fmt.Println("You can set it up later with: jan-cli monitor setup")
+			} else {
+				fmt.Println("✓ Monitoring stack started successfully!")
+				fmt.Println()
+				fmt.Println("Access monitoring dashboards:")
+				fmt.Println("  • Grafana:    http://localhost:3001 (admin/admin)")
+				fmt.Println("  • Prometheus: http://localhost:9090")
+				fmt.Println("  • Jaeger:     http://localhost:16686")
+			}
+		} else {
+			fmt.Println("⏭️  Skipping monitoring setup")
+			fmt.Println("You can set it up later with: jan-cli monitor setup")
+		}
+	}
+
 	fmt.Println()
 	fmt.Println("=" + strings.Repeat("=", 50))
 	fmt.Println("🐳 Starting Docker services...")
@@ -469,6 +516,45 @@ func promptForEnvVars(envPath string) error {
 	data, _ = os.ReadFile(envPath)
 	if strings.Contains(string(data), "COMPOSE_PROFILES=full") {
 		os.Setenv("_USING_LOCAL_VLLM", "true")
+	}
+
+	return nil
+}
+
+func updateEnvVariable(envPath, key, value string) error {
+	// Read current .env
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("read .env: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	found := false
+
+	// Update existing line or add new one
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Skip comments
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, key+"=") {
+			lines[i] = fmt.Sprintf("%s=%s", key, value)
+			found = true
+			break
+		}
+	}
+
+	// If not found, append
+	if !found {
+		lines = append(lines, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	// Write back
+	newContent := strings.Join(lines, "\n")
+	if err := os.WriteFile(envPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("write .env: %w", err)
 	}
 
 	return nil

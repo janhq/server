@@ -165,13 +165,12 @@ config-test:
 
 config-drift-check:
 	@echo "Checking for configuration drift..."
-	@cd cmd/jan-cli && go run . config generate && git diff --exit-code ../../config/
-	@if [ $$? -eq 0 ]; then \
-		echo " No configuration drift detected"; \
-	else \
-		echo " Configuration drift detected! Run 'make config-generate' to update."; \
-		exit 1; \
-	fi
+	@cd cmd/jan-cli && go run . config generate
+ifeq ($(OS),Windows_NT)
+	@git diff --exit-code config/ && echo " No configuration drift detected" || (echo " Configuration drift detected! Run 'make config-generate' to update." && exit 1)
+else
+	@git diff --exit-code config/ && echo " No configuration drift detected" || (echo " Configuration drift detected! Run 'make config-generate' to update." && exit 1)
+endif
 
 config-help:
 	@echo "Configuration Management Targets:"
@@ -417,6 +416,7 @@ up-full: ## Start full stack (all services in Docker)
 	@echo "  - vLLM (if enabled): http://localhost:8101"
 	@echo ""
 	@echo "Note: vLLM only starts if using local GPU provider (COMPOSE_PROFILES=full)"
+	@echo "To start monitoring stack: make monitor-up"
 
 down-full:
 	$(COMPOSE) down
@@ -519,27 +519,32 @@ db-dump:
 .PHONY: monitor-up monitor-down monitor-logs monitor-clean
 
 monitor-up:
-	@echo "Starting observability stack..."
-	$(MONITOR_COMPOSE) up -d
-	@echo " Monitoring stack started"
-	@echo ""
-	@echo "Dashboards:"
-	@echo "  - Grafana:    http://localhost:3001 (admin/admin)"
-	@echo "  - Prometheus: http://localhost:9090"
-	@echo "  - Jaeger:     http://localhost:16686"
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor up
+else
+	@bash jan-cli.sh monitor up
+endif
 
 monitor-down:
-	@echo "Stopping monitoring stack..."
-	$(MONITOR_COMPOSE) down
-	@echo " Monitoring stack stopped"
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor down
+else
+	@bash jan-cli.sh monitor down
+endif
 
 monitor-logs:
 	$(MONITOR_COMPOSE) logs -f
 
 monitor-clean:
-	@echo "Stopping monitoring stack and removing volumes..."
-	$(MONITOR_COMPOSE) down -v
-	@echo " Monitoring stack cleaned"
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor reset
+else
+	@bash jan-cli.sh monitor reset
+endif
+
+# --- Advanced Monitoring Targets (from monitoring improvement plan) ---
+
+
 
 # --- Integration Tests (Newman) ---
 

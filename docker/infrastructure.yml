@@ -25,7 +25,6 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - api-db-data:/var/lib/postgresql
-      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jan_user} -d ${POSTGRES_DB:-jan_llm_api}"]
       interval: 10s

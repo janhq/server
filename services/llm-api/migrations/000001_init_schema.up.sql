@@ -1,11 +1,7 @@
--- Create schema
 CREATE SCHEMA IF NOT EXISTS llm_api;
 
 -- Set search path to llm_api schema
 SET search_path TO llm_api;
-
--- Create UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA llm_api;
 
 -- ============================================================================
 -- USERS
@@ -216,7 +212,7 @@ CREATE INDEX idx_conversation_items_deleted_at ON llm_api.conversation_items(del
 -- API KEYS
 -- ============================================================================
 CREATE TABLE llm_api.api_keys (
-    id UUID PRIMARY KEY DEFAULT llm_api.uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER NOT NULL,
     name VARCHAR(128) NOT NULL,
     prefix VARCHAR(32) NOT NULL,
