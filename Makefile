@@ -165,13 +165,12 @@ config-test:
 
 config-drift-check:
 	@echo "Checking for configuration drift..."
-	@cd cmd/jan-cli && go run . config generate && git diff --exit-code ../../config/
-	@if [ $$? -eq 0 ]; then \
-		echo " No configuration drift detected"; \
-	else \
-		echo " Configuration drift detected! Run 'make config-generate' to update."; \
-		exit 1; \
-	fi
+	@cd cmd/jan-cli && go run . config generate
+ifeq ($(OS),Windows_NT)
+	@git diff --exit-code config/ && echo " No configuration drift detected" || (echo " Configuration drift detected! Run 'make config-generate' to update." && exit 1)
+else
+	@git diff --exit-code config/ && echo " No configuration drift detected" || (echo " Configuration drift detected! Run 'make config-generate' to update." && exit 1)
+endif
 
 config-help:
 	@echo "Configuration Management Targets:"
