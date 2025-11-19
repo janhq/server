@@ -50,7 +50,7 @@ type GetMeResponse struct {
 
 // Logout removes authentication tokens
 // @Summary Logout
-// @Description Remove refresh tokens to perform logout
+// @Description Remove refresh tokens to perform logout and invalidate Keycloak session
 // @Tags Authentication API
 // @Accept json
 // @Produce json
@@ -58,7 +58,25 @@ type GetMeResponse struct {
 // @Failure 400 {object} responses.ErrorResponse "Bad Request"
 // @Router /v1/auth/logout [get]
 func (h *TokenHandler) Logout(c *gin.Context) {
-	// Clear the refresh token cookie
+	// Get the refresh token from cookie before clearing it
+	refreshTokenCookie, err := c.Cookie(RefreshTokenCookieName)
+
+	// Call Keycloak logout endpoint to invalidate the session
+	if err == nil && refreshTokenCookie != "" {
+		ctx := c.Request.Context()
+		logoutErr := h.kc.LogoutUser(ctx, refreshTokenCookie)
+		if logoutErr != nil {
+			h.logger.Warn().
+				Err(logoutErr).
+				Msg("Failed to logout from Keycloak, but continuing with local logout")
+		} else {
+			h.logger.Debug().Msg("Successfully logged out from Keycloak")
+		}
+	} else {
+		h.logger.Debug().Msg("No refresh token found, skipping Keycloak logout")
+	}
+
+	// Clear the refresh token cookie locally
 	http.SetCookie(c.Writer, responses.NewCookieWithSecurity(
 		RefreshTokenCookieName,
 		"",

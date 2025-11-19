@@ -2,6 +2,7 @@ package userrepo
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -95,8 +96,13 @@ func (repo *UserGormRepository) Upsert(ctx context.Context, usr *user.User) (*us
 	}
 
 	// Retrieve the persisted user to capture ID and timestamps
+	// Use a background context with timeout for the reload to avoid context cancellation
+	// if the client disconnects after the upsert succeeds
+	reloadCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	var persisted dbschema.User
-	if err := repo.db.WithContext(ctx).
+	if err := repo.db.WithContext(reloadCtx).
 		Where("issuer = ? AND subject = ?", schemaUser.Issuer, schemaUser.Subject).
 		First(&persisted).Error; err != nil {
 		return nil, platformerrors.NewError(
