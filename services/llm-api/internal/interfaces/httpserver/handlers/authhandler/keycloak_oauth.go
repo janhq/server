@@ -241,10 +241,14 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 			Str("error", keycloakError).
 			Str("error_description", errorDescription).
 			Msg("Keycloak returned error in callback")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":             keycloakError,
-			"error_description": errorDescription,
-		})
+
+		// Redirect to homepage with error in URL
+		homeURL := "https://chat-dev.jan.ai/"
+		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
+			homeURL,
+			url.QueryEscape(keycloakError),
+			url.QueryEscape(errorDescription))
+		c.Redirect(http.StatusFound, redirectURL)
 		return
 	}
 
@@ -260,9 +264,14 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 
 	if code == "" || state == "" {
 		log.Error().Msg("Missing code or state parameter in callback")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Missing code or state parameter",
-		})
+
+		// Redirect to homepage with error in URL
+		homeURL := "https://chat-dev.jan.ai/"
+		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
+			homeURL,
+			url.QueryEscape("invalid_request"),
+			url.QueryEscape("Missing code or state parameter"))
+		c.Redirect(http.StatusFound, redirectURL)
 		return
 	}
 
@@ -272,19 +281,28 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 		log.Error().
 			Str("state", state).
 			Msg("Invalid state parameter - not found or expired")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":        "Invalid state parameter",
-			"error_detail": "state not found or expired",
-		})
+
+		// Redirect to homepage with error in URL
+		homeURL := "https://chat-dev.jan.ai/"
+		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
+			homeURL,
+			url.QueryEscape("invalid_state"),
+			url.QueryEscape("State not found or expired"))
+		c.Redirect(http.StatusFound, redirectURL)
 		return
 	}
 
 	authRequest, ok := authRequestVal.(*AuthRequest)
 	if !ok {
 		log.Error().Msg("Invalid auth request data structure")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Invalid auth request data",
-		})
+
+		// Redirect to homepage with error in URL
+		homeURL := "https://chat-dev.jan.ai/"
+		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
+			homeURL,
+			url.QueryEscape("server_error"),
+			url.QueryEscape("Invalid auth request data"))
+		c.Redirect(http.StatusFound, redirectURL)
 		return
 	}
 
@@ -303,9 +321,22 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 		log.Error().
 			Err(err).
 			Msg("Failed to exchange code for tokens")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Failed to exchange code for tokens: %v", err),
-		})
+
+		// Use stored redirect URL or fallback to homepage
+		homeURL := authRequest.RedirectURL
+		if homeURL == "" {
+			homeURL = "https://chat-dev.jan.ai/"
+		}
+		// Remove fragment from URL if exists
+		if parsedHome, parseErr := url.Parse(homeURL); parseErr == nil {
+			parsedHome.Fragment = ""
+			homeURL = parsedHome.String()
+		}
+		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
+			homeURL,
+			url.QueryEscape("token_exchange_failed"),
+			url.QueryEscape("Failed to exchange code for tokens"))
+		c.Redirect(http.StatusFound, redirectURL)
 		return
 	}
 
@@ -342,9 +373,14 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 			Err(err).
 			Str("redirect_url", redirectURL).
 			Msg("Invalid redirect URL")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Invalid redirect URL",
-		})
+
+		// Fallback to homepage with error
+		homeURL := "https://chat-dev.jan.ai/"
+		fallbackURL := fmt.Sprintf("%s?error=%s&error_description=%s",
+			homeURL,
+			url.QueryEscape("invalid_redirect"),
+			url.QueryEscape("Invalid redirect URL"))
+		c.Redirect(http.StatusFound, fallbackURL)
 		return
 	}
 
