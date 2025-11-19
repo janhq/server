@@ -38,6 +38,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/v1/chat/completion
 - **Add images** - Reference images using jan_* IDs
 - **Multiple models** - Works with vLLM, OpenAI, Anthropic, and others
 - **Track everything** - Built-in logging and monitoring
+- **(Future) Prompt Orchestration** - Dynamic prompt composition with memory, templates, and conditional modules (see `docs/todo/prompt-orchestration-todo.md`)
 
 ## Service Ports & Configuration
 

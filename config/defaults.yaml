@@ -68,6 +68,12 @@ services:
     model_provider_secret: jan-model-provider-secret-2024
     model_sync_enabled: true
     model_sync_interval_minutes: 60
+    prompt_orchestration:
+      enabled: true
+      enable_memory: false
+      enable_templates: true
+      enable_tools: false
+      default_persona: helpful assistant
     media_resolve_url: http://kong:8000/media/v1/media/resolve
     media_resolve_timeout: 5s
   mcp_tools:

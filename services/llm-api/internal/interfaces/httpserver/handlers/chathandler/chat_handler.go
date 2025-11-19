@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
+	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
@@ -42,6 +43,7 @@ type ChatHandler struct {
 	conversationHandler *conversationHandler.ConversationHandler
 	conversationService *conversation.ConversationService
 	mediaResolver       mediaresolver.Resolver
+	promptProcessor     *prompt.ProcessorImpl
 }
 
 // NewChatHandler creates a new chat handler
@@ -51,6 +53,7 @@ func NewChatHandler(
 	conversationHandler *conversationHandler.ConversationHandler,
 	conversationService *conversation.ConversationService,
 	mediaResolver mediaresolver.Resolver,
+	promptProcessor *prompt.ProcessorImpl,
 ) *ChatHandler {
 	return &ChatHandler{
 		inferenceProvider:   inferenceProvider,
@@ -58,6 +61,7 @@ func NewChatHandler(
 		conversationHandler: conversationHandler,
 		conversationService: conversationService,
 		mediaResolver:       mediaResolver,
+		promptProcessor:     promptProcessor,
 	}
 }
 
@@ -160,6 +164,30 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	// Resolve jan_* media placeholders (best-effort)
 	request.Messages = h.resolveMediaPlaceholders(ctx, reqCtx, request.Messages)
+
+	// Apply prompt orchestration (if enabled)
+	if h.promptProcessor != nil {
+		observability.AddSpanEvent(ctx, "processing_prompts")
+		promptCtx := &prompt.Context{
+			UserID:         userID,
+			ConversationID: conversationID,
+			Preferences:    make(map[string]interface{}),
+			Memory:         []string{}, // TODO: Load from conversation/user memory store
+		}
+
+		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
+		if processErr != nil {
+			// Log error but continue with original messages
+			log := logger.GetLogger()
+			log.Warn().
+				Err(processErr).
+				Str("conversation_id", conversationID).
+				Msg("failed to process prompts, using original messages")
+		} else {
+			request.Messages = processedMessages
+			observability.AddSpanEvent(ctx, "prompts_processed")
+		}
+	}
 
 	// Get chat completion client
 	chatClient, err := h.inferenceProvider.GetChatCompletionClient(ctx, selectedProvider)

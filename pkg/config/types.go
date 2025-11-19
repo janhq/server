@@ -199,9 +199,30 @@ type LLMAPIConfig struct {
 	ModelSyncEnabled         bool `yaml:"model_sync_enabled" json:"model_sync_enabled" env:"MODEL_SYNC_ENABLED" envDefault:"true" description:"Enable model synchronization"`
 	ModelSyncIntervalMinutes int  `yaml:"model_sync_interval_minutes" json:"model_sync_interval_minutes" env:"MODEL_SYNC_INTERVAL_MINUTES" envDefault:"60" jsonschema:"minimum=1" description:"Model sync interval in minutes"`
 
+	// Prompt orchestration settings
+	PromptOrchestration PromptOrchestrationConfig `yaml:"prompt_orchestration" json:"prompt_orchestration"`
+
 	// Media integration
 	MediaResolveURL     string        `yaml:"media_resolve_url" json:"media_resolve_url" env:"MEDIA_RESOLVE_URL" envDefault:"http://kong:8000/media/v1/media/resolve" jsonschema:"format=uri" description:"Media resolve URL"`
 	MediaResolveTimeout time.Duration `yaml:"media_resolve_timeout" json:"media_resolve_timeout" env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s" description:"Media resolve timeout"`
+}
+
+// PromptOrchestrationConfig contains settings for prompt orchestration processor
+type PromptOrchestrationConfig struct {
+	// Enable prompt orchestration
+	Enabled bool `yaml:"enabled" json:"enabled" env:"PROMPT_ORCHESTRATION_ENABLED" envDefault:"true" description:"Enable prompt orchestration processor"`
+
+	// Enable memory module
+	EnableMemory bool `yaml:"enable_memory" json:"enable_memory" env:"PROMPT_ORCHESTRATION_MEMORY" envDefault:"false" description:"Enable memory injection in prompts"`
+
+	// Enable templates module
+	EnableTemplates bool `yaml:"enable_templates" json:"enable_templates" env:"PROMPT_ORCHESTRATION_TEMPLATES" envDefault:"true" description:"Enable template-based prompts"`
+
+	// Enable tools module
+	EnableTools bool `yaml:"enable_tools" json:"enable_tools" env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false" description:"Enable tool usage instructions"`
+
+	// Default persona
+	DefaultPersona string `yaml:"default_persona" json:"default_persona" env:"PROMPT_ORCHESTRATION_PERSONA" envDefault:"helpful assistant" description:"Default assistant persona"`
 }
 
 // APIKeyConfig contains API key management settings

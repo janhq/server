@@ -1,4 +1,6 @@
-## A **Prompt Orchestrator** with conditional modules
+## Prompt Orchestration as an LLM-API Processor
+
+**Architecture Decision**: Prompt orchestration is implemented as a **processor within the LLM API service**, not as an isolated microservice.
 
 This gives you dynamic control at runtime:
 
@@ -10,18 +12,22 @@ This gives you dynamic control at runtime:
 
 ---
 
-A **Prompt Orchestrator** is a custom logic layer (code or workflow) that:
+## What is a Prompt Orchestration Processor?
 
-1. Takes a user’s raw input
+A **Prompt Orchestration Processor** is a processing layer within LLM API that:
+
+1. Takes a user's raw input (before it reaches the inference engine)
 2. Checks conditions (flags, context, user settings, memory, etc.)
-3. Composes a final prompt programmatically
-4. Sends that composed prompt to an LLM Inference Engine
+3. Composes a final prompt programmatically by applying conditional modules
+4. Passes that composed prompt to the inference provider (vLLM or remote)
+
+The processor sits in the request pipeline within `llm-api`, between the HTTP handler and the inference provider client.
 
 ---
 
-## What a Prompt Orchestrator Can Do
+## What a Prompt Orchestration Processor Can Do
 
-It can automatically attach optional modules, such as:
+It can automatically attach optional modules as part of the LLM API request pipeline, such as:
 
 ### Memory
 
@@ -59,28 +65,41 @@ Like “respond in JSON”, “respond concisely”, “use a teacher tone”, e
 
 ---
 
-## HOW TO BUILD a Prompt Orchestrator
+## HOW TO IMPLEMENT a Prompt Orchestration Processor in LLM-API
 
-You can build it in any backend (Node.js, Python, etc.).
-The architecture is simple:
+The processor should be implemented as a middleware/pipeline component within the LLM API service.
+
+### Architecture within LLM API
 
 ```
-User Input
+HTTP Request (POST /v1/chat/completions)
     ↓
-Prompt Orchestrator
-    - Check context
-    - Check rules
-    - Retrieve memory
-    - Assemble components
+Gin Handler (llm-api/internal/interfaces/http)
     ↓
-Final Prompt (System + Instructions + User)
+Prompt Orchestration Processor (NEW)
+    - Check context & user preferences
+    - Check conversation memory
+    - Apply conditional rules
+    - Retrieve and inject memory
+    - Add tool instructions
+    - Apply templates
+    - Assemble final system + user prompts
     ↓
-LLM Inference API
+Inference Provider Client (internal/infrastructure/inference)
+    ↓
+vLLM or Remote Provider
 ```
+
+### Implementation Location
+
+The processor should be added to the LLM API codebase at:
+- **Package**: `services/llm-api/internal/domain/prompt/` (new package)
+- **Wire integration**: `services/llm-api/cmd/server/wire.go`
+- **Configuration**: Add processor config to `pkg/config/types.go` under `LLMAPIConfig`
 
 ---
 
-## Step 1 — Define Prompt Modules
+## Step 1 — Define Prompt Modules (in LLM API)
 
 Example modules you can mix-and-match:
 

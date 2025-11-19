@@ -12,6 +12,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
+	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/user"
 	"jan-server/services/llm-api/internal/infrastructure"
 	"jan-server/services/llm-api/internal/infrastructure/crontab"
@@ -27,11 +28,11 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
-	guestauth "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
-	v1 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	model3 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/model"
 	provider2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/provider"
@@ -40,7 +41,9 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	model2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
+)
 
+import (
 	_ "net/http/pprof"
 )
 
@@ -79,7 +82,9 @@ func CreateApplication() (*Application, error) {
 	conversationHandler := conversationhandler.NewConversationHandler(conversationService, projectService)
 	client := infrastructure.ProvideKeycloakClient(config, zerologLogger)
 	resolver := infrastructure.ProvideMediaResolver(config, zerologLogger, client)
-	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver)
+	processorConfig := domain.ProvidePromptProcessorConfig(config, zerologLogger)
+	processorImpl := prompt.NewProcessor(processorConfig, zerologLogger)
+	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver, processorImpl)
 	chatCompletionRoute := chat.NewChatCompletionRoute(chatHandler, authHandler)
 	chatRoute := chat.NewChatRoute(chatCompletionRoute)
 	conversationRoute := conversation2.NewConversationRoute(conversationHandler, authHandler)
