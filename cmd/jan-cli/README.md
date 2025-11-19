@@ -175,6 +175,31 @@ jan-cli dev scaffold my-service
 jan-cli dev scaffold worker-service --template worker --port 8999
 ```
 
+### Monitoring Stack (`monitor`)
+
+Manage observability stack (Prometheus, Grafana, Jaeger, OTEL Collector).
+
+```bash
+# Install monitoring dependencies
+jan-cli monitor setup
+
+# Start monitoring stack
+jan-cli monitor up               # Basic start
+jan-cli monitor dev              # Development mode (full sampling)
+
+# Check health and status
+jan-cli monitor test             # Validate all services
+jan-cli monitor status           # Show status and resource usage
+
+# Query monitoring data
+jan-cli monitor query            # Interactive queries
+
+# Maintenance operations
+jan-cli monitor down             # Stop monitoring stack
+jan-cli monitor reset            # Clear all monitoring data
+jan-cli monitor export           # Export configuration files
+```
+
 ## Configuration Commands
 
 ### `config validate`
@@ -397,6 +422,179 @@ jan-cli dev scaffold my-service --port 8999
 
 # Scaffold worker service
 jan-cli dev scaffold my-worker --template worker
+```
+
+## Monitoring Commands
+
+### `monitor setup`
+
+Install monitoring dependencies (OpenTelemetry, etc.). This is a cross-platform command that works on Windows, Linux, and macOS.
+
+**Usage:**
+```bash
+jan-cli monitor setup
+```
+
+**What it does:**
+- Installs OpenTelemetry Go dependencies
+- Runs sanitizer tests
+- Verifies all monitoring files are present
+- Checks Docker and Docker Compose installation
+
+**Example:**
+```bash
+jan-cli monitor setup
+```
+
+### `monitor up` / `monitor dev`
+
+Start the monitoring stack.
+
+**Usage:**
+```bash
+jan-cli monitor up      # Standard start
+jan-cli monitor dev     # Development mode with full sampling
+```
+
+**Features:**
+- `monitor up`: Basic monitoring with normal sampling
+- `monitor dev`: Full sampling (AlwaysSample) for development/debugging
+
+**Example:**
+```bash
+jan-cli monitor dev
+# Monitoring stack ready:
+#   - Prometheus: http://localhost:9090
+#   - Grafana: http://localhost:3001 (admin/admin)
+#   - Jaeger: http://localhost:16686
+#   - OTEL Collector: http://localhost:13133
+```
+
+### `monitor test`
+
+Validate that all monitoring services are healthy.
+
+**Usage:**
+```bash
+jan-cli monitor test
+```
+
+**Checks:**
+- Prometheus health endpoint
+- Grafana health endpoint
+- OTEL Collector health endpoint
+- Jaeger UI availability
+
+**Example:**
+```bash
+jan-cli monitor test
+# Testing Prometheus...
+# [OK]   Prometheus healthy
+# Testing Grafana...
+# [OK]   Grafana healthy
+# ...
+```
+
+### `monitor status`
+
+Show monitoring stack status and resource usage.
+
+**Usage:**
+```bash
+jan-cli monitor status
+```
+
+**Shows:**
+- Container status (running/stopped)
+- CPU usage per container
+- Memory usage per container
+
+**Example:**
+```bash
+jan-cli monitor status
+```
+
+### `monitor query`
+
+Interactive queries for traces, metrics, and alert rules.
+
+**Usage:**
+```bash
+jan-cli monitor query
+```
+
+**Query Types:**
+1. Recent traces for a service (Jaeger)
+2. Current metric value (Prometheus)
+3. Alert rules status (Prometheus)
+
+**Example:**
+```bash
+jan-cli monitor query
+# Select query:
+# 1) Recent traces for service
+# 2) Metric current value
+# 3) Alert rules status
+# Choice [1-3]: 1
+# Service name: llm-api
+```
+
+### `monitor down`
+
+Stop the monitoring stack.
+
+**Usage:**
+```bash
+jan-cli monitor down
+```
+
+**Example:**
+```bash
+jan-cli monitor down
+# [OK] Monitoring stack stopped
+# 
+# To fully disable tracing, set ENABLE_TRACING=false in .env
+```
+
+### `monitor reset`
+
+Delete all monitoring data (destructive operation).
+
+**Usage:**
+```bash
+jan-cli monitor reset
+```
+
+**Warning:** This permanently deletes all Prometheus metrics and Jaeger traces.
+
+**Example:**
+```bash
+jan-cli monitor reset
+# ⚠️  Delete all Prometheus/Jaeger data? [y/N]: y
+# [OK] Monitoring data cleared
+```
+
+### `monitor export`
+
+Export monitoring configuration files.
+
+**Usage:**
+```bash
+jan-cli monitor export
+```
+
+**Exports:**
+- Docker Compose configuration
+- Prometheus configuration
+- OTEL Collector configuration
+- Prometheus alert rules
+
+**Output:** `exports/monitoring/`
+
+**Example:**
+```bash
+jan-cli monitor export
+# [OK] Configs exported to exports/monitoring/
 ```
 
 ## Global Flags

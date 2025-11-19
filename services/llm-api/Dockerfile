@@ -7,6 +7,7 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/llm-api ./cmd/server
 
 FROM debian:bookworm-slim
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*

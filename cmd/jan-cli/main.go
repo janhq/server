@@ -49,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(swaggerCmd)
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(setupAndRunCmd)
+	rootCmd.AddCommand(monitorCmd)
 
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 	rootCmd.PersistentFlags().String("config-dir", "config", "Configuration directory")

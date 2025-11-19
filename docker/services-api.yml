@@ -96,8 +96,8 @@ services:
       # HTTP Server (using service-specific port)
       MEDIA_API_PORT: ${MEDIA_API_PORT:-8285}
       
-      # Database
-      DB_POSTGRESQL_WRITE_DSN: ${MEDIA_DB_POSTGRESQL_WRITE_DSN:-postgres://${MEDIA_DB_USER:-media}:${MEDIA_DB_PASSWORD:-media}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${MEDIA_DB_NAME:-media_api}?sslmode=disable}
+      # Database (using default account)
+      DB_POSTGRESQL_WRITE_DSN: ${MEDIA_DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
       DB_POSTGRESQL_READ1_DSN: ${MEDIA_DB_POSTGRESQL_READ1_DSN:-}
       
       # S3 Storage
@@ -149,8 +149,8 @@ services:
       # HTTP Server (using service-specific port)
       RESPONSE_API_PORT: ${RESPONSE_API_PORT:-8082}
       
-      # Database
-      DB_POSTGRESQL_WRITE_DSN: ${RESPONSE_DB_POSTGRESQL_WRITE_DSN:-postgres://${RESPONSE_DB_USER:-response_api}:${RESPONSE_DB_PASSWORD:-response_api}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${RESPONSE_DB_NAME:-response_api}?sslmode=disable}
+      # Database (using default account)
+      DB_POSTGRESQL_WRITE_DSN: ${RESPONSE_DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
       DB_POSTGRESQL_READ1_DSN: ${RESPONSE_DB_POSTGRESQL_READ1_DSN:-}
       
       # Service URLs (with prefixes for clarity)

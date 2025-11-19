@@ -11,6 +11,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
+
 RUN useradd --system --home /app --no-create-home --uid 10003 response
 WORKDIR /app
 COPY --from=build /out/response-api /app/response-api
