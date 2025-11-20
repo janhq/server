@@ -68,6 +68,12 @@ services:
     model_provider_secret: jan-model-provider-secret-2024
     model_sync_enabled: true
     model_sync_interval_minutes: 60
+    prompt_orchestration:
+      enabled: true
+      enable_memory: false
+      enable_templates: true
+      enable_tools: false
+      default_persona: helpful assistant
     media_resolve_url: http://kong:8000/media/v1/media/resolve
     media_resolve_timeout: 5s
   mcp_tools:
@@ -111,8 +117,13 @@ inference:
 monitoring:
   otel:
     enabled: false
+    tracing_enabled: false
     service_name: llm-api
+    service_version: ""
     endpoint: http://otel-collector:4318
+    sampling_rate: 0
+    pii_level: ""
+    metric_interval: ""
     http_port: 4318
     grpc_port: 4317
   prometheus:

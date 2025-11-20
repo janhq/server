@@ -560,6 +560,10 @@ func (c *Client) adminTokenEndpoint() string {
 	return c.baseURL + "/realms/master/protocol/openid-connect/token"
 }
 
+func (c *Client) logoutEndpoint() string {
+	return c.baseURL + "/realms/" + url.PathEscape(c.realm) + "/protocol/openid-connect/logout"
+}
+
 // RefreshToken exchanges a refresh token for new tokens
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenSet, error) {
 	values := url.Values{}
@@ -591,6 +595,40 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenS
 	return &token, nil
 }
 
+// LogoutUser logs out a user from Keycloak by calling the logout endpoint
+// This will invalidate the user's session on the Keycloak server
+func (c *Client) LogoutUser(ctx context.Context, refreshToken string) error {
+	if refreshToken == "" {
+		return errors.New("refresh token is required for logout")
+	}
+
+	values := url.Values{}
+	values.Set("client_id", c.clientID)
+	if c.backendClientSecret != "" {
+		values.Set("client_secret", c.backendClientSecret)
+	}
+	values.Set("refresh_token", refreshToken)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.logoutEndpoint(), strings.NewReader(values.Encode()))
+	if err != nil {
+		return fmt.Errorf("create logout request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("execute logout request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("logout request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(payload)))
+	}
+
+	return nil
+}
+
 func extractIDFromLocation(location string) string {
 	if location == "" {
 		return ""
@@ -600,6 +638,29 @@ func extractIDFromLocation(location string) string {
 		return ""
 	}
 	return location[idx+1:]
+}
+
+// buildUserAttributeUpdate ensures required profile fields are retained when updating attributes.
+func buildUserAttributeUpdate(existing map[string]any, attributes map[string][]string) map[string]any {
+	update := map[string]any{
+		"attributes": attributes,
+		"email":      getString(existing, "email"),
+	}
+
+	if first := getString(existing, "firstName"); first != "" {
+		update["firstName"] = first
+	}
+	if last := getString(existing, "lastName"); last != "" {
+		update["lastName"] = last
+	}
+	if enabled, ok := existing["enabled"].(bool); ok {
+		update["enabled"] = enabled
+	}
+	if verified, ok := existing["emailVerified"].(bool); ok {
+		update["emailVerified"] = verified
+	}
+
+	return update
 }
 
 // StoreAPIKeyHash stores an API key hash in Keycloak user attributes
@@ -643,9 +704,7 @@ func (c *Client) StoreAPIKeyHash(ctx context.Context, userID, keyID, keyHash str
 	attributes["api_keys"] = apiKeys
 
 	// Update user attributes
-	update := map[string]any{
-		"attributes": attributes,
-	}
+	update := buildUserAttributeUpdate(existing, attributes)
 
 	body, err := json.Marshal(update)
 	if err != nil {
@@ -718,9 +777,7 @@ func (c *Client) RemoveAPIKeyHash(ctx context.Context, userID, keyID string) err
 	attributes["api_keys"] = filtered
 
 	// Update user attributes
-	update := map[string]any{
-		"attributes": attributes,
-	}
+	update := buildUserAttributeUpdate(existing, attributes)
 
 	body, err := json.Marshal(update)
 	if err != nil {

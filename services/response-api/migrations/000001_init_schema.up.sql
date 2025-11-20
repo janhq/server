@@ -4,9 +4,6 @@ CREATE SCHEMA IF NOT EXISTS response_api;
 -- Set search path to response_api schema
 SET search_path TO response_api;
 
--- Create UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA response_api;
-
 -- ============================================================================
 -- CONVERSATIONS
 -- ============================================================================
@@ -66,18 +63,14 @@ CREATE INDEX idx_responses_queued_at ON response_api.responses(queued_at) WHERE 
 CREATE TABLE response_api.conversation_items (
     id SERIAL PRIMARY KEY,
     conversation_id INTEGER NOT NULL REFERENCES response_api.conversations(id) ON DELETE CASCADE,
-    response_id INTEGER NOT NULL REFERENCES response_api.responses(id) ON DELETE CASCADE,
     role VARCHAR(32) NOT NULL,
+    status VARCHAR(32),
     content JSONB,
-    tool_call_id VARCHAR(128),
-    tool_calls JSONB,
     sequence INTEGER NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_conversation_items_conversation_id ON response_api.conversation_items(conversation_id);
-CREATE INDEX idx_conversation_items_response_id ON response_api.conversation_items(response_id);
 CREATE INDEX idx_conversation_items_sequence ON response_api.conversation_items(conversation_id, sequence);
 
 -- ============================================================================
@@ -85,19 +78,18 @@ CREATE INDEX idx_conversation_items_sequence ON response_api.conversation_items(
 -- ============================================================================
 CREATE TABLE response_api.tool_executions (
     id SERIAL PRIMARY KEY,
-    public_id VARCHAR(64) NOT NULL UNIQUE,
     response_id INTEGER NOT NULL REFERENCES response_api.responses(id) ON DELETE CASCADE,
+    call_id VARCHAR(64),
     tool_name VARCHAR(128) NOT NULL,
-    input JSONB,
-    output JSONB,
-    error TEXT,
+    arguments JSONB,
+    result JSONB,
     status VARCHAR(32) NOT NULL,
-    duration_ms INTEGER,
-    sequence INTEGER NOT NULL,
+    error_message TEXT,
+    execution_order INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_tool_executions_response_id ON response_api.tool_executions(response_id);
-CREATE INDEX idx_tool_executions_sequence ON response_api.tool_executions(response_id, sequence);
+CREATE INDEX idx_tool_executions_execution_order ON response_api.tool_executions(response_id, execution_order);
 CREATE INDEX idx_tool_executions_status ON response_api.tool_executions(status);

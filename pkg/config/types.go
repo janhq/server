@@ -199,9 +199,30 @@ type LLMAPIConfig struct {
 	ModelSyncEnabled         bool `yaml:"model_sync_enabled" json:"model_sync_enabled" env:"MODEL_SYNC_ENABLED" envDefault:"true" description:"Enable model synchronization"`
 	ModelSyncIntervalMinutes int  `yaml:"model_sync_interval_minutes" json:"model_sync_interval_minutes" env:"MODEL_SYNC_INTERVAL_MINUTES" envDefault:"60" jsonschema:"minimum=1" description:"Model sync interval in minutes"`
 
+	// Prompt orchestration settings
+	PromptOrchestration PromptOrchestrationConfig `yaml:"prompt_orchestration" json:"prompt_orchestration"`
+
 	// Media integration
 	MediaResolveURL     string        `yaml:"media_resolve_url" json:"media_resolve_url" env:"MEDIA_RESOLVE_URL" envDefault:"http://kong:8000/media/v1/media/resolve" jsonschema:"format=uri" description:"Media resolve URL"`
 	MediaResolveTimeout time.Duration `yaml:"media_resolve_timeout" json:"media_resolve_timeout" env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s" description:"Media resolve timeout"`
+}
+
+// PromptOrchestrationConfig contains settings for prompt orchestration processor
+type PromptOrchestrationConfig struct {
+	// Enable prompt orchestration
+	Enabled bool `yaml:"enabled" json:"enabled" env:"PROMPT_ORCHESTRATION_ENABLED" envDefault:"true" description:"Enable prompt orchestration processor"`
+
+	// Enable memory module
+	EnableMemory bool `yaml:"enable_memory" json:"enable_memory" env:"PROMPT_ORCHESTRATION_MEMORY" envDefault:"false" description:"Enable memory injection in prompts"`
+
+	// Enable templates module
+	EnableTemplates bool `yaml:"enable_templates" json:"enable_templates" env:"PROMPT_ORCHESTRATION_TEMPLATES" envDefault:"true" description:"Enable template-based prompts"`
+
+	// Enable tools module
+	EnableTools bool `yaml:"enable_tools" json:"enable_tools" env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false" description:"Enable tool usage instructions"`
+
+	// Default persona
+	DefaultPersona string `yaml:"default_persona" json:"default_persona" env:"PROMPT_ORCHESTRATION_PERSONA" envDefault:"helpful assistant" description:"Default assistant persona"`
 }
 
 // APIKeyConfig contains API key management settings
@@ -364,13 +385,31 @@ type MonitoringConfig struct {
 // OTELConfig contains OpenTelemetry settings
 type OTELConfig struct {
 	// Enable OpenTelemetry
-	Enabled bool `yaml:"enabled" json:"enabled" env:"OTEL_ENABLED" envDefault:"false" description:"Enable OpenTelemetry tracing"`
+	Enabled bool `yaml:"enabled" json:"enabled" env:"OTEL_ENABLED" envDefault:"true" description:"Enable OpenTelemetry tracing"`
+
+	// Enable tracing
+	TracingEnabled bool `yaml:"tracing_enabled" json:"tracing_enabled" env:"ENABLE_TRACING" envDefault:"true" description:"Enable distributed tracing"`
 
 	// Service name
 	ServiceName string `yaml:"service_name" json:"service_name" env:"OTEL_SERVICE_NAME" envDefault:"llm-api" description:"OpenTelemetry service name"`
 
+	// Service version
+	ServiceVersion string `yaml:"service_version" json:"service_version" env:"OTEL_SERVICE_VERSION" envDefault:"unknown" description:"Service version for telemetry"`
+
 	// OTLP exporter endpoint
 	Endpoint string `yaml:"endpoint" json:"endpoint" env:"OTEL_EXPORTER_OTLP_ENDPOINT" envDefault:"http://otel-collector:4318" jsonschema:"format=uri" description:"OTLP exporter endpoint"`
+
+	// OTLP headers
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" description:"OTLP exporter headers"`
+
+	// Sampling rate (0.0 - 1.0)
+	SamplingRate float64 `yaml:"sampling_rate" json:"sampling_rate" env:"OTEL_TRACES_SAMPLER_ARG" envDefault:"1.0" jsonschema:"minimum=0,maximum=1" description:"Trace sampling rate (0.0 to 1.0)"`
+
+	// PII sanitization level
+	PIILevel string `yaml:"pii_level" json:"pii_level" env:"TELEMETRY_PII_LEVEL" envDefault:"hashed" jsonschema:"enum=none,enum=hashed,enum=full" description:"PII sanitization level: none (redact all), hashed (hash PII), full (no sanitization)"`
+
+	// Metric interval
+	MetricInterval string `yaml:"metric_interval" json:"metric_interval" env:"OTEL_METRIC_EXPORT_INTERVAL" envDefault:"15s" description:"Metric export interval (e.g., 15s, 1m)"`
 
 	// HTTP port
 	HTTPPort int `yaml:"http_port" json:"http_port" env:"OTEL_HTTP_PORT" envDefault:"4318" jsonschema:"minimum=1,maximum=65535" description:"OTLP HTTP port"`

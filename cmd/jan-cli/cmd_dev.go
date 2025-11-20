@@ -106,18 +106,7 @@ func runDevSetup(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓")
 
-	// 5. Copy .env to docker directory
-	fmt.Print("Setting up Docker environment... ")
-	envData, err := os.ReadFile(".env")
-	if err != nil {
-		return fmt.Errorf("failed to read .env: %w", err)
-	}
-	if err := os.WriteFile(filepath.Join("docker", ".env"), envData, 0644); err != nil {
-		return fmt.Errorf("failed to copy .env to docker/: %w", err)
-	}
-	fmt.Println("✓")
-
-	// 6. Create Docker networks (only if Docker is available)
+	// 5. Create Docker networks (only if Docker is available)
 	if dockerAvailable {
 		fmt.Print("Creating Docker networks... ")
 		networks := []string{"jan-network", "jan-monitoring"}
