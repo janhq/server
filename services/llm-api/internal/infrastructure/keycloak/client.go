@@ -640,6 +640,29 @@ func extractIDFromLocation(location string) string {
 	return location[idx+1:]
 }
 
+// buildUserAttributeUpdate ensures required profile fields are retained when updating attributes.
+func buildUserAttributeUpdate(existing map[string]any, attributes map[string][]string) map[string]any {
+	update := map[string]any{
+		"attributes": attributes,
+		"email":      getString(existing, "email"),
+	}
+
+	if first := getString(existing, "firstName"); first != "" {
+		update["firstName"] = first
+	}
+	if last := getString(existing, "lastName"); last != "" {
+		update["lastName"] = last
+	}
+	if enabled, ok := existing["enabled"].(bool); ok {
+		update["enabled"] = enabled
+	}
+	if verified, ok := existing["emailVerified"].(bool); ok {
+		update["emailVerified"] = verified
+	}
+
+	return update
+}
+
 // StoreAPIKeyHash stores an API key hash in Keycloak user attributes
 func (c *Client) StoreAPIKeyHash(ctx context.Context, userID, keyID, keyHash string) error {
 	serviceToken, err := c.serviceAccountToken(ctx)
@@ -681,9 +704,7 @@ func (c *Client) StoreAPIKeyHash(ctx context.Context, userID, keyID, keyHash str
 	attributes["api_keys"] = apiKeys
 
 	// Update user attributes
-	update := map[string]any{
-		"attributes": attributes,
-	}
+	update := buildUserAttributeUpdate(existing, attributes)
 
 	body, err := json.Marshal(update)
 	if err != nil {
@@ -756,9 +777,7 @@ func (c *Client) RemoveAPIKeyHash(ctx context.Context, userID, keyID string) err
 	attributes["api_keys"] = filtered
 
 	// Update user attributes
-	update := map[string]any{
-		"attributes": attributes,
-	}
+	update := buildUserAttributeUpdate(existing, attributes)
 
 	body, err := json.Marshal(update)
 	if err != nil {
