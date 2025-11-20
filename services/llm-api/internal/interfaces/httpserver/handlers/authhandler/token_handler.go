@@ -58,6 +58,7 @@ type GetMeResponse struct {
 // @Failure 400 {object} responses.ErrorResponse "Bad Request"
 // @Router /v1/auth/logout [get]
 func (h *TokenHandler) Logout(c *gin.Context) {
+	h.logger.Debug().Msg("Processing logout request")
 	// Get the refresh token from cookie before clearing it
 	refreshTokenCookie, err := c.Cookie(RefreshTokenCookieName)
 

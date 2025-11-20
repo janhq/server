@@ -4,17 +4,17 @@
 
 providers:
   # SearXNG - Meta Search Engine
-  - name: searxng
-    description: Meta search engine for privacy-focused web searches
-    enabled: true
-    endpoint: http://searxng:8080
-    type: http
-    # SearXNG doesn't directly expose MCP protocol but we can create wrapper tools
-    # This is a placeholder - actual implementation would need SearXNG API integration
-    tools:
-      - name: searxng_search
-        description: Search the web using SearXNG meta search engine
-        enabled: false  # Disabled until we implement SearXNG API wrapper
+  # - name: searxng
+  #   description: Meta search engine for privacy-focused web searches
+  #   enabled: true
+  #   endpoint: http://searxng:8080
+  #   type: http
+  #   # SearXNG doesn't directly expose MCP protocol but we can create wrapper tools
+  #   # This is a placeholder - actual implementation would need SearXNG API integration
+  #   tools:
+  #     - name: searxng_search
+  #       description: Search the web using SearXNG meta search engine
+  #       enabled: false  # Disabled until we implement SearXNG API wrapper
 
   # Vector Store Service - used by MCP file_search tools
   - name: vector-store
@@ -24,11 +24,11 @@ providers:
     type: http
 
   # SandboxFusion MCP placeholder (direct integration handled via python_exec)
-  - name: sandbox-fusion
-    description: SandboxFusion python interpreter service
-    enabled: false
-    endpoint: ${SANDBOX_FUSION_URL}
-    type: http
+  # - name: sandbox-fusion
+  #   description: SandboxFusion python interpreter service
+  #   enabled: false
+  #   endpoint: ${SANDBOX_FUSION_URL}
+  #   type: http
 
 # Global settings
 settings:
