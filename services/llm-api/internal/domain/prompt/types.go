@@ -8,6 +8,7 @@ import (
 
 // ProcessorConfig contains configuration for the prompt orchestration processor
 type ProcessorConfig struct {
+	Enabled         bool
 	EnableMemory    bool
 	EnableTemplates bool
 	EnableTools     bool
@@ -21,6 +22,7 @@ type Context struct {
 	Language       string
 	Preferences    map[string]interface{}
 	Memory         []string
+	AppliedModules []string
 }
 
 // Module represents a prompt module that can be applied

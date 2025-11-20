@@ -168,11 +168,24 @@ func (h *ChatHandler) CreateChatCompletion(
 	// Apply prompt orchestration (if enabled)
 	if h.promptProcessor != nil {
 		observability.AddSpanEvent(ctx, "processing_prompts")
+
+		preferences := make(map[string]interface{})
+		if len(request.Tools) > 0 || request.ToolChoice != nil {
+			preferences["use_tools"] = true
+		}
+		if persona := strings.TrimSpace(reqCtx.GetHeader("X-Prompt-Persona")); persona != "" {
+			preferences["persona"] = persona
+		}
+		if persona := strings.TrimSpace(reqCtx.Query("persona")); persona != "" {
+			preferences["persona"] = persona
+		}
+
 		promptCtx := &prompt.Context{
 			UserID:         userID,
 			ConversationID: conversationID,
-			Preferences:    make(map[string]interface{}),
-			Memory:         []string{}, // TODO: Load from conversation/user memory store
+			Language:       strings.TrimSpace(reqCtx.GetHeader("Accept-Language")),
+			Preferences:    preferences,
+			Memory:         h.collectPromptMemory(conv, reqCtx),
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
@@ -185,6 +198,9 @@ func (h *ChatHandler) CreateChatCompletion(
 				Msg("failed to process prompts, using original messages")
 		} else {
 			request.Messages = processedMessages
+			if len(promptCtx.AppliedModules) > 0 {
+				reqCtx.Header("X-Applied-Prompt-Modules", strings.Join(promptCtx.AppliedModules, ","))
+			}
 			observability.AddSpanEvent(ctx, "prompts_processed")
 		}
 	}
@@ -391,6 +407,93 @@ func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.
 		return resolved
 	}
 	return messages
+}
+
+// collectPromptMemory gathers memory hints from request headers, conversation metadata, or recent turns.
+func (h *ChatHandler) collectPromptMemory(conv *conversation.Conversation, reqCtx *gin.Context) []string {
+	memory := make([]string, 0)
+
+	if reqCtx != nil {
+		if headerMemory := strings.TrimSpace(reqCtx.GetHeader("X-Prompt-Memory")); headerMemory != "" {
+			for _, part := range strings.Split(headerMemory, ";") {
+				if trimmed := strings.TrimSpace(part); trimmed != "" {
+					memory = append(memory, trimmed)
+				}
+			}
+		}
+	}
+
+	if conv != nil {
+		if conv.Metadata != nil {
+			for key, val := range conv.Metadata {
+				if strings.HasPrefix(strings.ToLower(key), "memory") && strings.TrimSpace(val) != "" {
+					memory = append(memory, strings.TrimSpace(val))
+				}
+			}
+		}
+
+		if len(memory) == 0 {
+			memory = append(memory, h.recentConversationMemory(conv)...)
+		}
+	}
+
+	return memory
+}
+
+// recentConversationMemory builds lightweight context lines from the latest conversation turns.
+func (h *ChatHandler) recentConversationMemory(conv *conversation.Conversation) []string {
+	items := conv.GetActiveBranchItems()
+	if len(items) == 0 {
+		return nil
+	}
+
+	memories := make([]string, 0, 3)
+	collected := 0
+	for i := len(items) - 1; i >= 0 && collected < 3; i-- {
+		text := firstTextFromItem(items[i])
+		if text == "" {
+			continue
+		}
+		role := "user"
+		if items[i].Role != nil {
+			role = string(*items[i].Role)
+		}
+		memories = append(memories, fmt.Sprintf("Recent %s message: %s", role, text))
+		collected++
+	}
+
+	// Reverse to keep chronological order
+	for i, j := 0, len(memories)-1; i < j; i, j = i+1, j-1 {
+		memories[i], memories[j] = memories[j], memories[i]
+	}
+
+	return memories
+}
+
+func firstTextFromItem(item conversation.Item) string {
+	for _, content := range item.Content {
+		if content.Text != nil {
+			if trimmed := strings.TrimSpace(content.Text.Text); trimmed != "" {
+				return trimmed
+			}
+		}
+		if content.InputText != nil {
+			if trimmed := strings.TrimSpace(*content.InputText); trimmed != "" {
+				return trimmed
+			}
+		}
+		if content.OutputText != nil {
+			if trimmed := strings.TrimSpace(content.OutputText.Text); trimmed != "" {
+				return trimmed
+			}
+		}
+		if content.ReasoningContent != nil {
+			if trimmed := strings.TrimSpace(*content.ReasoningContent); trimmed != "" {
+				return trimmed
+			}
+		}
+	}
+	return ""
 }
 
 func (h *ChatHandler) createConversationWithReferrer(ctx context.Context, userID uint, referrer string) (*conversation.Conversation, error) {

@@ -2,10 +2,239 @@ package prompt
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
 )
+
+const moduleMarkerFormat = "[[prompt-module:%s]]"
+
+func moduleMarker(name string) string {
+	return fmt.Sprintf(moduleMarkerFormat, strings.ToLower(name))
+}
+
+func hasMarker(content, marker string) bool {
+	return strings.Contains(strings.ToLower(content), strings.ToLower(marker))
+}
+
+func cloneMessage(msg openai.ChatCompletionMessage) openai.ChatCompletionMessage {
+	clone := msg
+
+	if len(msg.MultiContent) > 0 {
+		clone.MultiContent = make([]openai.ChatMessagePart, len(msg.MultiContent))
+		for i, part := range msg.MultiContent {
+			clone.MultiContent[i] = part
+			if part.ImageURL != nil {
+				img := *part.ImageURL
+				clone.MultiContent[i].ImageURL = &img
+			}
+		}
+	}
+
+	if len(msg.ToolCalls) > 0 {
+		clone.ToolCalls = make([]openai.ToolCall, len(msg.ToolCalls))
+		copy(clone.ToolCalls, msg.ToolCalls)
+	}
+
+	if msg.FunctionCall != nil {
+		fn := *msg.FunctionCall
+		clone.FunctionCall = &fn
+	}
+
+	return clone
+}
+
+func appendSystemContent(messages []openai.ChatCompletionMessage, additional, moduleName, defaultPersona string) []openai.ChatCompletionMessage {
+	marker := moduleMarker(moduleName)
+	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
+	systemFound := false
+
+	for _, m := range messages {
+		msg := cloneMessage(m)
+		if msg.Role == openai.ChatMessageRoleSystem {
+			if !hasMarker(msg.Content, marker) && strings.TrimSpace(additional) != "" {
+				var builder strings.Builder
+				builder.WriteString(msg.Content)
+				builder.WriteString("\n\n")
+				builder.WriteString(additional)
+				builder.WriteString("\n")
+				builder.WriteString(marker)
+				msg.Content = builder.String()
+			}
+			systemFound = true
+		}
+		result = append(result, msg)
+	}
+
+	if !systemFound {
+		var builder strings.Builder
+		personaText := "You are a helpful assistant."
+		if strings.TrimSpace(defaultPersona) != "" {
+			personaText = fmt.Sprintf("You are a %s. Follow the rules strictly.", defaultPersona)
+		}
+		builder.WriteString(personaText)
+		if strings.TrimSpace(additional) != "" {
+			builder.WriteString("\n\n")
+			builder.WriteString(additional)
+		}
+		builder.WriteString("\n")
+		builder.WriteString(marker)
+		systemMsg := openai.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: builder.String(),
+		}
+		result = append([]openai.ChatCompletionMessage{systemMsg}, result...)
+	}
+
+	return result
+}
+
+func hasModuleMarker(messages []openai.ChatCompletionMessage, moduleName string) bool {
+	marker := moduleMarker(moduleName)
+	for _, msg := range messages {
+		if msg.Role == openai.ChatMessageRoleSystem && hasMarker(msg.Content, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func personaFromPreferences(preferences map[string]interface{}) string {
+	if preferences == nil {
+		return ""
+	}
+	if persona, ok := preferences["persona"]; ok {
+		switch val := persona.(type) {
+		case string:
+			return strings.TrimSpace(val)
+		case []byte:
+			return strings.TrimSpace(string(val))
+		default:
+			return strings.TrimSpace(fmt.Sprint(val))
+		}
+	}
+	return ""
+}
+
+func disabledModules(preferences map[string]interface{}) map[string]struct{} {
+	disabled := map[string]struct{}{}
+	if preferences == nil {
+		return disabled
+	}
+	raw, ok := preferences["disable_modules"]
+	if !ok {
+		return disabled
+	}
+	switch v := raw.(type) {
+	case string:
+		for _, part := range strings.Split(v, ",") {
+			if trimmed := strings.ToLower(strings.TrimSpace(part)); trimmed != "" {
+				disabled[trimmed] = struct{}{}
+			}
+		}
+	case []string:
+		for _, part := range v {
+			if trimmed := strings.ToLower(strings.TrimSpace(part)); trimmed != "" {
+				disabled[trimmed] = struct{}{}
+			}
+		}
+	case []interface{}:
+		for _, part := range v {
+			if str, ok := part.(string); ok {
+				if trimmed := strings.ToLower(strings.TrimSpace(str)); trimmed != "" {
+					disabled[trimmed] = struct{}{}
+				}
+			}
+		}
+	}
+	return disabled
+}
+
+func isModuleDisabled(preferences map[string]interface{}, moduleName string) bool {
+	disabled := disabledModules(preferences)
+	_, found := disabled[strings.ToLower(moduleName)]
+	return found
+}
+
+// PersonaModule ensures a consistent system prompt/persona is applied
+type PersonaModule struct {
+	defaultPersona string
+}
+
+// NewPersonaModule creates a new persona module
+func NewPersonaModule(defaultPersona string) *PersonaModule {
+	return &PersonaModule{defaultPersona: strings.TrimSpace(defaultPersona)}
+}
+
+// Name returns the module identifier
+func (m *PersonaModule) Name() string {
+	return "persona"
+}
+
+// resolvePersona picks persona from user preferences or default
+func (m *PersonaModule) resolvePersona(promptCtx *Context) string {
+	if promptCtx != nil {
+		if persona := personaFromPreferences(promptCtx.Preferences); persona != "" {
+			return persona
+		}
+	}
+	if m.defaultPersona != "" {
+		return m.defaultPersona
+	}
+	return "helpful assistant"
+}
+
+// ShouldApply always applies when a persona is available
+func (m *PersonaModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if promptCtx == nil {
+		return false
+	}
+	persona := m.resolvePersona(promptCtx)
+	return strings.TrimSpace(persona) != ""
+}
+
+// Apply injects or prefixes the system prompt with persona instructions
+func (m *PersonaModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
+		}
+	}
+	if promptCtx == nil {
+		return messages, nil
+	}
+
+	persona := m.resolvePersona(promptCtx)
+	if persona == "" {
+		return messages, nil
+	}
+
+	personaText := fmt.Sprintf("You are a %s. Follow the rules strictly.", persona)
+	result := appendSystemContent(messages, personaText, m.Name(), persona)
+	return result, nil
+}
+
+// WithDisabledModules returns a shallow copy of Context with module disable list merged
+func WithDisabledModules(ctx *Context, disable []string) *Context {
+	if ctx == nil {
+		return &Context{
+			Preferences: map[string]interface{}{
+				"disable_modules": disable,
+			},
+		}
+	}
+	prefs := ctx.Preferences
+	if prefs == nil {
+		prefs = map[string]interface{}{}
+	}
+	prefs["disable_modules"] = disable
+	ctx.Preferences = prefs
+	return ctx
+}
 
 // MemoryModule adds user memory to system prompts
 type MemoryModule struct {
@@ -24,43 +253,35 @@ func (m *MemoryModule) Name() string {
 
 // ShouldApply checks if memory should be included
 func (m *MemoryModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
-	return m.enabled && len(promptCtx.Memory) > 0
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if !m.enabled || promptCtx == nil {
+		return false
+	}
+	return len(promptCtx.Memory) > 0
 }
 
 // Apply adds memory to the system prompt
 func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
-	if len(promptCtx.Memory) == 0 {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
+		}
+	}
+	if promptCtx == nil || len(promptCtx.Memory) == 0 {
 		return messages, nil
 	}
 
-	memoryText := "\n\nUse the following personal memory for this user:\n"
+	var builder strings.Builder
+	builder.WriteString("Use the following personal memory for this user:\n")
 	for _, item := range promptCtx.Memory {
-		memoryText += "- " + item + "\n"
+		builder.WriteString("- ")
+		builder.WriteString(item)
+		builder.WriteString("\n")
 	}
 
-	// Find or create system message
-	result := make([]openai.ChatCompletionMessage, 0, len(messages))
-	systemFound := false
-
-	for _, msg := range messages {
-		if msg.Role == "system" {
-			// Append memory to existing system message
-			msg.Content = msg.Content + memoryText
-			systemFound = true
-		}
-		result = append(result, msg)
-	}
-
-	// If no system message exists, prepend one
-	if !systemFound {
-		result = append([]openai.ChatCompletionMessage{
-			{
-				Role:    "system",
-				Content: "You are a helpful assistant." + memoryText,
-			},
-		}, result...)
-	}
-
+	result := appendSystemContent(messages, strings.TrimSpace(builder.String()), m.Name(), "")
 	return result, nil
 }
 
@@ -81,15 +302,20 @@ func (m *ToolInstructionsModule) Name() string {
 
 // ShouldApply checks if tool instructions should be added
 func (m *ToolInstructionsModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
 	// Check if any preferences indicate tool usage
 	if !m.enabled {
 		return false
 	}
 
-	if prefs := promptCtx.Preferences; prefs != nil {
-		if useTools, ok := prefs["use_tools"].(bool); ok && useTools {
-			return true
-		}
+	if promptCtx == nil {
+		return false
+	}
+
+	if detectToolUsage(promptCtx, messages) {
+		return true
 	}
 
 	return false
@@ -97,28 +323,35 @@ func (m *ToolInstructionsModule) ShouldApply(ctx context.Context, promptCtx *Con
 
 // Apply adds tool instructions to the system prompt
 func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
-	toolInstructions := "\n\nYou have access to various tools. Always choose the best tool for the task. When you need to search for information, use web search. When you need to execute code, use the code execution tool."
-
-	result := make([]openai.ChatCompletionMessage, 0, len(messages))
-	systemFound := false
-
-	for _, msg := range messages {
-		if msg.Role == "system" {
-			msg.Content = msg.Content + toolInstructions
-			systemFound = true
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
 		}
-		result = append(result, msg)
+	}
+	if promptCtx == nil || !detectToolUsage(promptCtx, messages) {
+		return messages, nil
 	}
 
-	if !systemFound {
-		result = append([]openai.ChatCompletionMessage{
-			{
-				Role:    "system",
-				Content: "You are a helpful assistant." + toolInstructions,
-			},
-		}, result...)
+	var builder strings.Builder
+	builder.WriteString("You have access to various tools. Always choose the best tool for the task.\n")
+	builder.WriteString("When you need to search for information, use web search. When you need to execute code, use the code execution tool.")
+
+	if promptCtx != nil && promptCtx.Preferences != nil {
+		if desc, ok := promptCtx.Preferences["tool_descriptions"].(string); ok && strings.TrimSpace(desc) != "" {
+			builder.WriteString("\nAvailable tools: ")
+			builder.WriteString(strings.TrimSpace(desc))
+		}
+		if list, ok := promptCtx.Preferences["tool_descriptions"].([]string); ok && len(list) > 0 {
+			builder.WriteString("\nAvailable tools:\n")
+			for _, item := range list {
+				builder.WriteString("- ")
+				builder.WriteString(strings.TrimSpace(item))
+				builder.WriteString("\n")
+			}
+		}
 	}
 
+	result := appendSystemContent(messages, strings.TrimSpace(builder.String()), m.Name(), "")
 	return result, nil
 }
 
@@ -137,15 +370,15 @@ func (m *CodeAssistantModule) Name() string {
 
 // ShouldApply checks if the question is code-related
 func (m *CodeAssistantModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
 	// Check last user message for code-related keywords
 	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == "user" {
+		if messages[i].Role == openai.ChatMessageRoleUser {
 			content := strings.ToLower(messages[i].Content)
-			codeKeywords := []string{"code", "function", "implement", "debug", "error", "program", "script", "api", "bug", "syntax"}
-			for _, keyword := range codeKeywords {
-				if strings.Contains(content, keyword) {
-					return true
-				}
+			if isLikelyCodeQuery(content) {
+				return true
 			}
 			break
 		}
@@ -155,33 +388,24 @@ func (m *CodeAssistantModule) ShouldApply(ctx context.Context, promptCtx *Contex
 
 // Apply adds code assistant instructions
 func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
-	codeInstructions := "\n\nWhen providing code assistance:\n" +
-		"1. Provide clear, well-commented code\n" +
-		"2. Explain your approach and reasoning\n" +
-		"3. Include error handling where appropriate\n" +
-		"4. Follow best practices and conventions\n" +
-		"5. Suggest testing approaches when relevant"
-
-	result := make([]openai.ChatCompletionMessage, 0, len(messages))
-	systemFound := false
-
-	for _, msg := range messages {
-		if msg.Role == "system" {
-			msg.Content = msg.Content + codeInstructions
-			systemFound = true
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
 		}
-		result = append(result, msg)
+	}
+	if hasModuleMarker(messages, m.Name()) {
+		return messages, nil
 	}
 
-	if !systemFound {
-		result = append([]openai.ChatCompletionMessage{
-			{
-				Role:    "system",
-				Content: "You are a helpful assistant." + codeInstructions,
-			},
-		}, result...)
-	}
+	var builder strings.Builder
+	builder.WriteString("When providing code assistance:\n")
+	builder.WriteString("1. Provide clear, well-commented code\n")
+	builder.WriteString("2. Explain your approach and reasoning\n")
+	builder.WriteString("3. Include error handling where appropriate\n")
+	builder.WriteString("4. Follow best practices and conventions\n")
+	builder.WriteString("5. Suggest testing approaches when relevant")
 
+	result := appendSystemContent(messages, builder.String(), m.Name(), "")
 	return result, nil
 }
 
@@ -200,21 +424,15 @@ func (m *ChainOfThoughtModule) Name() string {
 
 // ShouldApply checks if the question requires reasoning
 func (m *ChainOfThoughtModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
-	// Apply for complex questions (check for question marks and length)
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	// Apply for complex questions
 	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == "user" {
+		if messages[i].Role == openai.ChatMessageRoleUser {
 			content := messages[i].Content
-			// Complex questions are typically longer and may contain multiple sentences
-			if len(content) > 100 && strings.Contains(content, "?") {
+			if isComplexQuestion(content) {
 				return true
-			}
-			// Look for reasoning keywords
-			reasoningKeywords := []string{"why", "how", "explain", "analyze", "compare", "evaluate", "what if"}
-			contentLower := strings.ToLower(content)
-			for _, keyword := range reasoningKeywords {
-				if strings.Contains(contentLower, keyword) {
-					return true
-				}
 			}
 			break
 		}
@@ -224,32 +442,100 @@ func (m *ChainOfThoughtModule) ShouldApply(ctx context.Context, promptCtx *Conte
 
 // Apply adds chain-of-thought instructions
 func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
-	cotInstructions := "\n\nFor complex questions, think step-by-step:\n" +
-		"1. Break down the problem\n" +
-		"2. Analyze each component\n" +
-		"3. Consider different perspectives\n" +
-		"4. Synthesize your conclusion\n" +
-		"5. Provide a clear, structured answer"
-
-	result := make([]openai.ChatCompletionMessage, 0, len(messages))
-	systemFound := false
-
-	for _, msg := range messages {
-		if msg.Role == "system" {
-			msg.Content = msg.Content + cotInstructions
-			systemFound = true
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
 		}
-		result = append(result, msg)
+	}
+	if hasModuleMarker(messages, m.Name()) {
+		return messages, nil
 	}
 
-	if !systemFound {
-		result = append([]openai.ChatCompletionMessage{
-			{
-				Role:    "system",
-				Content: "You are a helpful assistant." + cotInstructions,
-			},
-		}, result...)
-	}
+	var builder strings.Builder
+	builder.WriteString("For complex questions, think step-by-step:\n")
+	builder.WriteString("1. Break down the problem\n")
+	builder.WriteString("2. Analyze each component\n")
+	builder.WriteString("3. Consider different perspectives\n")
+	builder.WriteString("4. Synthesize your conclusion\n")
+	builder.WriteString("5. Provide a clear, structured answer")
 
+	result := appendSystemContent(messages, builder.String(), m.Name(), "")
 	return result, nil
+}
+
+func detectToolUsage(promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if promptCtx != nil && promptCtx.Preferences != nil {
+		if useTools, ok := promptCtx.Preferences["use_tools"].(bool); ok && useTools {
+			return true
+		}
+	}
+
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == openai.ChatMessageRoleTool {
+			return true
+		}
+		if len(messages[i].ToolCalls) > 0 || messages[i].FunctionCall != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func isLikelyCodeQuery(content string) bool {
+	if content == "" {
+		return false
+	}
+	if strings.Contains(content, "```") {
+		return true
+	}
+	strongSignals := []string{"func ", "function(", "class ", "package ", "import ", "console.log", "panic(", "error ", "exception", "stack trace", "traceback", "sql", "json", "yaml", "schema"}
+	for _, sig := range strongSignals {
+		if strings.Contains(content, sig) {
+			return true
+		}
+	}
+
+	if strings.Contains(content, "code of conduct") {
+		return false
+	}
+
+	codeKeywords := []string{"code", "function", "implement", "debug", "bug", "syntax", "compile", "script", "api", "snippet", "library"}
+	actionKeywords := []string{"write", "example", "implement", "show", "fix", "break down", "refactor", "debug", "troubleshoot"}
+	keywordHit := false
+	for _, keyword := range codeKeywords {
+		if strings.Contains(content, keyword) {
+			keywordHit = true
+			break
+		}
+	}
+	actionHit := false
+	for _, act := range actionKeywords {
+		if strings.Contains(content, act) {
+			actionHit = true
+			break
+		}
+	}
+	return keywordHit && actionHit
+}
+
+func isComplexQuestion(content string) bool {
+	if strings.TrimSpace(content) == "" {
+		return false
+	}
+	lower := strings.ToLower(content)
+	reasoningKeywords := []string{"why", "how", "explain", "analyze", "compare", "evaluate", "what if", "step by step"}
+	for _, keyword := range reasoningKeywords {
+		if strings.Contains(lower, keyword) {
+			return true
+		}
+	}
+
+	wordCount := len(strings.Fields(content))
+	if wordCount >= 20 && strings.Contains(content, "?") {
+		return true
+	}
+	if wordCount >= 30 {
+		return true
+	}
+	return false
 }

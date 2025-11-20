@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -9,255 +10,254 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-func TestMemoryModule(t *testing.T) {
-	module := NewMemoryModule(true)
+func testLogger() zerolog.Logger {
+	return zerolog.New(io.Discard)
+}
 
-	ctx := context.Background()
-	promptCtx := &Context{
-		UserID:         1,
-		ConversationID: "test-conv",
-		Memory: []string{
-			"User prefers concise answers",
-			"User is a software engineer",
-		},
+func TestNewProcessorDisabledReturnsNil(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled: false,
 	}
 
-	messages := []openai.ChatCompletionMessage{
-		{Role: "user", Content: "What is Go?"},
+	proc := NewProcessor(cfg, testLogger())
+	if proc == nil {
+		t.Fatalf("expected noop processor when disabled, got nil")
 	}
-
-	if !module.ShouldApply(ctx, promptCtx, messages) {
-		t.Error("Memory module should apply when memory exists")
-	}
-
-	result, err := module.Apply(ctx, promptCtx, messages)
+	msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleUser, Content: "hi"}}
+	out, err := proc.Process(context.Background(), &Context{}, msgs)
 	if err != nil {
-		t.Fatalf("Apply failed: %v", err)
+		t.Fatalf("noop processor returned error: %v", err)
 	}
-
-	// Should have prepended a system message
-	if len(result) != 2 {
-		t.Errorf("Expected 2 messages, got %d", len(result))
-	}
-
-	if result[0].Role != "system" {
-		t.Error("First message should be system role")
-	}
-
-	content := result[0].Content
-	if !strings.Contains(content, "User prefers concise answers") {
-		t.Error("Memory not included in system prompt")
+	if len(out) != len(msgs) || out[0].Content != "hi" {
+		t.Fatalf("noop processor should passthrough messages")
 	}
 }
 
-func TestCodeAssistantModule(t *testing.T) {
-	module := NewCodeAssistantModule()
-
-	ctx := context.Background()
-	promptCtx := &Context{
-		UserID:         1,
-		ConversationID: "test-conv",
+func TestPersonaModuleAddsSystemMessage(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled:        true,
+		DefaultPersona: "friendly guide",
 	}
 
-	tests := []struct {
-		name        string
-		messages    []openai.ChatCompletionMessage
-		shouldApply bool
-	}{
-		{
-			name: "code-related question",
-			messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: "How do I implement a binary search function in Go?"},
-			},
-			shouldApply: true,
-		},
-		{
-			name: "non-code question",
-			messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: "What's the weather like today?"},
-			},
-			shouldApply: false,
-		},
-		{
-			name: "debug question",
-			messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: "I'm getting a syntax error in my code"},
-			},
-			shouldApply: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			shouldApply := module.ShouldApply(ctx, promptCtx, tt.messages)
-			if shouldApply != tt.shouldApply {
-				t.Errorf("Expected shouldApply=%v, got %v", tt.shouldApply, shouldApply)
-			}
-
-			if shouldApply {
-				result, err := module.Apply(ctx, promptCtx, tt.messages)
-				if err != nil {
-					t.Fatalf("Apply failed: %v", err)
-				}
-
-				if len(result) == 0 {
-					t.Error("Result should not be empty")
-				}
-
-				// Check if code instructions were added
-				hasCodeInstructions := false
-				for _, msg := range result {
-					if msg.Role == "system" && strings.Contains(msg.Content, "code assistance") {
-						hasCodeInstructions = true
-						break
-					}
-				}
-
-				if !hasCodeInstructions {
-					t.Error("Code instructions not found in system prompt")
-				}
-			}
-		})
-	}
-}
-
-func TestChainOfThoughtModule(t *testing.T) {
-	module := NewChainOfThoughtModule()
-
-	ctx := context.Background()
-	promptCtx := &Context{
-		UserID:         1,
-		ConversationID: "test-conv",
-	}
-
-	tests := []struct {
-		name        string
-		messages    []openai.ChatCompletionMessage
-		shouldApply bool
-	}{
-		{
-			name: "complex question",
-			messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: "How does machine learning differ from traditional programming, and why would you choose one approach over the other?"},
-			},
-			shouldApply: true,
-		},
-		{
-			name: "simple question",
-			messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: "Hello"},
-			},
-			shouldApply: false,
-		},
-		{
-			name: "analytical question",
-			messages: []openai.ChatCompletionMessage{
-				{Role: "user", Content: "Analyze the pros and cons of microservices architecture"},
-			},
-			shouldApply: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			shouldApply := module.ShouldApply(ctx, promptCtx, tt.messages)
-			if shouldApply != tt.shouldApply {
-				t.Errorf("Expected shouldApply=%v, got %v", tt.shouldApply, shouldApply)
-			}
-		})
-	}
-}
-
-func TestProcessor(t *testing.T) {
-	log := zerolog.Nop()
-	config := ProcessorConfig{
-		EnableMemory:    true,
-		EnableTemplates: true,
-		EnableTools:     false,
-		DefaultPersona:  "helpful assistant",
-	}
-
-	processor := NewProcessor(config, log)
-
-	ctx := context.Background()
-	promptCtx := &Context{
-		UserID:         1,
-		ConversationID: "test-conv",
-		Memory: []string{
-			"User likes detailed explanations",
-		},
+	proc := NewProcessor(cfg, testLogger())
+	ctx := &Context{
 		Preferences: map[string]interface{}{
-			"language": "en",
+			"persona": "strict analyst",
 		},
 	}
 
-	messages := []openai.ChatCompletionMessage{
-		{Role: "user", Content: "How do I implement error handling in Go?"},
+	msgs := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleUser, Content: "hello"},
 	}
 
-	result, err := processor.Process(ctx, promptCtx, messages)
+	processed, err := proc.Process(context.Background(), ctx, msgs)
 	if err != nil {
-		t.Fatalf("Process failed: %v", err)
+		t.Fatalf("process returned error: %v", err)
 	}
 
-	if len(result) == 0 {
-		t.Fatal("Result should not be empty")
+	system := firstSystemMessage(processed)
+	if system == nil {
+		t.Fatalf("expected system message with persona applied")
 	}
 
-	// Should have applied memory and code assistant modules
-	hasSystemMessage := false
-	for _, msg := range result {
-		if msg.Role == "system" {
-			hasSystemMessage = true
-			// Check for memory
-			if !strings.Contains(msg.Content, "User likes detailed explanations") {
-				t.Error("Memory not found in system message")
-			}
-			// Check for code instructions
-			if !strings.Contains(msg.Content, "code assistance") {
-				t.Error("Code assistance instructions not found")
-			}
-		}
-	}
-
-	if !hasSystemMessage {
-		t.Error("System message should have been added")
+	if !strings.Contains(strings.ToLower(system.Content), "strict analyst") {
+		t.Fatalf("expected persona text in system message, got: %s", system.Content)
 	}
 }
 
-func TestProcessorWithoutMemory(t *testing.T) {
-	log := zerolog.Nop()
-	config := ProcessorConfig{
-		EnableMemory:    false,
-		EnableTemplates: true,
-		EnableTools:     false,
-		DefaultPersona:  "helpful assistant",
+func TestMemoryModuleAppendsMemory(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled:        true,
+		EnableMemory:   true,
+		DefaultPersona: "helpful assistant",
 	}
 
-	processor := NewProcessor(config, log)
+	proc := NewProcessor(cfg, testLogger())
+	ctx := &Context{
+		Memory: []string{"prefers concise answers", "call them Sam"},
+	}
 
-	ctx := context.Background()
-	promptCtx := &Context{
-		UserID:         1,
-		ConversationID: "test-conv",
-		Memory: []string{
-			"This should be ignored",
+	msgs := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleUser, Content: "How are you?"},
+	}
+
+	processed, err := proc.Process(context.Background(), ctx, msgs)
+	if err != nil {
+		t.Fatalf("process returned error: %v", err)
+	}
+
+	system := firstSystemMessage(processed)
+	if system == nil {
+		t.Fatalf("expected system message with memory applied")
+	}
+
+	for _, expected := range ctx.Memory {
+		if !strings.Contains(system.Content, expected) {
+			t.Fatalf("expected memory %q in system content: %s", expected, system.Content)
+		}
+	}
+}
+
+func TestToolInstructionsModuleApplies(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled:     true,
+		EnableTools: true,
+	}
+
+	proc := NewProcessor(cfg, testLogger())
+	ctx := &Context{
+		Preferences: map[string]interface{}{
+			"use_tools": true,
 		},
 	}
 
-	messages := []openai.ChatCompletionMessage{
-		{Role: "user", Content: "Hello"},
+	msgs := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleUser, Content: "Search the docs"},
 	}
 
-	result, err := processor.Process(ctx, promptCtx, messages)
+	processed, err := proc.Process(context.Background(), ctx, msgs)
 	if err != nil {
-		t.Fatalf("Process failed: %v", err)
+		t.Fatalf("process returned error: %v", err)
 	}
 
-	// Memory module should not be registered
-	for _, msg := range result {
-		if msg.Role == "system" && strings.Contains(msg.Content, "This should be ignored") {
-			t.Error("Memory should not be applied when disabled")
+	system := firstSystemMessage(processed)
+	if system == nil || !strings.Contains(system.Content, "You have access to various tools") {
+		t.Fatalf("expected tool instructions in system message, got: %v", system)
+	}
+}
+
+func TestToolInstructionsDetectsToolCallsWithoutPreference(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled:     true,
+		EnableTools: true,
+	}
+	proc := NewProcessor(cfg, testLogger())
+	msgs := []openai.ChatCompletionMessage{
+		{
+			Role: openai.ChatMessageRoleAssistant,
+			ToolCalls: []openai.ToolCall{
+				{ID: "tool1", Type: openai.ToolTypeFunction},
+			},
+		},
+	}
+	processed, err := proc.Process(context.Background(), &Context{}, msgs)
+	if err != nil {
+		t.Fatalf("process returned error: %v", err)
+	}
+	system := firstSystemMessage(processed)
+	if system == nil || !strings.Contains(system.Content, "module:tool_instructions") {
+		t.Fatalf("expected tool instructions marker in system content")
+	}
+}
+
+func TestTemplateModulesRespectFlag(t *testing.T) {
+	templatePrompt := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleUser, Content: "How would you debug a function that fails intermittently?"},
+	}
+
+	disabledCfg := ProcessorConfig{
+		Enabled:         true,
+		EnableTemplates: false,
+		DefaultPersona:  "helper",
+	}
+	disabledProc := NewProcessor(disabledCfg, testLogger())
+	disabledOut, err := disabledProc.Process(context.Background(), &Context{}, templatePrompt)
+	if err != nil {
+		t.Fatalf("process returned error (templates disabled): %v", err)
+	}
+	disabledSystem := firstSystemMessage(disabledOut)
+	if disabledSystem != nil {
+		if strings.Contains(disabledSystem.Content, "think step-by-step") || strings.Contains(disabledSystem.Content, "When providing code assistance") {
+			t.Fatalf("template instructions should not be applied when templates are disabled")
 		}
 	}
+
+	enabledCfg := ProcessorConfig{
+		Enabled:         true,
+		EnableTemplates: true,
+		DefaultPersona:  "helper",
+	}
+	enabledProc := NewProcessor(enabledCfg, testLogger())
+	enabledOut, err := enabledProc.Process(context.Background(), &Context{}, templatePrompt)
+	if err != nil {
+		t.Fatalf("process returned error (templates enabled): %v", err)
+	}
+	enabledSystem := firstSystemMessage(enabledOut)
+	if enabledSystem == nil {
+		t.Fatalf("expected system message when templates are enabled")
+	}
+	if !strings.Contains(enabledSystem.Content, "think step-by-step") {
+		t.Fatalf("expected chain-of-thought instructions to be applied")
+	}
+	if !strings.Contains(enabledSystem.Content, "When providing code assistance") {
+		t.Fatalf("expected code assistant instructions to be applied")
+	}
+}
+
+func TestProcessorDoesNotDuplicateMarkersOnReentry(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled:         true,
+		EnableTemplates: true,
+		DefaultPersona:  "helper",
+	}
+	proc := NewProcessor(cfg, testLogger())
+	msgs := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleUser, Content: "Explain how to sort numbers?"},
+	}
+	promptCtx := &Context{}
+	processedOnce, err := proc.Process(context.Background(), promptCtx, msgs)
+	if err != nil {
+		t.Fatalf("first process returned error: %v", err)
+	}
+	processedTwice, err := proc.Process(context.Background(), promptCtx, processedOnce)
+	if err != nil {
+		t.Fatalf("second process returned error: %v", err)
+	}
+	system := firstSystemMessage(processedTwice)
+	if system == nil {
+		t.Fatalf("expected system message")
+	}
+	if count := strings.Count(system.Content, "[module:persona]"); count > 1 {
+		t.Fatalf("persona marker duplicated: %d", count)
+	}
+	if count := strings.Count(system.Content, "[module:chain_of_thought]"); count > 1 {
+		t.Fatalf("chain_of_thought marker duplicated: %d", count)
+	}
+}
+
+func TestProcessorRespectsPriorityPersonaBeforeMemory(t *testing.T) {
+	cfg := ProcessorConfig{
+		Enabled:        true,
+		EnableMemory:   true,
+		DefaultPersona: "helper",
+	}
+	proc := NewProcessor(cfg, testLogger())
+	msgs := []openai.ChatCompletionMessage{
+		{Role: openai.ChatMessageRoleUser, Content: "Hello"},
+	}
+	ctx := &Context{
+		Memory: []string{"prefers concise replies"},
+	}
+	processed, err := proc.Process(context.Background(), ctx, msgs)
+	if err != nil {
+		t.Fatalf("process returned error: %v", err)
+	}
+	system := firstSystemMessage(processed)
+	if system == nil {
+		t.Fatalf("expected system message")
+	}
+	idxPersona := strings.Index(strings.ToLower(system.Content), "you are a")
+	idxMemory := strings.Index(strings.ToLower(system.Content), "use the following personal memory")
+	if idxPersona == -1 || idxMemory == -1 || idxPersona > idxMemory {
+		t.Fatalf("expected persona instructions to appear before memory instructions")
+	}
+}
+
+func firstSystemMessage(messages []openai.ChatCompletionMessage) *openai.ChatCompletionMessage {
+	for i := range messages {
+		if messages[i].Role == openai.ChatMessageRoleSystem {
+			return &messages[i]
+		}
+	}
+	return nil
 }

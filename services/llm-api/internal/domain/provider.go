@@ -49,6 +49,7 @@ func ProvideAPIKeyConfig(cfg *config.Config) apikey.Config {
 
 func ProvidePromptProcessorConfig(cfg *config.Config, log zerolog.Logger) prompt.ProcessorConfig {
 	return prompt.ProcessorConfig{
+		Enabled:         cfg.PromptOrchestrationEnabled,
 		EnableMemory:    cfg.PromptOrchestrationEnableMemory,
 		EnableTemplates: cfg.PromptOrchestrationEnableTemplates,
 		EnableTools:     cfg.PromptOrchestrationEnableTools,
