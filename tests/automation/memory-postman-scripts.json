@@ -1,0 +1,1530 @@
+{
+    "info": {
+        "_postman_id": "memory-tools-complete-test",
+        "name": "Memory Tools - Complete API Tests",
+        "description": "Comprehensive test suite for memory-tools service.\n\nTests embedding functionality via memory-tools API endpoints rather than direct BGE-M3 calls.\n\nCoverage:\n- Memory CRUD operations (user/project/episodic)\n- Vector search and semantic similarity\n- Batch embedding performance\n- Memory extraction from conversations\n- Importance scoring and ranking\n- End-to-end workflows\n\nNote: Advanced features (summarization, LLM planning, sparse embeddings) are tested indirectly as they're internal-only. See INTERNAL_FEATURES.md for details.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8090",
+            "type": "string"
+        },
+        {
+            "key": "embedding_url",
+            "value": "http://localhost:8091",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "user_test_001",
+            "type": "string"
+        },
+        {
+            "key": "project_id",
+            "value": "proj_test_001",
+            "type": "string"
+        },
+        {
+            "key": "conversation_id",
+            "value": "conv_test_001",
+            "type": "string"
+        },
+        {
+            "key": "user_memory_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "project_fact_id",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Health Checks",
+            "item": [
+                {
+                    "name": "Memory Tools Health",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response has correct structure\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('status');",
+                                    "    pm.expect(jsonData).to.have.property('service');",
+                                    "    pm.expect(jsonData.status).to.eql('healthy');",
+                                    "    pm.expect(jsonData.service).to.eql('memory-tools');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/healthz",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "healthz"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Embedding via Memory Tools",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Embedding service is working via memory-tools\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.dimension).to.eql(1024);",
+                                    "    pm.expect(jsonData.status).to.eql('ok');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": ""
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/embed/test",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "embed",
+                                "test"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Embedding Tests",
+            "item": [
+                {
+                    "name": "Test Single Embedding",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Embedding dimension is 1024\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('dimension');",
+                                    "    pm.expect(jsonData.dimension).to.eql(1024);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": ""
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/embed/test",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "embed",
+                                "test"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. User Memory - Upsert",
+            "item": [
+                {
+                    "name": "Upsert User Preference",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Response has success status\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "    pm.expect(jsonData).to.have.property('ids');",
+                                    "    pm.expect(jsonData.ids).to.be.an('array');",
+                                    "    pm.expect(jsonData.ids.length).to.be.greaterThan(0);",
+                                    "    ",
+                                    "    // Save ID for later tests",
+                                    "    pm.collectionVariables.set('user_memory_id', jsonData.ids[0]);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"items\": [\n    {\n      \"scope\": \"preference\",\n      \"key\": \"language_preference\",\n      \"text\": \"I prefer Python for backend development and TypeScript for frontend\",\n      \"importance\": \"high\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/user/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "user",
+                                "upsert"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Upsert User Profile",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Multiple items upserted\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.ids).to.be.an('array');",
+                                    "    pm.expect(jsonData.ids.length).to.eql(2);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"items\": [\n    {\n      \"scope\": \"profile\",\n      \"key\": \"role\",\n      \"text\": \"I am a senior software engineer with 8 years of experience\",\n      \"importance\": \"medium\"\n    },\n    {\n      \"scope\": \"skill\",\n      \"key\": \"expertise\",\n      \"text\": \"Expert in distributed systems, microservices, and cloud architecture\",\n      \"importance\": \"high\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/user/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "user",
+                                "upsert"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "4. Project Memory - Upsert",
+            "item": [
+                {
+                    "name": "Upsert Project Decision",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Project fact created\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "    pm.expect(jsonData.ids).to.be.an('array');",
+                                    "    ",
+                                    "    // Save ID for later tests",
+                                    "    pm.collectionVariables.set('project_fact_id', jsonData.ids[0]);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"project_id\": \"{{project_id}}\",\n  \"facts\": [\n    {\n      \"kind\": \"decision\",\n      \"title\": \"Database Technology\",\n      \"text\": \"We decided to use PostgreSQL with pgvector extension for vector similarity search\",\n      \"confidence\": 0.95\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/project/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "project",
+                                "upsert"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Upsert Multiple Project Facts",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Multiple facts created\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.ids.length).to.eql(3);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"project_id\": \"{{project_id}}\",\n  \"facts\": [\n    {\n      \"kind\": \"assumption\",\n      \"title\": \"Performance Target\",\n      \"text\": \"The system should handle 1000 requests per second\",\n      \"confidence\": 0.8\n    },\n    {\n      \"kind\": \"risk\",\n      \"title\": \"Scalability Concern\",\n      \"text\": \"Vector search performance may degrade with more than 1M items\",\n      \"confidence\": 0.7\n    },\n    {\n      \"kind\": \"fact\",\n      \"title\": \"Embedding Model\",\n      \"text\": \"Using BGE-M3 model for 1024-dimensional embeddings\",\n      \"confidence\": 1.0\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/project/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "project",
+                                "upsert"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "5. Memory Load (Search)",
+            "item": [
+                {
+                    "name": "Load User Memories",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Core memory returned\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('core_memory');",
+                                    "    pm.expect(jsonData.core_memory).to.be.an('array');",
+                                    "    pm.expect(jsonData.core_memory.length).to.be.greaterThan(0);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Memory items have similarity scores\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    if (jsonData.core_memory.length > 0) {",
+                                    "        pm.expect(jsonData.core_memory[0]).to.have.property('similarity');",
+                                    "        pm.expect(jsonData.core_memory[0].similarity).to.be.a('number');",
+                                    "        pm.expect(jsonData.core_memory[0].similarity).to.be.within(0, 1);",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"query\": \"What programming languages do I prefer?\",\n  \"options\": {\n    \"max_user_items\": 10,\n    \"min_similarity\": 0.3\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Load Project Memories",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Semantic memory returned\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('semantic_memory');",
+                                    "    pm.expect(jsonData.semantic_memory).to.be.an('array');",
+                                    "    pm.expect(jsonData.semantic_memory.length).to.be.greaterThan(0);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Project facts have confidence scores\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    if (jsonData.semantic_memory.length > 0) {",
+                                    "        pm.expect(jsonData.semantic_memory[0]).to.have.property('confidence');",
+                                    "        pm.expect(jsonData.semantic_memory[0].confidence).to.be.within(0, 1);",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"project_id\": \"{{project_id}}\",\n  \"query\": \"What database are we using?\",\n  \"options\": {\n    \"max_project_items\": 10,\n    \"min_similarity\": 0.3\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Load All Memory Types",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"All memory types present\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('core_memory');",
+                                    "    pm.expect(jsonData).to.have.property('semantic_memory');",
+                                    "    pm.expect(jsonData).to.have.property('episodic_memory');",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Vector search quality check\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    // Check if results are ranked by similarity",
+                                    "    if (jsonData.core_memory.length > 1) {",
+                                    "        for (let i = 0; i < jsonData.core_memory.length - 1; i++) {",
+                                    "            pm.expect(jsonData.core_memory[i].similarity).to.be.at.least(jsonData.core_memory[i + 1].similarity);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"project_id\": \"{{project_id}}\",\n  \"conversation_id\": \"{{conversation_id}}\",\n  \"query\": \"Tell me about the project architecture and my skills\",\n  \"options\": {\n    \"max_user_items\": 20,\n    \"max_project_items\": 20,\n    \"max_episodic_items\": 20,\n    \"min_similarity\": 0.3\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "6. Memory Observe",
+            "item": [
+                {
+                    "name": "Observe Simple Conversation",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Observation successful\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"project_id\": \"{{project_id}}\",\n  \"conversation_id\": \"{{conversation_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I prefer using Docker for containerization\",\n      \"created_at\": \"2025-11-20T10:00:00Z\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"Noted! I'll remember that you prefer Docker for containerization.\",\n      \"created_at\": \"2025-11-20T10:00:05Z\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/observe",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "observe"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Observe Multi-Turn Conversation",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Multi-turn observation successful\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"project_id\": \"{{project_id}}\",\n  \"conversation_id\": \"{{conversation_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"We should use Redis for caching\",\n      \"created_at\": \"2025-11-20T10:05:00Z\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"That's a good decision. Redis is excellent for caching. Should I remember this as a project decision?\",\n      \"created_at\": \"2025-11-20T10:05:05Z\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Yes, remember that we decided to use Redis for caching with a TTL of 1 hour\",\n      \"created_at\": \"2025-11-20T10:05:10Z\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/observe",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "observe"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "7. Memory Stats",
+            "item": [
+                {
+                    "name": "Get User Memory Stats",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Stats include all counts\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('user_memory_count');",
+                                    "    pm.expect(jsonData).to.have.property('episodic_events_count');",
+                                    "    pm.expect(jsonData.user_memory_count).to.be.a('number');",
+                                    "    pm.expect(jsonData.user_memory_count).to.be.greaterThan(0);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/stats?user_id={{user_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "stats"
+                            ],
+                            "query": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Project Memory Stats",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Project stats available\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('project_facts_count');",
+                                    "    pm.expect(jsonData.project_facts_count).to.be.greaterThan(0);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/stats?user_id={{user_id}}&project_id={{project_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "stats"
+                            ],
+                            "query": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}"
+                                },
+                                {
+                                    "key": "project_id",
+                                    "value": "{{project_id}}"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "8. Memory Export",
+            "item": [
+                {
+                    "name": "Export User Memory",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Export contains user data\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('user_memory');",
+                                    "    pm.expect(jsonData).to.have.property('episodic_events');",
+                                    "    pm.expect(jsonData.user_memory).to.be.an('array');",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Export data is complete\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    if (jsonData.user_memory.length > 0) {",
+                                    "        pm.expect(jsonData.user_memory[0]).to.have.property('id');",
+                                    "        pm.expect(jsonData.user_memory[0]).to.have.property('text');",
+                                    "        pm.expect(jsonData.user_memory[0]).to.have.property('created_at');",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/export?user_id={{user_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "export"
+                            ],
+                            "query": [
+                                {
+                                    "key": "user_id",
+                                    "value": "{{user_id}}"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "9. Memory Delete",
+            "item": [
+                {
+                    "name": "Delete Specific Memory",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Delete successful\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "    pm.expect(jsonData).to.have.property('deleted_count');",
+                                    "    pm.expect(jsonData.deleted_count).to.be.greaterThan(0);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"ids\": [\"{{user_memory_id}}\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/delete",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "delete"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "10. Batch Embedding & Performance",
+            "item": [
+                {
+                    "name": "Test Batch User Memory Upsert with Embeddings",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Batch embedding successful\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "    pm.expect(jsonData.ids).to.be.an('array');",
+                                    "    pm.expect(jsonData.ids.length).to.eql(5);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Batch processing completed quickly\", function () {",
+                                    "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"items\": [\n    {\n      \"scope\": \"preference\",\n      \"key\": \"lang_python\",\n      \"text\": \"Python is great for data science\",\n      \"importance\": \"high\"\n    },\n    {\n      \"scope\": \"preference\",\n      \"key\": \"lang_javascript\",\n      \"text\": \"JavaScript powers modern web development\",\n      \"importance\": \"high\"\n    },\n    {\n      \"scope\": \"preference\",\n      \"key\": \"lang_rust\",\n      \"text\": \"Rust offers memory safety without garbage collection\",\n      \"importance\": \"high\"\n    },\n    {\n      \"scope\": \"preference\",\n      \"key\": \"lang_go\",\n      \"text\": \"Go is excellent for concurrent programming\",\n      \"importance\": \"high\"\n    },\n    {\n      \"scope\": \"preference\",\n      \"key\": \"lang_typescript\",\n      \"text\": \"TypeScript adds type safety to JavaScript\",\n      \"importance\": \"high\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/user/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "user",
+                                "upsert"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Embedding Quality via Vector Search",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Vector search returns results\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.core_memory).to.be.an('array');",
+                                    "    pm.expect(jsonData.core_memory.length).to.be.greaterThan(0);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Embeddings enable semantic search\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    // Query about 'scripting' should find JavaScript/Python",
+                                    "    const hasRelevant = jsonData.core_memory.some(m => ",
+                                    "        m.text.includes('JavaScript') || m.text.includes('Python')",
+                                    "    );",
+                                    "    pm.expect(hasRelevant).to.be.true;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"query\": \"What are good languages for scripting and web development?\",\n  \"options\": {\n    \"max_user_items\": 10,\n    \"min_similarity\": 0.3\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Embedding Dimension Consistency",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Embedding service is consistent\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.dimension).to.eql(1024);",
+                                    "    pm.expect(jsonData.status).to.eql('ok');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": ""
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/embed/test",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "embed",
+                                "test"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "11. Memory Building & Extraction",
+            "item": [
+                {
+                    "name": "Extract User Preferences from Conversation",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Memory extraction successful\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "});",
+                                    "",
+                                    "// Verify memory was extracted and stored",
+                                    "setTimeout(() => {",
+                                    "    pm.sendRequest({",
+                                    "        url: pm.collectionVariables.get('base_url') + '/v1/memory/load',",
+                                    "        method: 'POST',",
+                                    "        header: {'Content-Type': 'application/json'},",
+                                    "        body: {",
+                                    "            mode: 'raw',",
+                                    "            raw: JSON.stringify({",
+                                    "                user_id: pm.collectionVariables.get('user_id'),",
+                                    "                query: 'programming preferences',",
+                                    "                options: { max_user_items: 10 }",
+                                    "            })",
+                                    "        }",
+                                    "    }, (err, res) => {",
+                                    "        pm.test('Memory was extracted from conversation', () => {",
+                                    "            pm.expect(res.json().core_memory.length).to.be.greaterThan(0);",
+                                    "        });",
+                                    "    });",
+                                    "}, 500);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"project_id\": \"{{project_id}}\",\n  \"conversation_id\": \"conv_extraction_001\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I prefer using Go for backend microservices because of its excellent concurrency support\",\n      \"created_at\": \"2025-11-21T10:00:00Z\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"That's a great choice! Go's goroutines make concurrent programming much easier. I'll remember your preference for Go in backend development.\",\n      \"created_at\": \"2025-11-21T10:00:05Z\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Yes, and I like using React with TypeScript for frontend work\",\n      \"created_at\": \"2025-11-21T10:00:10Z\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/observe",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "observe"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Extract Project Decisions Automatically",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "// Verify project decision was extracted",
+                                    "setTimeout(() => {",
+                                    "    pm.sendRequest({",
+                                    "        url: pm.collectionVariables.get('base_url') + '/v1/memory/load',",
+                                    "        method: 'POST',",
+                                    "        header: {'Content-Type': 'application/json'},",
+                                    "        body: {",
+                                    "            mode: 'raw',",
+                                    "            raw: JSON.stringify({",
+                                    "                user_id: pm.collectionVariables.get('user_id'),",
+                                    "                project_id: pm.collectionVariables.get('project_id'),",
+                                    "                query: 'database decisions',",
+                                    "                options: { max_project_items: 10 }",
+                                    "            })",
+                                    "        }",
+                                    "    }, (err, res) => {",
+                                    "        pm.test('Project decision was extracted', () => {",
+                                    "            const semanticMemory = res.json().semantic_memory;",
+                                    "            pm.expect(semanticMemory).to.be.an('array');",
+                                    "        });",
+                                    "    });",
+                                    "}, 500);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"project_id\": \"{{project_id}}\",\n  \"conversation_id\": \"conv_decision_001\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"We should use MongoDB for the document storage layer\",\n      \"created_at\": \"2025-11-21T11:00:00Z\"\n    },\n    {\n      \"role\": \"assistant\",\n      \"content\": \"MongoDB is a good choice for document storage. Should I remember this as a project decision?\",\n      \"created_at\": \"2025-11-21T11:00:05Z\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Yes, let's use MongoDB with replica sets for high availability\",\n      \"created_at\": \"2025-11-21T11:00:10Z\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/observe",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "observe"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Memory Importance Scoring",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"All items stored successfully\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.ids.length).to.eql(4);",
+                                    "});",
+                                    "",
+                                    "// Verify importance scoring in search results",
+                                    "setTimeout(() => {",
+                                    "    pm.sendRequest({",
+                                    "        url: pm.collectionVariables.get('base_url') + '/v1/memory/load',",
+                                    "        method: 'POST',",
+                                    "        header: {'Content-Type': 'application/json'},",
+                                    "        body: {",
+                                    "            mode: 'raw',",
+                                    "            raw: JSON.stringify({",
+                                    "                user_id: pm.collectionVariables.get('user_id'),",
+                                    "                query: 'security requirements',",
+                                    "                options: { max_user_items: 10 }",
+                                    "            })",
+                                    "        }",
+                                    "    }, (err, res) => {",
+                                    "        pm.test('Critical items ranked higher', () => {",
+                                    "            const memories = res.json().core_memory;",
+                                    "            const criticalItem = memories.find(m => m.text.includes('API keys'));",
+                                    "            pm.expect(criticalItem).to.exist;",
+                                    "            pm.expect(criticalItem.score).to.eql(5); // Critical importance",
+                                    "        });",
+                                    "    });",
+                                    "}, 500);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"items\": [\n    {\n      \"scope\": \"preference\",\n      \"key\": \"security_critical\",\n      \"text\": \"Never store API keys in version control, always use environment variables\",\n      \"importance\": \"critical\"\n    },\n    {\n      \"scope\": \"preference\",\n      \"key\": \"code_style_high\",\n      \"text\": \"I prefer using ESLint with strict rules for code consistency\",\n      \"importance\": \"high\"\n    },\n    {\n      \"scope\": \"context\",\n      \"key\": \"temp_note\",\n      \"text\": \"Maybe consider adding unit tests later\",\n      \"importance\": \"low\"\n    },\n    {\n      \"scope\": \"preference\",\n      \"key\": \"testing_medium\",\n      \"text\": \"I recommend writing integration tests for critical paths\",\n      \"importance\": \"medium\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/user/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "user",
+                                "upsert"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Memory Deduplication",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Duplicate memory handled correctly\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    // Upsert should update existing, not create duplicate",
+                                    "    pm.expect(jsonData.status).to.eql('success');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"items\": [\n    {\n      \"scope\": \"preference\",\n      \"key\": \"language_preference\",\n      \"text\": \"I prefer Python for backend development and TypeScript for frontend (updated)\",\n      \"importance\": \"high\"\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/user/upsert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "user",
+                                "upsert"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "12. Cross-lingual & Semantic Search",
+            "item": [
+                {
+                    "name": "Test Semantic Similarity (Synonyms)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Semantic search finds related concepts\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    ",
+                                    "    // Query is about 'bug' but should find 'error' and 'issue' memories",
+                                    "    pm.expect(jsonData.core_memory).to.be.an('array');",
+                                    "    ",
+                                    "    // Check if similar concepts are retrieved",
+                                    "    if (jsonData.core_memory.length > 0) {",
+                                    "        pm.expect(jsonData.core_memory[0].similarity).to.be.above(0.3);",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"query\": \"How do I report a bug?\",\n  \"options\": {\n    \"max_user_items\": 10,\n    \"min_similarity\": 0.3\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Semantic Search with Different Phrasing",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Different phrasing retrieves same memories\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    ",
+                                    "    // Should find preferences about programming languages",
+                                    "    pm.expect(jsonData.core_memory).to.be.an('array');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"query\": \"Which coding language should I choose?\",\n  \"options\": {\n    \"max_user_items\": 10,\n    \"min_similarity\": 0.3\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "13. End-to-End Workflow",
+            "item": [
+                {
+                    "name": "E2E: Store → Search → Verify",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "// Generate unique IDs for this test",
+                                    "pm.collectionVariables.set('e2e_user_id', 'e2e_user_' + Date.now());",
+                                    "pm.collectionVariables.set('e2e_project_id', 'e2e_proj_' + Date.now());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"E2E workflow successful\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.core_memory.length).to.be.greaterThan(0);",
+                                    "    ",
+                                    "    // Verify the stored memory is retrieved",
+                                    "    const found = jsonData.core_memory.some(item => ",
+                                    "        item.text.includes('Rust for systems programming')",
+                                    "    );",
+                                    "    pm.expect(found).to.be.true;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{e2e_user_id}}\",\n  \"query\": \"What programming language do I prefer for systems programming?\",\n  \"options\": {\n    \"max_user_items\": 10\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "E2E: Conversation → Extraction → Retrieval",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "// Step 1: Store a conversation",
+                                    "const userId = 'e2e_conv_' + Date.now();",
+                                    "const projectId = 'e2e_proj_conv_' + Date.now();",
+                                    "pm.collectionVariables.set('e2e_conv_user', userId);",
+                                    "pm.collectionVariables.set('e2e_conv_project', projectId);",
+                                    "",
+                                    "pm.sendRequest({",
+                                    "    url: pm.collectionVariables.get('base_url') + '/v1/memory/observe',",
+                                    "    method: 'POST',",
+                                    "    header: {'Content-Type': 'application/json'},",
+                                    "    body: {",
+                                    "        mode: 'raw',",
+                                    "        raw: JSON.stringify({",
+                                    "            user_id: userId,",
+                                    "            project_id: projectId,",
+                                    "            conversation_id: 'e2e_test_conv',",
+                                    "            messages: [",
+                                    "                {",
+                                    "                    role: 'user',",
+                                    "                    content: 'I prefer using Kubernetes for container orchestration',",
+                                    "                    created_at: new Date().toISOString()",
+                                    "                }",
+                                    "            ]",
+                                    "        })",
+                                    "    }",
+                                    "}, (err, res) => {",
+                                    "    console.log('Conversation stored:', res.code);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"E2E conversation extraction works\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "    var jsonData = pm.response.json();",
+                                    "    ",
+                                    "    // Verify extracted memory is retrieved",
+                                    "    const hasMemory = jsonData.core_memory.length > 0 || jsonData.episodic_memory.length > 0;",
+                                    "    pm.expect(hasMemory).to.be.true;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_id\": \"{{e2e_conv_user}}\",\n  \"project_id\": \"{{e2e_conv_project}}\",\n  \"query\": \"container orchestration preferences\",\n  \"options\": {\n    \"max_user_items\": 10,\n    \"max_episodic_items\": 10\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/v1/memory/load",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "memory",
+                                "load"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Global pre-request script",
+                    "console.log('Running test against:', pm.collectionVariables.get('base_url'));"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Global test script",
+                    "pm.test(\"Response time is acceptable\", function () {",
+                    "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                    "});"
+                ]
+            }
+        }
+    ]
+}

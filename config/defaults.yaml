@@ -69,11 +69,11 @@ services:
     model_sync_enabled: true
     model_sync_interval_minutes: 60
     prompt_orchestration:
-      enabled: true
+      enabled: false
       enable_memory: false
-      enable_templates: true
+      enable_templates: false
       enable_tools: false
-      default_persona: helpful assistant
+      default_persona: ""
     media_resolve_url: http://kong:8000/media/v1/media/resolve
     media_resolve_timeout: 5s
   mcp_tools:
@@ -107,6 +107,39 @@ services:
     mcp_tools_url: http://mcp-tools:8091
     max_tool_depth: 8
     tool_timeout: 45s
+  memory_tools:
+    enabled: false
+    http_port: 0
+    embedding:
+      base_url: ""
+      timeout: 0s
+      validate_on_startup: false
+      expected_model: ""
+      expected_dimension: 0
+      retry:
+        enabled: false
+        max_attempts: 0
+        initial_backoff: 0s
+        max_backoff: 0s
+      cache:
+        enabled: false
+        type: ""
+        redis:
+          url: ""
+          key_prefix: ""
+          ttl: 0s
+        memory:
+          max_size: 0
+          ttl: 0s
+      batch:
+        enabled: false
+        max_size: 0
+        timeout: 0s
+      circuit_breaker:
+        enabled: false
+        threshold: 0
+        timeout: 0s
+        max_concurrent: 0
 inference:
   vllm:
     enabled: true

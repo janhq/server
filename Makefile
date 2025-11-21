@@ -53,10 +53,19 @@ NEWMAN_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.
 NEWMAN_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
 NEWMAN_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
 NEWMAN_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
+NEWMAN_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
 NEWMAN_E2E_COLLECTION = tests/automation/test-all.postman.json
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
 MEDIA_API_KEY ?= changeme-media-key
+
+EMBED_TEST_URL = $(if $(strip $(EMBEDDING_SERVICE_URL)),$(strip $(EMBEDDING_SERVICE_URL)),http://localhost:8091)
+EMBED_TEST_PROFILES = --profile infra --profile memory
+EMBED_TEST_SERVICES = api-db memory-tools
+ifeq ($(strip $(EMBEDDING_SERVICE_URL)),)
+EMBED_TEST_PROFILES += --profile memory-mock
+EMBED_TEST_SERVICES += bge-m3
+endif
 
 # ============================================================================================================
 # SECTION 1: SETUP & ENVIRONMENT
@@ -65,11 +74,11 @@ MEDIA_API_KEY ?= changeme-media-key
 .PHONY: setup check-deps install-deps setup-and-run quickstart
 
 setup-and-run quickstart:
-	@echo "Starting interactive setup and run..."
+	@echo "Starting interactive setup and run (includes Memory Tools prompt)..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 setup-and-run
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 setup-and-run --with-memory-tools
 else
-	@bash jan-cli.sh setup-and-run
+	@bash jan-cli.sh setup-and-run --with-memory-tools
 endif
 
 setup:
@@ -98,11 +107,13 @@ install-deps:
 # SECTION 3: BUILD TARGETS
 # ============================================================================================================
 
-.PHONY: build build-api build-mcp build-all clean-build build-llm-api build-media-api
+.PHONY: build build-api build-mcp build-memory build-all clean-build build-llm-api build-media-api build-memory-tools
 
-build: build-api build-mcp
+build: build-api build-mcp build-memory
 
 build-api: build-llm-api build-media-api
+
+build-memory: build-memory-tools
 
 build-llm-api:
 	@echo "Building LLM API..."
@@ -131,24 +142,19 @@ else
 endif
 	@echo " MCP Tools built: services/mcp-tools/bin/mcp-tools"
 
+build-memory-tools:
+	@echo "Building Memory Tools..."
+ifeq ($(OS),Windows_NT)
+	@cd services/memory-tools && go build -o bin/memory-tools.exe ./cmd/server
+else
+	@cd services/memory-tools && go build -o bin/memory-tools ./cmd/server
+endif
+	@echo " Memory Tools built: services/memory-tools/bin/memory-tools"
+
 build-all:
 	@echo "Building all Docker images..."
 	$(COMPOSE) --profile full build
 	@echo " All services built"
-
-clean-build:
-	@echo "Cleaning build artifacts..."
-ifeq ($(OS),Windows_NT)
-	@if exist services\llm-api\bin rmdir /s /q services\llm-api\bin 2>nul
-	@if exist services\media-api\bin rmdir /s /q services\media-api\bin 2>nul
-	@if exist services\mcp-tools\bin rmdir /s /q services\mcp-tools\bin 2>nul
-else
-	@rm -rf services/llm-api/bin services/media-api/bin services/mcp-tools/bin
-endif
-	@echo "✓ Build artifacts cleaned"
-
-# --- Configuration Management ---
-
 .PHONY: config-generate config-test config-drift-check config-help
 
 config-generate:
@@ -548,9 +554,9 @@ endif
 
 # --- Integration Tests (Newman) ---
 
-.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-e2e newman-debug
+.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e newman-debug
 
-test-all: test-auth test-conversations test-response test-media test-mcp-integration test-e2e
+test-all: test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e
 	@echo ""
 	@echo " All integration tests passed!"
 
@@ -606,6 +612,18 @@ test-mcp-integration:
 		--verbose \
 		--reporters cli
 	@echo " MCP integration tests passed"
+
+test-memory:
+	@echo "Running memory-tools integration tests..."
+	@$(NEWMAN) run $(NEWMAN_MEMORY_COLLECTION) \
+		--env-var "base_url=http://localhost:8090" \
+		--env-var "embedding_url=http://localhost:8091" \
+		--env-var "user_id=user_test_001" \
+		--env-var "project_id=proj_test_001" \
+		--env-var "conversation_id=conv_test_001" \
+		--verbose \
+		--reporters cli
+	@echo " Memory-tools integration tests passed"
 
 test-e2e:
 	@echo "Running gateway end-to-end tests..."

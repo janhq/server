@@ -15,7 +15,7 @@ networks:
 services:
   # PostgreSQL Database for LLM API
   api-db:
-    image: postgres:18
+    image: ankane/pgvector:latest
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-jan_user}
