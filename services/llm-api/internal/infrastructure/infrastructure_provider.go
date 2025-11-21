@@ -20,6 +20,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/kong"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
+	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 )
 
 // ProvideConfig loads and provides the application configuration
@@ -65,6 +66,21 @@ func ProvideKeycloakValidator(cfg *config.Config, log zerolog.Logger) (*auth.Key
 		cfg.AuthClockSkew,
 		log,
 	)
+}
+
+// ProvideMemoryClient creates a memory-tools client with health check.
+func ProvideMemoryClient(cfg *config.Config, log zerolog.Logger) *memclient.Client {
+	if !cfg.MemoryEnabled {
+		return nil
+	}
+	client := memclient.NewClient(cfg.MemoryBaseURL, cfg.MemoryTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.MemoryTimeout)
+	defer cancel()
+	if err := client.Health(ctx); err != nil {
+		log.Warn().Err(err).Msg("memory-tools health check failed, disabling memory integration")
+		return nil
+	}
+	return client
 }
 
 // ProvideDatabase provides a database connection
@@ -144,6 +160,9 @@ var InfrastructureProvider = wire.NewSet(
 	// Keycloak
 	ProvideKeycloakClient,
 	ProvideKeycloakValidator,
+
+	// Memory
+	ProvideMemoryClient,
 
 	// Crontab for model sync
 	crontab.NewCrontab,

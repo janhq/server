@@ -17,6 +17,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
+	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 	"jan-server/services/llm-api/internal/infrastructure/observability"
 	conversationHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
@@ -44,6 +45,7 @@ type ChatHandler struct {
 	conversationService *conversation.ConversationService
 	mediaResolver       mediaresolver.Resolver
 	promptProcessor     *prompt.ProcessorImpl
+	memoryClient        *memclient.Client
 }
 
 // NewChatHandler creates a new chat handler
@@ -54,6 +56,7 @@ func NewChatHandler(
 	conversationService *conversation.ConversationService,
 	mediaResolver mediaresolver.Resolver,
 	promptProcessor *prompt.ProcessorImpl,
+	memoryClient *memclient.Client,
 ) *ChatHandler {
 	return &ChatHandler{
 		inferenceProvider:   inferenceProvider,
@@ -62,6 +65,7 @@ func NewChatHandler(
 		conversationService: conversationService,
 		mediaResolver:       mediaResolver,
 		promptProcessor:     promptProcessor,
+		memoryClient:        memoryClient,
 	}
 }
 
@@ -131,6 +135,24 @@ func (h *ChatHandler) CreateChatCompletion(
 		return nil, err
 	}
 
+	// Load memory context (best-effort) when a conversation is present
+	loadedMemory := h.collectPromptMemory(conv, reqCtx)
+	if h.memoryClient != nil && conversationID != "" {
+		observability.AddSpanEvent(ctx, "loading_memories")
+		memoryResp, memErr := h.loadConversationMemory(ctx, userID, conversationID, conv, newMessages)
+		if memErr != nil {
+			log := logger.GetLogger()
+			log.Warn().Err(memErr).Str("conversation_id", conversationID).Msg("failed to load memories, continuing without memory")
+		} else if memoryResp != nil {
+			loadedMemory = append(loadedMemory, formatMemoryForPromptCtx(memoryResp)...)
+			observability.AddSpanEvent(ctx, "memories_loaded",
+				attribute.Int("core_memory_count", len(memoryResp.CoreMemory)),
+				attribute.Int("episodic_memory_count", len(memoryResp.EpisodicMemory)),
+				attribute.Int("semantic_memory_count", len(memoryResp.SemanticMemory)),
+			)
+		}
+	}
+
 	// Get provider based on the requested model
 	observability.AddSpanEvent(ctx, "selecting_provider")
 	selectedProviderModel, selectedProvider, err := h.providerHandler.SelectProviderModelForModelPublicID(ctx, request.Model)
@@ -185,7 +207,7 @@ func (h *ChatHandler) CreateChatCompletion(
 			ConversationID: conversationID,
 			Language:       strings.TrimSpace(reqCtx.GetHeader("Accept-Language")),
 			Preferences:    preferences,
-			Memory:         h.collectPromptMemory(conv, reqCtx),
+			Memory:         loadedMemory,
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
@@ -294,6 +316,11 @@ func (h *ChatHandler) CreateChatCompletion(
 			observability.AddSpanAttributes(ctx,
 				attribute.Bool("completion.stored", true),
 			)
+
+			// Observe conversation asynchronously for memory extraction
+			if h.memoryClient != nil {
+				go h.observeConversationForMemory(conv, userID, newMessages, response)
+			}
 		}
 	}
 
@@ -468,6 +495,136 @@ func (h *ChatHandler) recentConversationMemory(conv *conversation.Conversation) 
 	}
 
 	return memories
+}
+
+func (h *ChatHandler) loadConversationMemory(
+	ctx context.Context,
+	userID uint,
+	conversationID string,
+	conv *conversation.Conversation,
+	messages []openai.ChatCompletionMessage,
+) (*memclient.LoadResponse, error) {
+	if h.memoryClient == nil {
+		return nil, nil
+	}
+
+	req := memclient.LoadRequest{
+		UserID:         fmt.Sprintf("%d", userID),
+		ConversationID: conversationID,
+		Query:          extractQueryFromMessages(messages),
+		Options: memclient.LoadOptions{
+			MaxUserItems:     10,
+			MaxProjectItems:  10,
+			MaxEpisodicItems: 10,
+			MinSimilarity:    0.5,
+		},
+	}
+	if conv != nil && conv.ProjectPublicID != nil {
+		req.ProjectID = *conv.ProjectPublicID
+	}
+
+	return h.memoryClient.Load(ctx, req)
+}
+
+func formatMemoryForPromptCtx(resp *memclient.LoadResponse) []string {
+	if resp == nil {
+		return nil
+	}
+	memory := make([]string, 0, len(resp.CoreMemory)+len(resp.SemanticMemory)+len(resp.EpisodicMemory))
+	for _, item := range resp.CoreMemory {
+		if strings.TrimSpace(item.Text) != "" {
+			memory = append(memory, fmt.Sprintf("User memory: %s", item.Text))
+		}
+	}
+	for _, fact := range resp.SemanticMemory {
+		if strings.TrimSpace(fact.Text) != "" {
+			if strings.TrimSpace(fact.Title) != "" {
+				memory = append(memory, fmt.Sprintf("Project fact - %s: %s", fact.Title, fact.Text))
+			} else {
+				memory = append(memory, fmt.Sprintf("Project fact: %s", fact.Text))
+			}
+		}
+	}
+	// for _, event := range resp.EpisodicMemory {
+	// 	if strings.TrimSpace(event.Text) != "" {
+	// 		memory = append(memory, fmt.Sprintf("Recent event: %s", event.Text))
+	// 	}
+	// }
+	return memory
+}
+
+func extractQueryFromMessages(messages []openai.ChatCompletionMessage) string {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == openai.ChatMessageRoleUser && strings.TrimSpace(messages[i].Content) != "" {
+			return messages[i].Content
+		}
+	}
+	return "conversation context"
+}
+
+func (h *ChatHandler) observeConversationForMemory(
+	conv *conversation.Conversation,
+	userID uint,
+	newMessages []openai.ChatCompletionMessage,
+	response *openai.ChatCompletionResponse,
+) {
+	if h.memoryClient == nil || conv == nil {
+		return
+	}
+
+	observeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	messages := buildMemoryConversationItems(newMessages, response)
+	if len(messages) == 0 {
+		return
+	}
+
+	req := memclient.ObserveRequest{
+		UserID:         fmt.Sprintf("%d", userID),
+		ConversationID: conv.PublicID,
+		Messages:       messages,
+	}
+	if conv.ProjectPublicID != nil {
+		req.ProjectID = *conv.ProjectPublicID
+	}
+
+	if err := h.memoryClient.Observe(observeCtx, req); err != nil {
+		log := logger.GetLogger()
+		log.Warn().Err(err).Str("conversation_id", conv.PublicID).Msg("failed to observe conversation for memory")
+	}
+}
+
+func buildMemoryConversationItems(newMessages []openai.ChatCompletionMessage, response *openai.ChatCompletionResponse) []memclient.ConversationItem {
+	items := make([]memclient.ConversationItem, 0)
+	now := time.Now()
+	for _, msg := range newMessages {
+		if msg.Role != openai.ChatMessageRoleUser {
+			continue
+		}
+		content := strings.TrimSpace(msg.Content)
+		if content == "" {
+			continue
+		}
+		items = append(items, memclient.ConversationItem{
+			Role:      "user",
+			Content:   content,
+			CreatedAt: now,
+		})
+	}
+
+	if response != nil && len(response.Choices) > 0 {
+		content := strings.TrimSpace(response.Choices[0].Message.Content)
+		if content != "" {
+			items = append(items, memclient.ConversationItem{
+				Role:      "assistant",
+				Content:   content,
+				CreatedAt: time.Now(),
+			})
+		}
+	}
+
+	return items
 }
 
 func firstTextFromItem(item conversation.Item) string {

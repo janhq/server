@@ -57,6 +57,10 @@ func (c *EmbeddingClient) Embed(ctx context.Context, texts []string) ([][]float3
 		Normalize: true,
 		Truncate:  true,
 	}
+	log.Info().
+		Int("text_count", len(texts)).
+		Str("endpoint", c.baseURL+"/embed").
+		Msg("embedding request")
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
@@ -79,15 +83,31 @@ func (c *EmbeddingClient) Embed(ctx context.Context, texts []string) ([][]float3
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("embedding service returned status %d: %s", resp.StatusCode, string(body))
+		log.Error().
+			Int("status", resp.StatusCode).
+			Str("endpoint", c.baseURL+"/embed").
+			Msg("embedding request failed")
+		return nil, fmt.Errorf("embedding service returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var embeddings EmbedResponse
-	if err := json.NewDecoder(resp.Body).Decode(&embeddings); err != nil {
+	if err := json.Unmarshal(bodyBytes, &embeddings); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
+
+	log.Info().
+		Int("status", resp.StatusCode).
+		Int("embeddings", len(embeddings)).
+		Int("dimension", func() int {
+			if len(embeddings) > 0 {
+				return len(embeddings[0])
+			}
+			return 0
+		}()).
+		Msg("embedding response")
 
 	return embeddings, nil
 }
@@ -98,11 +118,11 @@ func (c *EmbeddingClient) EmbedSingle(ctx context.Context, text string) ([]float
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(embeddings) == 0 {
 		return nil, fmt.Errorf("no embeddings returned")
 	}
-	
+
 	return embeddings[0], nil
 }
 

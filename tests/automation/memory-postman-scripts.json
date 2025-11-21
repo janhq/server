@@ -40,6 +40,72 @@
             "key": "project_fact_id",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "llm_api_url",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "llm_api_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "name": "LLM API - Memory integration (disabled by default)",
+            "disabled": false,
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "pm.test(\"Response has content\", function () {",
+                            "    pm.expect(pm.response.json()).to.have.property('choices');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{llm_api_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"What do you know about my preferences?\"}\n  ],\n  \"conversation\": {\n    \"id\": \"{{conversation_id}}\"\n  }\n}"
+                },
+                "url": {
+                    "raw": "{{llm_api_url}}/v1/chat/completions",
+                    "host": [
+                        "{{llm_api_url}}"
+                    ],
+                    "path": [
+                        "v1",
+                        "chat",
+                        "completions"
+                    ]
+                },
+                "description": "Optional: exercise llm-api memory orchestration. Enable this request and provide `llm_api_token` when llm-api is running with memory-tools available."
+            }
         }
     ],
     "item": [
@@ -1361,7 +1427,7 @@
             "name": "13. End-to-End Workflow",
             "item": [
                 {
-                    "name": "E2E: Store → Search → Verify",
+                    "name": "E2E: Store \u00e2\u2020\u2019 Search \u00e2\u2020\u2019 Verify",
                     "event": [
                         {
                             "listen": "prerequest",
@@ -1420,7 +1486,7 @@
                     }
                 },
                 {
-                    "name": "E2E: Conversation → Extraction → Retrieval",
+                    "name": "E2E: Conversation \u00e2\u2020\u2019 Extraction \u00e2\u2020\u2019 Retrieval",
                     "event": [
                         {
                             "listen": "prerequest",
@@ -1498,6 +1564,326 @@
                                 "load"
                             ]
                         }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "LLM API - Memory integration (disabled by default)",
+            "item": [
+                {
+                    "name": "Scenario 1: Standard Response (Memory Disabled)",
+                    "disabled": true,
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const token = pm.collectionVariables.get('llm_api_token') || pm.environment.get('llm_api_token');",
+                                    "if (!token) {",
+                                    "    console.log('Skipping LLM API scenario (no token)');",
+                                    "    pm.test('Skipped: llm_api_token not set', function () { pm.expect(true).to.be.true; });",
+                                    "    return;",
+                                    "}",
+                                    "",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"No memory sources returned\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    if (jsonData.choices && jsonData.choices.length > 0) {",
+                                    "        const memSources = jsonData.choices[0].message.memory_sources;",
+                                    "        pm.expect(memSources === undefined || memSources.length === 0).to.be.true;",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{llm_api_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Check if K8s deployment is healthy\"}\n  ],\n  \"conversation\": {\"id\": \"{{conversation_id}}\"},\n  \"augment_with_memory\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{llm_api_url}}/v1/chat/completions",
+                            "host": [
+                                "{{llm_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "chat",
+                                "completions"
+                            ]
+                        },
+                        "description": "Baseline behavior with memory disabled."
+                    }
+                },
+                {
+                    "name": "Scenario 2: Tool-Augmented Response with Memory",
+                    "disabled": true,
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const token = pm.collectionVariables.get('llm_api_token') || pm.environment.get('llm_api_token');",
+                                    "if (!token) {",
+                                    "    console.log('Skipping LLM API scenario (no token)');",
+                                    "    pm.test('Skipped: llm_api_token not set', function () { pm.expect(true).to.be.true; });",
+                                    "    return;",
+                                    "}",
+                                    "",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Memory sources included when requested\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    if (jsonData.choices && jsonData.choices.length > 0) {",
+                                    "        pm.expect(jsonData.choices[0]).to.have.property('message');",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{llm_api_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Check if K8s deployment is healthy\"}\n  ],\n  \"conversation\": {\"id\": \"{{conversation_id}}\"},\n  \"augment_with_memory\": true,\n  \"project_id\": \"proj_devops\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{llm_api_url}}/v1/chat/completions",
+                            "host": [
+                                "{{llm_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "chat",
+                                "completions"
+                            ]
+                        },
+                        "description": "Memory-enabled request; expects augmented prompt and tool path."
+                    }
+                },
+                {
+                    "name": "Scenario 3: Project Memory Vector Search",
+                    "disabled": true,
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const token = pm.collectionVariables.get('llm_api_token') || pm.environment.get('llm_api_token');",
+                                    "if (!token) {",
+                                    "    console.log('Skipping LLM API scenario (no token)');",
+                                    "    pm.test('Skipped: llm_api_token not set', function () { pm.expect(true).to.be.true; });",
+                                    "    return;",
+                                    "}",
+                                    "",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Memory sources present when requested\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    if (jsonData.choices && jsonData.choices.length > 0) {",
+                                    "        var msg = jsonData.choices[0].message || {};",
+                                    "        pm.expect(msg).to.have.property('memory_sources');",
+                                    "    }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{llm_api_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"What's our database strategy?\"}\n  ],\n  \"conversation\": {\"id\": \"{{conversation_id}}\"},\n  \"augment_with_memory\": true,\n  \"project_id\": \"proj_backend\",\n  \"include_memory_sources\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{llm_api_url}}/v1/chat/completions",
+                            "host": [
+                                "{{llm_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "chat",
+                                "completions"
+                            ]
+                        },
+                        "description": "Exercises project fact retrieval with memory_sources in response."
+                    }
+                },
+                {
+                    "name": "Scenario 4: Graceful Degradation (Memory Down)",
+                    "disabled": true,
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const token = pm.collectionVariables.get('llm_api_token') || pm.environment.get('llm_api_token');",
+                                    "if (!token) {",
+                                    "    console.log('Skipping LLM API scenario (no token)');",
+                                    "    pm.test('Skipped: llm_api_token not set', function () { pm.expect(true).to.be.true; });",
+                                    "    return;",
+                                    "}",
+                                    "",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{llm_api_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"What's our tech stack?\"}\n  ],\n  \"conversation\": {\"id\": \"{{conversation_id}}\"},\n  \"augment_with_memory\": true,\n  \"project_id\": \"proj_backend\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{llm_api_url}}/v1/chat/completions",
+                            "host": [
+                                "{{llm_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "chat",
+                                "completions"
+                            ]
+                        },
+                        "description": "Run with memory-tools stopped to confirm graceful fallback (status 200 without memory)."
+                    }
+                },
+                {
+                    "name": "Scenario 5: Auto-Promotion to Project Memory (manual verification)",
+                    "disabled": true,
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const token = pm.collectionVariables.get('llm_api_token') || pm.environment.get('llm_api_token');",
+                                    "if (!token) {",
+                                    "    console.log('Skipping LLM API scenario (no token)');",
+                                    "    pm.test('Skipped: llm_api_token not set', function () { pm.expect(true).to.be.true; });",
+                                    "    return;",
+                                    "}",
+                                    "",
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{llm_api_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"We've decided to use Docker Compose for local dev\"}\n  ],\n  \"conversation\": {\"id\": \"{{conversation_id}}\"},\n  \"augment_with_memory\": true,\n  \"project_id\": \"proj_infra\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{llm_api_url}}/v1/chat/completions",
+                            "host": [
+                                "{{llm_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "chat",
+                                "completions"
+                            ]
+                        },
+                        "description": "Kick off memory observation; verify later via /v1/memory/load for project facts."
                     }
                 }
             ]

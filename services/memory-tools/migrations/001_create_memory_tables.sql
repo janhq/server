@@ -2,11 +2,20 @@
 -- Version: 001
 -- Date: 2025-11-20
 
--- Enable pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Create schema first
+CREATE SCHEMA IF NOT EXISTS memory_tools;
+
+-- Enable pgvector extension in memory_tools schema
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA memory_tools;
+
+-- Also ensure it exists in public schema for compatibility
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+
+-- Ensure we operate inside memory_tools schema
+SET search_path TO memory_tools, public;
 
 -- User Memory Items Table
-CREATE TABLE IF NOT EXISTS user_memory_items (
+CREATE TABLE IF NOT EXISTS memory_tools.user_memory_items (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
     scope VARCHAR(50) NOT NULL, -- 'core', 'preference', 'context'
@@ -23,19 +32,19 @@ CREATE TABLE IF NOT EXISTS user_memory_items (
 );
 
 -- Indexes for user_memory_items
-CREATE INDEX IF NOT EXISTS idx_user_memory_user_id ON user_memory_items(user_id) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_user_memory_scope ON user_memory_items(scope) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_user_memory_score ON user_memory_items(score DESC) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_user_memory_updated_at ON user_memory_items(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_memory_user_id ON memory_tools.user_memory_items(user_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_memory_scope ON memory_tools.user_memory_items(scope) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_memory_score ON memory_tools.user_memory_items(score DESC) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_memory_updated_at ON memory_tools.user_memory_items(updated_at DESC);
 
 -- Vector similarity index (IVFFlat for fast approximate search)
-CREATE INDEX IF NOT EXISTS idx_user_memory_embedding ON user_memory_items 
+CREATE INDEX IF NOT EXISTS idx_user_memory_embedding ON memory_tools.user_memory_items 
 USING ivfflat (embedding vector_cosine_ops) 
 WITH (lists = 100)
 WHERE is_deleted = FALSE;
 
 -- Project Facts Table
-CREATE TABLE IF NOT EXISTS project_facts (
+CREATE TABLE IF NOT EXISTS memory_tools.project_facts (
     id VARCHAR(255) PRIMARY KEY,
     project_id VARCHAR(255) NOT NULL,
     kind VARCHAR(50) NOT NULL, -- 'decision', 'requirement', 'constraint', 'context'
@@ -53,26 +62,26 @@ CREATE TABLE IF NOT EXISTS project_facts (
 );
 
 -- Indexes for project_facts
-CREATE INDEX IF NOT EXISTS idx_project_facts_project_id ON project_facts(project_id) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_project_facts_kind ON project_facts(kind) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_project_facts_confidence ON project_facts(confidence DESC) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_project_facts_updated_at ON project_facts(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_project_facts_project_id ON memory_tools.project_facts(project_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_project_facts_kind ON memory_tools.project_facts(kind) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_project_facts_confidence ON memory_tools.project_facts(confidence DESC) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_project_facts_updated_at ON memory_tools.project_facts(updated_at DESC);
 
 -- Vector similarity index
-CREATE INDEX IF NOT EXISTS idx_project_facts_embedding ON project_facts 
+CREATE INDEX IF NOT EXISTS idx_project_facts_embedding ON memory_tools.project_facts 
 USING ivfflat (embedding vector_cosine_ops) 
 WITH (lists = 100)
 WHERE is_deleted = FALSE;
 
 -- Update constraints to allow all supported kinds/scopes
-ALTER TABLE user_memory_items DROP CONSTRAINT IF EXISTS user_memory_scope_check;
-ALTER TABLE user_memory_items ADD CONSTRAINT user_memory_scope_check CHECK (scope IN ('core', 'preference', 'context', 'profile', 'skill'));
+ALTER TABLE memory_tools.user_memory_items DROP CONSTRAINT IF EXISTS user_memory_scope_check;
+ALTER TABLE memory_tools.user_memory_items ADD CONSTRAINT user_memory_scope_check CHECK (scope IN ('core', 'preference', 'context', 'profile', 'skill'));
 
-ALTER TABLE project_facts DROP CONSTRAINT IF EXISTS project_fact_kind_check;
-ALTER TABLE project_facts ADD CONSTRAINT project_fact_kind_check CHECK (kind IN ('decision', 'requirement', 'constraint', 'context', 'assumption', 'risk', 'fact'));
+ALTER TABLE memory_tools.project_facts DROP CONSTRAINT IF EXISTS project_fact_kind_check;
+ALTER TABLE memory_tools.project_facts ADD CONSTRAINT project_fact_kind_check CHECK (kind IN ('decision', 'requirement', 'constraint', 'context', 'assumption', 'risk', 'fact'));
 
 -- Episodic Events Table
-CREATE TABLE IF NOT EXISTS episodic_events (
+CREATE TABLE IF NOT EXISTS memory_tools.episodic_events (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
     project_id VARCHAR(255),
@@ -88,20 +97,20 @@ CREATE TABLE IF NOT EXISTS episodic_events (
 );
 
 -- Indexes for episodic_events
-CREATE INDEX IF NOT EXISTS idx_episodic_events_user_id ON episodic_events(user_id) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_episodic_events_project_id ON episodic_events(project_id) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_episodic_events_conversation_id ON episodic_events(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_episodic_events_time ON episodic_events(time DESC) WHERE is_deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_episodic_events_kind ON episodic_events(kind) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_episodic_events_user_id ON memory_tools.episodic_events(user_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_episodic_events_project_id ON memory_tools.episodic_events(project_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_episodic_events_conversation_id ON memory_tools.episodic_events(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_episodic_events_time ON memory_tools.episodic_events(time DESC) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_episodic_events_kind ON memory_tools.episodic_events(kind) WHERE is_deleted = FALSE;
 
 -- Vector similarity index
-CREATE INDEX IF NOT EXISTS idx_episodic_events_embedding ON episodic_events 
+CREATE INDEX IF NOT EXISTS idx_episodic_events_embedding ON memory_tools.episodic_events 
 USING ivfflat (embedding vector_cosine_ops) 
 WITH (lists = 100)
 WHERE is_deleted = FALSE;
 
 -- Conversation Items Table (for storing raw conversation history)
-CREATE TABLE IF NOT EXISTS conversation_items (
+CREATE TABLE IF NOT EXISTS memory_tools.conversation_items (
     id VARCHAR(255) PRIMARY KEY,
     conversation_id VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL, -- 'user', 'assistant', 'system'
@@ -113,8 +122,8 @@ CREATE TABLE IF NOT EXISTS conversation_items (
 );
 
 -- Indexes for conversation_items
-CREATE INDEX IF NOT EXISTS idx_conversation_items_conversation_id ON conversation_items(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_conversation_items_created_at ON conversation_items(created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_conversation_items_conversation_id ON memory_tools.conversation_items(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_items_created_at ON memory_tools.conversation_items(created_at ASC);
 
 -- Comments for documentation
 COMMENT ON TABLE user_memory_items IS 'User-specific memory items (preferences, context, core facts)';
