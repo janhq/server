@@ -107,11 +107,11 @@ install-deps:
 # SECTION 3: BUILD TARGETS
 # ============================================================================================================
 
-.PHONY: build build-api build-mcp build-memory build-all clean-build build-llm-api build-media-api build-memory-tools
+.PHONY: build build-api build-mcp build-memory build-all clean-build build-llm-api build-media-api build-response-api build-memory-tools
 
 build: build-api build-mcp build-memory
 
-build-api: build-llm-api build-media-api
+build-api: build-llm-api build-media-api build-response-api
 
 build-memory: build-memory-tools
 
@@ -132,6 +132,15 @@ else
 	@cd services/media-api && go build -o bin/media-api ./cmd/server
 endif
 	@echo " Media API built: services/media-api/bin/media-api"
+
+build-response-api:
+	@echo "Building Response API..."
+ifeq ($(OS),Windows_NT)
+	@cd services/response-api && go build -o bin/response-api.exe ./cmd/server
+else
+	@cd services/response-api && go build -o bin/response-api ./cmd/server
+endif
+	@echo " Response API built: services/response-api/bin/response-api"
 
 build-mcp:
 	@echo "Building MCP Tools..."

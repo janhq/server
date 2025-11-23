@@ -598,34 +598,85 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenS
 // LogoutUser logs out a user from Keycloak by calling the logout endpoint
 // This will invalidate the user's session on the Keycloak server
 func (c *Client) LogoutUser(ctx context.Context, refreshToken string) error {
+	c.logger.Info().Msg("[KC-LOGOUT] Starting logout process")
+
 	if refreshToken == "" {
+		c.logger.Error().Msg("[KC-LOGOUT] Refresh token is empty")
 		return errors.New("refresh token is required for logout")
 	}
 
+	c.logger.Info().
+		Str("token_preview", refreshToken[:30]+"...").
+		Int("token_length", len(refreshToken)).
+		Msg("[KC-LOGOUT] Refresh token received")
+
 	values := url.Values{}
 	values.Set("client_id", c.clientID)
-	if c.backendClientSecret != "" {
+
+	// Note: For public clients (like jan-client), we should NOT send client_secret
+	// Only send client_secret if this is a confidential client (backend)
+	isConfidentialClient := c.clientID == c.backendClientID && c.backendClientSecret != ""
+	if isConfidentialClient {
 		values.Set("client_secret", c.backendClientSecret)
+		c.logger.Info().
+			Str("client_id", c.clientID).
+			Bool("with_secret", true).
+			Msg("[KC-LOGOUT] Using confidential client (with secret)")
+	} else {
+		c.logger.Info().
+			Str("client_id", c.clientID).
+			Bool("with_secret", false).
+			Msg("[KC-LOGOUT] Using public client (no secret)")
 	}
 	values.Set("refresh_token", refreshToken)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.logoutEndpoint(), strings.NewReader(values.Encode()))
+	logoutURL := c.logoutEndpoint()
+	c.logger.Info().
+		Str("url", logoutURL).
+		Str("method", http.MethodPost).
+		Msg("[KC-LOGOUT] Preparing logout request")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, logoutURL, strings.NewReader(values.Encode()))
 	if err != nil {
+		c.logger.Error().Err(err).Msg("[KC-LOGOUT] Failed to create request")
 		return fmt.Errorf("create logout request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	c.logger.Info().
+		Str("content_type", "application/x-www-form-urlencoded").
+		Int("body_length", len(values.Encode())).
+		Msg("[KC-LOGOUT] Sending logout request to Keycloak")
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.logger.Error().
+			Err(err).
+			Str("url", logoutURL).
+			Msg("[KC-LOGOUT] HTTP request failed")
 		return fmt.Errorf("execute logout request: %w", err)
 	}
 	defer resp.Body.Close()
 
+	c.logger.Info().
+		Int("status_code", resp.StatusCode).
+		Str("status", resp.Status).
+		Msg("[KC-LOGOUT] Received response from Keycloak")
+
 	if resp.StatusCode >= 300 {
 		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		c.logger.Error().
+			Int("status_code", resp.StatusCode).
+			Str("response_body", strings.TrimSpace(string(payload))).
+			Str("client_id", c.clientID).
+			Bool("is_confidential", isConfidentialClient).
+			Msg("[KC-LOGOUT] Logout request failed")
 		return fmt.Errorf("logout request failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(payload)))
 	}
 
+	c.logger.Info().
+		Int("status_code", resp.StatusCode).
+		Msg("[KC-LOGOUT] Logout successful")
 	return nil
 }
 

@@ -1,6 +1,22 @@
 # Memory Tools Service
 
 services:
+  # Redis cache for embedding vectors (optional)
+  redis-memory:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${REDIS_MEMORY_PORT:-6379}:6379"
+    volumes:
+      - redis-memory-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    profiles: ["memory-redis", "full"]
+
   bge-m3:
     build:
       context: ./bge-m3-mock
@@ -57,3 +73,7 @@ services:
       timeout: 5s
       retries: 10
     profiles: ["memory", "full"]
+
+volumes:
+  redis-memory-data:
+

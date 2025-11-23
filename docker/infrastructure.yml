@@ -86,11 +86,14 @@ services:
       # OpenID Connect
       KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_LEGACY_LOGOUT_REDIRECT_URI: "true"
       
-      # CORS Configuration
-      QUARKUS_HTTP_CORS: "true"
-      QUARKUS_HTTP_CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:8000"
-      QUARKUS_HTTP_CORS_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
-      QUARKUS_HTTP_CORS_HEADERS: "accept,authorization,content-type,x-requested-with"
+      # CORS Configuration - Disabled for local development to avoid admin console issues
+      # Note: For production, configure proper CORS origins
+      QUARKUS_HTTP_CORS: "false"
+      
+      # Logging / Debug Configuration
+      QUARKUS_LOG_LEVEL: ${KEYCLOAK_LOG_LEVEL:-INFO}
+      QUARKUS_LOG_CATEGORY__ORG_KEYCLOAK__LEVEL: ${KEYCLOAK_LOG_LEVEL:-DEBUG}
+      QUARKUS_LOG_CONSOLE_ENABLE: "true"
     command:
       - start
       - --import-realm
@@ -98,7 +101,9 @@ services:
       - --hostname-strict-backchannel=false
       - --http-enabled=true
       - --proxy=edge
+      - --proxy-headers=xforwarded
       - --spi-login-protocol-openid-connect-suppress-logout-confirmation-screen=true
+      - --log-level=${KEYCLOAK_LOG_LEVEL:-INFO}
     depends_on:
       keycloak-db:
         condition: service_healthy

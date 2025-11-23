@@ -43,6 +43,7 @@ func (a *AuthRoute) RegisterRouter(router gin.IRouter, protectedRouter gin.IRout
 	router.POST("/auth/guest-login", a.CreateGuestLogin)
 	router.POST("/auth/refresh-token", a.RefreshToken)
 	router.GET("/auth/logout", a.Logout)
+	router.POST("/auth/logout", a.Logout) // Support both GET and POST for logout
 
 	// Public routes - Keycloak OAuth2/OIDC (simplified)
 	router.GET("/auth/login", a.KeycloakLogin)

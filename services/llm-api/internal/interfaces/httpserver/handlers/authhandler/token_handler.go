@@ -1,6 +1,7 @@
 package authhandler
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -50,31 +51,113 @@ type GetMeResponse struct {
 
 // Logout removes authentication tokens
 // @Summary Logout
-// @Description Remove refresh tokens to perform logout and invalidate Keycloak session
+// @Description Remove refresh tokens to perform logout and invalidate Keycloak session. Accepts refresh token from cookie, Authorization header, or request body.
 // @Tags Authentication API
 // @Accept json
 // @Produce json
+// @Param refresh_token body string false "Refresh token to revoke"
+// @Param Authorization header string false "Bearer refresh_token"
 // @Success 200 {object} map[string]string "Successfully logged out"
 // @Failure 400 {object} responses.ErrorResponse "Bad Request"
 // @Router /v1/auth/logout [get]
+// @Router /v1/auth/logout [post]
 func (h *TokenHandler) Logout(c *gin.Context) {
-	h.logger.Debug().Msg("Processing logout request")
-	// Get the refresh token from cookie before clearing it
+	h.logger.Info().Str("method", c.Request.Method).Str("path", c.Request.URL.Path).Msg("[LOGOUT] Processing logout request")
+
+	// Log all cookies for debugging
+	allCookies := []string{}
+	for _, cookie := range c.Request.Cookies() {
+		allCookies = append(allCookies, cookie.Name)
+	}
+	h.logger.Info().
+		Strs("available_cookies", allCookies).
+		Int("cookie_count", len(allCookies)).
+		Msg("[LOGOUT] Received cookies")
+
+	var refreshToken string
+
+	// Try to get refresh token from multiple sources in order of priority:
+	// 1. From refresh_token cookie (standard flow)
 	refreshTokenCookie, err := c.Cookie(RefreshTokenCookieName)
+	if err == nil && refreshTokenCookie != "" {
+		refreshToken = refreshTokenCookie
+		h.logger.Info().
+			Str("source", "cookie").
+			Str("token_preview", refreshToken[:30]+"...").
+			Msg("[LOGOUT] Found refresh token in cookie")
+	} else {
+		h.logger.Debug().
+			Bool("cookie_exists", err == nil).
+			Msg("[LOGOUT] No refresh token in cookie")
+	}
+
+	// 2. From request body (JSON) - Higher priority than header because body is explicit
+	if refreshToken == "" {
+		var body struct {
+			RefreshToken string `json:"refresh_token"`
+		}
+		if err := c.ShouldBindJSON(&body); err == nil && body.RefreshToken != "" {
+			refreshToken = body.RefreshToken
+			h.logger.Info().
+				Str("source", "body").
+				Str("token_preview", refreshToken[:30]+"...").
+				Int("token_length", len(refreshToken)).
+				Msg("[LOGOUT] Found refresh token in request body")
+		} else {
+			h.logger.Debug().
+				Bool("bind_success", err == nil).
+				Str("bind_error", fmt.Sprintf("%v", err)).
+				Msg("[LOGOUT] No refresh token in request body")
+		}
+	}
+
+	// 3. From Authorization header (Bearer token) - Lower priority, may contain access token
+	// NOTE: Authorization header often contains ACCESS TOKEN, not REFRESH TOKEN
+	// Only use this as last resort
+	if refreshToken == "" {
+		authHeader := c.GetHeader("Authorization")
+		h.logger.Debug().
+			Str("auth_header_preview", func() string {
+				if len(authHeader) > 40 {
+					return authHeader[:40] + "..."
+				}
+				return authHeader
+			}()).
+			Bool("has_bearer", len(authHeader) > 7 && authHeader[:7] == "Bearer ").
+			Msg("[LOGOUT] Checking Authorization header")
+
+		if authHeader != "" && len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			refreshToken = authHeader[7:]
+			h.logger.Warn().
+				Str("source", "header").
+				Str("token_preview", refreshToken[:30]+"...").
+				Int("token_length", len(refreshToken)).
+				Msg("[LOGOUT] Using token from Authorization header (may be access token, not refresh token)")
+		} else {
+			h.logger.Debug().
+				Bool("header_exists", authHeader != "").
+				Msg("[LOGOUT] No valid Bearer token in Authorization header")
+		}
+	}
 
 	// Call Keycloak logout endpoint to invalidate the session
-	if err == nil && refreshTokenCookie != "" {
+	if refreshToken != "" {
+		h.logger.Info().
+			Str("token_length", fmt.Sprintf("%d", len(refreshToken))).
+			Msg("[LOGOUT] Calling Keycloak logout endpoint")
+
 		ctx := c.Request.Context()
-		logoutErr := h.kc.LogoutUser(ctx, refreshTokenCookie)
+		logoutErr := h.kc.LogoutUser(ctx, refreshToken)
 		if logoutErr != nil {
-			h.logger.Warn().
+			h.logger.Error().
 				Err(logoutErr).
-				Msg("Failed to logout from Keycloak, but continuing with local logout")
+				Str("error_type", fmt.Sprintf("%T", logoutErr)).
+				Msg("[LOGOUT] Failed to logout from Keycloak, but continuing with local logout")
 		} else {
-			h.logger.Debug().Msg("Successfully logged out from Keycloak")
+			h.logger.Info().Msg("[LOGOUT] Successfully logged out from Keycloak")
 		}
 	} else {
-		h.logger.Debug().Msg("No refresh token found, skipping Keycloak logout")
+		h.logger.Warn().Msg("[LOGOUT] No refresh token found, skipping Keycloak logout")
 	}
 
 	// Clear the refresh token cookie locally

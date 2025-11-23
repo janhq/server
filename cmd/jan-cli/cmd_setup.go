@@ -45,6 +45,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 			response, _ := reader.ReadString('\n')
 			response = strings.TrimSpace(strings.ToLower(response))
 
+			// Default is No for updating existing config
 			if response != "y" && response != "yes" {
 				fmt.Println("Using existing .env file...")
 			} else {
@@ -100,12 +101,14 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 		fmt.Println("  • Jaeger (distributed tracing)")
 		fmt.Println("  • OpenTelemetry Collector")
 		fmt.Println()
+		fmt.Println()
 		fmt.Print("Set up monitoring? (y/N): ")
 
 		reader := bufio.NewReader(os.Stdin)
 		monitorResponse, _ := reader.ReadString('\n')
 		monitorResponse = strings.TrimSpace(strings.ToLower(monitorResponse))
 
+		// Default is No for monitoring (optional feature)
 		if monitorResponse == "y" || monitorResponse == "yes" {
 			fmt.Println()
 			fmt.Println("🔧 Installing monitoring dependencies...")
@@ -314,7 +317,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 
 	// 3. Memory Tools Configuration
 	fmt.Println()
-	fmt.Println("Memory Tools Setup")
+	fmt.Println("🧠 Memory Tools Setup")
 	fmt.Println("Enable memory tools for long-term context and retrieval.")
 	memoryPromptDefault := "Y/n"
 	if !defaultEnableMemory {
@@ -325,16 +328,18 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 	memoryChoice, _ := reader.ReadString('\n')
 	memoryChoice = strings.TrimSpace(strings.ToLower(memoryChoice))
 
+	// Default based on defaultEnableMemory flag (Y/n or y/N)
 	enableMemory := defaultEnableMemory
 	if memoryChoice != "" {
 		enableMemory = memoryChoice != "n" && memoryChoice != "no"
 	}
 
 	externalEmbedding := false
+	useRedis := false
 	if enableMemory {
-		externalEmbedding = configureMemoryOptions(reader, updates)
+		externalEmbedding, useRedis = configureMemoryOptions(reader, updates)
 	}
-	applyMemorySettings(updates, &profiles, enableMemory, externalEmbedding)
+	applyMemorySettings(updates, &profiles, enableMemory, externalEmbedding, useRedis)
 
 	// 4. Media API Configuration
 	fmt.Println()
@@ -349,6 +354,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 		mediaChoice, _ := reader.ReadString('\n')
 		mediaChoice = strings.TrimSpace(strings.ToLower(mediaChoice))
 
+		// Default is No for S3 with remote provider (requires credentials)
 		if mediaChoice == "y" || mediaChoice == "yes" {
 			updates["MEDIA_API_ENABLED"] = "true"
 			updates["MEDIA_STORAGE_BACKEND"] = "s3"
@@ -413,6 +419,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 		mediaChoice, _ := reader.ReadString('\n')
 		mediaChoice = strings.TrimSpace(strings.ToLower(mediaChoice))
 
+		// Default is Yes for Media API with local vLLM
 		if mediaChoice == "n" || mediaChoice == "no" {
 			updates["MEDIA_API_ENABLED"] = "false"
 			fmt.Println("✓ Media API disabled")
@@ -498,6 +505,20 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 	// Apply all updates
 	fmt.Println()
 
+	// Ensure Keycloak URLs are properly set for browser access
+	if _, exists := updates["KEYCLOAK_PUBLIC_URL"]; !exists {
+		updates["KEYCLOAK_PUBLIC_URL"] = "http://localhost:8085"
+	}
+	if _, exists := updates["KEYCLOAK_ADMIN_URL"]; !exists {
+		updates["KEYCLOAK_ADMIN_URL"] = "http://localhost:8085"
+	}
+	if _, exists := updates["KEYCLOAK_BASE_URL"]; !exists {
+		updates["KEYCLOAK_BASE_URL"] = "http://keycloak:8085"
+	}
+	if _, exists := updates["ISSUER"]; !exists {
+		updates["ISSUER"] = "http://localhost:8085/realms/jan"
+	}
+
 	// Set COMPOSE_PROFILES based on enabled services
 	if len(profiles) > 0 {
 		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
@@ -577,7 +598,7 @@ func applyMemoryDefaults(envPath string) error {
 
 	profiles := parseProfiles(strings.Split(string(data), "\n"))
 	updates := make(map[string]string)
-	setMemoryDefaults(updates, &profiles, false)
+	setMemoryDefaults(updates, &profiles, false, false)
 	if len(profiles) > 0 {
 		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
 	}
@@ -585,9 +606,9 @@ func applyMemoryDefaults(envPath string) error {
 	return applyEnvUpdates(envPath, updates)
 }
 
-func applyMemorySettings(updates map[string]string, profiles *[]string, enable bool, externalEmbedding bool) {
+func applyMemorySettings(updates map[string]string, profiles *[]string, enable bool, externalEmbedding bool, useRedis bool) {
 	if enable {
-		setMemoryDefaults(updates, profiles, externalEmbedding)
+		setMemoryDefaults(updates, profiles, externalEmbedding, useRedis)
 		fmt.Println("Memory tools enabled (profile: memory)")
 	} else {
 		updates["MEMORY_TOOLS_ENABLED"] = "false"
@@ -595,10 +616,11 @@ func applyMemorySettings(updates map[string]string, profiles *[]string, enable b
 	}
 }
 
-func setMemoryDefaults(updates map[string]string, profiles *[]string, externalEmbedding bool) {
+func setMemoryDefaults(updates map[string]string, profiles *[]string, externalEmbedding bool, useRedis bool) {
 	if profiles != nil {
 		hasMemory := false
 		hasMock := false
+		hasRedis := false
 		for _, profile := range *profiles {
 			if profile == "memory" {
 				hasMemory = true
@@ -606,12 +628,18 @@ func setMemoryDefaults(updates map[string]string, profiles *[]string, externalEm
 			if profile == "memory-mock" {
 				hasMock = true
 			}
+			if profile == "memory-redis" {
+				hasRedis = true
+			}
 		}
 		if !hasMemory {
 			*profiles = append(*profiles, "memory")
 		}
 		if !externalEmbedding && !hasMock {
 			*profiles = append(*profiles, "memory-mock")
+		}
+		if useRedis && !hasRedis {
+			*profiles = append(*profiles, "memory-redis")
 		}
 	}
 
@@ -628,7 +656,7 @@ func setMemoryDefaults(updates map[string]string, profiles *[]string, externalEm
 	updates["PROMPT_ORCHESTRATION_MEMORY"] = "true"
 }
 
-func configureMemoryOptions(reader *bufio.Reader, updates map[string]string) bool {
+func configureMemoryOptions(reader *bufio.Reader, updates map[string]string) (bool, bool) {
 	fmt.Println()
 	fmt.Println("Memory Embedding Service")
 	fmt.Println("Use the built-in BGE-M3 mock (default) or point to your own embedding endpoint.")
@@ -649,20 +677,23 @@ func configureMemoryOptions(reader *bufio.Reader, updates map[string]string) boo
 	fmt.Print("Use Redis cache? (y/N): ")
 	cacheChoice, _ := reader.ReadString('\n')
 	cacheChoice = strings.TrimSpace(strings.ToLower(cacheChoice))
+	// Default is No for Redis (in-memory is simpler for getting started)
+	useRedis := false
 	if cacheChoice == "y" || cacheChoice == "yes" {
 		updates["EMBEDDING_CACHE_TYPE"] = "redis"
-		fmt.Print("Redis URL (default: redis://redis:6379/3): ")
+		fmt.Print("Redis URL (default: redis://redis-memory:6379/3): ")
 		redisURL, _ := reader.ReadString('\n')
 		redisURL = strings.TrimSpace(redisURL)
 		if redisURL == "" {
-			redisURL = "redis://redis:6379/3"
+			redisURL = "redis://redis-memory:6379/3"
 		}
 		updates["EMBEDDING_CACHE_REDIS_URL"] = redisURL
+		useRedis = true
 	} else {
 		updates["EMBEDDING_CACHE_TYPE"] = "memory"
 	}
 
-	return external
+	return external, useRedis
 }
 
 func updateEnvVariable(envPath, key, value string) error {

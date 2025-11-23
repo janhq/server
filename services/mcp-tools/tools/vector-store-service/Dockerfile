@@ -1,4 +1,6 @@
-FROM golang:1.25 AS build
+ARG GO_VERSION=1.25
+
+FROM golang:${GO_VERSION} AS build
 
 WORKDIR /app
 COPY go.mod go.sum ./
