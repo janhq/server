@@ -38,7 +38,7 @@ func (s *VectorSearcher) SearchUserMemory(
 		ORDER BY embedding <=> $1::vector
 		LIMIT $4
 	`
-	
+
 	rows, err := s.db.Query(ctx, query,
 		embeddingToString(queryEmbedding),
 		userID,
@@ -49,7 +49,7 @@ func (s *VectorSearcher) SearchUserMemory(
 		return nil, fmt.Errorf("search user memory: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var items []memory.UserMemoryItem
 	for rows.Next() {
 		var item memory.UserMemoryItem
@@ -63,7 +63,7 @@ func (s *VectorSearcher) SearchUserMemory(
 		}
 		items = append(items, item)
 	}
-	
+
 	return items, nil
 }
 
@@ -88,7 +88,7 @@ func (s *VectorSearcher) SearchProjectFacts(
 		ORDER BY embedding <=> $1::vector
 		LIMIT $4
 	`
-	
+
 	rows, err := s.db.Query(ctx, query,
 		embeddingToString(queryEmbedding),
 		projectID,
@@ -99,7 +99,7 @@ func (s *VectorSearcher) SearchProjectFacts(
 		return nil, fmt.Errorf("search project facts: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var facts []memory.ProjectFact
 	for rows.Next() {
 		var fact memory.ProjectFact
@@ -113,7 +113,7 @@ func (s *VectorSearcher) SearchProjectFacts(
 		}
 		facts = append(facts, fact)
 	}
-	
+
 	return facts, nil
 }
 
@@ -137,7 +137,7 @@ func (s *VectorSearcher) SearchEpisodicEvents(
 		ORDER BY embedding <=> $1::vector
 		LIMIT $4
 	`
-	
+
 	rows, err := s.db.Query(ctx, query,
 		embeddingToString(queryEmbedding),
 		userID,
@@ -148,7 +148,7 @@ func (s *VectorSearcher) SearchEpisodicEvents(
 		return nil, fmt.Errorf("search episodic events: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var events []memory.EpisodicEvent
 	for rows.Next() {
 		var event memory.EpisodicEvent
@@ -162,7 +162,7 @@ func (s *VectorSearcher) SearchEpisodicEvents(
 		}
 		events = append(events, event)
 	}
-	
+
 	return events, nil
 }
 
@@ -171,7 +171,7 @@ func embeddingToString(embedding []float32) string {
 	if len(embedding) == 0 {
 		return "[]"
 	}
-	
+
 	result := "["
 	for i, val := range embedding {
 		if i > 0 {

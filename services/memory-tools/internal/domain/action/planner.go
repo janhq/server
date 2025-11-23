@@ -19,12 +19,12 @@ type Planner struct {
 
 // PlannerConfig holds configuration for the planner
 type PlannerConfig struct {
-	Model            string
-	Temperature      float32
-	MaxTokens        int
-	UseHeuristics    bool // Fallback to heuristics if LLM fails
-	IncludeContext   bool // Include existing memory in prompt
-	DetectConflicts  bool // Enable conflict detection
+	Model           string
+	Temperature     float32
+	MaxTokens       int
+	UseHeuristics   bool // Fallback to heuristics if LLM fails
+	IncludeContext  bool // Include existing memory in prompt
+	DetectConflicts bool // Enable conflict detection
 }
 
 // LLMMemoryActionResponse represents the structured LLM response
@@ -254,7 +254,11 @@ func (p *Planner) enhanceScoring(action *memory.MemoryAction, req memory.MemoryO
 		}
 
 		for i := range action.Add.ProjectMemory {
-			action.Add.ProjectMemory[i].Confidence = min(action.Add.ProjectMemory[i].Confidence+0.1, 1.0)
+			newConfidence := action.Add.ProjectMemory[i].Confidence + 0.1
+			if newConfidence > 1.0 {
+				newConfidence = 1.0
+			}
+			action.Add.ProjectMemory[i].Confidence = newConfidence
 		}
 	}
 }
@@ -288,7 +292,7 @@ func (p *Planner) detectAndResolveConflicts(action *memory.MemoryAction, existin
 				// Simple similarity check (could be enhanced with embeddings)
 				if strings.Contains(strings.ToLower(existingFact.Title), strings.ToLower(newFact.Title)) ||
 					strings.Contains(strings.ToLower(newFact.Title), strings.ToLower(existingFact.Title)) {
-					
+
 					// If texts are different, it might be an update
 					if !strings.EqualFold(newFact.Text, existingFact.Text) {
 						// Reduce confidence of old fact instead of deleting
@@ -488,13 +492,6 @@ func formatEpisodicText(role, content string) string {
 		content = content[:497] + "..."
 	}
 	return role + ": " + content
-}
-
-func min(a, b float32) float32 {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // ExistingMemoryContext holds existing memory for conflict detection

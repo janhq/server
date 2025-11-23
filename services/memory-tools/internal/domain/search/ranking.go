@@ -32,54 +32,54 @@ func NewRanker() *Ranker {
 // RankUserMemory ranks user memory items by weighted score
 func (r *Ranker) RankUserMemory(items []memory.UserMemoryItem) []RankedResult {
 	results := make([]RankedResult, len(items))
-	
+
 	for i, item := range items {
 		// Score = similarity * (importance_score / 5.0)
 		score := item.Similarity * (float32(item.Score) / 5.0)
-		
+
 		results[i] = RankedResult{
 			Item:  item,
 			Score: score,
 			Type:  "user_memory",
 		}
 	}
-	
+
 	return results
 }
 
 // RankProjectFacts ranks project facts by weighted score
 func (r *Ranker) RankProjectFacts(facts []memory.ProjectFact) []RankedResult {
 	results := make([]RankedResult, len(facts))
-	
+
 	for i, fact := range facts {
 		// Score = similarity * confidence
 		score := fact.Similarity * fact.Confidence
-		
+
 		results[i] = RankedResult{
 			Item:  fact,
 			Score: score,
 			Type:  "project_fact",
 		}
 	}
-	
+
 	return results
 }
 
 // RankEpisodicEvents ranks episodic events by weighted score
 func (r *Ranker) RankEpisodicEvents(events []memory.EpisodicEvent) []RankedResult {
 	results := make([]RankedResult, len(events))
-	
+
 	for i, event := range events {
 		// Score = similarity * 0.8 (slightly lower weight for episodic)
 		score := event.Similarity * 0.8
-		
+
 		results[i] = RankedResult{
 			Item:  event,
 			Score: score,
 			Type:  "episodic",
 		}
 	}
-	
+
 	return results
 }
 
@@ -90,21 +90,21 @@ func (r *Ranker) CombineAndRank(
 	episodicEvents []memory.EpisodicEvent,
 ) []RankedResult {
 	var allResults []RankedResult
-	
+
 	// Add user memory results
 	allResults = append(allResults, r.RankUserMemory(userMemory)...)
-	
+
 	// Add project facts
 	allResults = append(allResults, r.RankProjectFacts(projectFacts)...)
-	
+
 	// Add episodic events
 	allResults = append(allResults, r.RankEpisodicEvents(episodicEvents)...)
-	
+
 	// Sort by score descending
 	sort.Slice(allResults, func(i, j int) bool {
 		return allResults[i].Score > allResults[j].Score
 	})
-	
+
 	return allResults
 }
 
@@ -138,6 +138,6 @@ func (r *Ranker) SeparateByType(results []RankedResult) (
 			}
 		}
 	}
-	
+
 	return
 }

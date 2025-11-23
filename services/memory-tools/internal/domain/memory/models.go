@@ -7,64 +7,64 @@ import (
 
 // UserMemoryItem represents a user's personal memory item
 type UserMemoryItem struct {
-	ID        string    `json:"id" db:"id"`
-	UserID    string    `json:"user_id" db:"user_id"`
-	Scope     string    `json:"scope" db:"scope"` // "core", "preference", "context"
-	Key       string    `json:"key" db:"key"`
-	Text      string    `json:"text" db:"text"`
-	Score     int       `json:"score" db:"score"` // Importance: 1-5
-	Embedding []float32 `json:"-" db:"embedding"`
-	IsDeleted bool      `json:"-" db:"is_deleted"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Scope     string    `json:"scope"` // "core", "preference", "context"
+	Key       string    `json:"key"`
+	Text      string    `json:"text"`
+	Score     int       `json:"score"` // Importance: 1-5
+	Embedding []float32 `json:"-"`
+	IsDeleted bool      `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
 	// Computed fields
 	Similarity float32 `json:"similarity,omitempty" db:"-"`
 }
 
 // ProjectFact represents a project-level fact or decision
 type ProjectFact struct {
-	ID                    string    `json:"id" db:"id"`
-	ProjectID             string    `json:"project_id" db:"project_id"`
-	Kind                  string    `json:"kind" db:"kind"` // "decision", "requirement", "constraint", "context"
-	Title                 string    `json:"title" db:"title"`
-	Text                  string    `json:"text" db:"text"`
-	Confidence            float32   `json:"confidence" db:"confidence"` // 0.0-1.0
-	Embedding             []float32 `json:"-" db:"embedding"`
-	SourceConversationID  string    `json:"source_conversation_id" db:"source_conversation_id"`
-	IsDeleted             bool      `json:"-" db:"is_deleted"`
-	CreatedAt             time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt             time.Time `json:"updated_at" db:"updated_at"`
-	
+	ID                   string    `json:"id"`
+	ProjectID            string    `json:"project_id"`
+	Kind                 string    `json:"kind"` // "decision", "requirement", "constraint", "context"
+	Title                string    `json:"title"`
+	Text                 string    `json:"text"`
+	Confidence           float32   `json:"confidence"` // 0.0-1.0
+	Embedding            []float32 `json:"-"`
+	SourceConversationID string    `json:"source_conversation_id"`
+	IsDeleted            bool      `json:"-"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+
 	// Computed fields
 	Similarity float32 `json:"similarity,omitempty" db:"-"`
 }
 
 // EpisodicEvent represents a time-bound event or interaction
 type EpisodicEvent struct {
-	ID                   string    `json:"id" db:"id"`
-	UserID               string    `json:"user_id" db:"user_id"`
-	ProjectID            string    `json:"project_id,omitempty" db:"project_id"`
-	ConversationID       string    `json:"conversation_id" db:"conversation_id"`
-	Time                 time.Time `json:"time" db:"time"`
-	Text                 string    `json:"text" db:"text"`
-	Kind                 string    `json:"kind" db:"kind"` // "interaction", "decision", "milestone"
-	Embedding            []float32 `json:"-" db:"embedding"`
-	IsDeleted            bool      `json:"-" db:"is_deleted"`
-	CreatedAt            time.Time `json:"created_at" db:"created_at"`
-	
+	ID             string    `json:"id"`
+	UserID         string    `json:"user_id"`
+	ProjectID      string    `json:"project_id,omitempty"`
+	ConversationID string    `json:"conversation_id"`
+	Time           time.Time `json:"time"`
+	Text           string    `json:"text"`
+	Kind           string    `json:"kind"` // "interaction", "decision", "milestone"
+	Embedding      []float32 `json:"-"`
+	IsDeleted      bool      `json:"-"`
+	CreatedAt      time.Time `json:"created_at"`
+
 	// Computed fields
 	Similarity float32 `json:"similarity,omitempty" db:"-"`
 }
 
 // ConversationItem represents a single message in a conversation
 type ConversationItem struct {
-	ID             string    `json:"id" db:"id"`
-	ConversationID string    `json:"conversation_id" db:"conversation_id"`
-	Role           string    `json:"role" db:"role"` // "user", "assistant", "system"
-	Content        string    `json:"content" db:"content"`
-	ToolCalls      string    `json:"tool_calls,omitempty" db:"tool_calls"` // JSON array
-	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	ID             string    `json:"id"`
+	ConversationID string    `json:"conversation_id"`
+	Role           string    `json:"role"` // "user", "assistant", "system"
+	Content        string    `json:"content"`
+	ToolCalls      string    `json:"tool_calls,omitempty"` // JSON array
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // ConversationSummary represents a summary of a conversation

@@ -14,7 +14,7 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 			defer cancel()
 
 			r = r.WithContext(ctx)
-			
+
 			done := make(chan struct{})
 			go func() {
 				next.ServeHTTP(w, r)

@@ -1,6 +1,7 @@
 package action
 
 import (
+	"math"
 	"strings"
 
 	"github.com/janhq/jan-server/services/memory-tools/internal/domain/memory"
@@ -35,43 +36,47 @@ func (s *Scorer) ScoreImportance(importance string) int {
 // ScoreUserMemoryItem scores a user memory item based on various factors
 func (s *Scorer) ScoreUserMemoryItem(item *memory.UserMemoryItemInput) int {
 	score := s.ScoreImportance(item.Importance)
-	
+
 	// Adjust based on scope
 	switch item.Scope {
 	case "core":
-		score = min(score+1, 5) // Core facts are more important
+		if score < 5 {
+			score++ // Core facts are more important
+		}
 	case "preference":
 		// Keep as is
 	case "context":
-		score = max(score-1, 1) // Context is less permanent
+		if score > 1 {
+			score-- // Context is less permanent
+		}
 	}
-	
+
 	return score
 }
 
 // ScoreProjectFact scores a project fact based on confidence and kind
 func (s *Scorer) ScoreProjectFact(fact *memory.ProjectFactInput) float32 {
 	confidence := fact.Confidence
-	
+
 	// Adjust based on kind
 	switch fact.Kind {
 	case "decision":
-		confidence = min(confidence+0.1, 1.0) // Decisions are more important
+		confidence = float32(math.Min(float64(confidence+0.1), 1.0)) // Decisions are more important
 	case "requirement":
-		confidence = min(confidence+0.05, 1.0)
+		confidence = float32(math.Min(float64(confidence+0.05), 1.0))
 	case "constraint":
 		// Keep as is
 	case "context":
-		confidence = max(confidence-0.1, 0.0)
+		confidence = float32(math.Max(float64(confidence-0.1), 0.0))
 	}
-	
+
 	return confidence
 }
 
 // AnalyzeTextImportance analyzes text to determine importance
 func (s *Scorer) AnalyzeTextImportance(text string) string {
 	text = strings.ToLower(text)
-	
+
 	// Critical indicators
 	criticalKeywords := []string{
 		"must", "required", "critical", "essential", "mandatory",
@@ -82,7 +87,7 @@ func (s *Scorer) AnalyzeTextImportance(text string) string {
 			return "critical"
 		}
 	}
-	
+
 	// High importance indicators
 	highKeywords := []string{
 		"important", "should", "prefer", "recommend",
@@ -93,7 +98,7 @@ func (s *Scorer) AnalyzeTextImportance(text string) string {
 			return "high"
 		}
 	}
-	
+
 	// Low importance indicators
 	lowKeywords := []string{
 		"maybe", "might", "consider", "optional",
@@ -104,22 +109,7 @@ func (s *Scorer) AnalyzeTextImportance(text string) string {
 			return "low"
 		}
 	}
-	
+
 	// Default to medium
 	return "medium"
-}
-
-// Helper functions
-func min(a, b float32) float32 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b float32) float32 {
-	if a > b {
-		return a
-	}
-	return b
 }

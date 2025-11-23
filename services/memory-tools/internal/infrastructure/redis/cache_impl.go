@@ -25,11 +25,11 @@ func NewCacheImpl(redisURL, keyPrefix string, ttl time.Duration) (*CacheImpl, er
 	}
 
 	client := redis.NewClient(opts)
-	
+
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("connect to redis: %w", err)
 	}
@@ -86,33 +86,33 @@ func (c *CacheImpl) Delete(key string) error {
 // Clear removes all cached embeddings with the prefix
 func (c *CacheImpl) Clear() error {
 	ctx := context.Background()
-	
+
 	iter := c.client.Scan(ctx, 0, c.keyPrefix+"*", 0).Iterator()
 	for iter.Next(ctx) {
 		if err := c.client.Del(ctx, iter.Val()).Err(); err != nil {
 			return err
 		}
 	}
-	
+
 	return iter.Err()
 }
 
 // Stats returns cache statistics
 func (c *CacheImpl) Stats() (map[string]interface{}, error) {
 	ctx := context.Background()
-	
+
 	info, err := c.client.Info(ctx, "stats").Result()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Count keys with our prefix
 	var count int64
 	iter := c.client.Scan(ctx, 0, c.keyPrefix+"*", 0).Iterator()
 	for iter.Next(ctx) {
 		count++
 	}
-	
+
 	return map[string]interface{}{
 		"type":       "redis",
 		"key_prefix": c.keyPrefix,

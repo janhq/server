@@ -23,7 +23,7 @@ type Cache interface {
 }
 
 type CacheConfig struct {
-	Type      string        // "redis", "memory", "noop"
+	Type      string // "redis", "memory", "noop"
 	RedisURL  string
 	KeyPrefix string
 	MaxSize   int
