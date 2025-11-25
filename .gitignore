@@ -276,3 +276,6 @@ docker-compose.*.local.yml
 
 # jan-cli generated config artifacts
 cmd/jan-cli/config/
+
+# jan-cli binary
+cmd/jan-cli/jan-cli
