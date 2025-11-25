@@ -51,6 +51,13 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		// Skip auth for health check endpoints
+		path := c.Request.URL.Path
+		if path == "/healthz" || path == "/readyz" || path == "/health/auth" {
+			c.Next()
+			return
+		}
+
 		tokenString := bearerToken(c.GetHeader("Authorization"))
 		if tokenString == "" {
 			abortUnauthorized(c, "missing bearer token")

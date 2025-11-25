@@ -103,7 +103,7 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 	server.AddTool(
 		mcpgo.NewTool("memory_retrieve",
 			mcp.ReflectToMCPOptions(
-				"Retrieve relevant user preferences, project context, or conversation history when needed for the current task. Use this when you need personalization or project-specific context.",
+				"READ-ONLY: Search and retrieve relevant user preferences, project facts, or conversation history from memory storage. This tool ONLY reads existing memories - it does NOT create, update, or sync memories. Use this to recall what you already know about the user or project context.",
 				MemoryRetrieveArgs{},
 			)...,
 		),
@@ -122,14 +122,15 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 			// First, try to get user_id from JWT context (most secure)
 			if ctxUserID, ok := ctx.Value("user_id").(string); ok && ctxUserID != "" {
 				userID = ctxUserID
-				log.Debug().Str("user_id", userID).Msg("Using user_id from JWT authentication")
+				log.Info().Str("user_id", userID).Str("query", query).Msg("[Memory MCP] Using user_id from JWT authentication")
 			} else {
 				// Fallback to parameter if no JWT context
 				userID = req.GetString("user_id", "")
 				if userID == "" {
+					log.Error().Str("query", query).Msg("[Memory MCP] user_id is required but not provided")
 					return nil, fmt.Errorf("user_id is required: provide it as a parameter or authenticate with JWT")
 				}
-				log.Debug().Str("user_id", userID).Msg("Using user_id from parameter (no JWT)")
+				log.Info().Str("user_id", userID).Str("query", query).Msg("[Memory MCP] Using user_id from parameter (no JWT)")
 			}
 
 			// Build memory load request with defaults
@@ -148,9 +149,11 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 			// Apply optional parameters
 			if projectID := req.GetString("project_id", ""); projectID != "" {
 				memReq.ProjectID = projectID
+				log.Info().Str("user_id", userID).Str("project_id", projectID).Msg("[Memory MCP] Including project_id filter")
 			}
 			if conversationID := req.GetString("conversation_id", ""); conversationID != "" {
 				memReq.ConversationID = conversationID
+				log.Info().Str("user_id", userID).Str("conversation_id", conversationID).Msg("[Memory MCP] Including conversation_id filter")
 			}
 
 			// Apply limits with guardrails (max 10 per type)
@@ -189,10 +192,28 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 				}
 			}
 
+			// Log the full request being sent to memory service
+			log.Info().
+				Str("user_id", userID).
+				Str("query", query).
+				Str("project_id", memReq.ProjectID).
+				Str("conversation_id", memReq.ConversationID).
+				Int("max_user_items", memReq.Options.MaxUserItems).
+				Int("max_project_items", memReq.Options.MaxProjectItems).
+				Int("max_episodic_items", memReq.Options.MaxEpisodicItems).
+				Float32("min_similarity", memReq.Options.MinSimilarity).
+				Str("memory_url", m.memoryToolsURL).
+				Msg("[Memory MCP] Calling memory-tools service")
+
 			// Call memory-tools API
 			response, err := m.callMemoryLoad(ctx, memReq)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to retrieve memories")
+				log.Error().
+					Err(err).
+					Str("user_id", userID).
+					Str("query", query).
+					Str("memory_url", m.memoryToolsURL).
+					Msg("[Memory MCP] Failed to retrieve memories")
 				// Return empty result instead of error to not break agent flow
 				return mcpgo.NewToolResultText(fmt.Sprintf(`{"query":"%s","total_items":0,"user_memories":[],"project_memories":[],"episodic_memories":[],"error":"memory service unavailable"}`, query)), nil
 			}
@@ -210,6 +231,18 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 				QueryTimeMS:      elapsed,
 				EstimatedTokens:  m.estimateTokens(response),
 			}
+
+			// Log successful retrieval with result summary
+			log.Info().
+				Str("user_id", userID).
+				Str("query", query).
+				Int("user_memories", len(response.CoreMemory)).
+				Int("project_memories", len(response.SemanticMemory)).
+				Int("episodic_memories", len(response.EpisodicMemory)).
+				Int("total_items", result.TotalItems).
+				Int64("query_time_ms", elapsed).
+				Int("estimated_tokens", result.EstimatedTokens).
+				Msg("[Memory MCP] Successfully retrieved memories")
 
 			// Marshal to JSON
 			resultJSON, err := json.Marshal(result)
@@ -229,12 +262,21 @@ func (m *MemoryMCP) callMemoryLoad(ctx context.Context, req memoryLoadRequest) (
 	// Marshal request
 	reqBody, err := json.Marshal(req)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", req.UserID).Msg("[Memory MCP] Failed to marshal request")
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
+
+	// Log the raw request being sent
+	log.Debug().
+		Str("user_id", req.UserID).
+		Str("url", m.memoryToolsURL+"/v1/memory/load").
+		Str("request_body", string(reqBody)).
+		Msg("[Memory MCP] Sending HTTP request to memory service")
 
 	// Create HTTP request
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, m.memoryToolsURL+"/v1/memory/load", bytes.NewReader(reqBody))
 	if err != nil {
+		log.Error().Err(err).Str("user_id", req.UserID).Str("url", m.memoryToolsURL).Msg("[Memory MCP] Failed to create HTTP request")
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -242,6 +284,11 @@ func (m *MemoryMCP) callMemoryLoad(ctx context.Context, req memoryLoadRequest) (
 	// Execute request
 	httpResp, err := m.httpClient.Do(httpReq)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user_id", req.UserID).
+			Str("url", m.memoryToolsURL+"/v1/memory/load").
+			Msg("[Memory MCP] HTTP request failed - connection error")
 		return nil, fmt.Errorf("failed to call memory service: %w", err)
 	}
 	defer httpResp.Body.Close()
@@ -249,14 +296,44 @@ func (m *MemoryMCP) callMemoryLoad(ctx context.Context, req memoryLoadRequest) (
 	// Check status
 	if httpResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(httpResp.Body)
+		log.Error().
+			Str("user_id", req.UserID).
+			Int("status_code", httpResp.StatusCode).
+			Str("response_body", string(body)).
+			Str("url", m.memoryToolsURL+"/v1/memory/load").
+			Msg("[Memory MCP] Memory service returned non-OK status")
 		return nil, fmt.Errorf("memory service returned status %d: %s", httpResp.StatusCode, string(body))
 	}
 
+	// Read response body for logging
+	respBody, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", req.UserID).Msg("[Memory MCP] Failed to read response body")
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	log.Debug().
+		Str("user_id", req.UserID).
+		Str("response_body", string(respBody)).
+		Msg("[Memory MCP] Received response from memory service")
+
 	// Parse response
 	var response memoryLoadResponse
-	if err := json.NewDecoder(httpResp.Body).Decode(&response); err != nil {
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		log.Error().
+			Err(err).
+			Str("user_id", req.UserID).
+			Str("response_body", string(respBody)).
+			Msg("[Memory MCP] Failed to decode response JSON")
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
+	log.Info().
+		Str("user_id", req.UserID).
+		Int("core_memory_count", len(response.CoreMemory)).
+		Int("semantic_memory_count", len(response.SemanticMemory)).
+		Int("episodic_memory_count", len(response.EpisodicMemory)).
+		Msg("[Memory MCP] Successfully parsed memory service response")
 
 	return &response, nil
 }

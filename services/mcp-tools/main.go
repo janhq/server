@@ -100,11 +100,13 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(middlewares.RequestLogger())
 	router.Use(middlewares.CORS())
+
+	// Apply auth middleware (will skip health checks internally)
 	if authValidator != nil {
 		router.Use(authValidator.Middleware())
 	}
 
-	// Health check
+	// Health check endpoints
 	router.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "mcp-tools"})
 	})
@@ -112,6 +114,7 @@ func main() {
 	router.GET("/readyz", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ready", "service": "mcp-tools"})
 	})
+
 	router.GET("/health/auth", func(c *gin.Context) {
 		if authValidator == nil || authValidator.Ready() {
 			c.JSON(200, gin.H{"status": "ready"})
@@ -122,9 +125,7 @@ func main() {
 
 	// Register MCP routes
 	v1 := router.Group("/v1")
-	mcpRoute.RegisterRouter(v1)
-
-	// Start server
+	mcpRoute.RegisterRouter(v1) // Start server
 	addr := fmt.Sprintf(":%s", cfg.HTTPPort)
 	log.Info().Str("address", addr).Msg("Server listening")
 

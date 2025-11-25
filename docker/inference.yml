@@ -32,7 +32,9 @@ services:
       VLLM_DISABLE_FLASHINFER_PREFILL: ${VLLM_DISABLE_FLASHINFER_PREFILL:-1}
       
       # Attention Backend
-      VLLM_ATTENTION_BACKEND: ${VLLM_ATTENTION_BACKEND:-TORCH_SDPA}
+      # TORCH_SDPA is not registered in vLLM v1; use Triton by default so
+      # older (<SM80) GPUs can start without backend errors.
+      VLLM_ATTENTION_BACKEND: ${VLLM_ATTENTION_BACKEND:-TRITON_ATTN}
       
       # Compilation Configuration
       VLLM_USE_STANDALONE_COMPILE: ${VLLM_USE_STANDALONE_COMPILE:-0}

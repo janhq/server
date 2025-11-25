@@ -21,7 +21,11 @@ func NewModelCatalogService(modelCatalogRepo ModelCatalogRepository) *ModelCatal
 	}
 }
 
-func (s *ModelCatalogService) UpsertCatalog(ctx context.Context, kind ProviderKind, model chat.Model) (*ModelCatalog, bool, error) {
+func (s *ModelCatalogService) UpsertCatalog(ctx context.Context, provider *Provider, model chat.Model) (*ModelCatalog, bool, error) {
+	kind := ProviderCustom
+	if provider != nil {
+		kind = provider.Kind
+	}
 	publicID := catalogPublicID(kind, model)
 	if publicID == "" {
 		return nil, false, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "model identifier missing", nil, "3934616c-8447-4ba8-809e-9b3c3924c32d")
@@ -36,7 +40,7 @@ func (s *ModelCatalogService) UpsertCatalog(ctx context.Context, kind ProviderKi
 		existing = nil
 	}
 
-	catalog := buildModelCatalogFromModel(kind, model)
+	catalog := buildModelCatalogFromModel(provider, model)
 	catalog.PublicID = publicID
 	now := time.Now().UTC()
 	catalog.LastSyncedAt = &now
@@ -184,7 +188,12 @@ func catalogPublicID(kind ProviderKind, model chat.Model) string {
 	return NormalizeModelKey(kind, rawModelKey)
 }
 
-func buildModelCatalogFromModel(kind ProviderKind, model chat.Model) *ModelCatalog {
+func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCatalog {
+	kind := ProviderCustom
+	if provider != nil {
+		kind = provider.Kind
+	}
+
 	status := ModelCatalogStatusInit
 	if kind == ProviderOpenRouter {
 		status = ModelCatalogStatusFilled
@@ -204,12 +213,25 @@ func buildModelCatalogFromModel(kind ProviderKind, model chat.Model) *ModelCatal
 		"stop",
 		"stream",
 		"n",
-		"tools",
-		"tool_choice",
 		"response_format",
 	}
 
+	toolSupport := provider != nil && provider.SupportsTools()
+	if toolSupport {
+		defaultParameterNames = append(defaultParameterNames, "tools", "tool_choice")
+	}
+
 	supportedNames := extractStringSlice(model.Raw["supported_parameters"])
+	if !toolSupport && len(supportedNames) > 0 {
+		filtered := make([]string, 0, len(supportedNames))
+		for _, name := range supportedNames {
+			if name == "tools" || name == "tool_choice" {
+				continue
+			}
+			filtered = append(filtered, name)
+		}
+		supportedNames = filtered
+	}
 	nameSet := make(map[string]struct{}, len(supportedNames)+len(defaultParameterNames))
 	for _, name := range supportedNames {
 		nameSet[name] = struct{}{}

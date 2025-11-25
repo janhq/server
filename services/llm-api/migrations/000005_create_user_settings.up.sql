@@ -7,18 +7,32 @@ CREATE TABLE llm_api.user_settings (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     
-    -- Memory Feature Controls
-    memory_enabled BOOLEAN NOT NULL DEFAULT true,
-    memory_auto_inject BOOLEAN NOT NULL DEFAULT false,
-    memory_inject_user_core BOOLEAN NOT NULL DEFAULT false,
-    memory_inject_project BOOLEAN NOT NULL DEFAULT false,
-    memory_inject_conversation BOOLEAN NOT NULL DEFAULT false,
+    -- Memory Configuration stored as JSON for flexibility
+    memory_config JSONB NOT NULL DEFAULT '{
+        "enabled": true,
+        "observe_enabled": true,
+        "inject_user_core": true,
+        "inject_semantic": true,
+        "inject_episodic": false,
+        "max_user_items": 3,
+        "max_project_items": 5,
+        "max_episodic_items": 3,
+        "min_similarity": 0.75
+    }',
     
-    -- Memory Retrieval Preferences
-    memory_max_user_items INTEGER NOT NULL DEFAULT 3,
-    memory_max_project_items INTEGER NOT NULL DEFAULT 5,
-    memory_max_episodic_items INTEGER NOT NULL DEFAULT 3,
-    memory_min_similarity NUMERIC(3,2) NOT NULL DEFAULT 0.75,
+    -- Profile Settings
+    profile_settings JSONB NOT NULL DEFAULT '{
+        "custom_instructions": "",
+        "nickname": "",
+        "occupation": "",
+        "more_about_you": ""
+    }',
+    
+    -- Advanced Settings
+    advanced_settings JSONB NOT NULL DEFAULT '{
+        "web_search": false,
+        "code_enabled": false
+    }',
     
     -- Other Feature Toggles
     enable_trace BOOLEAN NOT NULL DEFAULT false,
@@ -35,12 +49,9 @@ CREATE TABLE llm_api.user_settings (
 );
 
 CREATE INDEX idx_user_settings_user_id ON llm_api.user_settings(user_id);
-CREATE INDEX idx_user_settings_memory_enabled ON llm_api.user_settings(memory_enabled);
 
--- Add helpful comment
-COMMENT ON TABLE llm_api.user_settings IS 'User preferences and feature toggles including memory controls';
-COMMENT ON COLUMN llm_api.user_settings.memory_enabled IS 'Master toggle for memory features (observation and retrieval)';
-COMMENT ON COLUMN llm_api.user_settings.memory_auto_inject IS 'Automatically inject memory at conversation start (default: false)';
-COMMENT ON COLUMN llm_api.user_settings.memory_inject_user_core IS 'Inject user profile core (language, role, etc.) when enabled';
-COMMENT ON COLUMN llm_api.user_settings.memory_inject_project IS 'Inject project context when enabled';
-COMMENT ON COLUMN llm_api.user_settings.memory_inject_conversation IS 'Inject conversation history summaries when enabled';
+-- Add helpful comments
+COMMENT ON TABLE llm_api.user_settings IS 'User preferences and feature toggles with JSONB columns for flexible configuration';
+COMMENT ON COLUMN llm_api.user_settings.memory_config IS 'Memory configuration: enabled, auto_inject, observe_enabled, inject flags, retrieval limits, similarity threshold';
+COMMENT ON COLUMN llm_api.user_settings.profile_settings IS 'User profile information: custom_instructions, nickname, occupation, more_about_you';
+COMMENT ON COLUMN llm_api.user_settings.advanced_settings IS 'Advanced features: web_search, code_enabled';

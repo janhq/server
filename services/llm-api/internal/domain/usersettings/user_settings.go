@@ -11,18 +11,14 @@ type UserSettings struct {
 	ID     uint
 	UserID uint
 
-	// Memory Feature Controls
-	MemoryEnabled            bool
-	MemoryAutoInject         bool
-	MemoryInjectUserCore     bool
-	MemoryInjectProject      bool
-	MemoryInjectConversation bool
+	// Memory Configuration stored as JSON
+	MemoryConfig MemoryConfig `gorm:"type:jsonb;serializer:json"`
 
-	// Memory Retrieval Preferences
-	MemoryMaxUserItems     int
-	MemoryMaxProjectItems  int
-	MemoryMaxEpisodicItems int
-	MemoryMinSimilarity    float32
+	// Profile Settings
+	ProfileSettings ProfileSettings `gorm:"type:jsonb;serializer:json"`
+
+	// Advanced Settings
+	AdvancedSettings AdvancedSettings `gorm:"type:jsonb;serializer:json"`
 
 	// Other Feature Toggles
 	EnableTrace bool
@@ -37,95 +33,97 @@ type UserSettings struct {
 
 // MemoryConfig returns memory configuration derived from settings.
 type MemoryConfig struct {
-	Enabled            bool
-	AutoInject         bool
-	InjectUserCore     bool
-	InjectProject      bool
-	InjectConversation bool
-	MaxUserItems       int
-	MaxProjectItems    int
-	MaxEpisodicItems   int
-	MinSimilarity      float32
+	Enabled          bool    `json:"enabled"`
+	ObserveEnabled   bool    `json:"observe_enabled"`
+	InjectUserCore   bool    `json:"inject_user_core"`
+	InjectSemantic   bool    `json:"inject_semantic"`
+	InjectEpisodic   bool    `json:"inject_episodic"`
+	MaxUserItems     int     `json:"max_user_items"`
+	MaxProjectItems  int     `json:"max_project_items"`
+	MaxEpisodicItems int     `json:"max_episodic_items"`
+	MinSimilarity    float32 `json:"min_similarity"`
 }
 
-// GetMemoryConfig extracts memory configuration from user settings.
-func (s *UserSettings) GetMemoryConfig() MemoryConfig {
+// ProfileSettings stores user profile information.
+type ProfileSettings struct {
+	CustomInstructions string `json:"custom_instructions"` // Additional behavior, style, and tone preferences
+	Nickname           string `json:"nickname"`            // What should Jan call you?
+	Occupation         string `json:"occupation"`          // User's occupation
+	MoreAboutYou       string `json:"more_about_you"`      // Additional information about the user
+}
+
+// AdvancedSettings stores advanced feature toggles.
+type AdvancedSettings struct {
+	WebSearch   bool `json:"web_search"`   // Let Jan automatically search the web for answers
+	CodeEnabled bool `json:"code_enabled"` // Enable code execution features
+}
+
+// DefaultMemoryConfig returns default memory configuration
+func DefaultMemoryConfig() MemoryConfig {
 	return MemoryConfig{
-		Enabled:            s.MemoryEnabled,
-		AutoInject:         s.MemoryAutoInject,
-		InjectUserCore:     s.MemoryInjectUserCore,
-		InjectProject:      s.MemoryInjectProject,
-		InjectConversation: s.MemoryInjectConversation,
-		MaxUserItems:       s.MemoryMaxUserItems,
-		MaxProjectItems:    s.MemoryMaxProjectItems,
-		MaxEpisodicItems:   s.MemoryMaxEpisodicItems,
-		MinSimilarity:      s.MemoryMinSimilarity,
+		Enabled:          true,
+		ObserveEnabled:   true, // Default ON - auto-learn from conversations
+		InjectUserCore:   true,
+		InjectSemantic:   true,
+		InjectEpisodic:   false,
+		MaxUserItems:     3,
+		MaxProjectItems:  5,
+		MaxEpisodicItems: 3,
+		MinSimilarity:    0.75,
 	}
 }
 
-// DefaultUserSettings returns settings with safe defaults (memory disabled by default).
+// DefaultProfileSettings returns default profile settings
+func DefaultProfileSettings() ProfileSettings {
+	return ProfileSettings{
+		CustomInstructions: "",
+		Nickname:           "",
+		Occupation:         "",
+		MoreAboutYou:       "",
+	}
+}
+
+// DefaultAdvancedSettings returns default advanced settings
+func DefaultAdvancedSettings() AdvancedSettings {
+	return AdvancedSettings{
+		WebSearch:   false, // Default OFF for privacy
+		CodeEnabled: false, // Default OFF for security
+	}
+}
+
+// DefaultUserSettings returns settings with safe defaults.
 func DefaultUserSettings(userID uint) *UserSettings {
 	return &UserSettings{
-		UserID:                   userID,
-		MemoryEnabled:            true,
-		MemoryAutoInject:         false, // Default OFF per improvement plan
-		MemoryInjectUserCore:     false,
-		MemoryInjectProject:      false,
-		MemoryInjectConversation: false,
-		MemoryMaxUserItems:       3,
-		MemoryMaxProjectItems:    5,
-		MemoryMaxEpisodicItems:   3,
-		MemoryMinSimilarity:      0.75,
-		EnableTrace:              false,
-		EnableTools:              true,
-		Preferences:              make(map[string]interface{}),
+		UserID:           userID,
+		MemoryConfig:     DefaultMemoryConfig(),
+		ProfileSettings:  DefaultProfileSettings(),
+		AdvancedSettings: DefaultAdvancedSettings(),
+		EnableTrace:      false,
+		EnableTools:      true,
+		Preferences:      make(map[string]interface{}),
 	}
 }
 
 // UpdateRequest represents fields that can be updated via API.
 type UpdateRequest struct {
-	MemoryEnabled            *bool                  `json:"memory_enabled,omitempty"`
-	MemoryAutoInject         *bool                  `json:"memory_auto_inject,omitempty"`
-	MemoryInjectUserCore     *bool                  `json:"memory_inject_user_core,omitempty"`
-	MemoryInjectProject      *bool                  `json:"memory_inject_project,omitempty"`
-	MemoryInjectConversation *bool                  `json:"memory_inject_conversation,omitempty"`
-	MemoryMaxUserItems       *int                   `json:"memory_max_user_items,omitempty"`
-	MemoryMaxProjectItems    *int                   `json:"memory_max_project_items,omitempty"`
-	MemoryMaxEpisodicItems   *int                   `json:"memory_max_episodic_items,omitempty"`
-	MemoryMinSimilarity      *float32               `json:"memory_min_similarity,omitempty"`
-	EnableTrace              *bool                  `json:"enable_trace,omitempty"`
-	EnableTools              *bool                  `json:"enable_tools,omitempty"`
-	Preferences              map[string]interface{} `json:"preferences,omitempty"`
+	MemoryConfig     *MemoryConfig          `json:"memory_config,omitempty"`
+	ProfileSettings  *ProfileSettings       `json:"profile_settings,omitempty"`
+	AdvancedSettings *AdvancedSettings      `json:"advanced_settings,omitempty"`
+	EnableTrace      *bool                  `json:"enable_trace,omitempty"`
+	EnableTools      *bool                  `json:"enable_tools,omitempty"`
+	Preferences      map[string]interface{} `json:"preferences,omitempty"`
 }
 
 // Apply updates the UserSettings with non-nil fields from UpdateRequest.
 func (s *UserSettings) Apply(req UpdateRequest) {
-	if req.MemoryEnabled != nil {
-		s.MemoryEnabled = *req.MemoryEnabled
+	if req.MemoryConfig != nil {
+		s.MemoryConfig = *req.MemoryConfig
 	}
-	if req.MemoryAutoInject != nil {
-		s.MemoryAutoInject = *req.MemoryAutoInject
+	if req.ProfileSettings != nil {
+		s.ProfileSettings = *req.ProfileSettings
 	}
-	if req.MemoryInjectUserCore != nil {
-		s.MemoryInjectUserCore = *req.MemoryInjectUserCore
-	}
-	if req.MemoryInjectProject != nil {
-		s.MemoryInjectProject = *req.MemoryInjectProject
-	}
-	if req.MemoryInjectConversation != nil {
-		s.MemoryInjectConversation = *req.MemoryInjectConversation
-	}
-	if req.MemoryMaxUserItems != nil {
-		s.MemoryMaxUserItems = *req.MemoryMaxUserItems
-	}
-	if req.MemoryMaxProjectItems != nil {
-		s.MemoryMaxProjectItems = *req.MemoryMaxProjectItems
-	}
-	if req.MemoryMaxEpisodicItems != nil {
-		s.MemoryMaxEpisodicItems = *req.MemoryMaxEpisodicItems
-	}
-	if req.MemoryMinSimilarity != nil {
-		s.MemoryMinSimilarity = *req.MemoryMinSimilarity
+	if req.AdvancedSettings != nil {
+		s.AdvancedSettings = *req.AdvancedSettings
 	}
 	if req.EnableTrace != nil {
 		s.EnableTrace = *req.EnableTrace

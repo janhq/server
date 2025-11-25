@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"jan-server/services/llm-api/internal/domain/query"
@@ -54,6 +55,7 @@ const (
 	MetadataKeyDescription      = "description"            // Human-readable description
 	MetadataKeyEnvironment      = "environment"            // e.g., "production", "staging", "local"
 	MetadataKeyAutoEnableModels = "auto_enable_new_models" // "true" to auto-enable new models
+	MetadataKeyToolSupport      = "tool_support"           // "true" if provider supports tools/tool_choice
 )
 
 // ImageInputCapability describes how a provider supports image input
@@ -157,6 +159,20 @@ func (p *Provider) GetEnvironment() string {
 		return ""
 	}
 	return p.Metadata[MetadataKeyEnvironment]
+}
+
+// SupportsTools returns true if provider metadata indicates tool support.
+func (p *Provider) SupportsTools() bool {
+	if p == nil || p.Metadata == nil {
+		return false
+	}
+	val := strings.TrimSpace(strings.ToLower(p.Metadata[MetadataKeyToolSupport]))
+	switch val {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // ProviderFilter defines optional conditions for querying providers.

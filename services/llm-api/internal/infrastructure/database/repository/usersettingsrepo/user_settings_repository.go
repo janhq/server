@@ -53,19 +53,13 @@ func (repo *UserSettingsGormRepository) Upsert(ctx context.Context, settings *us
 	entity := dbschema.NewSchemaUserSettings(settings)
 
 	assignments := map[string]interface{}{
-		"memory_enabled":             entity.MemoryEnabled,
-		"memory_auto_inject":         entity.MemoryAutoInject,
-		"memory_inject_user_core":    entity.MemoryInjectUserCore,
-		"memory_inject_project":      entity.MemoryInjectProject,
-		"memory_inject_conversation": entity.MemoryInjectConversation,
-		"memory_max_user_items":      entity.MemoryMaxUserItems,
-		"memory_max_project_items":   entity.MemoryMaxProjectItems,
-		"memory_max_episodic_items":  entity.MemoryMaxEpisodicItems,
-		"memory_min_similarity":      entity.MemoryMinSimilarity,
-		"enable_trace":               entity.EnableTrace,
-		"enable_tools":               entity.EnableTools,
-		"preferences":                entity.Preferences,
-		"updated_at":                 gorm.Expr("NOW()"),
+		"enable_trace":      entity.EnableTrace,
+		"enable_tools":      entity.EnableTools,
+		"memory_config":     entity.MemoryConfig,
+		"profile_settings":  entity.ProfileSettings,
+		"advanced_settings": entity.AdvancedSettings,
+		"preferences":       entity.Preferences,
+		"updated_at":        gorm.Expr("NOW()"),
 	}
 
 	err := repo.db.WithContext(ctx).
@@ -114,19 +108,13 @@ func (repo *UserSettingsGormRepository) Update(ctx context.Context, settings *us
 		Model(&dbschema.UserSettings{}).
 		Where("user_id = ?", settings.UserID).
 		Updates(map[string]interface{}{
-			"memory_enabled":             entity.MemoryEnabled,
-			"memory_auto_inject":         entity.MemoryAutoInject,
-			"memory_inject_user_core":    entity.MemoryInjectUserCore,
-			"memory_inject_project":      entity.MemoryInjectProject,
-			"memory_inject_conversation": entity.MemoryInjectConversation,
-			"memory_max_user_items":      entity.MemoryMaxUserItems,
-			"memory_max_project_items":   entity.MemoryMaxProjectItems,
-			"memory_max_episodic_items":  entity.MemoryMaxEpisodicItems,
-			"memory_min_similarity":      entity.MemoryMinSimilarity,
-			"enable_trace":               entity.EnableTrace,
-			"enable_tools":               entity.EnableTools,
-			"preferences":                entity.Preferences,
-			"updated_at":                 gorm.Expr("NOW()"),
+			"enable_trace":      entity.EnableTrace,
+			"enable_tools":      entity.EnableTools,
+			"memory_config":     entity.MemoryConfig,
+			"profile_settings":  entity.ProfileSettings,
+			"advanced_settings": entity.AdvancedSettings,
+			"preferences":       entity.Preferences,
+			"updated_at":        gorm.Expr("NOW()"),
 		}).
 		Error
 

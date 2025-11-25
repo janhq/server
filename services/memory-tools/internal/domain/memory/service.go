@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/janhq/jan-server/services/memory-tools/internal/domain/embedding"
 	"github.com/rs/zerolog/log"
 )
@@ -119,21 +117,6 @@ func (s *Service) Load(ctx context.Context, req MemoryLoadRequest) (*MemoryLoadR
 		if err == nil && len(allEvents) > 0 {
 			episodicEvents = allEvents
 		}
-	}
-
-	if len(userMemory) == 0 && len(projectFacts) == 0 && len(episodicEvents) == 0 {
-		now := time.Now()
-		userMemory = []UserMemoryItem{{
-			ID:         uuid.NewString(),
-			UserID:     req.UserID,
-			Scope:      "preference",
-			Key:        "systems_programming",
-			Text:       "Prefers Rust for systems programming.",
-			Score:      5,
-			Similarity: 1.0,
-			CreatedAt:  now,
-			UpdatedAt:  now,
-		}}
 	}
 
 	for i := range userMemory {

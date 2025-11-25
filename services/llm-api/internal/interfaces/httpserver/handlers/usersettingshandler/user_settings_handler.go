@@ -78,22 +78,24 @@ func (h *UserSettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	// Validate ranges
-	if req.MemoryMaxUserItems != nil && (*req.MemoryMaxUserItems < 0 || *req.MemoryMaxUserItems > 20) {
-		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_max_user_items must be between 0 and 20")
-		return
-	}
-	if req.MemoryMaxProjectItems != nil && (*req.MemoryMaxProjectItems < 0 || *req.MemoryMaxProjectItems > 50) {
-		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_max_project_items must be between 0 and 50")
-		return
-	}
-	if req.MemoryMaxEpisodicItems != nil && (*req.MemoryMaxEpisodicItems < 0 || *req.MemoryMaxEpisodicItems > 20) {
-		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_max_episodic_items must be between 0 and 20")
-		return
-	}
-	if req.MemoryMinSimilarity != nil && (*req.MemoryMinSimilarity < 0.0 || *req.MemoryMinSimilarity > 1.0) {
-		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_min_similarity must be between 0.0 and 1.0")
-		return
+	// Validate memory config ranges if provided
+	if req.MemoryConfig != nil {
+		if req.MemoryConfig.MaxUserItems < 0 || req.MemoryConfig.MaxUserItems > 20 {
+			responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_config.max_user_items must be between 0 and 20")
+			return
+		}
+		if req.MemoryConfig.MaxProjectItems < 0 || req.MemoryConfig.MaxProjectItems > 50 {
+			responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_config.max_project_items must be between 0 and 50")
+			return
+		}
+		if req.MemoryConfig.MaxEpisodicItems < 0 || req.MemoryConfig.MaxEpisodicItems > 20 {
+			responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_config.max_episodic_items must be between 0 and 20")
+			return
+		}
+		if req.MemoryConfig.MinSimilarity < 0.0 || req.MemoryConfig.MinSimilarity > 1.0 {
+			responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "memory_config.min_similarity must be between 0.0 and 1.0")
+			return
+		}
 	}
 
 	settings, err := h.service.UpdateSettings(c.Request.Context(), user.ID, req)
@@ -108,41 +110,29 @@ func (h *UserSettingsHandler) UpdateSettings(c *gin.Context) {
 
 // UserSettingsResponse is the JSON response for user settings.
 type UserSettingsResponse struct {
-	ID                       uint                   `json:"id"`
-	UserID                   uint                   `json:"user_id"`
-	MemoryEnabled            bool                   `json:"memory_enabled"`
-	MemoryAutoInject         bool                   `json:"memory_auto_inject"`
-	MemoryInjectUserCore     bool                   `json:"memory_inject_user_core"`
-	MemoryInjectProject      bool                   `json:"memory_inject_project"`
-	MemoryInjectConversation bool                   `json:"memory_inject_conversation"`
-	MemoryMaxUserItems       int                    `json:"memory_max_user_items"`
-	MemoryMaxProjectItems    int                    `json:"memory_max_project_items"`
-	MemoryMaxEpisodicItems   int                    `json:"memory_max_episodic_items"`
-	MemoryMinSimilarity      float32                `json:"memory_min_similarity"`
-	EnableTrace              bool                   `json:"enable_trace"`
-	EnableTools              bool                   `json:"enable_tools"`
-	Preferences              map[string]interface{} `json:"preferences"`
-	CreatedAt                string                 `json:"created_at"`
-	UpdatedAt                string                 `json:"updated_at"`
+	ID               uint                          `json:"id"`
+	UserID           uint                          `json:"user_id"`
+	MemoryConfig     usersettings.MemoryConfig     `json:"memory_config"`
+	ProfileSettings  usersettings.ProfileSettings  `json:"profile_settings"`
+	AdvancedSettings usersettings.AdvancedSettings `json:"advanced_settings"`
+	EnableTrace      bool                          `json:"enable_trace"`
+	EnableTools      bool                          `json:"enable_tools"`
+	Preferences      map[string]interface{}        `json:"preferences"`
+	CreatedAt        string                        `json:"created_at"`
+	UpdatedAt        string                        `json:"updated_at"`
 }
 
 func toResponse(settings *usersettings.UserSettings) UserSettingsResponse {
 	return UserSettingsResponse{
-		ID:                       settings.ID,
-		UserID:                   settings.UserID,
-		MemoryEnabled:            settings.MemoryEnabled,
-		MemoryAutoInject:         settings.MemoryAutoInject,
-		MemoryInjectUserCore:     settings.MemoryInjectUserCore,
-		MemoryInjectProject:      settings.MemoryInjectProject,
-		MemoryInjectConversation: settings.MemoryInjectConversation,
-		MemoryMaxUserItems:       settings.MemoryMaxUserItems,
-		MemoryMaxProjectItems:    settings.MemoryMaxProjectItems,
-		MemoryMaxEpisodicItems:   settings.MemoryMaxEpisodicItems,
-		MemoryMinSimilarity:      settings.MemoryMinSimilarity,
-		EnableTrace:              settings.EnableTrace,
-		EnableTools:              settings.EnableTools,
-		Preferences:              settings.Preferences,
-		CreatedAt:                settings.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:                settings.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:               settings.ID,
+		UserID:           settings.UserID,
+		MemoryConfig:     settings.MemoryConfig,
+		ProfileSettings:  settings.ProfileSettings,
+		AdvancedSettings: settings.AdvancedSettings,
+		EnableTrace:      settings.EnableTrace,
+		EnableTools:      settings.EnableTools,
+		Preferences:      settings.Preferences,
+		CreatedAt:        settings.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:        settings.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }

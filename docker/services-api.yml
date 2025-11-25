@@ -49,6 +49,11 @@ services:
       JAN_PROVIDER_CONFIG_SET: ${JAN_PROVIDER_CONFIG_SET:-default}
       JAN_PROVIDER_CONFIGS_FILE: ${JAN_PROVIDER_CONFIGS_FILE:-config/providers.yml}
       
+      # vLLM Provider
+      VLLM_PROVIDER_URL: ${VLLM_PROVIDER_URL:-http://vllm-jan-gpu:8101/v1}
+      VLLM_INTERNAL_KEY: ${VLLM_INTERNAL_KEY:-changeme}
+      VLLM_TOOL_SUPPORT: ${VLLM_TOOL_SUPPORT:-false}
+      
       # Model Sync
       MODEL_SYNC_ENABLED: ${MODEL_SYNC_ENABLED:-true}
       MODEL_SYNC_INTERVAL_MINUTES: ${MODEL_SYNC_INTERVAL_MINUTES:-60}

@@ -26,6 +26,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/interfaces/httpserver"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
@@ -91,7 +92,8 @@ func CreateApplication() (*Application, error) {
 	memoryClient := infrastructure.ProvideMemoryClient(config, zerologLogger)
 	usersettingsRepository := usersettingsrepo.NewUserSettingsGormRepository(db)
 	usersettingsService := usersettings.NewService(usersettingsRepository)
-	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver, processorImpl, memoryClient, usersettingsService)
+	memoryHandler := handlers.ProvideMemoryHandler(memoryClient, config, usersettingsService)
+	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver, processorImpl, memoryHandler, usersettingsService)
 	chatCompletionRoute := chat.NewChatCompletionRoute(chatHandler, authHandler)
 	chatRoute := chat.NewChatRoute(chatCompletionRoute)
 	conversationRoute := conversation2.NewConversationRoute(conversationHandler, authHandler)

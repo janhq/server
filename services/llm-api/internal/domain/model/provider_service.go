@@ -329,7 +329,7 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, provider *Provider, models []chat.Model, autoEnableNewModels bool) ([]*ProviderModel, error) {
 	results := make([]*ProviderModel, 0, len(models))
 	for _, model := range models {
-		catalog, created, err := s.modelCatalogService.UpsertCatalog(ctx, provider.Kind, model)
+		catalog, created, err := s.modelCatalogService.UpsertCatalog(ctx, provider, model)
 		if err != nil {
 			log := logger.GetLogger()
 			log.Error().

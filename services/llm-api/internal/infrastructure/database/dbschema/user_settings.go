@@ -18,24 +18,16 @@ type UserSettings struct {
 	ID     uint `gorm:"primaryKey"`
 	UserID uint `gorm:"not null;uniqueIndex:ux_user_settings_user_id"`
 
-	// Memory Feature Controls
-	MemoryEnabled            bool `gorm:"not null;default:true"`
-	MemoryAutoInject         bool `gorm:"not null;default:false"`
-	MemoryInjectUserCore     bool `gorm:"not null;default:false"`
-	MemoryInjectProject      bool `gorm:"not null;default:false"`
-	MemoryInjectConversation bool `gorm:"not null;default:false"`
-
-	// Memory Retrieval Preferences
-	MemoryMaxUserItems     int     `gorm:"not null;default:3"`
-	MemoryMaxProjectItems  int     `gorm:"not null;default:5"`
-	MemoryMaxEpisodicItems int     `gorm:"not null;default:3"`
-	MemoryMinSimilarity    float32 `gorm:"type:numeric(3,2);not null;default:0.75"`
-
 	// Other Feature Toggles
 	EnableTrace bool `gorm:"not null;default:false"`
 	EnableTools bool `gorm:"not null;default:true"`
 
-	// Preferences - flexible JSON
+	// JSONB Settings Groups
+	MemoryConfig     MemoryConfigJSON     `gorm:"type:jsonb;serializer:json;not null"`
+	ProfileSettings  ProfileSettingsJSON  `gorm:"type:jsonb;serializer:json;not null"`
+	AdvancedSettings AdvancedSettingsJSON `gorm:"type:jsonb;serializer:json;not null"`
+
+	// Legacy Preferences - flexible JSON (deprecated)
 	Preferences JSONB `gorm:"type:jsonb;not null;default:'{}'"`
 
 	CreatedAt time.Time `gorm:"not null;default:now()"`
@@ -79,25 +71,24 @@ func (j *JSONB) Scan(value interface{}) error {
 	return nil
 }
 
+// Type aliases for JSONB settings groups
+type MemoryConfigJSON usersettings.MemoryConfig
+type ProfileSettingsJSON usersettings.ProfileSettings
+type AdvancedSettingsJSON usersettings.AdvancedSettings
+
 // EtoD converts entity (database schema) to domain model.
 func (e *UserSettings) EtoD() *usersettings.UserSettings {
 	return &usersettings.UserSettings{
-		ID:                       e.ID,
-		UserID:                   e.UserID,
-		MemoryEnabled:            e.MemoryEnabled,
-		MemoryAutoInject:         e.MemoryAutoInject,
-		MemoryInjectUserCore:     e.MemoryInjectUserCore,
-		MemoryInjectProject:      e.MemoryInjectProject,
-		MemoryInjectConversation: e.MemoryInjectConversation,
-		MemoryMaxUserItems:       e.MemoryMaxUserItems,
-		MemoryMaxProjectItems:    e.MemoryMaxProjectItems,
-		MemoryMaxEpisodicItems:   e.MemoryMaxEpisodicItems,
-		MemoryMinSimilarity:      e.MemoryMinSimilarity,
-		EnableTrace:              e.EnableTrace,
-		EnableTools:              e.EnableTools,
-		Preferences:              map[string]interface{}(e.Preferences),
-		CreatedAt:                e.CreatedAt,
-		UpdatedAt:                e.UpdatedAt,
+		ID:               e.ID,
+		UserID:           e.UserID,
+		EnableTrace:      e.EnableTrace,
+		EnableTools:      e.EnableTools,
+		MemoryConfig:     usersettings.MemoryConfig(e.MemoryConfig),
+		ProfileSettings:  usersettings.ProfileSettings(e.ProfileSettings),
+		AdvancedSettings: usersettings.AdvancedSettings(e.AdvancedSettings),
+		Preferences:      map[string]interface{}(e.Preferences),
+		CreatedAt:        e.CreatedAt,
+		UpdatedAt:        e.UpdatedAt,
 	}
 }
 
@@ -109,21 +100,15 @@ func NewSchemaUserSettings(d *usersettings.UserSettings) *UserSettings {
 	}
 
 	return &UserSettings{
-		ID:                       d.ID,
-		UserID:                   d.UserID,
-		MemoryEnabled:            d.MemoryEnabled,
-		MemoryAutoInject:         d.MemoryAutoInject,
-		MemoryInjectUserCore:     d.MemoryInjectUserCore,
-		MemoryInjectProject:      d.MemoryInjectProject,
-		MemoryInjectConversation: d.MemoryInjectConversation,
-		MemoryMaxUserItems:       d.MemoryMaxUserItems,
-		MemoryMaxProjectItems:    d.MemoryMaxProjectItems,
-		MemoryMaxEpisodicItems:   d.MemoryMaxEpisodicItems,
-		MemoryMinSimilarity:      d.MemoryMinSimilarity,
-		EnableTrace:              d.EnableTrace,
-		EnableTools:              d.EnableTools,
-		Preferences:              prefs,
-		CreatedAt:                d.CreatedAt,
-		UpdatedAt:                d.UpdatedAt,
+		ID:               d.ID,
+		UserID:           d.UserID,
+		EnableTrace:      d.EnableTrace,
+		EnableTools:      d.EnableTools,
+		MemoryConfig:     MemoryConfigJSON(d.MemoryConfig),
+		ProfileSettings:  ProfileSettingsJSON(d.ProfileSettings),
+		AdvancedSettings: AdvancedSettingsJSON(d.AdvancedSettings),
+		Preferences:      prefs,
+		CreatedAt:        d.CreatedAt,
+		UpdatedAt:        d.UpdatedAt,
 	}
 }

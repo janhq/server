@@ -28,6 +28,7 @@ func NewHTTPServer(
 	router.Use(middlewares.RequestLogger())
 	router.Use(middlewares.CORS())
 
+	// Apply auth middleware (will skip health checks internally)
 	if authValidator != nil {
 		router.Use(authValidator.Middleware())
 	}
