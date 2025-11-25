@@ -82,6 +82,12 @@ else
 endif
 
 setup:
+	@echo "Ensuring newman is installed..."
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "if (-not (Get-Command newman -ErrorAction SilentlyContinue)) { if (Get-Command npm -ErrorAction SilentlyContinue) { npm install -g newman; Write-Host ' newman installed via npm'; } else { Write-Host ' npm not found; install Node.js to use Newman'; } } else { Write-Host ' newman already installed'; }"
+else
+	@if command -v newman >/dev/null 2>&1; then echo " newman already installed"; elif command -v npm >/dev/null 2>&1; then npm install -g newman && echo " newman installed via npm"; else echo " npm not found; install Node.js to use Newman"; fi
+endif
 	@echo "Running setup via jan-cli..."
 ifeq ($(OS),Windows_NT)
 	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 dev setup

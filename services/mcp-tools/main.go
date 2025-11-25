@@ -17,7 +17,7 @@ import (
 	searchclient "jan-server/services/mcp-tools/internal/infrastructure/search"
 	vectorstoreclient "jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/middlewares"
-	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes"
+	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes/mcp"
 )
 
 // @title Jan Server MCP Tools Service
@@ -56,10 +56,10 @@ func main() {
 	if cfg.VectorStoreURL != "" {
 		vectorClient = vectorstoreclient.NewClient(cfg.VectorStoreURL)
 	}
-	var sandboxMCP *routes.SandboxFusionMCP
+	var sandboxMCP *mcp.SandboxFusionMCP
 	if cfg.SandboxFusionURL != "" {
 		sandboxClient := sandboxfusionclient.NewClient(cfg.SandboxFusionURL)
-		sandboxMCP = routes.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval)
+		sandboxMCP = mcp.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval)
 	}
 
 	// Load MCP provider configuration
@@ -70,16 +70,25 @@ func main() {
 	}
 
 	// Initialize MCP routes
-	serperMCP := routes.NewSerperMCP(searchService, vectorClient)
+	serperMCP := mcp.NewSerperMCP(searchService, vectorClient)
+
+	// Initialize memory MCP
+	var memoryMCP *mcp.MemoryMCP
+	if cfg.MemoryToolsURL != "" {
+		memoryMCP = mcp.NewMemoryMCP(cfg.MemoryToolsURL)
+		log.Info().Str("url", cfg.MemoryToolsURL).Msg("Memory tools integration enabled")
+	} else {
+		log.Warn().Msg("Memory tools URL not configured, memory_retrieve tool will not be available")
+	}
 
 	// Initialize external MCP providers
 	ctx := context.Background()
-	providerMCP := routes.NewProviderMCP(providerConfig)
+	providerMCP := mcp.NewProviderMCP(providerConfig)
 	if err := providerMCP.Initialize(ctx); err != nil {
 		log.Error().Err(err).Msg("Failed to initialize MCP providers")
 	}
 
-	mcpRoute := routes.NewMCPRoute(serperMCP, providerMCP, sandboxMCP)
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

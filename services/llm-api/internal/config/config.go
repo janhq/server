@@ -95,9 +95,10 @@ type Config struct {
 	PromptOrchestrationDefaultPersona  string `env:"PROMPT_ORCHESTRATION_PERSONA" envDefault:"helpful assistant"`
 
 	// Memory integration
-	MemoryEnabled bool          `env:"MEMORY_ENABLED" envDefault:"true"`
-	MemoryBaseURL string        `env:"MEMORY_BASE_URL" envDefault:"http://memory-tools:8090"`
-	MemoryTimeout time.Duration `env:"MEMORY_TIMEOUT" envDefault:"5s"`
+	MemoryEnabled          bool          `env:"MEMORY_ENABLED" envDefault:"true"`
+	MemoryBaseURL          string        `env:"MEMORY_BASE_URL" envDefault:"http://memory-tools:8090"`
+	MemoryTimeout          time.Duration `env:"MEMORY_TIMEOUT" envDefault:"5s"`
+	MemoryAutoInjectGlobal bool          `env:"MEMORY_AUTO_INJECT_ENABLED" envDefault:"false"` // Global override for auto-injection
 
 	// Internal
 	EnvReloadedAt time.Time

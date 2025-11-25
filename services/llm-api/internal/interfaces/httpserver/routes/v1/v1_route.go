@@ -9,6 +9,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/conversation"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/users"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ type V1Route struct {
 	conversation *conversation.ConversationRoute
 	project      *projects.ProjectRoute
 	adminRoute   *admin.AdminRoute
+	users        *users.UsersRoute
 }
 
 func NewV1Route(
@@ -26,13 +28,15 @@ func NewV1Route(
 	chat *chat.ChatRoute,
 	conversation *conversation.ConversationRoute,
 	project *projects.ProjectRoute,
-	adminRoute *admin.AdminRoute) *V1Route {
+	adminRoute *admin.AdminRoute,
+	users *users.UsersRoute) *V1Route {
 	return &V1Route{
 		model,
 		chat,
 		conversation,
 		project,
 		adminRoute,
+		users,
 	}
 }
 
@@ -47,6 +51,7 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	v1Route.chat.RegisterRouter(v1Router)
 	v1Route.conversation.RegisterRouter(v1Router)
 	v1Route.project.RegisterRoutes(v1Router)
+	v1Route.users.RegisterRouter(v1Router)
 
 }
 

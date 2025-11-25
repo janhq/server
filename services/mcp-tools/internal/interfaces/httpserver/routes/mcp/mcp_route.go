@@ -1,12 +1,14 @@
-package routes
+package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/responses"
@@ -38,6 +40,7 @@ type MCPRoute struct {
 	serperMCP   *SerperMCP
 	providerMCP *ProviderMCP
 	sandboxMCP  *SandboxFusionMCP
+	memoryMCP   *MemoryMCP
 	mcpServer   *mcpserver.MCPServer
 	httpHandler http.Handler
 }
@@ -46,6 +49,7 @@ func NewMCPRoute(
 	serperMCP *SerperMCP,
 	providerMCP *ProviderMCP,
 	sandboxMCP *SandboxFusionMCP,
+	memoryMCP *MemoryMCP,
 ) *MCPRoute {
 	server := mcpserver.NewMCPServer("menlo-platform", "1.0.0",
 		mcpserver.WithToolCapabilities(true),
@@ -56,6 +60,11 @@ func NewMCPRoute(
 
 	if sandboxMCP != nil {
 		sandboxMCP.RegisterTools(server)
+	}
+
+	// Register memory tools
+	if memoryMCP != nil {
+		memoryMCP.RegisterTools(server)
 	}
 
 	// Register tools from external MCP providers
@@ -69,6 +78,8 @@ func NewMCPRoute(
 	return &MCPRoute{
 		serperMCP:   serperMCP,
 		providerMCP: providerMCP,
+		sandboxMCP:  sandboxMCP,
+		memoryMCP:   memoryMCP,
 		mcpServer:   server,
 		httpHandler: mcpserver.NewStreamableHTTPServer(server, mcpserver.WithStateLess(true)),
 	}
@@ -77,6 +88,7 @@ func NewMCPRoute(
 func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 	router.POST("/mcp",
 		MCPMethodGuard(allowedMCPMethods),
+		InjectUserContext(),
 		route.serveMCP,
 	)
 }
@@ -90,6 +102,7 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Description - `scrape`: Web page scraping (params: url, includeMarkdown) returning text, preview, cache_status, and metadata.
 // @Description - `file_search_index` / `file_search_query`: Index arbitrary text and run similarity queries against the lightweight vector store.
 // @Description - `python_exec`: Execute trusted code through SandboxFusion (params: code, language, session_id, approved) to retrieve stdout/stderr/artifacts.
+// @Description - `memory_retrieve`: Retrieve relevant user preferences, project context, or conversation history (params: query, user_id, project_id, max_user_items, max_project_items, min_similarity). Returns personalized context.
 // @Description
 // @Description **MCP Protocol:**
 // @Description - Request format: JSON-RPC 2.0 with method and params
@@ -105,6 +118,35 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Router /v1/mcp [post]
 func (route *MCPRoute) serveMCP(reqCtx *gin.Context) {
 	route.httpHandler.ServeHTTP(reqCtx.Writer, reqCtx.Request)
+}
+
+// InjectUserContext extracts user_id from JWT token and injects it into request context
+func InjectUserContext() gin.HandlerFunc {
+	return func(reqCtx *gin.Context) {
+		// Try to get auth token from gin context (set by auth middleware)
+		if tokenVal, exists := reqCtx.Get("auth_token"); exists {
+			if token, ok := tokenVal.(*jwt.Token); ok && token.Valid {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					// Try to extract user_id from various claim fields
+					var userID string
+					if sub, ok := claims["sub"].(string); ok && sub != "" {
+						userID = sub
+					} else if uid, ok := claims["user_id"].(string); ok && uid != "" {
+						userID = uid
+					} else if uid, ok := claims["uid"].(string); ok && uid != "" {
+						userID = uid
+					}
+
+					if userID != "" {
+						// Inject user_id into request context
+						ctx := context.WithValue(reqCtx.Request.Context(), "user_id", userID)
+						reqCtx.Request = reqCtx.Request.WithContext(ctx)
+					}
+				}
+			}
+		}
+		reqCtx.Next()
+	}
 }
 
 func MCPMethodGuard(allowedMethods map[string]bool) gin.HandlerFunc {

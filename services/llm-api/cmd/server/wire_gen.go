@@ -14,6 +14,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/user"
+	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure"
 	"jan-server/services/llm-api/internal/infrastructure/crontab"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/apikeyrepo"
@@ -21,6 +22,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/userrepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/usersettingsrepo"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/interfaces/httpserver"
@@ -31,6 +33,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/usersettingshandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
@@ -41,6 +44,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	model2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/users"
 )
 
 import (
@@ -85,7 +89,9 @@ func CreateApplication() (*Application, error) {
 	processorConfig := domain.ProvidePromptProcessorConfig(config, zerologLogger)
 	processorImpl := prompt.NewProcessor(processorConfig, zerologLogger)
 	memoryClient := infrastructure.ProvideMemoryClient(config, zerologLogger)
-	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver, processorImpl, memoryClient)
+	usersettingsRepository := usersettingsrepo.NewUserSettingsGormRepository(db)
+	usersettingsService := usersettings.NewService(usersettingsRepository)
+	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver, processorImpl, memoryClient, usersettingsService)
 	chatCompletionRoute := chat.NewChatCompletionRoute(chatHandler, authHandler)
 	chatRoute := chat.NewChatRoute(chatCompletionRoute)
 	conversationRoute := conversation2.NewConversationRoute(conversationHandler, authHandler)
@@ -95,7 +101,9 @@ func CreateApplication() (*Application, error) {
 	adminModelRoute := model3.NewAdminModelRoute(modelHandler, modelCatalogHandler, providerModelHandler)
 	adminProviderRoute := provider2.NewAdminProviderRoute(providerHandler)
 	adminRoute := admin.NewAdminRoute(adminModelRoute, adminProviderRoute)
-	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute)
+	userSettingsHandler := usersettingshandler.NewUserSettingsHandler(usersettingsService, zerologLogger)
+	usersRoute := users.NewUsersRoute(userSettingsHandler, authHandler)
+	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute, usersRoute)
 	guestHandler := guestauth.NewGuestHandler(client, zerologLogger)
 	upgradeHandler := guestauth.NewUpgradeHandler(client, zerologLogger)
 	tokenHandler := authhandler.NewTokenHandler(client, zerologLogger)

@@ -14,6 +14,7 @@ import (
 
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/prompt"
+	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
@@ -46,6 +47,7 @@ type ChatHandler struct {
 	mediaResolver       mediaresolver.Resolver
 	promptProcessor     *prompt.ProcessorImpl
 	memoryClient        *memclient.Client
+	userSettingsService *usersettings.Service
 }
 
 // NewChatHandler creates a new chat handler
@@ -57,6 +59,7 @@ func NewChatHandler(
 	mediaResolver mediaresolver.Resolver,
 	promptProcessor *prompt.ProcessorImpl,
 	memoryClient *memclient.Client,
+	userSettingsService *usersettings.Service,
 ) *ChatHandler {
 	return &ChatHandler{
 		inferenceProvider:   inferenceProvider,
@@ -66,6 +69,7 @@ func NewChatHandler(
 		mediaResolver:       mediaResolver,
 		promptProcessor:     promptProcessor,
 		memoryClient:        memoryClient,
+		userSettingsService: userSettingsService,
 	}
 }
 
@@ -137,19 +141,39 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	// Load memory context (best-effort) when a conversation is present
 	loadedMemory := h.collectPromptMemory(conv, reqCtx)
-	if h.memoryClient != nil && conversationID != "" {
-		observability.AddSpanEvent(ctx, "loading_memories")
-		memoryResp, memErr := h.loadConversationMemory(ctx, userID, conversationID, conv, newMessages)
-		if memErr != nil {
+
+	// Check user settings to determine if memory should be loaded
+	if h.memoryClient != nil && h.userSettingsService != nil && conversationID != "" {
+		// Get user settings to check if memory is enabled
+		settings, settingsErr := h.userSettingsService.GetOrCreateSettings(ctx, userID)
+		if settingsErr != nil {
 			log := logger.GetLogger()
-			log.Warn().Err(memErr).Str("conversation_id", conversationID).Msg("failed to load memories, continuing without memory")
-		} else if memoryResp != nil {
-			loadedMemory = append(loadedMemory, formatMemoryForPromptCtx(memoryResp)...)
-			observability.AddSpanEvent(ctx, "memories_loaded",
-				attribute.Int("core_memory_count", len(memoryResp.CoreMemory)),
-				attribute.Int("episodic_memory_count", len(memoryResp.EpisodicMemory)),
-				attribute.Int("semantic_memory_count", len(memoryResp.SemanticMemory)),
+			log.Warn().Err(settingsErr).Uint("user_id", userID).Msg("failed to load user settings, using defaults")
+			// Continue with defaults (memory enabled, auto-inject disabled)
+			settings = usersettings.DefaultUserSettings(userID)
+		}
+
+		// Only load memory if user has memory enabled
+		if settings.MemoryEnabled {
+			observability.AddSpanEvent(ctx, "loading_memories")
+			observability.AddSpanAttributes(ctx,
+				attribute.Bool("memory.auto_inject", settings.MemoryAutoInject),
+				attribute.Bool("memory.inject_user_core", settings.MemoryInjectUserCore),
+				attribute.Int("memory.max_user_items", settings.MemoryMaxUserItems),
 			)
+
+			memoryResp, memErr := h.loadConversationMemory(ctx, userID, conversationID, conv, newMessages)
+			if memErr != nil {
+				log := logger.GetLogger()
+				log.Warn().Err(memErr).Str("conversation_id", conversationID).Msg("failed to load memories, continuing without memory")
+			} else if memoryResp != nil {
+				loadedMemory = append(loadedMemory, formatMemoryForPromptCtx(memoryResp)...)
+				observability.AddSpanEvent(ctx, "memories_loaded",
+					attribute.Int("core_memory_count", len(memoryResp.CoreMemory)),
+					attribute.Int("episodic_memory_count", len(memoryResp.EpisodicMemory)),
+					attribute.Int("semantic_memory_count", len(memoryResp.SemanticMemory)),
+				)
+			}
 		}
 	}
 
@@ -568,12 +592,25 @@ func (h *ChatHandler) observeConversationForMemory(
 	newMessages []openai.ChatCompletionMessage,
 	response *openai.ChatCompletionResponse,
 ) {
-	if h.memoryClient == nil || conv == nil {
+	if h.memoryClient == nil || conv == nil || h.userSettingsService == nil {
 		return
 	}
 
 	observeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Check user settings to determine if memory observation is enabled
+	settings, err := h.userSettingsService.GetOrCreateSettings(observeCtx, userID)
+	if err != nil {
+		log := logger.GetLogger()
+		log.Warn().Err(err).Uint("user_id", userID).Msg("failed to load user settings for memory observation, using defaults")
+		settings = usersettings.DefaultUserSettings(userID)
+	}
+
+	// Only observe if memory is enabled
+	if !settings.MemoryEnabled {
+		return
+	}
 
 	messages := buildMemoryConversationItems(newMessages, response)
 	if len(messages) == 0 {

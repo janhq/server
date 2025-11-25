@@ -6,6 +6,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/userrepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/usersettingsrepo"
 
 	"github.com/google/wire"
 )
@@ -18,4 +19,5 @@ var RepositoryProvider = wire.NewSet(
 	modelrepo.NewModelCatalogGormRepository,
 	userrepo.NewUserGormRepository,
 	apikeyrepo.NewAPIKeyRepository,
+	usersettingsrepo.NewUserSettingsGormRepository,
 )

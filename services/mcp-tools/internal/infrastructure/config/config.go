@@ -25,6 +25,7 @@ type Config struct {
 	// External Services
 	VectorStoreURL   string `env:"VECTOR_STORE_URL" envDefault:"http://vector-store-mcp:3015"`
 	SandboxFusionURL string `env:"SANDBOXFUSION_URL" envDefault:"http://sandbox-fusion:8080"`
+	MemoryToolsURL   string `env:"MEMORY_TOOLS_URL" envDefault:"http://memory-tools:8088"`
 
 	// Sandbox Configuration
 	SandboxFusionRequireApproval bool `env:"MCP_SANDBOX_REQUIRE_APPROVAL" envDefault:"false"`

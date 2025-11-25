@@ -11,6 +11,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/user"
+	"jan-server/services/llm-api/internal/domain/usersettings"
 )
 
 // ServiceProvider provides all domain services
@@ -28,6 +29,9 @@ var ServiceProvider = wire.NewSet(
 
 	// User domain
 	user.NewService,
+
+	// User settings
+	usersettings.NewService,
 
 	// API keys
 	ProvideAPIKeyConfig,

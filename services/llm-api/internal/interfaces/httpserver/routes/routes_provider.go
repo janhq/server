@@ -10,6 +10,7 @@ import (
 	guestauth "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/usersettingshandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
 	v1 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
@@ -20,6 +21,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	modelProvider "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/users"
 )
 
 var RouteProvider = wire.NewSet(
@@ -37,6 +39,7 @@ var RouteProvider = wire.NewSet(
 	modelhandler.NewModelCatalogHandler,
 	modelhandler.NewProviderModelHandler,
 	projecthandler.NewProjectHandler,
+	usersettingshandler.NewUserSettingsHandler,
 
 	// Routes
 	auth.NewAuthRoute,
@@ -50,4 +53,5 @@ var RouteProvider = wire.NewSet(
 	projects.NewProjectRoute,
 	model.NewModelRoute,
 	modelProvider.NewModelProviderRoute,
+	users.NewUsersRoute,
 )
