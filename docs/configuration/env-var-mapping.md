@@ -103,6 +103,28 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 - Add `MCP_` or `MCP_TOOLS_` prefix to disambiguate from other services
 - HTTP_PORT collision with llm-api when running in same environment
 
+### Memory Tools
+
+| Centralized Env Var | Type | Default | Current Var | Status |
+|---------------------|------|---------|-------------|--------|
+| `MEMORY_TOOLS_PORT` | int | `8090` | `MEMORY_TOOLS_PORT` | OK Aligned |
+| `DB_POSTGRESQL_WRITE_DSN` | string | (computed) | `DATABASE_URL` | ✅ Migrated |
+| `DB_POSTGRESQL_READ1_DSN` | string | - | - | ✅ New (optional) |
+| `MEMORY_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | TODO Need prefix |
+| `MEMORY_LOG_FORMAT` | string | `json` | `LOG_FORMAT` | TODO Need prefix |
+| `EMBEDDING_SERVICE_URL` | string | - | `EMBEDDING_SERVICE_URL` | OK Aligned |
+| `EMBEDDING_CACHE_TYPE` | string | `memory` | `EMBEDDING_CACHE_TYPE` | OK Aligned |
+| `EMBEDDING_CACHE_REDIS_URL` | string | `redis://redis:6379/3` | `EMBEDDING_CACHE_REDIS_URL` | OK Aligned |
+| `EMBEDDING_CACHE_KEY_PREFIX` | string | `emb:` | `EMBEDDING_CACHE_KEY_PREFIX` | OK Aligned |
+| `EMBEDDING_CACHE_MAX_SIZE` | int | `10000` | `EMBEDDING_CACHE_MAX_SIZE` | OK Aligned |
+| `EMBEDDING_CACHE_TTL` | duration | `1h` | `EMBEDDING_CACHE_TTL` | OK Aligned |
+
+**Migration Notes:**
+- Database configuration migrated from single `DATABASE_URL` to `DB_POSTGRESQL_WRITE_DSN` and optional `DB_POSTGRESQL_READ1_DSN`
+- Supports read/write splitting for better scalability
+- Can share database with other services or use separate database
+- Read replica is optional; falls back to write DSN if not configured
+
 ### Media API
 
 | Centralized Env Var | Type | Default | Current Var | Status |

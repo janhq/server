@@ -42,7 +42,8 @@ services:
       MEMORY_TOOLS_PORT: ${MEMORY_TOOLS_PORT:-8090}
       
       # Database (PostgreSQL with pgvector)
-      DATABASE_URL: ${MEMORY_DB_URL:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
+      DB_POSTGRESQL_WRITE_DSN: ${MEMORY_DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
+      DB_POSTGRESQL_READ1_DSN: ${MEMORY_DB_POSTGRESQL_READ1_DSN:-}
       
       # BGE-M3 Embedding Service
       EMBEDDING_SERVICE_URL: ${EMBEDDING_SERVICE_URL:-http://bge-m3:8091}

@@ -33,7 +33,7 @@ type Application struct {
 func newApplication(cfg *configs.Config) (*Application, error) {
 	ctx := context.Background()
 
-	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(cfg.GetDatabaseWriteDSN()), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("connect database: %w", err)
 	}

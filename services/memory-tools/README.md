@@ -33,6 +33,8 @@ The Memory Tools service provides semantic memory capabilities for Jan Server us
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
+| `DB_POSTGRESQL_WRITE_DSN` | PostgreSQL connection string for write operations | - | Yes |
+| `DB_POSTGRESQL_READ1_DSN` | PostgreSQL connection string for read replica (optional) | - | No |
 | `EMBEDDING_SERVICE_URL` | URL of BGE-M3 embedding service | - | Yes |
 | `EMBEDDING_SERVICE_API_KEY` | API key for embedding service | - | No |
 | `EMBEDDING_SERVICE_TIMEOUT` | Request timeout | `30s` | No |
@@ -46,6 +48,8 @@ The Memory Tools service provides semantic memory capabilities for Jan Server us
 
 #### Production (with Redis cache)
 ```bash
+DB_POSTGRESQL_WRITE_DSN=postgres://user:password@db-host:5432/jan_llm_api?sslmode=require
+# DB_POSTGRESQL_READ1_DSN=postgres://user:password@db-replica:5432/jan_llm_api?sslmode=require
 EMBEDDING_SERVICE_URL=http://bge-m3-service:8091
 EMBEDDING_CACHE_TYPE=redis
 EMBEDDING_CACHE_REDIS_URL=redis://redis:6379/3
@@ -54,6 +58,7 @@ MEMORY_TOOLS_PORT=8090
 
 #### Development (in-memory cache)
 ```bash
+DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
 EMBEDDING_SERVICE_URL=http://localhost:8091
 EMBEDDING_CACHE_TYPE=memory
 EMBEDDING_CACHE_MAX_SIZE=5000
@@ -62,6 +67,7 @@ MEMORY_TOOLS_PORT=8090
 
 #### Testing (no cache)
 ```bash
+DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
 EMBEDDING_SERVICE_URL=http://localhost:8091
 EMBEDDING_CACHE_TYPE=noop
 MEMORY_TOOLS_PORT=8090
@@ -73,6 +79,7 @@ MEMORY_TOOLS_PORT=8090
 
 ```bash
 # Set environment variables
+export DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
 export EMBEDDING_SERVICE_URL=http://localhost:8091
 export EMBEDDING_CACHE_TYPE=memory
 
@@ -89,6 +96,7 @@ docker build -t memory-tools:latest .
 
 # Run the container
 docker run -p 8090:8090 \
+  -e DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@api-db:5432/jan_llm_api?sslmode=disable \
   -e EMBEDDING_SERVICE_URL=http://bge-m3:8091 \
   -e EMBEDDING_CACHE_TYPE=redis \
   -e EMBEDDING_CACHE_REDIS_URL=redis://redis:6379/3 \

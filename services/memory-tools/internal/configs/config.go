@@ -12,7 +12,9 @@ var global *Config
 type Config struct {
 	HTTPPort int `env:"MEMORY_TOOLS_PORT" envDefault:"8090"`
 
-	DatabaseURL string `env:"DATABASE_URL,notEmpty"`
+	// Database - Read/Write Split (required, no defaults)
+	DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN,notEmpty"`
+	DBPostgresqlRead1DSN string `env:"DB_POSTGRESQL_READ1_DSN"` // Optional read replica
 
 	EmbeddingServiceURL     string        `env:"EMBEDDING_SERVICE_URL" envDefault:"http://localhost:8091"`
 	EmbeddingCacheType      string        `env:"EMBEDDING_CACHE_TYPE" envDefault:"memory"`
@@ -50,4 +52,19 @@ func Load() (*Config, error) {
 
 func GetGlobal() *Config {
 	return global
+}
+
+// GetDatabaseWriteDSN returns the write database connection string.
+func (c *Config) GetDatabaseWriteDSN() string {
+	return c.DBPostgresqlWriteDSN
+}
+
+// GetDatabaseReadDSN returns the read database connection string.
+// If DB_POSTGRESQL_READ1_DSN is set, it returns that.
+// Otherwise, falls back to write DSN (no replica configured).
+func (c *Config) GetDatabaseReadDSN() string {
+	if c.DBPostgresqlRead1DSN != "" {
+		return c.DBPostgresqlRead1DSN
+	}
+	return c.GetDatabaseWriteDSN()
 }

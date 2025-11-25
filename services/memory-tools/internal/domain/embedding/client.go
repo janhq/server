@@ -3,17 +3,16 @@ package embedding
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
+
+	"github.com/janhq/jan-server/services/memory-tools/internal/infrastructure/cache"
 )
 
 // Cache interface for embedding storage
@@ -32,57 +31,28 @@ type CacheConfig struct {
 
 // Cache implementations
 
-// 1. Redis Cache (recommended for production)
+// 1. Redis Cache (recommended for production) - using infrastructure cache
 type RedisCache struct {
-	client redis.Client
-	prefix string
+	cache *cache.EmbeddingCache
 }
 
-func NewRedisCache(redisURL, prefix string) (*RedisCache, error) {
-	opts, err := redis.ParseURL(redisURL)
+func NewRedisCache(redisURL, prefix string, ttl time.Duration) (*RedisCache, error) {
+	embCache, err := cache.NewEmbeddingCache(redisURL, prefix, ttl)
 	if err != nil {
-		return nil, fmt.Errorf("parse redis url: %w", err)
-	}
-
-	client := redis.NewClient(opts)
-	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("connect to redis: %w", err)
+		return nil, fmt.Errorf("create embedding cache: %w", err)
 	}
 
 	return &RedisCache{
-		client: *client,
-		prefix: prefix,
+		cache: embCache,
 	}, nil
 }
 
 func (c *RedisCache) Get(key string) ([]float32, bool) {
-	ctx := context.Background()
-	data, err := c.client.Get(ctx, c.prefix+key).Bytes()
-	if err != nil {
-		return nil, false
-	}
-
-	// Deserialize float32 array
-	embedding := make([]float32, len(data)/4)
-	for i := range embedding {
-		bits := binary.LittleEndian.Uint32(data[i*4:])
-		embedding[i] = math.Float32frombits(bits)
-	}
-
-	return embedding, true
+	return c.cache.Get(key)
 }
 
 func (c *RedisCache) Set(key string, value []float32, ttl time.Duration) {
-	ctx := context.Background()
-
-	// Serialize float32 array
-	data := make([]byte, len(value)*4)
-	for i, f := range value {
-		bits := math.Float32bits(f)
-		binary.LittleEndian.PutUint32(data[i*4:], bits)
-	}
-
-	c.client.Set(ctx, c.prefix+key, data, ttl)
+	c.cache.Set(key, value, ttl)
 }
 
 // 2. In-Memory LRU Cache (alternative, no Redis required)
@@ -158,7 +128,7 @@ func (c *NoOpsCache) Set(key string, value []float32, ttl time.Duration) {
 func NewCache(config CacheConfig) (Cache, error) {
 	switch config.Type {
 	case "redis":
-		return NewRedisCache(config.RedisURL, config.KeyPrefix)
+		return NewRedisCache(config.RedisURL, config.KeyPrefix, config.TTL)
 	case "memory":
 		return NewMemoryCache(config.MaxSize, config.TTL)
 	case "noop":
