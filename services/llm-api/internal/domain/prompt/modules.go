@@ -6,9 +6,15 @@ import (
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
+
+	"jan-server/services/llm-api/internal/domain/usersettings"
 )
 
-const moduleMarkerFormat = "[[prompt-module:%s]]"
+const (
+	moduleMarkerFormat           = "[[prompt-module:%s]]"
+	projectInstructionModuleName = "project_instruction"
+	userProfileModuleName        = "user_profile"
+)
 
 func moduleMarker(name string) string {
 	return fmt.Sprintf(moduleMarkerFormat, strings.ToLower(name))
@@ -43,6 +49,39 @@ func cloneMessage(msg openai.ChatCompletionMessage) openai.ChatCompletionMessage
 	}
 
 	return clone
+}
+
+// prependInstructionSystemMessage returns a copy of messages with the instruction system message prepended.
+// A marker is appended to the content to avoid duplicate injections.
+func prependInstructionSystemMessage(messages []openai.ChatCompletionMessage, instruction, moduleName string) []openai.ChatCompletionMessage {
+	trimmed := strings.TrimSpace(instruction)
+	if trimmed == "" {
+		return messages
+	}
+
+	marker := moduleMarker(moduleName)
+	for _, msg := range messages {
+		if msg.Role == openai.ChatMessageRoleSystem && hasMarker(msg.Content, marker) {
+			return messages
+		}
+	}
+
+	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
+	result = append(result, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: fmt.Sprintf("%s\n%s", trimmed, marker),
+	})
+
+	for _, msg := range messages {
+		result = append(result, cloneMessage(msg))
+	}
+
+	return result
+}
+
+// PrependProjectInstruction injects the project instruction as the first system message.
+func PrependProjectInstruction(messages []openai.ChatCompletionMessage, instruction string) []openai.ChatCompletionMessage {
+	return prependInstructionSystemMessage(messages, instruction, projectInstructionModuleName)
 }
 
 func appendSystemContent(messages []openai.ChatCompletionMessage, additional, moduleName, defaultPersona string) []openai.ChatCompletionMessage {
@@ -157,6 +196,44 @@ func isModuleDisabled(preferences map[string]interface{}, moduleName string) boo
 	return found
 }
 
+// ProjectInstructionModule injects project-specific instructions at the start of the conversation.
+type ProjectInstructionModule struct{}
+
+// NewProjectInstructionModule creates a new project instruction module.
+func NewProjectInstructionModule() *ProjectInstructionModule {
+	return &ProjectInstructionModule{}
+}
+
+// Name returns the module identifier.
+func (m *ProjectInstructionModule) Name() string {
+	return projectInstructionModuleName
+}
+
+// ShouldApply determines if project instructions should be injected.
+func (m *ProjectInstructionModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if promptCtx == nil {
+		return false
+	}
+	return strings.TrimSpace(promptCtx.ProjectInstruction) != ""
+}
+
+// Apply prepends the project instruction as a system message.
+func (m *ProjectInstructionModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
+		}
+	}
+	if promptCtx == nil || strings.TrimSpace(promptCtx.ProjectInstruction) == "" {
+		return messages, nil
+	}
+
+	return PrependProjectInstruction(messages, promptCtx.ProjectInstruction), nil
+}
+
 // PersonaModule ensures a consistent system prompt/persona is applied
 type PersonaModule struct {
 	defaultPersona string
@@ -215,6 +292,105 @@ func (m *PersonaModule) Apply(ctx context.Context, promptCtx *Context, messages 
 
 	personaText := fmt.Sprintf("You are a %s. Follow the rules strictly.", persona)
 	result := appendSystemContent(messages, personaText, m.Name(), persona)
+	return result, nil
+}
+
+// UserProfileModule injects user profile personalization into the system prompt.
+type UserProfileModule struct{}
+
+// NewUserProfileModule creates a new user profile module.
+func NewUserProfileModule() *UserProfileModule {
+	return &UserProfileModule{}
+}
+
+// Name returns the module identifier.
+func (m *UserProfileModule) Name() string {
+	return userProfileModuleName
+}
+
+// ShouldApply determines if user profile information should be injected.
+func (m *UserProfileModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if promptCtx == nil || promptCtx.Profile == nil {
+		return false
+	}
+	profile := promptCtx.Profile
+
+	// Apply when any personalization field is present (base style defaults to Friendly so non-empty).
+	return profile.BaseStyle != "" ||
+		strings.TrimSpace(profile.CustomInstructions) != "" ||
+		strings.TrimSpace(profile.NickName) != "" ||
+		strings.TrimSpace(profile.Occupation) != "" ||
+		strings.TrimSpace(profile.MoreAboutYou) != ""
+}
+
+func baseStyleInstruction(style usersettings.BaseStyle) string {
+	switch style {
+	case usersettings.BaseStyleConcise:
+		return "Use a concise style: brief, direct answers with minimal filler."
+	case usersettings.BaseStyleFriendly:
+		return "Use a friendly, warm, and encouraging tone while staying helpful."
+	case usersettings.BaseStyleProfessional:
+		return "Use a professional, clear, and structured tone appropriate for business settings."
+	default:
+		if strings.TrimSpace(string(style)) != "" {
+			return fmt.Sprintf("Use the user's preferred style: %s.", style)
+		}
+		return ""
+	}
+}
+
+// Apply injects user profile guidance and persona instructions.
+func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
+		}
+	}
+	if promptCtx == nil || promptCtx.Profile == nil {
+		return messages, nil
+	}
+
+	profile := promptCtx.Profile
+	var sections []string
+
+	if styleText := baseStyleInstruction(profile.BaseStyle); styleText != "" {
+		sections = append(sections, styleText)
+	}
+
+	if custom := strings.TrimSpace(profile.CustomInstructions); custom != "" {
+		sections = append(sections, fmt.Sprintf("Custom instructions from the user:\n%s", custom))
+	}
+
+	var details []string
+	if nick := strings.TrimSpace(profile.NickName); nick != "" {
+		details = append(details, fmt.Sprintf("Address the user as \"%s\".", nick))
+	}
+	if occupation := strings.TrimSpace(profile.Occupation); occupation != "" {
+		details = append(details, fmt.Sprintf("Occupation: %s.", occupation))
+	}
+	if more := strings.TrimSpace(profile.MoreAboutYou); more != "" {
+		details = append(details, fmt.Sprintf("About the user: %s.", more))
+	}
+	if len(details) > 0 {
+		var builder strings.Builder
+		builder.WriteString("User context:\n")
+		for _, detail := range details {
+			builder.WriteString("- ")
+			builder.WriteString(detail)
+			builder.WriteString("\n")
+		}
+		sections = append(sections, strings.TrimSpace(builder.String()))
+	}
+
+	instruction := strings.TrimSpace(strings.Join(sections, "\n\n"))
+	if instruction == "" {
+		return messages, nil
+	}
+
+	result := appendSystemContent(messages, instruction, m.Name(), "")
 	return result, nil
 }
 

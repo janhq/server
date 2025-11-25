@@ -3,6 +3,7 @@ package usersettings
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -44,12 +45,27 @@ type MemoryConfig struct {
 	MinSimilarity    float32 `json:"min_similarity"`
 }
 
+// BaseStyle represents the conversation style preference.
+type BaseStyle string
+
+const (
+	BaseStyleConcise      BaseStyle = "Concise"
+	BaseStyleFriendly     BaseStyle = "Friendly"
+	BaseStyleProfessional BaseStyle = "Professional"
+)
+
+// IsValid checks if the base style is one of the allowed values.
+func (bs BaseStyle) IsValid() bool {
+	return bs == BaseStyleConcise || bs == BaseStyleFriendly || bs == BaseStyleProfessional
+}
+
 // ProfileSettings stores user profile information.
 type ProfileSettings struct {
-	CustomInstructions string `json:"custom_instructions"` // Additional behavior, style, and tone preferences
-	Nickname           string `json:"nickname"`            // What should Jan call you?
-	Occupation         string `json:"occupation"`          // User's occupation
-	MoreAboutYou       string `json:"more_about_you"`      // Additional information about the user
+	BaseStyle          BaseStyle `json:"base_style"`          // Conversation style: Concise, Friendly, or Professional
+	CustomInstructions string    `json:"custom_instructions"` // Additional behavior, style, and tone preferences
+	NickName           string    `json:"nick_name"`           // What should Jan call you? (alias: nickname)
+	Occupation         string    `json:"occupation"`          // User's occupation
+	MoreAboutYou       string    `json:"more_about_you"`      // Additional information about the user
 }
 
 // AdvancedSettings stores advanced feature toggles.
@@ -76,8 +92,9 @@ func DefaultMemoryConfig() MemoryConfig {
 // DefaultProfileSettings returns default profile settings
 func DefaultProfileSettings() ProfileSettings {
 	return ProfileSettings{
+		BaseStyle:          BaseStyleFriendly, // Default to Friendly style
 		CustomInstructions: "",
-		Nickname:           "",
+		NickName:           "",
 		Occupation:         "",
 		MoreAboutYou:       "",
 	}
@@ -134,6 +151,32 @@ func (s *UserSettings) Apply(req UpdateRequest) {
 	if req.Preferences != nil {
 		s.Preferences = req.Preferences
 	}
+}
+
+type profileSettingsAlias ProfileSettings
+
+// MarshalJSON ensures we consistently emit nick_name while keeping the struct lean.
+func (p ProfileSettings) MarshalJSON() ([]byte, error) {
+	return json.Marshal(profileSettingsAlias(p))
+}
+
+// UnmarshalJSON accepts both nick_name and the legacy nickname key for backward compatibility.
+func (p *ProfileSettings) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		profileSettingsAlias
+		NicknameLegacy string `json:"nickname"`
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	*p = ProfileSettings(aux.profileSettingsAlias)
+	if p.NickName == "" && aux.NicknameLegacy != "" {
+		p.NickName = aux.NicknameLegacy
+	}
+
+	return nil
 }
 
 // Repository defines storage operations for user settings.

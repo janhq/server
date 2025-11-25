@@ -93,7 +93,7 @@ func CreateApplication() (*Application, error) {
 	usersettingsRepository := usersettingsrepo.NewUserSettingsGormRepository(db)
 	usersettingsService := usersettings.NewService(usersettingsRepository)
 	memoryHandler := handlers.ProvideMemoryHandler(memoryClient, config, usersettingsService)
-	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, resolver, processorImpl, memoryHandler, usersettingsService)
+	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, projectService, resolver, processorImpl, memoryHandler, usersettingsService)
 	chatCompletionRoute := chat.NewChatCompletionRoute(chatHandler, authHandler)
 	chatRoute := chat.NewChatRoute(chatCompletionRoute)
 	conversationRoute := conversation2.NewConversationRoute(conversationHandler, authHandler)
