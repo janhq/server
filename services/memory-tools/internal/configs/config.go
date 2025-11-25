@@ -12,7 +12,7 @@ var global *Config
 type Config struct {
 	HTTPPort int `env:"MEMORY_TOOLS_PORT" envDefault:"8090"`
 
-	// Database - Read/Write Split (required, no defaults)
+	// Database - Read/Write Split (required, no default)
 	DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN,notEmpty"`
 	DBPostgresqlRead1DSN string `env:"DB_POSTGRESQL_READ1_DSN"` // Optional read replica
 
