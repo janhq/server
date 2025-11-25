@@ -28,6 +28,8 @@ func modulePriority(module Module) int {
 		return -10
 	case *PersonaModule:
 		return 0
+	case *UserProfileModule:
+		return 5
 	case *MemoryModule:
 		return 10
 	case *ToolInstructionsModule:
@@ -61,6 +63,8 @@ func NewProcessor(config ProcessorConfig, log zerolog.Logger) *ProcessorImpl {
 	if strings.TrimSpace(config.DefaultPersona) != "" {
 		processor.RegisterModule(NewPersonaModule(config.DefaultPersona))
 	}
+
+	processor.RegisterModule(NewUserProfileModule())
 
 	// Register modules based on configuration
 	if config.EnableMemory {

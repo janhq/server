@@ -150,10 +150,21 @@ func (h *ChatHandler) CreateChatCompletion(
 	// Load memory context (best-effort) when a conversation is present
 	loadedMemory := h.collectPromptMemory(conv, reqCtx)
 
+	// Load user settings once for prompt orchestration and memory (best-effort)
+	var userSettings *usersettings.UserSettings
+	if h.userSettingsService != nil {
+		userSettings, err = h.userSettingsService.GetOrCreateSettings(ctx, userID)
+		if err != nil {
+			log := logger.GetLogger()
+			log.Warn().Err(err).Uint("user_id", userID).Msg("failed to load user settings for prompt orchestration")
+			userSettings = nil
+		}
+	}
+
 	// Load memory using memory_handler (respects MEMORY_ENABLED and user settings)
 	// Memory injection is controlled by PROMPT_ORCHESTRATION_MEMORY in the prompt processor
 	if h.memoryHandler != nil && conversationID != "" {
-		memoryContext, memErr := h.memoryHandler.LoadMemoryContext(ctx, userID, conversationID, conv, newMessages)
+		memoryContext, memErr := h.memoryHandler.LoadMemoryContext(ctx, userID, conversationID, conv, newMessages, userSettings)
 		if memErr == nil && len(memoryContext) > 0 {
 			loadedMemory = append(loadedMemory, memoryContext...)
 		}
@@ -213,6 +224,11 @@ func (h *ChatHandler) CreateChatCompletion(
 			preferences["persona"] = persona
 		}
 
+		var profileSettings *usersettings.ProfileSettings
+		if userSettings != nil {
+			profileSettings = &userSettings.ProfileSettings
+		}
+
 		promptCtx := &prompt.Context{
 			UserID:             userID,
 			ConversationID:     conversationID,
@@ -220,6 +236,7 @@ func (h *ChatHandler) CreateChatCompletion(
 			Preferences:        preferences,
 			Memory:             loadedMemory,
 			ProjectInstruction: projectInstruction,
+			Profile:            profileSettings,
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)

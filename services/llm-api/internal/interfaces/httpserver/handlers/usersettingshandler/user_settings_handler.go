@@ -78,6 +78,15 @@ func (h *UserSettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
+	// Validate profile settings if provided
+	if req.ProfileSettings != nil {
+		if req.ProfileSettings.BaseStyle != "" && !req.ProfileSettings.BaseStyle.IsValid() {
+			responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil,
+				"profile_settings.base_style must be one of: Concise, Friendly, Professional")
+			return
+		}
+	}
+
 	// Validate memory config ranges if provided
 	if req.MemoryConfig != nil {
 		if req.MemoryConfig.MaxUserItems < 0 || req.MemoryConfig.MaxUserItems > 20 {
