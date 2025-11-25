@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
+	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
@@ -44,6 +45,7 @@ type ChatHandler struct {
 	providerHandler     *modelHandler.ProviderHandler
 	conversationHandler *conversationHandler.ConversationHandler
 	conversationService *conversation.ConversationService
+	projectService      *project.ProjectService
 	mediaResolver       mediaresolver.Resolver
 	promptProcessor     *prompt.ProcessorImpl
 	memoryHandler       *MemoryHandler
@@ -56,6 +58,7 @@ func NewChatHandler(
 	providerHandler *modelHandler.ProviderHandler,
 	conversationHandler *conversationHandler.ConversationHandler,
 	conversationService *conversation.ConversationService,
+	projectService *project.ProjectService,
 	mediaResolver mediaresolver.Resolver,
 	promptProcessor *prompt.ProcessorImpl,
 	memoryHandler *MemoryHandler,
@@ -66,6 +69,7 @@ func NewChatHandler(
 		providerHandler:     providerHandler,
 		conversationHandler: conversationHandler,
 		conversationService: conversationService,
+		projectService:      projectService,
 		mediaResolver:       mediaResolver,
 		promptProcessor:     promptProcessor,
 		memoryHandler:       memoryHandler,
@@ -97,6 +101,7 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	var conv *conversation.Conversation
 	var conversationID string
+	var projectInstruction string
 	var err error
 	newMessages := append([]openai.ChatCompletionMessage(nil), request.Messages...)
 
@@ -129,6 +134,9 @@ func (h *ChatHandler) CreateChatCompletion(
 			attribute.String("conversation.id", conversationID),
 		)
 		request.Messages = h.prependConversationItems(conv, request.Messages)
+
+		// Load project instruction for this conversation (if any)
+		projectInstruction = h.getProjectInstruction(ctx, userID, conv)
 	}
 	// If no conversation.id exists, bypass as non-conversation completion
 
@@ -185,6 +193,11 @@ func (h *ChatHandler) CreateChatCompletion(
 	// Resolve jan_* media placeholders (best-effort)
 	request.Messages = h.resolveMediaPlaceholders(ctx, reqCtx, request.Messages)
 
+	// Ensure project instruction is the first system message when available
+	if projectInstruction != "" {
+		request.Messages = prompt.PrependProjectInstruction(request.Messages, projectInstruction)
+	}
+
 	// Apply prompt orchestration (if enabled)
 	if h.promptProcessor != nil {
 		observability.AddSpanEvent(ctx, "processing_prompts")
@@ -201,11 +214,12 @@ func (h *ChatHandler) CreateChatCompletion(
 		}
 
 		promptCtx := &prompt.Context{
-			UserID:         userID,
-			ConversationID: conversationID,
-			Language:       strings.TrimSpace(reqCtx.GetHeader("Accept-Language")),
-			Preferences:    preferences,
-			Memory:         loadedMemory,
+			UserID:             userID,
+			ConversationID:     conversationID,
+			Language:           strings.TrimSpace(reqCtx.GetHeader("Accept-Language")),
+			Preferences:        preferences,
+			Memory:             loadedMemory,
+			ProjectInstruction: projectInstruction,
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
@@ -436,6 +450,48 @@ func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.
 		return resolved
 	}
 	return messages
+}
+
+// getProjectInstruction loads the project instruction for the conversation, falling back to the stored snapshot.
+func (h *ChatHandler) getProjectInstruction(ctx context.Context, userID uint, conv *conversation.Conversation) string {
+	if conv == nil || h.projectService == nil {
+		return ""
+	}
+	if ctx != nil && ctx.Err() != nil {
+		return ""
+	}
+
+	if conv.EffectiveInstructionSnapshot != nil {
+		if snapshot := strings.TrimSpace(*conv.EffectiveInstructionSnapshot); snapshot != "" {
+			return snapshot
+		}
+	}
+
+	if conv.ProjectPublicID == nil {
+		return ""
+	}
+
+	projectID := strings.TrimSpace(*conv.ProjectPublicID)
+	if projectID == "" {
+		return ""
+	}
+
+	proj, err := h.projectService.GetProjectByPublicIDAndUserID(ctx, projectID, userID)
+	if err != nil {
+		log := logger.GetLogger()
+		log.Warn().
+			Err(err).
+			Str("conversation_id", conv.PublicID).
+			Str("project_id", projectID).
+			Msg("failed to load project instruction")
+		return ""
+	}
+
+	if proj.Instruction == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(*proj.Instruction)
 }
 
 // collectPromptMemory gathers memory hints from request headers, conversation metadata, or recent turns.

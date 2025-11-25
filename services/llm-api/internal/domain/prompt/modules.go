@@ -8,7 +8,10 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-const moduleMarkerFormat = "[[prompt-module:%s]]"
+const (
+	moduleMarkerFormat           = "[[prompt-module:%s]]"
+	projectInstructionModuleName = "project_instruction"
+)
 
 func moduleMarker(name string) string {
 	return fmt.Sprintf(moduleMarkerFormat, strings.ToLower(name))
@@ -43,6 +46,39 @@ func cloneMessage(msg openai.ChatCompletionMessage) openai.ChatCompletionMessage
 	}
 
 	return clone
+}
+
+// prependInstructionSystemMessage returns a copy of messages with the instruction system message prepended.
+// A marker is appended to the content to avoid duplicate injections.
+func prependInstructionSystemMessage(messages []openai.ChatCompletionMessage, instruction, moduleName string) []openai.ChatCompletionMessage {
+	trimmed := strings.TrimSpace(instruction)
+	if trimmed == "" {
+		return messages
+	}
+
+	marker := moduleMarker(moduleName)
+	for _, msg := range messages {
+		if msg.Role == openai.ChatMessageRoleSystem && hasMarker(msg.Content, marker) {
+			return messages
+		}
+	}
+
+	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
+	result = append(result, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: fmt.Sprintf("%s\n%s", trimmed, marker),
+	})
+
+	for _, msg := range messages {
+		result = append(result, cloneMessage(msg))
+	}
+
+	return result
+}
+
+// PrependProjectInstruction injects the project instruction as the first system message.
+func PrependProjectInstruction(messages []openai.ChatCompletionMessage, instruction string) []openai.ChatCompletionMessage {
+	return prependInstructionSystemMessage(messages, instruction, projectInstructionModuleName)
 }
 
 func appendSystemContent(messages []openai.ChatCompletionMessage, additional, moduleName, defaultPersona string) []openai.ChatCompletionMessage {
@@ -155,6 +191,44 @@ func isModuleDisabled(preferences map[string]interface{}, moduleName string) boo
 	disabled := disabledModules(preferences)
 	_, found := disabled[strings.ToLower(moduleName)]
 	return found
+}
+
+// ProjectInstructionModule injects project-specific instructions at the start of the conversation.
+type ProjectInstructionModule struct{}
+
+// NewProjectInstructionModule creates a new project instruction module.
+func NewProjectInstructionModule() *ProjectInstructionModule {
+	return &ProjectInstructionModule{}
+}
+
+// Name returns the module identifier.
+func (m *ProjectInstructionModule) Name() string {
+	return projectInstructionModuleName
+}
+
+// ShouldApply determines if project instructions should be injected.
+func (m *ProjectInstructionModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if promptCtx == nil {
+		return false
+	}
+	return strings.TrimSpace(promptCtx.ProjectInstruction) != ""
+}
+
+// Apply prepends the project instruction as a system message.
+func (m *ProjectInstructionModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
+		}
+	}
+	if promptCtx == nil || strings.TrimSpace(promptCtx.ProjectInstruction) == "" {
+		return messages, nil
+	}
+
+	return PrependProjectInstruction(messages, promptCtx.ProjectInstruction), nil
 }
 
 // PersonaModule ensures a consistent system prompt/persona is applied

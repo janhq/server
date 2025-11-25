@@ -24,6 +24,8 @@ type moduleEntry struct {
 
 func modulePriority(module Module) int {
 	switch module.(type) {
+	case *ProjectInstructionModule:
+		return -10
 	case *PersonaModule:
 		return 0
 	case *MemoryModule:
@@ -52,6 +54,8 @@ func NewProcessor(config ProcessorConfig, log zerolog.Logger) *ProcessorImpl {
 		processor.log = processor.log.With().Str("mode", "noop").Logger()
 		return processor
 	}
+
+	processor.RegisterModule(NewProjectInstructionModule())
 
 	// Always ensure a base persona/system prompt exists when a default is provided
 	if strings.TrimSpace(config.DefaultPersona) != "" {

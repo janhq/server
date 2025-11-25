@@ -17,12 +17,13 @@ type ProcessorConfig struct {
 
 // Context contains contextual information for prompt processing
 type Context struct {
-	UserID         uint
-	ConversationID string
-	Language       string
-	Preferences    map[string]interface{}
-	Memory         []string
-	AppliedModules []string
+	UserID             uint
+	ConversationID     string
+	Language           string
+	Preferences        map[string]interface{}
+	Memory             []string
+	ProjectInstruction string
+	AppliedModules     []string
 }
 
 // Module represents a prompt module that can be applied
