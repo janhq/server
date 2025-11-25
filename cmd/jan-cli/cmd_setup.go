@@ -127,7 +127,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 				fmt.Println("✓ Monitoring stack started successfully!")
 				fmt.Println()
 				fmt.Println("Access monitoring dashboards:")
-				fmt.Println("  • Grafana:    http://localhost:3001 (admin/admin)")
+				fmt.Println("  • Grafana:    http://localhost:3331 (admin/admin)")
 				fmt.Println("  • Prometheus: http://localhost:9090")
 				fmt.Println("  • Jaeger:     http://localhost:16686")
 			}

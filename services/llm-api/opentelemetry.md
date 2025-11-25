@@ -257,7 +257,7 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
 
 ### In Grafana
 
-1. Navigate to http://localhost:3001 (admin/admin)
+1. Navigate to http://localhost:3331 (admin/admin)
 2. Go to Explore
 3. Select Jaeger datasource
 4. Query traces

@@ -354,7 +354,7 @@ docker compose --profile monitoring up -d
 
 # Access dashboards
 # Prometheus: http://localhost:9090
-# Grafana: http://localhost:3001
+# Grafana: http://localhost:3331
 # Jaeger: http://localhost:16686
 ```
 

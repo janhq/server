@@ -25,7 +25,7 @@ This command will:
 
 ### Access Dashboards
 
-- **Grafana** (Unified Dashboard): http://localhost:3001
+- **Grafana** (Unified Dashboard): http://localhost:3331
  - Username: `admin`
  - Password: `admin`
  - Pre-configured with Prometheus and Jaeger datasources
@@ -105,7 +105,7 @@ PROMETHEUS_PORT=9090
 JAEGER_UI_PORT=16686
 
 # Grafana
-GRAFANA_PORT=3001
+GRAFANA_PORT=3331
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=admin
 
@@ -184,7 +184,7 @@ Datasources are auto-provisioned from `monitoring/grafana/provisioning/datasourc
 
 ### Creating Grafana Dashboards
 
-1. Navigate to http://localhost:3001 (admin/admin)
+1. Navigate to http://localhost:3331 (admin/admin)
 2. Click "+" -> "Create Dashboard"
 3. Add panels with queries from Prometheus or Jaeger
 4. Save the dashboard

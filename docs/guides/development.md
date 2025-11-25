@@ -61,7 +61,7 @@ docker compose ps  # status
 | MCP Tools | http://localhost:8091 | Native MCP tool bridge |
 | Keycloak | http://localhost:8085 | Admin/Admin in development |
 | PostgreSQL | localhost:5432 | Database user `jan_user` / password from `.env` |
-| Grafana | http://localhost:3001 | Start with `make monitor-up` |
+| Grafana | http://localhost:3331 | Start with `make monitor-up` |
 | Prometheus | http://localhost:9090 | Monitoring profile |
 | Jaeger | http://localhost:16686 | Tracing profile |
 

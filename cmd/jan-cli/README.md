@@ -465,7 +465,7 @@ jan-cli monitor dev     # Development mode with full sampling
 jan-cli monitor dev
 # Monitoring stack ready:
 #   - Prometheus: http://localhost:9090
-#   - Grafana: http://localhost:3001 (admin/admin)
+#   - Grafana: http://localhost:3331 (admin/admin)
 #   - Jaeger: http://localhost:16686
 #   - OTEL Collector: http://localhost:13133
 ```

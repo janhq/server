@@ -481,7 +481,7 @@ Testing guide: [docs/guides/testing.md](docs/guides/testing.md)
 
 Access monitoring dashboards:
 
-- **Grafana**: http://localhost:3001 (admin/admin)
+- **Grafana**: http://localhost:3331 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Jaeger**: http://localhost:16686
 

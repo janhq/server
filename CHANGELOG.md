@@ -55,7 +55,7 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
 
 #### Stats Enhanced Monitoring & Observability
 - **Complete observability stack** with Docker Compose profiles:
-  - **Grafana** dashboards (http://localhost:3001, admin/admin)
+  - **Grafana** dashboards (http://localhost:3331, admin/admin)
   - **Prometheus** metrics collection (http://localhost:9090)
   - **Jaeger** distributed tracing (http://localhost:16686)
   - **OpenTelemetry Collector** for telemetry aggregation

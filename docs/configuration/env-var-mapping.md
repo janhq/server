@@ -159,7 +159,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Services Using | Status |
 |---------------------|------|---------|----------------|--------|
-| `GRAFANA_PORT` | int | `3001` | Infrastructure | New |
+| `GRAFANA_PORT` | int | `3331` | Infrastructure | New |
 | `GRAFANA_ADMIN_USER` | string | `admin` | Infrastructure | New |
 | `GRAFANA_ADMIN_PASSWORD` | string | (secret) | Infrastructure | New |
 

@@ -29,7 +29,7 @@ See [Configuration Documentation](configuration/README.md) for details.
 - **Keycloak (8085)**: handles OAuth2/OIDC flows; see `keycloak/`.
 - **PostgreSQL**: `api-db` (LLM/Response/Media data) and `keycloak-db` (Keycloak state).
 - **vLLM (8101)**: inference backend reachable from llm-api.
-- **Observability stack**: Prometheus (9090), Grafana (3001), Jaeger (16686), OpenTelemetry Collector.
+- **Observability stack**: Prometheus (9090), Grafana (3331), Jaeger (16686), OpenTelemetry Collector.
 - **MCP support services**: SearXNG (search), Vector Store (file search), SandboxFusion (python execution).
 
 ## Creating a New Service

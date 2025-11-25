@@ -24,7 +24,7 @@
 - For Kubernetes, send logs to Loki or your aggregator via sidecars/DaemonSets.
 
 ## Dashboards
-- **Grafana** (http://localhost:3001, admin/admin by default).
+- **Grafana** (http://localhost:3331, admin/admin by default).
 - Import dashboards from `monitoring/grafana/provisioning/dashboards/`.
 - Suggested panels:
  - Request/response duration per service.

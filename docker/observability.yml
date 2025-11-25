@@ -67,7 +67,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "${GRAFANA_PORT:-3001}:3000"
+      - "${GRAFANA_PORT:-3331}:3000"
     depends_on:
       - prometheus
       - jaeger

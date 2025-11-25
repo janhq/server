@@ -109,7 +109,7 @@ func runMonitorUp(cmd *cobra.Command, args []string) {
 	printSuccess("Monitoring stack started")
 	fmt.Println()
 	fmt.Println("Dashboards:")
-	fmt.Println("  - Grafana:    http://localhost:3001 (admin/admin)")
+	fmt.Println("  - Grafana:    http://localhost:3331 (admin/admin)")
 	fmt.Println("  - Prometheus: http://localhost:9090")
 	fmt.Println("  - Jaeger:     http://localhost:16686")
 }
@@ -138,7 +138,7 @@ func runMonitorDev(cmd *cobra.Command, args []string) {
 	} else {
 		printSuccess("Monitoring stack ready:")
 		fmt.Println("  - Prometheus: http://localhost:9090")
-		fmt.Println("  - Grafana: http://localhost:3001 (admin/admin)")
+		fmt.Println("  - Grafana: http://localhost:3331 (admin/admin)")
 		fmt.Println("  - Jaeger: http://localhost:16686")
 		fmt.Println("  - OTEL Collector: http://localhost:13133")
 	}
@@ -164,7 +164,7 @@ func runMonitorTest(cmd *cobra.Command, args []string) {
 
 	services := map[string]string{
 		"Prometheus":     "http://localhost:9090/-/healthy",
-		"Grafana":        "http://localhost:3001/api/health",
+		"Grafana":        "http://localhost:3331/api/health",
 		"OTEL Collector": "http://localhost:13133/",
 		"Jaeger":         "http://localhost:16686/",
 	}

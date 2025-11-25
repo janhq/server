@@ -29,7 +29,7 @@ Jan Server is built from multiple small services (microservices) that work toget
 | **vLLM** | 8101 | Inference backend (local GPU/CPU profile) |
 | **Prometheus** | 9090 | Dev-only monitoring UI (`make monitor-up`) |
 | **Jaeger** | 16686 | Trace UI |
-| **Grafana** | 3001 | Dashboards (admin/admin in dev) |
+| **Grafana** | 3331 | Dashboards (admin/admin in dev) |
 
 ### Technology Stack
 

@@ -91,7 +91,7 @@ See [Testing Guide](testing.md) for details.
 make monitor-up
 
 # Access dashboards
-# - Grafana: http://localhost:3001
+# - Grafana: http://localhost:3331
 # - Prometheus: http://localhost:9090
 # - Jaeger: http://localhost:16686
 

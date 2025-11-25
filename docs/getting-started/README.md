@@ -95,7 +95,7 @@ Once running, you can access:
 | **Media API** | http://localhost:8285 | `Authorization: Bearer <token>` |
 | **MCP Tools** | http://localhost:8091 | `Authorization: Bearer <token>` |
 | **Keycloak Console** | http://localhost:8085 | admin/admin |
-| **Grafana Dashboards** | http://localhost:3001 | admin/admin (after `make monitor-up`) |
+| **Grafana Dashboards** | http://localhost:3331 | admin/admin (after `make monitor-up`) |
 | **Prometheus** | http://localhost:9090 | - (after `make monitor-up`) |
 | **Jaeger Tracing** | http://localhost:16686 | - (after `make monitor-up`) |
 
@@ -185,7 +185,7 @@ make monitor-up
 ```
 
 Access:
-- **Grafana**: http://localhost:3001 (admin/admin)
+- **Grafana**: http://localhost:3331 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Jaeger**: http://localhost:16686
 

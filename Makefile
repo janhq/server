@@ -530,31 +530,31 @@ db-dump:
 # SECTION 6: MONITORING
 # ============================================================================================================
 
-# .PHONY: monitor-up monitor-down monitor-logs monitor-clean
-#
-# monitor-up:
-# ifeq ($(OS),Windows_NT)
-# 	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor up
-# else
-# 	@bash jan-cli.sh monitor up
-# endif
-#
-# monitor-down:
-# ifeq ($(OS),Windows_NT)
-# 	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor down
-# else
-# 	@bash jan-cli.sh monitor down
-# endif
-#
-# monitor-logs:
-# 	$(MONITOR_COMPOSE) logs -f
-#
-# monitor-clean:
-# ifeq ($(OS),Windows_NT)
-# 	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor reset
-# else
-# 	@bash jan-cli.sh monitor reset
-# endif
+.PHONY: monitor-up monitor-down monitor-logs monitor-clean
+
+monitor-up:
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor up
+else
+	@bash jan-cli.sh monitor up
+endif
+
+monitor-down:
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor down
+else
+	@bash jan-cli.sh monitor down
+endif
+
+monitor-logs:
+	$(MONITOR_COMPOSE) logs -f
+
+monitor-clean:
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor reset
+else
+	@bash jan-cli.sh monitor reset
+endif
 
 # --- Advanced Monitoring Targets (from monitoring improvement plan) ---
 
