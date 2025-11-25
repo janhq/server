@@ -120,7 +120,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 				fmt.Println("✓ Enabled telemetry collection (OTEL_ENABLED=true)")
 			}
 
-			if err := execCommand("make", "monitor-dev"); err != nil {
+			if err := execCommand("make", "monitor-up"); err != nil {
 				fmt.Println("⚠️  Warning: Failed to start monitoring stack")
 				fmt.Println("You can set it up later with: jan-cli monitor setup")
 			} else {
