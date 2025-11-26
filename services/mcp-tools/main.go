@@ -57,9 +57,14 @@ func main() {
 		vectorClient = vectorstoreclient.NewClient(cfg.VectorStoreURL)
 	}
 	var sandboxMCP *mcp.SandboxFusionMCP
-	if cfg.SandboxFusionURL != "" {
+	switch {
+	case !cfg.EnablePythonExec:
+		log.Warn().Msg("SandboxFusion python_exec tool disabled via config")
+	case cfg.SandboxFusionURL != "":
 		sandboxClient := sandboxfusionclient.NewClient(cfg.SandboxFusionURL)
-		sandboxMCP = mcp.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval)
+		sandboxMCP = mcp.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval, cfg.EnablePythonExec)
+	default:
+		log.Warn().Msg("SandboxFusion URL not configured, python_exec tool will not be available")
 	}
 
 	// Load MCP provider configuration
@@ -74,10 +79,13 @@ func main() {
 
 	// Initialize memory MCP
 	var memoryMCP *mcp.MemoryMCP
-	if cfg.MemoryToolsURL != "" {
-		memoryMCP = mcp.NewMemoryMCP(cfg.MemoryToolsURL)
+	switch {
+	case !cfg.EnableMemoryRetrieve:
+		log.Warn().Msg("memory_retrieve MCP tool disabled via config")
+	case cfg.MemoryToolsURL != "":
+		memoryMCP = mcp.NewMemoryMCP(cfg.MemoryToolsURL, cfg.EnableMemoryRetrieve)
 		log.Info().Str("url", cfg.MemoryToolsURL).Msg("Memory tools integration enabled")
-	} else {
+	default:
 		log.Warn().Msg("Memory tools URL not configured, memory_retrieve tool will not be available")
 	}
 

@@ -120,6 +120,9 @@ SERPER_OFFLINE_MODE=false         # Force cached/offline search mode
 VECTOR_STORE_URL=http://localhost:3015 # Base URL for the internal vector store service
 SANDBOX_FUSION_URL=http://localhost:3010 # SandboxFusion container service
 SANDBOX_FUSION_REQUIRE_APPROVAL=false   # Gate python_exec until manually approved
+MCP_ENABLE_PYTHON_EXEC=true       # Set false to remove python_exec from tool list
+MCP_ENABLE_MEMORY_RETRIEVE=true   # Set false to remove memory_retrieve from tool list
+MEMORY_TOOLS_URL=http://localhost:8090  # Memory tools service URL for memory_retrieve
 ```
 
 ## Quick Start

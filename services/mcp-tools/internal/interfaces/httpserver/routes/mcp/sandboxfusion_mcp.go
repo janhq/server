@@ -10,6 +10,7 @@ import (
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/rs/zerolog/log"
 )
 
 type SandboxFusionArgs struct {
@@ -22,20 +23,26 @@ type SandboxFusionArgs struct {
 type SandboxFusionMCP struct {
 	client          *sandboxfusion.Client
 	requireApproval bool
+	enabled         bool
 }
 
-func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool) *SandboxFusionMCP {
+func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool, enabled bool) *SandboxFusionMCP {
 	if client == nil {
 		return nil
 	}
 	return &SandboxFusionMCP{
 		client:          client,
 		requireApproval: requireApproval,
+		enabled:         enabled,
 	}
 }
 
 func (s *SandboxFusionMCP) RegisterTools(server *mcpserver.MCPServer) {
 	if s == nil || s.client == nil {
+		return
+	}
+	if !s.enabled {
+		log.Warn().Msg("python_exec MCP tool disabled via config")
 		return
 	}
 

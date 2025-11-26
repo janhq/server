@@ -80,12 +80,14 @@ type memoryToolResult struct {
 type MemoryMCP struct {
 	memoryToolsURL string
 	httpClient     *http.Client
+	enabled        bool
 }
 
 // NewMemoryMCP creates a new memory MCP handler.
-func NewMemoryMCP(memoryToolsURL string) *MemoryMCP {
+func NewMemoryMCP(memoryToolsURL string, enabled bool) *MemoryMCP {
 	return &MemoryMCP{
 		memoryToolsURL: memoryToolsURL,
+		enabled:        enabled,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -94,6 +96,10 @@ func NewMemoryMCP(memoryToolsURL string) *MemoryMCP {
 
 // RegisterTools registers memory tools with the MCP server
 func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
+	if !m.enabled {
+		log.Warn().Msg("memory_retrieve MCP tool disabled via config")
+		return
+	}
 	if m.memoryToolsURL == "" {
 		log.Warn().Msg("Memory tools URL not configured, skipping memory_retrieve tool registration")
 		return

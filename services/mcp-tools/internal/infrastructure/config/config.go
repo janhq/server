@@ -29,6 +29,8 @@ type Config struct {
 
 	// Sandbox Configuration
 	SandboxFusionRequireApproval bool `env:"MCP_SANDBOX_REQUIRE_APPROVAL" envDefault:"false"`
+	EnablePythonExec             bool `env:"MCP_ENABLE_PYTHON_EXEC" envDefault:"true"`
+	EnableMemoryRetrieve         bool `env:"MCP_ENABLE_MEMORY_RETRIEVE" envDefault:"true"`
 
 	// Authentication
 	AuthEnabled bool   `env:"AUTH_ENABLED" envDefault:"false"`
