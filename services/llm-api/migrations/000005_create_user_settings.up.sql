@@ -22,8 +22,9 @@ CREATE TABLE llm_api.user_settings (
     
     -- Profile Settings
     profile_settings JSONB NOT NULL DEFAULT '{
+        "base_style": "Friendly",
         "custom_instructions": "",
-        "nickname": "",
+        "nick_name": "",
         "occupation": "",
         "more_about_you": ""
     }',
@@ -53,5 +54,5 @@ CREATE INDEX idx_user_settings_user_id ON llm_api.user_settings(user_id);
 -- Add helpful comments
 COMMENT ON TABLE llm_api.user_settings IS 'User preferences and feature toggles with JSONB columns for flexible configuration';
 COMMENT ON COLUMN llm_api.user_settings.memory_config IS 'Memory configuration: enabled, auto_inject, observe_enabled, inject flags, retrieval limits, similarity threshold';
-COMMENT ON COLUMN llm_api.user_settings.profile_settings IS 'User profile information: custom_instructions, nickname, occupation, more_about_you';
+COMMENT ON COLUMN llm_api.user_settings.profile_settings IS 'User profile information: base_style, custom_instructions, nick_name (alias nickname), occupation, more_about_you';
 COMMENT ON COLUMN llm_api.user_settings.advanced_settings IS 'Advanced features: web_search, code_enabled';

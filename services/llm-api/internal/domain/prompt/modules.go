@@ -6,11 +6,14 @@ import (
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
+
+	"jan-server/services/llm-api/internal/domain/usersettings"
 )
 
 const (
 	moduleMarkerFormat           = "[[prompt-module:%s]]"
 	projectInstructionModuleName = "project_instruction"
+	userProfileModuleName        = "user_profile"
 )
 
 func moduleMarker(name string) string {
@@ -289,6 +292,105 @@ func (m *PersonaModule) Apply(ctx context.Context, promptCtx *Context, messages 
 
 	personaText := fmt.Sprintf("You are a %s. Follow the rules strictly.", persona)
 	result := appendSystemContent(messages, personaText, m.Name(), persona)
+	return result, nil
+}
+
+// UserProfileModule injects user profile personalization into the system prompt.
+type UserProfileModule struct{}
+
+// NewUserProfileModule creates a new user profile module.
+func NewUserProfileModule() *UserProfileModule {
+	return &UserProfileModule{}
+}
+
+// Name returns the module identifier.
+func (m *UserProfileModule) Name() string {
+	return userProfileModuleName
+}
+
+// ShouldApply determines if user profile information should be injected.
+func (m *UserProfileModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if promptCtx == nil || promptCtx.Profile == nil {
+		return false
+	}
+	profile := promptCtx.Profile
+
+	// Apply when any personalization field is present (base style defaults to Friendly so non-empty).
+	return profile.BaseStyle != "" ||
+		strings.TrimSpace(profile.CustomInstructions) != "" ||
+		strings.TrimSpace(profile.NickName) != "" ||
+		strings.TrimSpace(profile.Occupation) != "" ||
+		strings.TrimSpace(profile.MoreAboutYou) != ""
+}
+
+func baseStyleInstruction(style usersettings.BaseStyle) string {
+	switch style {
+	case usersettings.BaseStyleConcise:
+		return "Use a concise style: brief, direct answers with minimal filler."
+	case usersettings.BaseStyleFriendly:
+		return "Use a friendly, warm, and encouraging tone while staying helpful."
+	case usersettings.BaseStyleProfessional:
+		return "Use a professional, clear, and structured tone appropriate for business settings."
+	default:
+		if strings.TrimSpace(string(style)) != "" {
+			return fmt.Sprintf("Use the user's preferred style: %s.", style)
+		}
+		return ""
+	}
+}
+
+// Apply injects user profile guidance and persona instructions.
+func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return messages, err
+		}
+	}
+	if promptCtx == nil || promptCtx.Profile == nil {
+		return messages, nil
+	}
+
+	profile := promptCtx.Profile
+	var sections []string
+
+	if styleText := baseStyleInstruction(profile.BaseStyle); styleText != "" {
+		sections = append(sections, styleText)
+	}
+
+	if custom := strings.TrimSpace(profile.CustomInstructions); custom != "" {
+		sections = append(sections, fmt.Sprintf("Custom instructions from the user:\n%s", custom))
+	}
+
+	var details []string
+	if nick := strings.TrimSpace(profile.NickName); nick != "" {
+		details = append(details, fmt.Sprintf("Address the user as \"%s\".", nick))
+	}
+	if occupation := strings.TrimSpace(profile.Occupation); occupation != "" {
+		details = append(details, fmt.Sprintf("Occupation: %s.", occupation))
+	}
+	if more := strings.TrimSpace(profile.MoreAboutYou); more != "" {
+		details = append(details, fmt.Sprintf("About the user: %s.", more))
+	}
+	if len(details) > 0 {
+		var builder strings.Builder
+		builder.WriteString("User context:\n")
+		for _, detail := range details {
+			builder.WriteString("- ")
+			builder.WriteString(detail)
+			builder.WriteString("\n")
+		}
+		sections = append(sections, strings.TrimSpace(builder.String()))
+	}
+
+	instruction := strings.TrimSpace(strings.Join(sections, "\n\n"))
+	if instruction == "" {
+		return messages, nil
+	}
+
+	result := appendSystemContent(messages, instruction, m.Name(), "")
 	return result, nil
 }
 

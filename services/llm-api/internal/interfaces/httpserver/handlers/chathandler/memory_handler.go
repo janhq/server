@@ -37,25 +37,30 @@ func NewMemoryHandler(
 }
 
 // LoadMemoryContext loads memory for a conversation based on application config and user settings
-// Returns memory array for prompt context, respecting both MEMORY_ENABLED and user settings
+// Returns memory array for prompt context, respecting both MEMORY_ENABLED and user settings.
+// If settings are provided, they are reused; otherwise the handler fetches them.
 func (m *MemoryHandler) LoadMemoryContext(
 	ctx context.Context,
 	userID uint,
 	conversationID string,
 	conv *conversation.Conversation,
 	messages []openai.ChatCompletionMessage,
+	settings *usersettings.UserSettings,
 ) ([]string, error) {
 	// Check application-level config first
 	if !m.memoryEnabled || m.memoryClient == nil || conversationID == "" {
 		return nil, nil
 	}
 
-	// Load user settings
-	settings, err := m.userSettingsService.GetOrCreateSettings(ctx, userID)
-	if err != nil {
-		log := logger.GetLogger()
-		log.Warn().Err(err).Uint("user_id", userID).Msg("failed to load user settings, memory disabled")
-		return nil, nil
+	// Load user settings if not provided
+	if settings == nil {
+		var err error
+		settings, err = m.userSettingsService.GetOrCreateSettings(ctx, userID)
+		if err != nil {
+			log := logger.GetLogger()
+			log.Warn().Err(err).Uint("user_id", userID).Msg("failed to load user settings, memory disabled")
+			return nil, nil
+		}
 	}
 
 	// Check user-level memory enabled flag

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	openai "github.com/sashabaranov/go-openai"
+
+	"jan-server/services/llm-api/internal/domain/usersettings"
 )
 
 // ProcessorConfig contains configuration for the prompt orchestration processor
@@ -24,6 +26,7 @@ type Context struct {
 	Memory             []string
 	ProjectInstruction string
 	AppliedModules     []string
+	Profile            *usersettings.ProfileSettings
 }
 
 // Module represents a prompt module that can be applied

@@ -4,6 +4,8 @@
 
 The User Settings API allows users to control memory features, profile information, advanced features, and other personalization options. Settings are organized into logical groups using JSONB for flexibility.
 
+Prompt orchestration uses profile settings to shape responses: `base_style` drives tone, `custom_instructions` are injected as system guidance, and `nick_name`/`occupation`/`more_about_you` are provided as user context.
+
 ## Endpoints
 
 ### Get User Settings
@@ -32,8 +34,9 @@ Retrieves the current user's settings. If no settings exist, returns defaults.
     "min_similarity": 0.75
   },
   "profile_settings": {
+    "base_style": "Friendly",
     "custom_instructions": "",
-    "nickname": "",
+    "nick_name": "",
     "occupation": "",
     "more_about_you": ""
   },
@@ -57,6 +60,11 @@ Retrieves the current user's settings. If no settings exist, returns defaults.
 
 Updates user settings. Only provided fields are updated (partial update). You can update any combination of settings groups.
 
+Profile personalization now includes:
+- `base_style` enum (`Concise`, `Friendly`, `Professional`)
+- Text fields: `custom_instructions`, `nick_name`, `occupation`, `more_about_you`
+The API accepts the legacy `profile_settings.nickname` on input but responses always return `nick_name`.
+
 **Headers:**
 - `Authorization: Bearer <access_token>` (required)
 - `Content-Type: application/json`
@@ -70,7 +78,8 @@ Updates user settings. Only provided fields are updated (partial update). You ca
     "max_user_items": 5
   },
   "profile_settings": {
-    "nickname": "Dev",
+    "base_style": "Professional",
+    "nick_name": "Dev",
     "occupation": "Software Engineer"
   },
   "advanced_settings": {
@@ -98,8 +107,9 @@ Updates user settings. Only provided fields are updated (partial update). You ca
     "min_similarity": 0.75
   },
   "profile_settings": {
+    "base_style": "Professional",
     "custom_instructions": "",
-    "nickname": "Dev",
+    "nick_name": "Dev",
     "occupation": "Software Engineer",
     "more_about_you": ""
   },
@@ -141,12 +151,18 @@ All memory-related settings are grouped in the `memory_config` JSONB object:
 
 User profile information stored in the `profile_settings` JSONB object:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `custom_instructions` | string | `""` | Additional behavior, style, and tone preferences for the AI |
-| `nickname` | string | `""` | What should Jan call you? |
-| `occupation` | string | `""` | Your occupation or role |
-| `more_about_you` | string | `""` | Additional information about yourself |
+| Field | Type | Default | Values | Description |
+|-------|------|---------|--------|-------------|
+| `base_style` | enum | `"Friendly"` | `"Concise"`, `"Friendly"`, `"Professional"` | Conversation style preference |
+| `custom_instructions` | string | `""` | - | Additional behavior, style, and tone preferences for the AI |
+| `nick_name` | string | `""` | - | What should Jan call you? (alias: `nickname` accepted on input) |
+| `occupation` | string | `""` | - | Your occupation or role |
+| `more_about_you` | string | `""` | - | Additional information about yourself |
+
+**Base Style Options:**
+- **Concise**: Short, direct responses focused on efficiency
+- **Friendly**: Warm, conversational tone with more personality
+- **Professional**: Formal, business-appropriate communication
 
 ### Advanced Settings (`advanced_settings`)
 
@@ -251,8 +267,9 @@ curl -X PATCH https://api.jan.ai/v1/users/me/settings \
   -H "Content-Type: application/json" \
   -d '{
     "profile_settings": {
+      "base_style": "Professional",
       "custom_instructions": "Please be concise and use code examples",
-      "nickname": "Dev",
+      "nick_name": "Dev",
       "occupation": "Full Stack Developer",
       "more_about_you": "I work primarily with Go and TypeScript"
     }
@@ -287,7 +304,8 @@ curl -X PATCH https://api.jan.ai/v1/users/me/settings \
       "max_user_items": 7
     },
     "profile_settings": {
-      "nickname": "Alex",
+      "base_style": "Concise",
+      "nick_name": "Alex",
       "occupation": "DevOps Engineer"
     },
     "advanced_settings": {
@@ -312,6 +330,7 @@ Invalid request body or validation failure:
 ```
 
 Validation rules:
+- `profile_settings.base_style`: Must be one of "Concise", "Friendly", or "Professional"
 - `memory_config.max_user_items`: 0-20
 - `memory_config.max_project_items`: 0-50
 - `memory_config.max_episodic_items`: 0-20
@@ -348,7 +367,7 @@ Custom Instructions
 What behaviors, style, or tone would you like Jan to follow?
 
 What should Jan call you?
-[Input field for nickname]
+[Input field for nick_name]
 
 Your occupation
 [Input field for occupation]
@@ -481,7 +500,7 @@ This JSONB approach provides:
 The User Settings API provides comprehensive control over:
 
 1. **Memory Configuration** - Enable/disable memory, control observation, set retrieval limits, choose injection types
-2. **Profile Settings** - Custom instructions, nickname, occupation, personal information
+2. **Profile Settings** - Custom instructions, nick_name, occupation, personal information
 3. **Advanced Settings** - Web search, code execution (opt-in for security/privacy)
 4. **Feature Toggles** - Tools, tracing, and other system features
 5. **Flexible Preferences** - Extensible JSON for future additions
