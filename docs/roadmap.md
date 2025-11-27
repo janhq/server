@@ -9,9 +9,11 @@
 
 ## Vision
 
-**Jan Server** = Production-ready agentic AI platform for building sophisticated workflows where autonomous agents plan, reflect, collaborate, and execute complex tasks. The leading SaaS platform where agents continuously improve through intelligent orchestration of pluggable microservices.
+**Jan Server** = Production-ready agentic AI platform powered by local Jan models (jan-v2, jan-v3) for building sophisticated workflows where autonomous agents plan, reflect, collaborate, and execute complex tasks. The leading local-first SaaS platform where agents continuously improve through intelligent orchestration of pluggable microservices and optimized Jan models.
 
-**Hero Product:** AI-powered todo & notes app where agents autonomously work on your tasks.
+**Hero Product:** AI-powered todo & notes app where agents autonomously work on your tasks using local Jan models for privacy, speed, and cost efficiency.
+
+**Model Strategy:** Jan models first - optimized for agentic workflows with fine-tuning for planning, reflection, and multi-agent collaboration. Remote providers as optional fallback.
 
 ---
 
@@ -53,7 +55,6 @@
 #### Security Foundation
 - ✅ Keycloak OIDC authentication
 - ✅ JWT-based authorization at gateway
-- ✅ TLS/HTTPS support
 - ✅ API key authentication
 
 #### Developer Experience
@@ -64,13 +65,13 @@
 
 #### Tool Integration
 - ✅ Google Search (Serper API)
-- ✅ Web scraping (SearXNG)
+- ✅ Web scraping (Serper API)
 - ✅ Code execution (SandboxFusion)
 - ✅ Vector store integration
 
 #### Model Support
 - ✅ vLLM inference engine
-- ✅ Jan-v2 model integration (local, optimized for agentic workflows)
+- ✅ Jan-v2 model integration (local, initiat for agentic workflows)
 
 ---
 
@@ -78,17 +79,17 @@
 
 **Status:** In Progress
 
-**Hero Workflow:** "Plan Product Launch" - Agent decomposes task → researches → creates timeline → drafts announcement → reviews quality (85% success rate, <3min)
+**Hero Workflow:** "Plan Product Launch" - Agent decomposes task → researches → creates timeline → drafts announcement → reviews quality 
 
 **Core Services:**
 - **Agent Orchestration** - Lifecycle, state, events (Kafka)
-- **Planning Service** (8092) - Task decomposition, dependency graphs, execution
-- **Reflection Service** (8093) - Self-critique, quality scoring, iterative refinement
-- **Memory Service** (8094) - Short-term (Redis), long-term (vector DB), episodic memory
+- **Planning Service** - Task decomposition, dependency graphs, execution
+- **Reflection Service**  - Self-critique, quality scoring, iterative refinement
+- **Memory Service** - Short-term (Redis), long-term (vector DB), episodic memory
 
 **Model Optimization:**
 - Jan-v2 fine-tuning for planning and reflection tasks
-- Model selection per agent type (jan-v2 for orchestration, jan-v3 for reasoning)
+- Model selection per agent type (jan-v2 | jan-v3, for orchestration, for reasoning)
 - Local-first inference with remote fallback
 - Model caching and optimization for agent workflows
 
@@ -123,7 +124,7 @@
 **Features** (`/ee`):
 - Multi-tenancy: org/workspace isolation, basic RBAC
 - Usage tracking: API calls, tokens, agent tasks, storage
-- Billing: Stripe integration, Free + Pro tier ($49/mo)
+- Billing: Stripe integration, pricing models: TBD
 
 **Security & Compliance:**
 - OAuth 2.0 integrations (Google, Microsoft, GitHub)
@@ -135,7 +136,7 @@
 - Privacy policy: No training on customer data (contractual)
 - Connector data isolation (Slack, GitHub, Calendar data never used for training)
 
-**Exit Criteria:** 10+ paying customers, usage tracking accurate, zero billing disputes, SOC 2 Type I audit in progress
+**Exit Criteria:**  usage tracking accurate, zero billing disputes, SOC 2 Type I audit in progress
 
 ---
 
@@ -277,7 +278,7 @@ User: "Prepare Series A pitch deck"
 **Database:** PostgreSQL 18
 **Memory:** Redis + Qdrant (vector store)
 **Inference:** Jan-v2 (local, primary) | Jan-v3 (upcoming) | vLLM engine | Remote providers (fallback)
-**Models:** Jan-v2 for orchestration/planning, Jan-v3 for advanced reasoning
+**Models:** Jan-v2 for reasoning/orchestration/planning, Jan-v3 for advanced reasoning
 **Observability:** OpenTelemetry, Prometheus, Grafana, Jaeger
 **Events:** Kafka
 **Security:** AES-256 encryption, TLS 1.3, HashiCorp Vault (key management)
