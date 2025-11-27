@@ -13,7 +13,7 @@
 
 **Hero Product:** AI-powered todo & notes app where agents autonomously work on your tasks using local Jan models for privacy, speed, and cost efficiency.
 
-**Model Strategy:** Jan models first - optimized for agentic workflows with fine-tuning for planning, reflection, and multi-agent collaboration. Remote providers as optional fallback.
+**Model Strategy:** Jan models first - optimized for agentic workflows with fine-tuning for planning and reflection. Remote providers as optional fallback.
 
 ---
 
@@ -21,7 +21,6 @@
 
 **Open Source Core** (Apache 2.0):
 - Agent orchestration, planning, memory, reflection
-- Multi-agent collaboration
 - Tool ecosystem (web search, content generation, integrations)
 
 **Enterprise Edition** (`/ee`, Commercial):
@@ -238,11 +237,11 @@ User: "Prepare Series A pitch deck"
 
 ## Agentic Patterns
 
-1. **Reflection** - Agents review and improve their own outputs
-2. **Planning** - Break complex tasks into executable steps
-3. **Tool Use** - Intelligent tool discovery and execution
-4. **Multi-Agent** - Specialized agents collaborate on problems
-5. **Memory** - Context persists across interactions
+1. **Reflection** – Agents review and improve their own outputs  
+2. **Planning** – Break complex tasks into executable steps  
+3. **Tool Use** – Intelligent tool discovery and execution  
+4. **Memory** – Context persists across interactions  
+5. **User Modeling / Profiling** – Agents learn user preferences, behavior, and persona over time to personalize interactions
 
 ---
 
