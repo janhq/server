@@ -622,9 +622,6 @@ Comprehensive test suite at `tests/automation/responses-background-webhook.json`
 
 **Running Tests:**
 ```bash
-# Install Newman
-npm install -g newman
-
 # Run all tests
 newman run tests/automation/responses-background-webhook.json \
   --delay-request 1000 \

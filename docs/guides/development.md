@@ -21,7 +21,6 @@ Install these before running any commands:
 - **Docker Desktop 24+** with Docker Compose V2
 - **GNU Make** (built in on macOS/Linux, install via Chocolatey/Brew on Windows)
 - **Go 1.21+**  only required when editing Go code or using `jan-cli`
-- **Newman** (`npm install -g newman`)  required for the Postman-based integration suites
 
 > Tip: `make setup` uses `jan-cli dev setup` to verify Docker, copy `.env.template` to `.env`, and create `docker/.env` automatically.
 

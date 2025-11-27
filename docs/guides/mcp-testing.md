@@ -6,7 +6,6 @@ Validate the MCP (Model Context Protocol) toolchain end to end. Every command be
 
 - `make up-full` (or `make up-mcp` + `make up-api`) so Kong, MCP Tools, and vector-store are running
 - `SERPER_API_KEY` and other MCP-related env vars set in `.env`
-- `newman` installed (`npm install -g newman`)
 - Services reachable on:
   - Kong Gateway: http://localhost:8000
   - MCP Tools: http://localhost:8091 (direct) or http://localhost:8000/mcp (via Kong)

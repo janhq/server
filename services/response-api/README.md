@@ -306,9 +306,6 @@ Comprehensive test suite available at `tests/automation/responses-background-web
 **Running Tests:**
 
 ```bash
-# Install Newman
-npm install -g newman
-
 # Run all tests
 newman run tests/automation/responses-background-webhook.json \
   --delay-request 1000 \
@@ -396,9 +393,6 @@ jobs:
       - name: Wait for health check
         run: |
           timeout 60 bash -c 'until curl -f http://localhost:8082/healthz; do sleep 2; done'
-      
-      - name: Install Newman
-        run: npm install -g newman
       
       - name: Run tests
         run: |

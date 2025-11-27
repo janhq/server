@@ -8,7 +8,7 @@ volumes:
 services:
   # vLLM GPU Inference (requires NVIDIA GPU)
   vllm-jan-gpu:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.11.2
     pull_policy: always
     restart: unless-stopped
     profiles: ["gpu", "full"]

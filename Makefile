@@ -32,7 +32,7 @@
 #   3. SERVICE MANAGEMENT        - Starting/stopping services (infra, API, MCP, vLLM, full stack)
 #   4. DATABASE MANAGEMENT       - DB operations, migrations, backups, restore
 #   5. MONITORING                - Observability stack (Prometheus, Grafana, Jaeger)
-#   6. TESTING                   - Integration tests with Newman
+#   6. TESTING                   - Integration tests with API Test
 #   7. DEVELOPER UTILITIES       - Development helpers (dev-full mode)
 #   8. HEALTH CHECKS             - Service health validation
 #
@@ -47,14 +47,18 @@
 COMPOSE = docker compose
 COMPOSE_DEV_FULL = docker compose -f docker-compose.yml -f docker-compose.dev-full.yml
 MONITOR_COMPOSE = docker compose -f docker/observability.yml
-NEWMAN = newman
-NEWMAN_AUTH_COLLECTION = tests/automation/auth-postman-scripts.json
-NEWMAN_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.json
-NEWMAN_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
-NEWMAN_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
-NEWMAN_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
-NEWMAN_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
-NEWMAN_E2E_COLLECTION = tests/automation/test-all.postman.json
+ifeq ($(OS),Windows_NT)
+API_TEST = powershell -ExecutionPolicy Bypass -File jan-cli.ps1 api-test run
+else
+API_TEST = bash jan-cli.sh api-test run
+endif
+API_TEST_AUTH_COLLECTION = tests/automation/auth-postman-scripts.json
+API_TEST_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.json
+API_TEST_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
+API_TEST_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
+API_TEST_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
+API_TEST_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
+API_TEST_E2E_COLLECTION = tests/automation/test-all.postman.json
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
 MEDIA_API_KEY ?= changeme-media-key
@@ -82,12 +86,6 @@ else
 endif
 
 setup:
-	@echo "Ensuring newman is installed..."
-ifeq ($(OS),Windows_NT)
-	@powershell -Command "if (-not (Get-Command newman -ErrorAction SilentlyContinue)) { if (Get-Command npm -ErrorAction SilentlyContinue) { npm install -g newman; Write-Host ' newman installed via npm'; } else { Write-Host ' npm not found; install Node.js to use Newman'; } } else { Write-Host ' newman already installed'; }"
-else
-	@if command -v newman >/dev/null 2>&1; then echo " newman already installed"; elif command -v npm >/dev/null 2>&1; then npm install -g newman && echo " newman installed via npm"; else echo " npm not found; install Node.js to use Newman"; fi
-endif
 	@echo "Running setup via jan-cli..."
 ifeq ($(OS),Windows_NT)
 	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 dev setup
@@ -100,7 +98,6 @@ check-deps:
 	@docker --version >/dev/null 2>&1 || echo "Docker not found"
 	@docker compose version >/dev/null 2>&1 || echo "Docker Compose V2 not found"
 	@go version >/dev/null 2>&1 || echo "Go not found (optional)"
-	@newman --version >/dev/null 2>&1 || echo "Newman not found (optional)"
 	@echo "Dependency check complete"
 
 install-deps:
@@ -560,9 +557,9 @@ endif
 
 
 
-# --- Integration Tests (Newman) ---
+# --- Integration Tests (API Test) ---
 
-.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e newman-debug
+.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e api-test-debug
 
 test-all: test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e
 	@echo ""
@@ -570,7 +567,7 @@ test-all: test-auth test-conversations test-response test-media test-mcp-integra
 
 test-auth:
 	@echo "Running authentication tests..."
-	@$(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
+	@$(API_TEST) $(API_TEST_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
@@ -583,7 +580,7 @@ test-auth:
 
 test-conversations:
 	@echo "Running conversation API tests..."
-	@$(NEWMAN) run $(NEWMAN_CONVERSATION_COLLECTION) \
+	@$(API_TEST) $(API_TEST_CONVERSATION_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
@@ -596,7 +593,7 @@ test-conversations:
 
 test-response:
 	@echo "Running response API tests..."
-	@$(NEWMAN) run $(NEWMAN_RESPONSES_COLLECTION) \
+	@$(API_TEST) $(API_TEST_RESPONSES_COLLECTION) \
 		--env-var "response_api_url=http://localhost:8000/responses" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--verbose \
@@ -605,7 +602,7 @@ test-response:
 
 test-media:
 	@echo "Running media API tests..."
-	@$(NEWMAN) run $(NEWMAN_MEDIA_COLLECTION) \
+	@$(API_TEST) $(API_TEST_MEDIA_COLLECTION) \
 		--env-var "media_api_url=http://localhost:8000/media" \
 		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
 		--verbose \
@@ -614,7 +611,7 @@ test-media:
 
 test-mcp-integration:
 	@echo "Running MCP integration tests..."
-	@$(NEWMAN) run $(NEWMAN_MCP_COLLECTION) \
+	@$(API_TEST) $(API_TEST_MCP_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--verbose \
@@ -623,7 +620,7 @@ test-mcp-integration:
 
 test-memory:
 	@echo "Running memory-tools integration tests..."
-	@$(NEWMAN) run $(NEWMAN_MEMORY_COLLECTION) \
+	@$(API_TEST) $(API_TEST_MEMORY_COLLECTION) \
 		--env-var "base_url=http://localhost:8090" \
 		--env-var "embedding_url=http://localhost:8091" \
 		--env-var "user_id=user_test_001" \
@@ -635,7 +632,7 @@ test-memory:
 
 test-e2e:
 	@echo "Running gateway end-to-end tests..."
-	@$(NEWMAN) run $(NEWMAN_E2E_COLLECTION) \
+	@$(API_TEST) $(API_TEST_E2E_COLLECTION) \
 		--env-var "gateway_url=http://localhost:8000" \
 		--env-var "media_api_url=http://localhost:8000/media" \
 		--env-var "response_api_url=http://localhost:8000/responses" \
@@ -645,32 +642,26 @@ test-e2e:
 		--reporters cli
 	@echo "o. Gateway end-to-end tests passed"
 
-newman-debug:
+api-test-debug:
 	@echo "Running authentication tests with debug output..."
 ifeq ($(OS),Windows_NT)
-	@set NODE_DEBUG=request && $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
+	@$(API_TEST) $(API_TEST_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=jan-client" \
-		--verbose \
-		--reporter-cli-no-banner \
-		--reporter-cli-no-summary \
-		--reporter-cli-show-timestamps
+		--verbose
 else
-	@NODE_DEBUG=request $(NEWMAN) run $(NEWMAN_AUTH_COLLECTION) \
+	@$(API_TEST) $(API_TEST_AUTH_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "keycloak_base_url=http://localhost:8085" \
 		--env-var "keycloak_admin=admin" \
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=jan-client" \
-		--verbose \
-		--reporter-cli-no-banner \
-		--reporter-cli-no-summary \
-		--reporter-cli-show-timestamps
+		--verbose
 endif
 
 
