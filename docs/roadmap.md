@@ -97,6 +97,9 @@
 1. **Web Research** - Serper, SearXNG, scraping, article extraction
 2. **Content Tools** - Markdown, grammar check, citations, readability
 3. **Integrations** - Calendar, email, Slack, GitHub
+4. **Computer Use** - MCP Computer Use extension for desktop automation ( experimentals)
+5. **Browser Automation** - MCP Browser extension for web interactions
+6. **Knowledge Base** - Personal knowledge base system for user document management
 
 **Security & Privacy:**
 - Client-side encryption for sensitive data (tasks, notes, memory)

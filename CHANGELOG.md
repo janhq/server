@@ -6,7 +6,7 @@
 
 ## November 2025
 
-### [0.0.9] - Microservices Architecture Release
+### [v0.0.12] - Microservices Architecture Release
 
 **Status:** ✅ Complete | **Date:** November 2025
 
@@ -52,7 +52,7 @@ Complete architectural overhaul from Kubernetes-native monolithic platform to mi
 
 ## Oct 2025
 
-### [0.0.7] - Initial Microservices Restructuring
+### [v0.0.11] - Initial Microservices Restructuring
 
 **Status:** ✅ Complete | **Date:** Oct 2025
 
@@ -78,7 +78,7 @@ Foundation for microservices transition with Makefile consolidation, MCP provide
 
 ## Initial Release
 
-### [0.0.6] - Foundation
+### [v0.0.10] - Foundation
 
 **Status:** ✅ Complete | **Date:** Initial Release
 
@@ -95,7 +95,7 @@ First release of Jan Server with LLM API, authentication, conversation managemen
 
 ## Version Comparison
 
-| Metric | v0.0.6 | v0.0.7 | v0.0.9 |
+| Metric | v0.0.10 | v0.0.11 | v0.0.12 |
 |--------|--------|--------|--------|
 | Services | 1 | 2 | 4+ |
 | Deployment Methods | Docker | Docker | Docker + K8s |
