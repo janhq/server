@@ -1,0 +1,125 @@
+groups:
+  - name: jan_server_critical
+    interval: 30s
+    rules:
+      - alert: HighLLMLatency
+        expr: histogram_quantile(0.95, rate(jan_llm_api_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "LLM API P95 latency {{ $value }}s exceeds 2s"
+          description: "95th percentile latency for {{ $labels.model }} above threshold for 5m"
+          runbook: "docs/runbooks/monitoring.md#high-llm-latency"
+          dashboard: "https://grafana/d/llm-overview"
+
+      - alert: ResponseAPIQueueBacklog
+        expr: jan_response_api_queue_depth > 100
+        for: 10m
+        labels:
+          severity: critical
+          service: response-api
+        annotations:
+          summary: "Response API queue depth {{ $value }}"
+          description: "Background job queue has {{ $value }} pending items for 10+ minutes"
+          runbook: "docs/runbooks/monitoring.md#queue-backlog"
+
+      - alert: MediaAPIStorageFailure
+        expr: rate(jan_media_api_s3_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: media-api
+        annotations:
+          summary: "Media API S3 error rate {{ $value | humanizePercentage }}"
+          description: "S3 operations failing at {{ $value | humanizePercentage }} for 2+ minutes"
+          runbook: "docs/runbooks/monitoring.md#storage-failure"
+
+      - alert: OTELCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: observability
+        annotations:
+          summary: "OTEL Collector unavailable"
+          description: "OTEL Collector has been down for 2+ minutes. Observability data loss occurring."
+          runbook: "docs/runbooks/monitoring.md#collector-outage"
+
+      - alert: TraceExportFailure
+        expr: rate(otelcol_exporter_send_failed_spans[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: observability
+        annotations:
+          summary: "Jaeger export failing at {{ $value }} spans/s"
+          description: "OTEL Collector unable to export spans to Jaeger at {{ $value }} spans/second"
+          runbook: "docs/runbooks/monitoring.md#trace-export-failure"
+
+      - alert: ConversationInsightFailure
+        expr: rate(jan_response_api_classifier_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: response-api
+        annotations:
+          summary: "Conversation classifier error rate {{ $value | humanizePercentage }}"
+          description: "Prompt classification failing at {{ $value | humanizePercentage }} for 5+ minutes"
+          runbook: "docs/runbooks/monitoring.md#classifier-errors"
+
+  - name: jan_server_performance
+    interval: 1m
+    rules:
+      - alert: HighErrorRate
+        expr: rate(jan_llm_api_requests_total{status=~"5.."}[5m]) / rate(jan_llm_api_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "High error rate {{ $value | humanizePercentage }}"
+          description: "LLM API error rate above 5% for 5 minutes"
+
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(jan_response_api_db_query_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: response-api
+        annotations:
+          summary: "Database P95 latency {{ $value }}s exceeds 1s"
+          description: "Database queries are slow, may impact response times"
+
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes{container=~"llm-api|response-api|media-api"} / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.container }} memory usage at {{ $value | humanizePercentage }}"
+          description: "Memory usage approaching limit for {{ $labels.container }}"
+
+  - name: jan_server_capacity
+    interval: 2m
+    rules:
+      - alert: WorkerPoolExhaustion
+        expr: jan_response_api_workers_active / (jan_response_api_workers_active + jan_response_api_workers_idle) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+          service: response-api
+        annotations:
+          summary: "Worker pool {{ $value | humanizePercentage }} utilized"
+          description: "Background worker pool near capacity for 15+ minutes"
+
+      - alert: HighRequestRate
+        expr: rate(jan_llm_api_requests_total[5m]) > 1000
+        for: 10m
+        labels:
+          severity: info
+          service: llm-api
+        annotations:
+          summary: "LLM API receiving {{ $value }} requests/second"
+          description: "Unusually high request rate detected. Monitor for capacity issues."

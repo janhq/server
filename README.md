@@ -1,345 +1,532 @@
 # Jan Server
 
-A comprehensive self-hosted AI server platform that provides OpenAI-compatible APIs, multi-tenant organization management, and AI model inference capabilities. Jan Server enables organizations to deploy their own private AI infrastructure with full control over data, models, and access.
+> A microservices LLM API platform with MCP tool integration
 
-## 🚀 Overview
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://go.dev/)
+[![Docker](https://img.shields.io/badge/Docker-required-2496ED?logo=docker)](https://www.docker.com/)
 
-Jan Server is a Kubernetes-native platform consisting of multiple microservices that work together to provide a complete AI infrastructure solution. It offers:
+## Prerequisites
 
-- **OpenAI-Compatible API**: Full compatibility with OpenAI's chat completion API
-- **Multi-Tenant Architecture**: Organization and project-based access control
-- **AI Model Inference**: Scalable model serving with health monitoring
-- **Database Management**: PostgreSQL with read/write replicas
-- **Authentication & Authorization**: JWT + Google OAuth2 integration
-- **API Key Management**: Secure API key generation and management
-- **Model Context Protocol (MCP)**: Support for external tools and resources
-- **Web Search Integration**: Serper API integration for web search capabilities
-- **Monitoring & Profiling**: Built-in performance monitoring and health checks
+Before running Jan Server locally make sure you have:
 
-## 🏗️ System Architecture
+- **Docker Desktop** (Windows/macOS) or **Docker Engine + docker compose V2** (Linux)
+- **Make** (installed by default on Linux/macOS, [install on Windows](https://gnuwin32.sourceforge.net/packages/make.htm))
+- **Git** for cloning the repository
+- **8 GB RAM minimum** (12 GB recommended for all services)
+- Optional: **NVIDIA GPU + recent drivers** if you plan to run local vLLM inference
 
-![System Architecture Diagram](docs/Architect.png)
-
-
-## 📦 Services
-
-### Jan API Gateway
-The core API service that provides OpenAI-compatible endpoints and manages all client interactions.
-
-**Key Features:**
-- OpenAI-compatible chat completion API with streaming support
-- Multi-tenant organization and project management
-- JWT-based authentication with Google OAuth2 integration
-- API key management at organization and project levels
-- Model Context Protocol (MCP) support for external tools
-- Web search integration via Serper API
-- Comprehensive monitoring and profiling capabilities
-- Database transaction management with automatic rollback
-
-**Technology Stack:**
-- Go 1.24.6 with Gin web framework
-- PostgreSQL with GORM and read/write replicas
-- JWT authentication and Google OAuth2
-- Swagger/OpenAPI documentation
-- Built-in pprof profiling with Grafana Pyroscope integration
-
-### PostgreSQL Database
-The persistent data storage layer with enterprise-grade features.
-
-**Key Features:**
-- Read/write replica support for high availability
-- Automatic schema migrations with Atlas
-- Connection pooling and optimization
-- Transaction management with rollback support
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-Before setting up Jan Server, ensure you have the following components installed:
-
-#### Required Components
-
-> **⚠️ Important**: Windows and macOS users can only run mock servers for development. Real LLM model inference with vLLM is only supported on Linux systems with NVIDIA GPUs.
-
-1. **Docker Desktop**
-   - **Windows**: Download from [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-   - **macOS**: Download from [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
-   - **Linux**: Follow [Docker Engine installation guide](https://docs.docker.com/engine/install/)
-
-2. **Minikube**
-   - **Windows**: `choco install minikube` or download from [minikube releases](https://github.com/kubernetes/minikube/releases)
-   - **macOS**: `brew install minikube` or download from [minikube releases](https://github.com/kubernetes/minikube/releases)
-   - **Linux**: `curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 && sudo install minikube-linux-amd64 /usr/local/bin/minikube`
-
-3. **Helm**
-   - **Windows**: `choco install kubernetes-helm` or download from [Helm releases](https://github.com/helm/helm/releases)
-   - **macOS**: `brew install helm` or download from [Helm releases](https://github.com/helm/helm/releases)
-   - **Linux**: `curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`
-
-4. **kubectl**
-   - **Windows**: `choco install kubernetes-cli` or download from [kubectl releases](https://github.com/kubernetes/kubectl/releases)
-   - **macOS**: `brew install kubectl` or download from [kubectl releases](https://github.com/kubernetes/kubectl/releases)
-   - **Linux**: `curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && sudo install kubectl /usr/local/bin/kubectl`
-
-#### Optional: NVIDIA GPU Support (for Real LLM Models) 
-If you plan to run real LLM models (not mock servers) and have an NVIDIA GPU:
-
-1. **Install NVIDIA Container Toolkit**: Follow the [official NVIDIA Container Toolkit installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
-
-2. **Configure Minikube for GPU support**: Follow the [official minikube GPU tutorial](https://minikube.sigs.k8s.io/docs/tutorials/nvidia/) for complete setup instructions.
-
-### Local Development Setup
-
-#### Option 1: Mock Server Setup (Recommended for Development)
-
-1. **Start Minikube and configure Docker**:
-   ```bash
-   minikube start
-   eval $(minikube docker-env)
-   ```
-
-2. **Build and deploy all services**:
-   ```bash
-   ./scripts/run.sh
-   ```
-
-3. **Access the services**:
-   - **API Gateway**: http://localhost:8080
-   - **Swagger UI**: http://localhost:8080/api/swagger/index.html
-   - **Health Check**: http://localhost:8080/healthcheck
-   - **Version Info**: http://localhost:8080/v1/version
-
-#### Option 2: Real LLM Setup (Requires NVIDIA GPU)
-
-1. **Start Minikube with GPU support**:
-   ```bash
-   minikube start --gpus all
-   eval $(minikube docker-env)
-   ```
-
-2. **Configure GPU memory utilization** (if you have limited GPU memory):
-   
-   GPU memory utilization is configured in the vLLM Dockerfile. See the [vLLM CLI documentation](https://docs.vllm.ai/en/latest/cli/serve.html) for all available arguments.
-   
-   To modify GPU memory utilization, edit the vLLM launch command in:
-   - `apps/jan-inference-model/Dockerfile` (for Docker builds)
-   - Helm chart values (for Kubernetes deployment)
-
-3. **Build and deploy all services**:
-   ```bash
-   # For GPU setup, modify run.sh to use GPU-enabled minikube
-   # Edit scripts/run.sh and change "minikube start" to "minikube start --gpus all"
-   ./scripts/run.sh
-   ```
-
-### Production Deployment
-
-For production deployments, modify the Helm values in `charts/jan-server/values.yaml` and deploy using:
+## Quick Start
 
 ```bash
-helm install jan-server ./charts/jan-server
+# Clone and enter the repo
+git clone https://github.com/janhq/jan-server.git
+cd jan-server
+
+# Interactive setup (runs jan-cli wizard and docker compose)
+make quickstart
 ```
 
-## ⚙️ Configuration
+The `quickstart` target wraps `jan-cli` and guides you through:
+- Selecting the LLM provider (local vLLM vs remote OpenAI-compatible endpoint)
+- Choosing the MCP search provider (Serper, SearXNG, or disabled)
+- Enabling or disabling the Media API
 
-### Environment Variables
+Need to rerun the wizard? Execute `make quickstart` again and accept the prompt to update your `.env`.
 
-The system is configured through environment variables defined in the Helm values file. Key configuration areas include:
+Prefer a scripted setup? Run:
 
-#### Jan API Gateway Configuration
-- **Database Connection**: PostgreSQL connection strings for read/write replicas
-- **Authentication**: JWT secrets and Google OAuth2 credentials
-- **API Keys**: Encryption secrets for API key management
-- **External Services**: Serper API key for web search functionality
-- **Model Integration**: Jan Inference Model service URL
-
-#### Security Configuration
-- **JWT_SECRET**: HMAC-SHA-256 secret for JWT token signing
-- **APIKEY_SECRET**: HMAC-SHA-256 secret for API key encryption
-- **Database Credentials**: PostgreSQL username, password, and database name
-
-#### External Service Integration
-- **SERPER_API_KEY**: API key for web search functionality
-- **Google OAuth2**: Client ID, secret, and redirect URL for authentication
-- **Model Service**: URL for Jan Inference Model service communication
-
-### Helm Configuration
-
-The system uses Helm charts for deployment configuration:
-
-- **Values Files**: Configuration files for different environments
-
-## 🔧 Development
-
-### Project Structure
+```bash
+make setup   # Generates/updates .env via jan-cli
+make up-full # Starts every service defined in docker-compose.yml
 ```
+
+**More detail**: [Quickstart Documentation](docs/quickstart.md)
+
+**Services running after `make up-full`:**
+- **API Gateway**: http://localhost:8000 (Kong)
+- **LLM API**: http://localhost:8080 (OpenAI-compatible)
+- **Response API**: http://localhost:8082 (Multi-step orchestration)
+- **Media API**: http://localhost:8285 (Media management)
+- **MCP Tools**: http://localhost:8091 (Tool integration)
+- **API Documentation**: http://localhost:8000/v1/swagger/
+- **Keycloak Console**: http://localhost:8085 (admin/admin)
+
+> Keycloak now runs directly from the official `quay.io/keycloak/keycloak:24.0.5` image with our realm/import scripts bind-mounted at runtime - no bundled Keycloak source tree is required.
+
+**Full setup guide**: [Getting Started](docs/getting-started/README.md)
+
+## What is Jan Server?
+
+Jan Server is an enterprise-grade LLM API platform that provides:
+- **OpenAI-compatible API** for chat completions and conversations
+- **Multi-step tool orchestration** with Response API for complex workflows
+- **Media management** with S3 integration and `jan_*` ID resolution
+- **MCP (Model Context Protocol)** tools for web search, scraping, and code execution
+- **OAuth/OIDC authentication** via Keycloak with guest access
+- **Full observability** with OpenTelemetry, Prometheus, Jaeger, and Grafana
+- **Flexible deployment** with Docker Compose profiles and Kubernetes support
+
+## Features
+
+- **OpenAI-compatible chat completions API** with streaming support
+- **Response API** for multi-step tool orchestration (max depth: 8, timeout: 45s)
+- **Media API** with S3 storage, jan_* ID system, and presigned URLs
+- **MCP tools** (google_search, web scraping, code execution via SandboxFusion)
+- **Conversation and message management** with PostgreSQL persistence
+- **Guest and user authentication** via Keycloak OIDC enforced by Kong gateway (JWT + custom API key plugin)
+- **API gateway routing** via Kong v3.5
+- **Distributed tracing** with Jaeger and OpenTelemetry
+- **Metrics and dashboards** with Prometheus and Grafana
+- **Development mode** with host.docker.internal support for flexible debugging
+- **Comprehensive testing suite** with 6 jan-cli api-test collections
+- **Service template system** for rapid microservice creation
+
+## Documentation
+
+Primary entry points:
+- [docs/README.md](docs/README.md) - Documentation hub overview
+- [docs/index.md](docs/index.md) - Navigation map grouped by audience
+- [docs/architecture/services.md](docs/architecture/services.md) - Service responsibilities and ports
+- [docs/api/README.md](docs/api/README.md) - API reference hub
+- [docs/getting-started/README.md](docs/getting-started/README.md) - Five minute setup
+- [docs/quickstart.md](docs/quickstart.md) - Interactive setup walkthrough and commands
+
+Governance and quality:
+- [DOCUMENTATION_QUALITY_REPORT.md](DOCUMENTATION_QUALITY_REPORT.md) - Recent audit summary and metrics
+- [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
+- [docs-improve.todo](docs-improve.todo) - Active documentation improvement tracker
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow expectations
+- [docs/architecture/security.md](docs/architecture/security.md) - Security posture and hardening guidance
+
+## Project Structure
+
+```text
 jan-server/
-├── apps/                          # Application services
-│   ├── jan-api-gateway/           # Main API gateway service
-│   │   ├── application/           # Go application code
-│   │   ├── docker/               # Docker configuration
-│   │   └── README.md            # Service-specific documentation
-│   └── jan-inference-model/       # AI model inference service
-│       ├── application/           # Python application code
-│       └── Dockerfile           # Container configuration
-├── charts/                        # Helm charts
-│   └── jan-server/           # Main deployment chart
-├── scripts/                      # Deployment and utility scripts
-└── README.md                     # This file
+|-- services/              # Go microservices
+|   |-- llm-api/
+|   |-- response-api/
+|   |-- media-api/
+|   |-- mcp-tools/
+|   |-- template-api/
+|-- docs/                  # Documentation hub
+|-- docker/                # Compose profiles (infra, api, mcp, inference)
+|-- monitoring/            # Grafana, Prometheus, OTEL configs
+|-- k8s/                   # Helm chart + setup guide
+|-- config/                # Environment templates and helpers
+|-- kong/                  # Gateway declarative config
+|-- keycloak/              # Realm + theme customisation
+|-- scripts/               # Utility scripts (new service template, etc.)
+|-- Makefile               # Build, test, deploy targets
 ```
 
-### Building Services
+Key directories:
+- `services/` - source for each microservice plus local docs.
+- `docs/` - user, operator, and developer documentation (see [docs/README.md](docs/README.md)).
+- `docker/` - compose files included via `docker-compose.yml`.
+- `monitoring/` - observability stack definitions (Grafana dashboards live here).
+- `k8s/` - Helm chart (`k8s/jan-server`) and cluster setup notes.
+- `config/` - `.env` templates and environment overlays.
+- `kong/` / `keycloak/` - edge and auth configuration.
+- `scripts/` - automation (service scaffolding, utility scripts).
+
+### Microservices Overview
+
+| Service | Purpose | Port(s) | Source | Docs |
+|---------|---------|---------|--------|------|
+| LLM API | OpenAI-compatible chat, conversations, models | 8080 (direct), 8000 via Kong | `services/llm-api` | `docs/api/llm-api/README.md` |
+| Response API | Multi-step orchestration using MCP tools | 8082 | `services/response-api` | `docs/api/response-api/README.md` |
+| Media API | jan_* IDs, S3 ingest, media resolution | 8285 | `services/media-api` | `docs/api/media-api/README.md` |
+| MCP Tools | Model Context Protocol tools (search, scrape, file search, python) | 8091 | `services/mcp-tools` | `docs/api/mcp-tools/README.md` |
+
+See [docs/architecture/services.md](docs/architecture/services.md) for dependency graphs and integration notes.
+
+## Service Template
+
+Create new microservices quickly with the template system:
 
 ```bash
-# Build API Gateway
-docker build -t jan-api-gateway:latest ./apps/jan-api-gateway
+# Generate new service from template
+./scripts/new-service-from-template.ps1 -Name my-new-service
 
-# Build Inference Model
-docker build -t jan-inference-model:latest ./apps/jan-inference-model
+# Template includes:
+# - Go service skeleton with Gin HTTP server
+# - Configuration management (Viper)
+# - Structured logging (Zerolog)
+# - OpenTelemetry tracing support
+# - PostgreSQL with GORM
+# - Dependency injection with Wire
+# - Docker and Makefile setup
+# - Health check endpoint
 ```
 
-### Database Migrations
+**Documentation:**
+- Template guide: `docs/guides/services-template.md`
+- Template README: `docs/guides/services-template.md`
 
-The system uses Atlas for database migrations:
+## Development
+
+### Quick Commands
 
 ```bash
-# Generate migration files
-go run ./apps/jan-api-gateway/application/cmd/codegen/dbmigration
+# Start services
+make up-full              # Full stack (all 4 APIs + infrastructure)
+make up-gpu               # With GPU inference (vLLM)
+make up-cpu               # CPU-only inference
+make up                   # Infrastructure only (DB, Keycloak, Redis)
 
-# Apply migrations
-atlas migrate apply --url "your-database-url"
+# Build services
+make build-llm-api        # Build LLM API
+make build-response-api   # Build Response API
+make build-media-api      # Build Media API
+make build-mcp            # Build MCP Tools
+
+# Development
+make test-all             # Run all test suites
+make swag                 # Generate API docs
+
+# Testing
+make test-auth            # Authentication tests
+make test-conversations   # Conversation tests
+make test-response        # Response API tests
+make test-media           # Media API tests
+make test-mcp             # MCP tools tests
+make test-e2e             # Gateway E2E tests
+
+# Monitoring
+make monitor-up           # Start monitoring stack
+make monitor-logs         # View monitoring logs
+
+# Logs & Status
+make logs-llm-api         # View LLM API logs
+make logs-response-api    # View Response API logs
+make logs-media-api       # View Media API logs
+make logs-mcp             # View MCP Tools logs
+make health-check         # Check all services health
+
+# Database
+make db-migrate           # Run migrations
+make db-reset             # Reset database
+make db-seed              # Seed test data
+
+# Cleanup
+make down                 # Stop services
+make clean                # Clean artifacts
+make clean-all            # Clean everything (including volumes)
 ```
 
-## 📊 Monitoring & Observability
+### Development Mode
 
-### Health Monitoring
-- **Health Check Endpoints**: Available on all services
-- **Model Health Monitoring**: Automated health checks for inference models
-- **Database Health**: Connection monitoring and replica status
+Run services on your host for debugging:
 
-### Performance Profiling
-- **pprof Endpoints**: Available on port 6060 for performance analysis
-- **Grafana Pyroscope**: Continuous profiling integration
-- **Request Tracing**: Unique request IDs for end-to-end tracing
-
-### Logging
-- **Structured Logging**: JSON-formatted logs across all services
-- **Request/Response Logging**: Complete request lifecycle tracking
-- **Error Tracking**: Unique error codes for debugging
-
-## 🔒 Security
-
-### Authentication & Authorization
-- **JWT Tokens**: Secure token-based authentication
-- **Google OAuth2**: Social authentication integration
-- **API Key Management**: Scoped API keys for different access levels
-- **Multi-tenant Security**: Organization and project-level access control
-
-### Data Protection
-- **Encrypted API Keys**: HMAC-SHA-256 encryption for sensitive data
-- **Secure Database Connections**: SSL-enabled database connections
-- **Environment Variable Security**: Secure handling of sensitive configuration
-
-## 🚀 Deployment
-
-### Local Development
 ```bash
-# Start local cluster
-minikube start
-eval $(minikube docker-env)
+# Start all services in Docker with host.docker.internal support
+make dev-full
 
-# Deploy services
-./scripts/run.sh
-
-# Access services
-kubectl port-forward svc/jan-server-jan-api-gateway 8080:8080
+# Stop any service and run it on your host
+docker compose stop llm-api
+.\scripts\dev-full-run.ps1 llm-api  # Windows
+./scripts/dev-full-run.sh llm-api   # Linux/Mac
 ```
 
-### Production Deployment
+See [Development Guide](docs/guides/development.md) and [Dev-Full Mode](docs/guides/dev-full-mode.md) for details.
+
+## CLI Tool
+
+Jan Server includes a unified CLI tool for configuration management, service operations, and development tasks.
+
+### Quick Install
+
 ```bash
-# Update Helm dependencies
-helm dependency update ./charts/jan-server
+# Install globally (recommended)
+make cli-install
 
-# Deploy to production
-helm install jan-server ./charts/jan-server
-
-# Upgrade deployment
-helm upgrade jan-server ./charts/jan-server
-
-# Uninstall
-helm uninstall jan-server
+# Add to PATH as instructed, then run from anywhere
+jan-cli --version
+jan-cli config validate
+jan-cli service list
 ```
 
-## 🐛 Troubleshooting
+### Quick Usage (Without Installation)
 
-### Common Issues and Solutions
+Use the wrapper scripts from the project root:
 
-### 1. LLM Pod Not Starting (Pending Status)
-
-**Symptoms**: The `jan-server-jan-inference-model` pod stays in `Pending` status.
-
-**Diagnosis Steps**:
 ```bash
-# Check pod status
-kubectl get pods
+# Linux/macOS/WSL
+./jan-cli.sh config validate
+./jan-cli.sh service list
+./jan-cli.sh dev setup
 
-# Get detailed pod information (replace with your actual pod name)
-kubectl describe pod jan-server-jan-inference-model-<POD_ID>
+# Windows PowerShell
+.\jan-cli.ps1 config validate
+.\jan-cli.ps1 service list
+.\jan-cli.ps1 dev setup
 ```
 
-**Common Error Messages and Solutions**:
+The wrapper scripts automatically build the CLI if needed.
 
-##### Error: "Insufficient nvidia.com/gpu"
-```
-0/1 nodes are available: 1 Insufficient nvidia.com/gpu. no new claims to deallocate, preemption: 0/1 nodes are available: 1 Preemption is not helpful for scheduling.
-```
-**Solution for Real LLM Setup**:
-1. Ensure you have NVIDIA GPU and drivers installed
-2. Install NVIDIA Container Toolkit (see Prerequisites section) 
-3. Start minikube with GPU support:
-   ```bash
-   minikube start --gpus all
-   ```
+### Available Commands
 
-##### Error: vLLM Pod Keeps Restarting
-```
-# Check pod logs to see the actual error
-kubectl logs jan-server-jan-inference-model-<POD_ID>
-```
-
-**Common vLLM startup issues**:
-1. **CUDA Out of Memory**: Modify vLLM arguments in Dockerfile to reduce memory usage
-2. **Model Loading Errors**: Check if model path is correct and accessible
-3. **GPU Not Detected**: Ensure NVIDIA Container Toolkit is properly installed
-
-#### 2. Helm Issues
-
-**Symptoms**: Helm commands fail or charts won't install.
-
-**Solutions**:
+**Configuration Management:**
 ```bash
-# Update Helm dependencies
-helm dependency update ./charts/jan-server
-
-# Check Helm status
-helm list
-
-# Uninstall and reinstall
-helm uninstall jan-server
-helm install jan-server ./charts/jan-server
+jan-cli config validate              # Validate configuration
+jan-cli config export --format env   # Export as environment variables
+jan-cli config show llm-api          # Show service configuration
+jan-cli config k8s-values --env prod # Generate Kubernetes values
 ```
 
-## 📚 API Documentation
+**Service Operations:**
+```bash
+jan-cli service list                 # List all services
+jan-cli service logs llm-api         # Show service logs
+jan-cli service status               # Check service health
+```
 
-- **Swagger UI**: Available at `/api/swagger/index.html` when running
-- **OpenAPI Specification**: Auto-generated from code annotations
-- **Interactive Testing**: Built-in API testing interface
+**Development Tools:**
+```bash
+jan-cli dev setup                    # Setup development environment
+jan-cli dev scaffold my-service      # Create new service from template
+```
 
-## 🤝 Contributing
+**Documentation:** 
+- Complete guide: [docs/guides/jan-cli.md](docs/guides/jan-cli.md)
+- Command reference: [cmd/jan-cli/README.md](cmd/jan-cli/README.md)
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+## API Examples
+
+### 1. Authentication
+
+Kong (`http://localhost:8000`) fronts all `/llm/*` services and enforces Keycloak-issued JWTs or the custom API key plugin (`X-API-Key: sk_*`). Acquire temporary guest tokens at `POST /llm/auth/guest-login`, then include `Authorization: Bearer <token>` (or `X-API-Key`) on subsequent requests.
+
+```bash
+# Get guest token (no registration required)
+curl -X POST http://localhost:8000/llm/auth/guest-login
+
+# Sample response:
+# {
+#   "access_token": "eyJhbGc...",
+#   "token_type": "Bearer",
+#   "expires_in": 3600,
+#   "refresh_token": "...",
+#   "user_id": "guest-..."
+# }
+```
+
+### 2. Chat Completion
+
+```bash
+# Simple chat completion
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "jan-v1-4b",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
+
+# With media (using jan_* ID)
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "jan-v1-4b",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "What's in this image?"},
+        {"type": "image_url", "image_url": {"url": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0"}}
+      ]
+    }]
+  }'
+```
+
+### 3. Media Upload & Resolution
+
+```bash
+# Upload media (remote URL)
+curl -X POST http://localhost:8285/v1/media \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": {
+      "type": "remote_url",
+      "url": "https://example.com/image.jpg"
+    },
+    "user_id": "user123"
+  }'
+
+# Response:
+# {
+#   "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+#   "mime": "image/jpeg",
+#   "bytes": 45678,
+#   "presigned_url": "https://s3.menlo.ai/platform-dev/..."
+# }
+
+# Resolve jan_* ID to presigned URL
+curl -X POST http://localhost:8285/v1/media/resolve \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"ids": ["jan_01hqr8v9k2x3f4g5h6j7k8m9n0"]}'
+```
+
+### 4. MCP Tools
+
+```bash
+# Google search
+curl -X POST http://localhost:8000/v1/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "google_search",
+      "arguments": {"q": "latest AI news", "num": 5}
+    }
+  }'
+
+# List available tools
+curl -X GET http://localhost:8091/v1/mcp/tools
+```
+
+### 5. Response API (Multi-step Orchestration)
+
+```bash
+# Create response with tool execution
+curl -X POST http://localhost:8082/v1/responses \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "input": "Search for the latest AI news and summarize the top 3 results"
+  }'
+
+# Response includes:
+# - Tool execution trace
+# - Final generated response
+# - Execution metadata (depth, duration, etc.)
+```
+
+More examples: [API Documentation ->](docs/api/)
+
+## Deployment
+
+### Docker Compose Profiles
+
+```bash
+make up-full              # All services
+make up-gpu               # With GPU inference
+make up-cpu               # CPU-only inference
+make monitor-up           # Add monitoring stack
+```
+
+### Environment Configuration
+
+```bash
+# Quick setup with defaults
+make setup
+
+# Or manually configure
+cp config/secrets.env.example config/secrets.env
+# Edit config/secrets.env with your API keys:
+# - HF_TOKEN (HuggingFace token for model downloads)
+# - SERPER_API_KEY (for Google Search tool)
+# - POSTGRES_PASSWORD (database password)
+# - KEYCLOAK_ADMIN_PASSWORD (Keycloak admin password)
+
+# Available environment configs:
+# - config/defaults.env       - Base configuration
+# - config/development.env    - Docker development
+# - config/testing.env        - Testing configuration
+# - config/production.env.example - Production template
+```
+
+**Required secrets:**
+- `HF_TOKEN` - HuggingFace token (get from https://huggingface.co/settings/tokens)
+- `SERPER_API_KEY` - Serper API key (get from https://serper.dev)
+
+See [Deployment Guide](docs/guides/deployment.md) for production setup.
+
+## Testing
+
+```bash
+# Run all tests (6 jan-cli api-test collections)
+make test-all
+
+# Specific test suites
+make test-auth            # Authentication flows (guest + user)
+make test-conversations   # Conversation management
+make test-response        # Response API orchestration
+make test-media           # Media API operations
+make test-mcp             # MCP tools integration
+make test-e2e             # Gateway end-to-end tests
+
+# Test reports
+# - CLI output: Detailed results with assertions
+```
+
+**Test Collections:**
+- `tests/automation/auth-postman-scripts.json` - Auth flows
+- `tests/automation/conversations-postman-scripts.json` - Conversations
+- `tests/automation/responses-postman-scripts.json` - Response API
+- `tests/automation/media-postman-scripts.json` - Media API
+- `tests/automation/mcp-postman-scripts.json` - MCP tools
+- `tests/automation/test-all.postman.json` - Complete E2E suite
+
+Testing guide: [docs/guides/testing.md](docs/guides/testing.md)
+
+## Monitoring
+
+Access monitoring dashboards:
+
+- **Grafana**: http://localhost:3331 (admin/admin)
+- **Prometheus**: http://localhost:9090
+- **Jaeger**: http://localhost:16686
+
+See [Monitoring Guide](docs/guides/monitoring.md) for configuration.
+
+## Technology Stack
+
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **API Gateway** | Kong | 3.5 |
+| **Services** | Go (Gin framework) | 1.21+ |
+| **Database** | PostgreSQL | 18 |
+| **Cache** | Redis | Latest |
+| **Auth** | Keycloak (OIDC) | Latest |
+| **Inference** | vLLM | Latest |
+| **Search** | SearXNG | Latest |
+| **Code Execution** | SandboxFusion | Latest |
+| **Observability** | OpenTelemetry | Latest |
+| **Metrics** | Prometheus | Latest |
+| **Tracing** | Jaeger | Latest |
+| **Dashboards** | Grafana | Latest |
+| **MCP Protocol** | mark3labs/mcp-go | Latest |
+| **Container** | Docker Compose | 2.0+ |
+| **Orchestration** | Kubernetes + Helm | 1.28+ |
+
+**Microservices:**
+- LLM API: Go 1.21+ with Gin, GORM, Wire DI
+- Response API: Go 1.21+ with Gin, GORM, Wire DI
+- Media API: Go 1.21+ with Gin, GORM, S3 SDK
+- MCP Tools: Go 1.21+ with JSON-RPC 2.0
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## License
+
+[License information]
+
+## Support
+
+- Documentation: [docs/README.md](docs/README.md)
+- Issue Tracker: https://github.com/janhq/jan-server/issues
+- Discussions: https://github.com/janhq/jan-server/discussions
+
+---
+
+**Quick Start**: `make setup && make up-full` | **Documentation**: [docs/](docs/) | **API Docs**: http://localhost:8000/v1/swagger/
+

@@ -1,0 +1,259 @@
+package modelhandler
+
+import (
+	"context"
+	"strings"
+
+	domainmodel "jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/infrastructure/inference"
+	requestmodels "jan-server/services/llm-api/internal/interfaces/httpserver/requests/models"
+	modelresponses "jan-server/services/llm-api/internal/interfaces/httpserver/responses/model"
+	"jan-server/services/llm-api/internal/utils/platformerrors"
+)
+
+type ProviderHandler struct {
+	providerService      *domainmodel.ProviderService
+	providerModelService *domainmodel.ProviderModelService
+	inferenceProvider    *inference.InferenceProvider
+}
+
+func NewProviderHandler(
+	providerService *domainmodel.ProviderService,
+	providerModelService *domainmodel.ProviderModelService,
+	inferenceProvider *inference.InferenceProvider,
+) *ProviderHandler {
+	return &ProviderHandler{
+		providerService:      providerService,
+		providerModelService: providerModelService,
+		inferenceProvider:    inferenceProvider,
+	}
+}
+
+func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requestmodels.AddProviderRequest, ctx context.Context) (*modelresponses.ProviderWithModelsResponse, error) {
+
+	// Check if provider with the same vendor already exists if vendor != "custom"
+	provider, err := providerHandler.providerService.FindProviderByVendor(ctx, addProviderRequest.Vendor)
+	if err == nil && provider != nil && provider.Kind != domainmodel.ProviderCustom {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeConflict, "provider with vendor already exists", nil, "30c583bd-82f0-41c7-83ca-c2bf071cb018")
+	}
+
+	active := true
+	if addProviderRequest.Active != nil {
+		active = *addProviderRequest.Active
+	}
+
+	result, err := providerHandler.providerService.RegisterProvider(ctx, domainmodel.RegisterProviderInput{
+		Name:     addProviderRequest.Name,
+		Vendor:   addProviderRequest.Vendor,
+		BaseURL:  addProviderRequest.BaseURL,
+		APIKey:   addProviderRequest.APIKey,
+		Metadata: addProviderRequest.Metadata,
+		Active:   active,
+	})
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "register provider failed")
+	}
+	models, err := providerHandler.inferenceProvider.ListModels(ctx, result)
+	if err != nil {
+		return nil, err
+	}
+	syncModels, syncErr := providerHandler.providerService.SyncProviderModelsWithOptions(ctx, result, models, true)
+	if syncErr != nil {
+		return nil, syncErr
+	}
+
+	return modelresponses.BuildProviderResponseWithModels(result, syncModels), nil
+}
+
+func (providerHandler *ProviderHandler) GetAllProviders(ctx context.Context) ([]modelresponses.ProviderWithModelCountResponse, error) {
+	providers, err := providerHandler.providerService.FindAllProviders(ctx)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get providers")
+	}
+
+	if len(providers) == 0 {
+		return []modelresponses.ProviderWithModelCountResponse{}, nil
+	}
+
+	providerIDs := make([]uint, len(providers))
+	for i, provider := range providers {
+		providerIDs[i] = provider.ID
+	}
+
+	modelCounts, err := providerHandler.providerModelService.FindModelCountsByProviderIDs(ctx, providerIDs)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get model counts")
+	}
+
+	activeModelCounts, err := providerHandler.providerModelService.FindActiveModelCountsByProviderIDs(ctx, providerIDs)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get active model counts")
+	}
+
+	result := make([]modelresponses.ProviderWithModelCountResponse, 0, len(providers))
+	for _, provider := range providers {
+		modelCount := modelCounts[provider.ID]
+		activeModelCount := activeModelCounts[provider.ID]
+		result = append(result, modelresponses.BuildProviderWithModelCountResponse(provider, modelCount, activeModelCount))
+	}
+
+	return result, nil
+}
+
+func (providerHandler *ProviderHandler) SelectProviderModelForModelPublicID(ctx context.Context, modelPublicID string) (*domainmodel.ProviderModel, *domainmodel.Provider, error) {
+	if strings.TrimSpace(modelPublicID) == "" {
+		return nil, nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "model key is required", nil, "abeb247f-ef80-44bf-921b-6e2c92ffca73")
+	}
+	var providerModels []*domainmodel.ProviderModel
+
+	providerModels, err := providerHandler.providerModelService.FindActiveByModelKey(ctx, modelPublicID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(providerModels) == 0 {
+		return nil, nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "model not found in accessible providers", nil, "caa8476d-1b95-42a7-a96b-18b0c11b2f64")
+	}
+
+	selectedProviderModel := providerHandler.selectBestProvider(providerModels)
+	if selectedProviderModel == nil {
+		return nil, nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "no valid provider found for model", nil, "265747b1-0aee-4a99-863e-99a7af8ada5e")
+	}
+	selectedProvider, err := providerHandler.providerService.GetByID(ctx, selectedProviderModel.ProviderID)
+	if err != nil {
+		return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get provider details")
+	}
+	return selectedProviderModel, selectedProvider, nil
+}
+
+// selectBestProvider selects the best provider for a model based on:
+// 1. LOWEST PRICING (if pricing data exists)
+// 2. MENLO PROVIDER (if prices are equal or no pricing)
+// 3. FIRST PROVIDER (if all criteria equal)
+func (providerHandler *ProviderHandler) selectBestProvider(
+	providerModels []*domainmodel.ProviderModel,
+) *domainmodel.ProviderModel {
+	if len(providerModels) == 0 {
+		return nil
+	}
+
+	type providerCandidate struct {
+		providerModel *domainmodel.ProviderModel
+		hasPricing    bool
+		lowestPrice   domainmodel.MicroUSD
+		isJan         bool
+	}
+
+	candidates := make([]providerCandidate, 0, len(providerModels))
+
+	for _, providerModel := range providerModels {
+		if providerModel == nil {
+			continue
+		}
+
+		lowestPrice, hasPricing := calculateLowestPrice(providerModel.Pricing)
+		isJan := providerModel.Kind == domainmodel.ProviderJan
+
+		candidates = append(candidates, providerCandidate{
+			providerModel: providerModel,
+			hasPricing:    hasPricing,
+			lowestPrice:   lowestPrice,
+			isJan:         isJan,
+		})
+	}
+
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	// Find the best candidate
+	best := candidates[0]
+	for i := 1; i < len(candidates); i++ {
+		candidate := candidates[i]
+
+		// Compare pricing first (if both have pricing)
+		if candidate.hasPricing && best.hasPricing {
+			if candidate.lowestPrice < best.lowestPrice {
+				best = candidate
+				continue
+			} else if candidate.lowestPrice > best.lowestPrice {
+				continue
+			}
+			// Prices are equal, continue to next criteria
+		}
+
+		// Prefer candidate with pricing over one without
+		if candidate.hasPricing && !best.hasPricing {
+			best = candidate
+			continue
+		}
+		if !candidate.hasPricing && best.hasPricing {
+			continue
+		}
+
+		// Prefer Jan provider
+		if candidate.isJan && !best.isJan {
+			best = candidate
+			continue
+		}
+		if !candidate.isJan && best.isJan {
+			continue
+		}
+
+	}
+
+	return best.providerModel
+}
+
+func (h *ProviderHandler) UpdateProvider(
+	ctx context.Context,
+	publicID string,
+	req requestmodels.UpdateProviderRequest,
+) (*modelresponses.ProviderResponse, error) {
+	if publicID == "" {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "140e34cf-ed9f-4008-9d9b-c3e7b9d183b8")
+	}
+
+	provider, err := h.providerService.FindByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to find provider")
+	}
+	if provider == nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "0d77a312-f914-492d-8dbc-7f1ba9d14da9")
+	}
+
+	updateInput := domainmodel.UpdateProviderInput{
+		Name:     req.Name,
+		BaseURL:  req.BaseURL,
+		APIKey:   req.APIKey,
+		Metadata: req.Metadata,
+		Active:   req.Active,
+	}
+
+	updatedProvider, err := h.providerService.UpdateProvider(ctx, provider, updateInput)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update provider")
+	}
+
+	response := modelresponses.BuildProviderResponse(updatedProvider)
+	return &response, nil
+}
+
+// TODO(pricing): Remove pricing calculation from model handler
+// This function calculates the lowest price for a provider model, but pricing logic
+// should be handled by a dedicated billing domain, not in the model management layer.
+// Consider removing this once pricing is moved to the billing domain.
+// Related: See TODO in internal/domain/model/provider_model.go
+func calculateLowestPrice(pricing domainmodel.Pricing) (domainmodel.MicroUSD, bool) {
+	if len(pricing.Lines) == 0 {
+		return 0, false
+	}
+
+	lowest := pricing.Lines[0].Amount
+	for _, line := range pricing.Lines[1:] {
+		if line.Amount < lowest {
+			lowest = line.Amount
+		}
+	}
+
+	return lowest, true
+}

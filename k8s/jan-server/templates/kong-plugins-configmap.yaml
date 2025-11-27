@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jan-server.fullname" . }}-kong-plugins
+  labels:
+    {{- include "jan-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kong-plugins
+data:
+  keycloak-apikey-handler.lua: |
+    local http = require "resty.http"
+    local cjson = require "cjson.safe"
+
+    local KeycloakAPIKeyHandler = {
+      PRIORITY = 1002, -- Run after JWT plugin (1005) but before other plugins
+      VERSION = "1.0.0",
+    }
+
+    function KeycloakAPIKeyHandler:access(conf)
+      -- Get API key from headers
+      local api_key = kong.request.get_header("X-API-Key") or 
+                      kong.request.get_header("X-Api-Key") or
+                      kong.request.get_header("apikey")
+      
+      -- If no API key, skip (let JWT or other auth handle it)
+      if not api_key or api_key == "" then
+        return
+      end
+      
+      -- Check if it's our format (sk_xxxxx)
+      if not string.match(api_key, "^sk_") then
+        kong.log.debug("API key doesn't match sk_ format, skipping")
+        return
+      end
+      
+      -- Call validation endpoint
+      local httpc = http.new()
+      httpc:set_timeout(conf.validation_timeout or 5000)
+      
+      local validation_url = conf.validation_url or "http://llm-api:8080/auth/validate-api-key"
+      
+      kong.log.debug("Validating API key via: ", validation_url)
+      
+      local res, err = httpc:request_uri(validation_url, {
+        method = "POST",
+        body = cjson.encode({ api_key = api_key }),
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        keepalive_timeout = 60000,
+        keepalive_pool = 10,
+      })
+      
+      if not res then
+        kong.log.err("Failed to validate API key: ", err)
+        return kong.response.exit(500, { 
+          message = "API key validation service unavailable" 
+        })
+      end
+      
+      if res.status ~= 200 then
+        kong.log.debug("API key validation failed: ", res.status)
+        return kong.response.exit(401, { 
+          message = "Invalid API key" 
+        })
+      end
+      
+      -- Parse user info
+      local user_info, decode_err = cjson.decode(res.body)
+      if not user_info then
+        kong.log.err("Failed to decode validation response: ", decode_err)
+        return kong.response.exit(500, { 
+          message = "Invalid validation response" 
+        })
+      end
+      
+      -- Set headers for downstream services (like JWT does)
+      kong.service.request.set_header("X-User-ID", user_info.user_id)
+      kong.service.request.set_header("X-User-Subject", user_info.subject)
+      kong.service.request.set_header("X-User-Email", user_info.email or "")
+      kong.service.request.set_header("X-User-Username", user_info.username or "")
+      kong.service.request.set_header("X-Auth-Method", "apikey")
+      
+      -- Set authenticated credential for rate limiting
+      kong.client.authenticate(user_info, {
+        id = user_info.user_id,
+        custom_id = user_info.subject,
+      })
+      
+      -- Hide the API key from downstream services
+      if conf.hide_credentials then
+        kong.service.request.clear_header("X-API-Key")
+        kong.service.request.clear_header("X-Api-Key")
+        kong.service.request.clear_header("apikey")
+      end
+      
+      kong.log.info("API key validated successfully for user: ", user_info.user_id)
+    end
+
+    return KeycloakAPIKeyHandler
+
+  keycloak-apikey-schema.lua: |
+    local typedefs = require "kong.db.schema.typedefs"
+
+    return {
+      name = "keycloak-apikey",
+      fields = {
+        { config = {
+            type = "record",
+            fields = {
+              { validation_url = {
+                  type = "string",
+                  required = true,
+                  default = "http://llm-api:8080/auth/validate-api-key",
+                  description = "URL of the API key validation endpoint"
+              }},
+              { validation_timeout = {
+                  type = "number",
+                  required = true,
+                  default = 5000,
+                  description = "Timeout for validation request in milliseconds"
+              }},
+              { hide_credentials = {
+                  type = "boolean",
+                  required = true,
+                  default = true,
+                  description = "Hide API key from downstream services"
+              }},
+              { run_on_preflight = {
+                  type = "boolean",
+                  required = true,
+                  default = false,
+                  description = "Run on CORS preflight requests"
+              }},
+            }
+        }},
+      },
+    }

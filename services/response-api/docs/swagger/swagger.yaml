@@ -1,0 +1,230 @@
+basePath: /
+definitions:
+  requests.CreateResponseRequest:
+    properties:
+      background:
+        type: boolean
+      conversation:
+        type: string
+      input: {}
+      max_tokens:
+        type: integer
+      metadata:
+        additionalProperties: true
+        type: object
+      model:
+        type: string
+      previous_response_id:
+        type: string
+      store:
+        type: boolean
+      stream:
+        type: boolean
+      system_prompt:
+        type: string
+      temperature:
+        type: number
+      tool_choice:
+        $ref: '#/definitions/requests.ToolChoice'
+      tools:
+        items:
+          $ref: '#/definitions/requests.ToolDefinition'
+        type: array
+      user:
+        type: string
+    required:
+    - input
+    - model
+    type: object
+  requests.ToolChoice:
+    properties:
+      function:
+        properties:
+          name:
+            type: string
+        type: object
+      type:
+        type: string
+    type: object
+  requests.ToolDefinition:
+    properties:
+      function:
+        $ref: '#/definitions/requests.ToolFunctionDefinition'
+      type:
+        type: string
+    type: object
+  requests.ToolFunctionDefinition:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      parameters:
+        additionalProperties: true
+        type: object
+    type: object
+  response.ConversationItem:
+    properties:
+      content: {}
+      role:
+        type: string
+      status:
+        type: string
+    type: object
+  responses.ResponsePayload:
+    properties:
+      background:
+        type: boolean
+      conversation_id:
+        type: string
+      created:
+        type: integer
+      created_at:
+        description: Same as Created, for compatibility
+        type: integer
+      error: {}
+      id:
+        type: string
+      input: {}
+      metadata:
+        additionalProperties: true
+        type: object
+      model:
+        type: string
+      object:
+        type: string
+      output: {}
+      previous_response_id:
+        type: string
+      status:
+        type: string
+      store:
+        type: boolean
+      stream:
+        type: boolean
+      system_prompt:
+        type: string
+      usage: {}
+    type: object
+info:
+  contact:
+    name: Jan Server Team
+    url: https://github.com/janhq/jan-server
+  description: Orchestrates LLM responses with MCP tool integration, conversation
+    context, and streaming support.
+  title: Response API
+  version: "1.0"
+paths:
+  /v1/responses:
+    post:
+      consumes:
+      - application/json
+      description: Creates a response and orchestrates MCP tool calls when required.
+      parameters:
+      - description: Create request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CreateResponseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.ResponsePayload'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a response
+      tags:
+      - Responses
+  /v1/responses/{response_id}:
+    delete:
+      parameters:
+      - description: Response ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.ResponsePayload'
+      summary: Delete/Cancel a response
+      tags:
+      - Responses
+    get:
+      parameters:
+      - description: Response ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.ResponsePayload'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a response by ID
+      tags:
+      - Responses
+  /v1/responses/{response_id}/cancel:
+    post:
+      parameters:
+      - description: Response ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.ResponsePayload'
+      summary: Cancel a response
+      tags:
+      - Responses
+  /v1/responses/{response_id}/input_items:
+    get:
+      parameters:
+      - description: Response ID
+        in: path
+        name: response_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/response.ConversationItem'
+            type: array
+      summary: List conversation input items
+      tags:
+      - Responses
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

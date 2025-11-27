@@ -1,0 +1,138 @@
+{
+  "realm": "jan",
+  "enabled": true,
+  "registrationAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "verifyEmail": false,
+  "registrationEmailAsUsername": true,
+  "requiredActions": [],
+  "attributes": {
+    "tokenExchangeEnabled": "true"
+  },
+  "clients": [
+    {
+      "clientId": "backend",
+      "name": "Backend Automation",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "secret": "backend-secret",
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "authorizationServicesEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "300",
+        "oauth2.device.authorization.grant.enabled": "true",
+        "token.exchange.grant.enabled": "true"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    },
+    {
+      "clientId": "jan-client",
+      "name": "Jan Client",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:8000/auth/callback",
+        "http://localhost:8000/auth/google/callback",
+        "http://localhost:8080/auth/callback",
+        "http://localhost:8080/auth/google/callback",
+        "http://localhost:3000/*",
+        "http://localhost:3001/*",
+        "http://127.0.0.1:8000/auth/callback",
+        "http://127.0.0.1:8000/auth/google/callback",
+        "http://127.0.0.1:8080/auth/callback",
+        "http://127.0.0.1:8080/auth/google/callback",
+        "http://127.0.0.1:3000/*",
+        "http://127.0.0.1:3001/*",
+        "https://yourdomain.com/auth/callback",
+        "https://yourdomain.com/auth/google/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:8080",
+        "https://yourdomain.com"
+      ],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true",
+        "access.token.lifespan": "3600",
+        "refresh.token.lifespan": "2592000",
+        "token.exchange.grant.enabled": "true",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "preferred_username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "guest",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "guest",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "guest",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "pid",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "pid",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "pid",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "guest",
+        "description": "Ephemeral guest user"
+      },
+      {
+        "name": "user",
+        "description": "Registered user"
+      }
+    ]
+  },
+  "internationalizationEnabled": false,
+  "eventsEnabled": false
+}

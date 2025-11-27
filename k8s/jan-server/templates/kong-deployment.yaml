@@ -1,0 +1,521 @@
+{{- if .Values.kong.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jan-server.fullname" . }}-kong-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "jan-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kong
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    _transform: true
+
+    consumers:
+      - username: kong-anon-jwt
+        custom_id: anon-jwt
+        tags: [anonymous, auth, fallback]
+      - username: keycloak-issuer
+        custom_id: keycloak-jwt
+        tags: [auth, jwt, keycloak]
+
+    jwt_secrets:
+      - consumer: keycloak-issuer
+        algorithm: RS256
+        key: {{ .Values.keycloak.issuer }}
+        rsa_public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAks4bK7EqsKVvrW6F8gRD
+          izRuGFzhfZVdHImVbmwavyK+yGrxVR5BOfbAYZy6/LnLei3aCmYbwKNgV+BU8Lch
+          +USX/BPpHswRXqf/GcBcdwAhqxAtwoKFG8KwTORP/RZGbVxOMS9D9T6iHPQmT7Md
+          4FyvHwTx7BwPx5oMIEOnur+NNaTsECN3cGR21SAnCtNCl188D3ubTsjUwERp6B4E
+          p2sVXsTDzT0ZOYbmmZiZJ59Fvk+0UNMn2uQyAj+j7lv15g6GtNSlG1DBnRKEVbOz
+          C50TfRUcCpQTrS8FkTTS0Pc/9MCOCHy9YDDDhdEuI5dvo9y9QUTIHPx4AhSubE0C
+          bwIDAQAB
+          -----END PUBLIC KEY-----
+
+    # Note: API key authentication handled by keycloak-apikey plugin
+    # Kong in DB-less mode validates API keys via llm-api service
+
+    plugins:
+      - name: rate-limiting
+        tags: [global, security, rate]
+        config:
+          minute: 600
+          hour: 10000
+          policy: local
+          limit_by: ip
+          fault_tolerant: true
+      - name: request-transformer
+        tags: [global, security, transformer]
+        config:
+          add:
+            headers:
+              - "X-Gateway-Auth: kong"
+              - "X-Gateway-Version: 3.5"
+
+    services:
+      - name: llm-api-svc
+        url: http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+        tags: [llm, api]
+        routes:
+          - name: llm-api-proxy
+            paths:
+              - /llm
+            strip_path: true
+            path_handling: v0
+            tags: [llm, api, protected]
+            plugins:
+              - name: jwt
+                tags: [llm, api, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [llm, api, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: rate-limiting
+                tags: [llm, api, rate]
+                config:
+                  minute: 120
+                  policy: local
+                  limit_by: consumer
+                  fault_tolerant: true
+              - name: cors
+                tags: [llm, api, cors]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+          - name: llm-api-v1
+            paths:
+              - /v1
+            strip_path: false
+            path_handling: v0
+            tags: [llm, api, v1, protected]
+            plugins:
+              - name: jwt
+                tags: [llm, api, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [llm, api, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: rate-limiting
+                tags: [llm, api, rate]
+                config:
+                  minute: 120
+                  policy: local
+                  limit_by: ip
+                  fault_tolerant: true
+              - name: cors
+                tags: [llm, api, cors]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+          - name: llm-api-health
+            paths:
+              - /healthz
+              - /readyz
+            strip_path: false
+            path_handling: v0
+            methods: [GET]
+            tags: [llm, health, public]
+            plugins:
+              - name: cors
+                tags: [llm, health, cors]
+                config:
+                  origins: ["*"]
+                  methods: ["GET", "OPTIONS"]
+                  headers: ["Content-Type"]
+                  exposed_headers: ["X-Request-Id"]
+                  credentials: false
+                  max_age: 3600
+
+      - name: media-api-svc
+        url: http://{{ include "jan-server.fullname" . }}-media-api:{{ .Values.mediaApi.service.port }}
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+        tags: [media, api]
+        routes:
+          - name: media-api-proxy
+            paths: [/media]
+            strip_path: true
+            path_handling: v0
+            tags: [media, protected]
+            plugins:
+              - name: jwt
+                tags: [media, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [media, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: rate-limiting
+                tags: [media, rate]
+                config:
+                  minute: 60
+                  policy: local
+                  limit_by: ip
+                  fault_tolerant: true
+              - name: cors
+                tags: [media, cors]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+
+      - name: llm-auth-svc
+        url: http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+        tags: [llm, auth]
+        routes:
+          - name: llm-auth-public
+            paths:
+              - /llm/auth/guest-login
+              - /llm/auth/refresh-token
+              - /llm/auth/logout
+              - /llm/auth/validate-api-key
+            strip_path: false
+            methods: [GET, POST, OPTIONS]
+            tags: [llm, auth, public]
+            plugins:
+              - name: cors
+                tags: [llm, cors, public]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "POST", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+          - name: llm-auth-protected
+            paths:
+              - /llm/auth
+              - /auth
+            strip_path: false
+            tags: [llm, auth, protected]
+            plugins:
+              - name: jwt
+                tags: [llm, auth, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [llm, auth, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: rate-limiting
+                tags: [llm, auth, rate]
+                config:
+                  minute: 60
+                  policy: local
+                  limit_by: ip
+                  fault_tolerant: true
+              - name: cors
+                tags: [llm, cors, protected]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+
+      - name: response-api-svc
+        url: http://{{ include "jan-server.fullname" . }}-response-api:{{ .Values.responseApi.service.port }}
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+        tags: [response, api]
+        routes:
+          - name: response-api-proxy
+            paths: [/responses]
+            strip_path: true
+            path_handling: v0
+            tags: [response, protected]
+            plugins:
+              - name: jwt
+                tags: [response, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [response, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: rate-limiting
+                tags: [response, rate]
+                config:
+                  minute: 100
+                  policy: local
+                  limit_by: ip
+                  fault_tolerant: true
+              - name: cors
+                tags: [response, cors]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+
+      - name: mcp-tools-rpc-svc
+        url: http://{{ include "jan-server.fullname" . }}-mcp-tools:{{ .Values.mcpTools.service.port }}/v1/mcp
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+        tags: [mcp, rpc]
+        routes:
+          - name: mcp-tools-rpc
+            paths: [/mcp]
+            strip_path: true
+            methods: ["POST", "OPTIONS"]
+            path_handling: v0
+            tags: [mcp, protected]
+            plugins:
+              - name: jwt
+                tags: [mcp, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [mcp, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: rate-limiting
+                tags: [mcp, rate]
+                config:
+                  minute: 200
+                  policy: local
+                  limit_by: ip
+                  fault_tolerant: true
+              - name: cors
+                tags: [mcp, cors]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["POST", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+
+      - name: mcp-tools-health-svc
+        url: http://{{ include "jan-server.fullname" . }}-mcp-tools:{{ .Values.mcpTools.service.port }}
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+        tags: [mcp, health]
+        routes:
+          - name: mcp-tools-health
+            paths: [/mcp/healthz, /mcp/readyz]
+            strip_path: true
+            methods: ["GET"]
+            path_handling: v0
+            tags: [mcp, health, protected]
+            plugins:
+              - name: jwt
+                tags: [mcp, health, jwt]
+                config:
+                  key_claim_name: iss
+                  claims_to_verify: ["exp", "nbf"]
+                  maximum_expiration: 3600
+                  secret_is_base64: false
+                  run_on_preflight: false
+                  anonymous: kong-anon-jwt
+              - name: keycloak-apikey
+                tags: [mcp, health, apikey]
+                config:
+                  validation_url: "http://{{ include "jan-server.fullname" . }}-llm-api:{{ .Values.llmApi.service.port }}/auth/validate-api-key"
+                  validation_timeout: 5000
+                  hide_credentials: true
+                  run_on_preflight: false
+              - name: cors
+                tags: [mcp, health, cors]
+                config:
+                  origins: {{ .Values.kong.cors.origins | toJson }}
+                  methods: ["GET", "OPTIONS"]
+                  headers: ["Authorization", "Content-Type", "X-API-Key", "X-Request-Id"]
+                  exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
+                  credentials: true
+                  max_age: 3600
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jan-server.fullname" . }}-kong
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "jan-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kong
+spec:
+  replicas: {{ .Values.kong.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "jan-server.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kong
+  template:
+    metadata:
+      labels:
+        {{- include "jan-server.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: kong
+    spec:
+      initContainers:
+      - name: copy-plugins
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /usr/local/kong/plugins/keycloak-apikey
+          cp /tmp/plugins/keycloak-apikey-handler.lua /usr/local/kong/plugins/keycloak-apikey/handler.lua
+          cp /tmp/plugins/keycloak-apikey-schema.lua /usr/local/kong/plugins/keycloak-apikey/schema.lua
+          echo "Plugins copied successfully"
+        volumeMounts:
+        - name: plugins-source
+          mountPath: /tmp/plugins
+          readOnly: true
+        - name: plugins-dest
+          mountPath: /usr/local/kong/plugins
+      containers:
+      - name: kong
+        image: "{{ .Values.kong.image.registry }}/{{ .Values.kong.image.repository }}:{{ .Values.kong.image.tag }}"
+        imagePullPolicy: {{ .Values.kong.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.kong.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_DECLARATIVE_CONFIG
+          value: /kong/kong.yml
+        - name: KONG_LOG_LEVEL
+          value: info
+        - name: KONG_PLUGINS
+          value: "bundled,keycloak-apikey"
+        - name: KONG_LUA_PACKAGE_PATH
+          value: "/usr/local/share/lua/5.1/?.lua;/usr/local/kong/plugins/?.lua;;"
+        volumeMounts:
+        - name: config
+          mountPath: /kong
+          readOnly: true
+        - name: plugins-dest
+          mountPath: /usr/local/kong/plugins
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+              - kong
+              - health
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+              - kong
+              - health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.kong.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "jan-server.fullname" . }}-kong-config
+      - name: plugins-source
+        configMap:
+          name: {{ include "jan-server.fullname" . }}-kong-plugins
+      - name: plugins-dest
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "jan-server.fullname" . }}-kong
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "jan-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kong
+spec:
+  type: {{ .Values.kong.service.type }}
+  ports:
+  - port: {{ .Values.kong.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "jan-server.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: kong
+{{- end }}

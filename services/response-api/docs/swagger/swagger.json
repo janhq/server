@@ -1,0 +1,346 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Orchestrates LLM responses with MCP tool integration, conversation context, and streaming support.",
+        "title": "Response API",
+        "contact": {
+            "name": "Jan Server Team",
+            "url": "https://github.com/janhq/jan-server"
+        },
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/v1/responses": {
+            "post": {
+                "description": "Creates a response and orchestrates MCP tool calls when required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Create a response",
+                "parameters": [
+                    {
+                        "description": "Create request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.CreateResponseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ResponsePayload"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/responses/{response_id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Get a response by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ResponsePayload"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Delete/Cancel a response",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ResponsePayload"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/responses/{response_id}/cancel": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "Cancel a response",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ResponsePayload"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/responses/{response_id}/input_items": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "summary": "List conversation input items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Response ID",
+                        "name": "response_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.ConversationItem"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "requests.CreateResponseRequest": {
+            "type": "object",
+            "required": [
+                "input",
+                "model"
+            ],
+            "properties": {
+                "background": {
+                    "type": "boolean"
+                },
+                "conversation": {
+                    "type": "string"
+                },
+                "input": {},
+                "max_tokens": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "model": {
+                    "type": "string"
+                },
+                "previous_response_id": {
+                    "type": "string"
+                },
+                "store": {
+                    "type": "boolean"
+                },
+                "stream": {
+                    "type": "boolean"
+                },
+                "system_prompt": {
+                    "type": "string"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "tool_choice": {
+                    "$ref": "#/definitions/requests.ToolChoice"
+                },
+                "tools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/requests.ToolDefinition"
+                    }
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ToolChoice": {
+            "type": "object",
+            "properties": {
+                "function": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ToolDefinition": {
+            "type": "object",
+            "properties": {
+                "function": {
+                    "$ref": "#/definitions/requests.ToolFunctionDefinition"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.ToolFunctionDefinition": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "response.ConversationItem": {
+            "type": "object",
+            "properties": {
+                "content": {},
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "responses.ResponsePayload": {
+            "type": "object",
+            "properties": {
+                "background": {
+                    "type": "boolean"
+                },
+                "conversation_id": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "description": "Same as Created, for compatibility",
+                    "type": "integer"
+                },
+                "error": {},
+                "id": {
+                    "type": "string"
+                },
+                "input": {},
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "model": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "output": {},
+                "previous_response_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "store": {
+                    "type": "boolean"
+                },
+                "stream": {
+                    "type": "boolean"
+                },
+                "system_prompt": {
+                    "type": "string"
+                },
+                "usage": {}
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}
