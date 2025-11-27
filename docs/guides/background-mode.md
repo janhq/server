@@ -311,12 +311,12 @@ Workers log structured events:
 
 ## Testing
 
-### Newman Test Collection
+### jan-cli api-test Collection
 
 Run the Postman collection for background mode:
 
 ```bash
-newman run tests/postman/responses-background-webhook.json \
+jan-cli api-test run tests/postman/responses-background-webhook.json \
   --environment tests/postman/environments/local.json \
   --delay-request 1000 \
   --timeout-request 60000

@@ -18,7 +18,7 @@ Before you begin, ensure you have:
 
 Optional (for development):
 - Go 1.21+ 
-- Node.js 18+ (for Newman tests)
+- Go 1.23+ (for jan-cli api-test)
 
 ## Quick Setup
 

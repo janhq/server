@@ -18,7 +18,7 @@ var apiTestCmd = &cobra.Command{
 	Short: "Run API tests from Postman collections",
 	Long: `Run API integration tests using Postman collection JSON files.
 
-This is a lightweight replacement for Newman that supports the essential
+This is a lightweight cli api test that supports the essential
 features needed for Jan Server testing: running collections, setting 
 environment variables, and reporting results.
 

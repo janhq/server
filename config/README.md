@@ -40,7 +40,7 @@ make env-switch ENV=testing       # Integration testing
 - **Command**: `make env-switch ENV=development` or `make up-full`
 
 ### `config/testing.env`
-- **Purpose**: Integration testing with Newman
+- **Purpose**: Integration testing with jan-cli api-test
 - **Use when**: Running `make test-all`
 - **URLs**: Use localhost for test access
 - **Command**: Used automatically by test targets

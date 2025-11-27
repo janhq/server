@@ -65,7 +65,7 @@ make monitor-up         # Prometheus + Grafana + Jaeger
 make monitor-clean      # Stop monitoring and remove volumes
 
 # Testing
-make test-all           # Run every Newman collection
+make test-all           # Run every jan-cli api-test collection
 make test-auth          # Focused suite (see Makefile for others)
 go test ./services/llm-api/...    # Service-level unit tests
 
@@ -83,7 +83,7 @@ make db-reset           # Drop + recreate llm-api database
 ## Critical Checklist Before Pushing
 
 1. `go fmt ./...` in every service you touched.
-2. `go test ./...` (unit) and `make test-all` or the relevant Newman suites if you changed APIs.
+2. `go test ./...` (unit) and `make test-all` or the relevant jan-cli api-test suites if you changed APIs.
 3. `make swagger` if REST contracts changed.
 4. `(cd services/<name> && make gormgen)` if DB schemas changed.
 5. `.env`/secrets unchanged and never committed.

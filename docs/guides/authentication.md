@@ -71,7 +71,7 @@ Client
 
 - **Metrics**: Expose plugin-specific stats for auth method usage and failure reasons. Consider adding Redis caching for `validate-api-key` responses to reduce latency.
 - **Logging**: Kong logs record which plugin succeeded; look for `X-Auth-Method` in `request-transformer`-injected headers.
-- **Tests**: Newman/Postman suites verify `/auth/api-keys`, `/llm/auth/guest-login`, and the `validate-api-key` call. Run `make test-auth` in development.
+- **Tests**: jan-cli api-test suites verify `/auth/api-keys`, `/llm/auth/guest-login`, and the `validate-api-key` call. Run `make test-auth` in development.
 
 ## 8. Security Hardening Summary
 

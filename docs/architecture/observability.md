@@ -42,7 +42,7 @@
 
 ## Developer Workflow
 1. Start the monitoring stack: `make monitor-up`.
-2. Hit the APIs (curl/Postman/Newman).
+2. Hit the APIs (curl/Postman/jan-cli api-test).
 3. Inspect metrics/traces/logs using the URLs above.
 4. Tear down with `make monitor-down` (if defined) or `docker compose down` for the monitoring profile.
 

@@ -29,7 +29,7 @@ Welcome to the Jan Server documentation. Use this page as a map to the rest of t
 ### Developers
 - [Development Guide](guides/development.md) - Run services locally (Docker + hybrid)
 - [Configuration System](configuration/README.md) - Type-safe config rules and precedence
-- [Testing Guide](guides/testing.md) - Newman collections, targets, and coverage
+- [Testing Guide](guides/testing.md) - jan-cli api-test collections, targets, and coverage
 - [Hybrid Mode](guides/hybrid-mode.md) - Mix native binaries with Compose services
 - [Service Template](guides/services-template.md) - Generate a new microservice
 - [IDE Setup](guides/ide/vscode.md) - VS Code debugging and launch configs

@@ -14,12 +14,12 @@ jan-server/
 +-- docs/                       # Documentation (guides, conventions, templates, etc.)
 +-- k8s/                        # Helm chart + Kubernetes manifests
 +-- services/
-¦   +-- llm-api/
-¦   +-- media-api/
-¦   +-- response-api/
-¦   +-- mcp-tools/
-¦   +-- template-api/
-+-- tests/                      # Newman collections
+ï¿½   +-- llm-api/
+ï¿½   +-- media-api/
+ï¿½   +-- response-api/
+ï¿½   +-- mcp-tools/
+ï¿½   +-- template-api/
++-- tests/                      # jan-cli api-test collections
 +-- Makefile                    # Canonical automation entry point
 +-- docker-compose.yml          # Root compose file wired to profiles
 +-- docker-compose.dev-full.yml # Dev-Full overrides (host routing)
@@ -30,13 +30,13 @@ Each service folder contains the same structure:
 ```
 services/<service>/
 +-- cmd/
-¦   +-- server/                 # Service entrypoint
-¦   +-- gormgen/                # (llm-api) schema generator
+ï¿½   +-- server/                 # Service entrypoint
+ï¿½   +-- gormgen/                # (llm-api) schema generator
 +-- config/                     # Service-specific configuration helpers
 +-- internal/
-¦   +-- domain/                 # Business logic (no HTTP/DB imports)
-¦   +-- infrastructure/         # Repositories, cache, provider clients
-¦   +-- interfaces/httpserver/  # Gin routes, requests, responses, middlewares
+ï¿½   +-- domain/                 # Business logic (no HTTP/DB imports)
+ï¿½   +-- infrastructure/         # Repositories, cache, provider clients
+ï¿½   +-- interfaces/httpserver/  # Gin routes, requests, responses, middlewares
 +-- migrations/                 # SQL migrations
 +-- swagger/ or docs/swagger/   # Generated OpenAPI files
 +-- scripts/                    # Service utilities (optional)
@@ -92,7 +92,7 @@ services/<svc>/internal/domain/<entity>/
 services/<svc>/internal/infrastructure/database/
 +-- dbschema/              # Schema structs + EtoD/DToE helpers
 +-- repository/
-¦   +-- <entity>repo/      # Repository implementation
+ï¿½   +-- <entity>repo/      # Repository implementation
 +-- gormgen/               # Generated query builders (llm-api)
 ```
 
@@ -120,9 +120,9 @@ services/<svc>/internal/interfaces/httpserver/
 ## Anti-Patterns To Avoid
 
 - **Direct DB access from handlers**: always go through domain services.
-- **Fat handlers**: route handlers should validate input, call domain services, and return responses—nothing more.
+- **Fat handlers**: route handlers should validate input, call domain services, and return responsesï¿½nothing more.
 - **Storing business logic in `internal/utils`**: keep helpers generic; domain rules belong in domain services.
-- **Creating interfaces “just in case”**: only introduce an interface when multiple implementations exist or tests require it.
+- **Creating interfaces ï¿½just in caseï¿½**: only introduce an interface when multiple implementations exist or tests require it.
 
 ---
 

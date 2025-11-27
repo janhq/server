@@ -91,7 +91,7 @@ make clean-build
 
 ## Integration Testing
 
-### Newman/Postman Collections
+### jan-cli api-test Collections
 
 **Authentication Tests:**
 # Basic jan-cli commands
@@ -426,7 +426,7 @@ Prefer `jan-cli` commands for:
 Prefer `Makefile` for:
 - Docker Compose commands (`up-infra`, `up-full`, `down`)
 - Service orchestration
-- Testing with Newman
+- Testing with jan-cli api-test
 - Health checks
 
 **Why:** These operations are already cross-platform via Docker CLI.
@@ -486,8 +486,8 @@ make build-llm-api
 - OK CLI commands: All platforms
 - OK Build targets: All platforms
 - OK Docker integration: Linux/macOS/Windows (with Docker Desktop)
-- OK Authentication: Newman/Postman collections
-- OK API integration: Newman/Postman collections
+- OK Authentication: jan-cli api-test collections
+- OK API integration: jan-cli api-test collections
 
 ---
 

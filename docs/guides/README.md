@@ -61,7 +61,7 @@ docker compose stop llm-api
 .\jan-cli.ps1 dev run llm-api  # Windows
 
 # 4. Run automated tests
-make test-all                  # Newman integration suites
+make test-all                  # jan-cli api-test integration suites
 go test ./services/llm-api/... # Unit tests from source
 ```
 

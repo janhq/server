@@ -146,13 +146,13 @@ cd services/memory-tools
 go test ./...
 ```
 
-### Integration Tests (Postman/Newman)
+### Integration Tests (jan-cli api-test)
 ```bash
 # Make sure services are running
 docker-compose --profile memory up -d
 
 # Run tests
-newman run tests/automation/bge-m3-integration.postman_collection.json \
+jan-cli api-test run tests/automation/bge-m3-integration.postman_collection.json \
   --env-var "embedding_service_url=http://localhost:8091"
 ```
 

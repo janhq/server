@@ -27,7 +27,7 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 ### Developers
 - [Development Guide](guides/development.md) - Local + hybrid workflows, Make targets.
 - [Configuration System](configuration/README.md) - Precedence rules and env var mapping.
-- [Testing Guide](guides/testing.md) - Newman collections, coverage, and best practices.
+- [Testing Guide](guides/testing.md) - jan-cli api-test collections, coverage, and best practices.
 - [Hybrid Mode](guides/hybrid-mode.md) - Run select services natively.
 - [Service Template](guides/services-template.md) - Generate a new Go microservice.
 - [IDE Setup](guides/ide/vscode.md) - Launch configurations and debugging tips.

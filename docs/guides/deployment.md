@@ -176,7 +176,7 @@ cp .env.template .env                # ensure a clean env file
 # Edit .env and set: COMPOSE_PROFILES=infra,api,mcp
 
 make up-full                         # start stack under test
-make test-all                        # run Newman suites
+make test-all                        # run jan-cli api-test suites
 ```
 
 ### Hybrid Mode

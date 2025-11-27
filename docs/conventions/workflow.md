@@ -90,13 +90,13 @@ git push origin feat/new-flow
 | Scope | Command |
 |-------|---------|
 | Unit tests (per service) | `go test ./services/<service>/...` |
-| Full Newman suite | `make test-all` |
+| Full jan-cli api-test suite | `make test-all` |
 | Focused integration suites | `make test-auth`, `make test-conversations`, `make test-media`, `make test-mcp-integration`, etc. |
 | Health checks | `make health-check` |
 
 Guidelines:
 - Run the service-level Go tests before committing.
-- Run the relevant Newman collection (or `make test-all`) when changing API routes, Kong config, or MCP tools.
+- Run the relevant jan-cli api-test collection (or `make test-all`) when changing API routes, Kong config, or MCP tools.
 - For MCP-only work, `make test-mcp-integration` plus manual curl checks against `http://localhost:8000/mcp`.
 
 ---
@@ -117,7 +117,7 @@ Run generators whenever you change schema structs or API contracts, then commit 
 
 - Secrets (`HF_TOKEN`, `SERPER_API_KEY`, `BACKEND_CLIENT_SECRET`, etc.) stay in `.env` only.
 - Never log access tokens, API keys, or PII. Use structured logging fields (`logger.With(...)`) instead.
-- Kong + Keycloak enforce JWT/API key validation—never bypass them in service routes.
+- Kong + Keycloak enforce JWT/API key validationï¿½never bypass them in service routes.
 - Use HTTPS when transmitting secrets externally; assume `.env` values will be different in production.
 
 ---
@@ -150,7 +150,7 @@ Run generators whenever you change schema structs or API contracts, then commit 
 
 **Testing**
 - Unit tests cover new code paths.
-- Integration/Newman suites updated if APIs change.
+- Integration/jan-cli api-test suites updated if APIs change.
 - Feature flags or env toggles documented.
 
 **Security**
@@ -180,7 +180,7 @@ make db-console         # psql shell into api-db
 make db-reset           # Drop & recreate llm-api database
 
 # Testing
-make test-all           # All Newman suites
+make test-all           # All jan-cli api-test suites
 make test-auth          # Focused collection
 make test-mcp-integration
 

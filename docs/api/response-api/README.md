@@ -623,16 +623,13 @@ Comprehensive test suite at `tests/automation/responses-background-webhook.json`
 **Running Tests:**
 ```bash
 # Run all tests
-newman run tests/automation/responses-background-webhook.json \
-  --delay-request 1000 \
+jan-cli api-test run tests/automation/responses-background-webhook.json \
   --timeout-request 60000
 
 # Export results
-newman run tests/automation/responses-background-webhook.json \
-  --delay-request 1000 \
+jan-cli api-test run tests/automation/responses-background-webhook.json \
   --timeout-request 60000 \
-  --reporters cli,json \
-  --reporter-json-export test-results.json
+  --reporters cli,json
 ```
 
 ### Troubleshooting

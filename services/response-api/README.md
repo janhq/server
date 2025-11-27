@@ -307,22 +307,18 @@ Comprehensive test suite available at `tests/automation/responses-background-web
 
 ```bash
 # Run all tests
-newman run tests/automation/responses-background-webhook.json \
-  --delay-request 1000 \
+jan-cli api-test run tests/automation/responses-background-webhook.json \
   --timeout-request 60000
 
 # Run with verbose output
-newman run tests/automation/responses-background-webhook.json \
-  --delay-request 1000 \
+jan-cli api-test run tests/automation/responses-background-webhook.json \
   --timeout-request 60000 \
   --verbose
 
 # Export results to JSON
-newman run tests/automation/responses-background-webhook.json \
-  --delay-request 1000 \
+jan-cli api-test run tests/automation/responses-background-webhook.json \
   --timeout-request 60000 \
-  --reporters cli,json \
-  --reporter-json-export test-results.json
+  --reporters cli,json
 ```
 
 ### Test Webhook Server
@@ -396,11 +392,9 @@ jobs:
       
       - name: Run tests
         run: |
-          newman run tests/automation/responses-background-webhook.json \
-            --delay-request 1000 \
+          jan-cli api-test run tests/automation/responses-background-webhook.json \
             --timeout-request 60000 \
-            --reporters cli,junit \
-            --reporter-junit-export test-results.xml
+            --reporters cli
       
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2

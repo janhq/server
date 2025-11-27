@@ -37,7 +37,7 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
 - **Health Check Utilities** - `make health-check` for service monitoring
 
 #### Test Comprehensive Testing Infrastructure
-- **6 Newman/Postman test collections** in `tests/automation/`:
+- **6 jan-cli api-test collections** in `tests/automation/`:
   - `auth-postman-scripts.json` - Authentication tests
   - `conversations-postman-scripts.json` - Conversation API tests
   - `responses-postman-scripts.json` - Response API tests
@@ -66,7 +66,7 @@ This release represents a **complete architectural overhaul** from a Kubernetes-
 - **Multiple environment configurations**:
   - `config/defaults.env` - Base configuration for all environments
   - `config/development.env` - Docker internal DNS configuration
-  - `config/testing.env` - localhost URLs for Newman tests
+  - `config/testing.env` - localhost URLs for jan-cli api-test
   - `config/secrets.env.example` - Secrets template
 - **Profile-based deployment**:
   - `make up-full` - Full stack with all services
@@ -262,7 +262,7 @@ This is a **major version change** with breaking changes. Organizations using v2
 - Full observability stack (Prometheus, Jaeger, Grafana)
 - OpenTelemetry integration
 - Guest authentication with Keycloak token exchange
-- Comprehensive testing suite with Newman
+- Comprehensive testing suite with jan-cli api-test
 - Documentation for all major features
 
 ### Changed

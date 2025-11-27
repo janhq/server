@@ -79,7 +79,7 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 - **Distributed tracing** with Jaeger and OpenTelemetry
 - **Metrics and dashboards** with Prometheus and Grafana
 - **Development mode** with host.docker.internal support for flexible debugging
-- **Comprehensive testing suite** with 6 Newman/Postman collections
+- **Comprehensive testing suite** with 6 jan-cli api-test collections
 - **Service template system** for rapid microservice creation
 
 ## Documentation
@@ -451,7 +451,7 @@ See [Deployment Guide](docs/guides/deployment.md) for production setup.
 ## Testing
 
 ```bash
-# Run all tests (6 Newman/Postman collections)
+# Run all tests (6 jan-cli api-test collections)
 make test-all
 
 # Specific test suites
@@ -463,7 +463,6 @@ make test-mcp             # MCP tools integration
 make test-e2e             # Gateway end-to-end tests
 
 # Test reports
-# - JSON reports: newman.json
 # - CLI output: Detailed results with assertions
 ```
 
