@@ -140,34 +140,7 @@
 
 ---
 
-### Phase 3: Multi-Agent Systems (Q2-Q4 2026)
-
-**Status:** Planned
-
-**Goal:** 3 agents collaborating on complex tasks with secure data handling
-
-**Agents:**
-- **Orchestrator Agent** - Coordinates specialist agents
-- **Research Agent** - Web research, fact-checking, citations
-- **Code Agent** - Code generation, debugging, testing
-
-**Security:**
-- Agent-to-agent communication encrypted
-- Fine-grained permissions per agent type
-- Audit trail for multi-agent workflows
-- Secure sandbox for code execution
-
-**Todo App Features:**
-- Multi-agent task execution, agent handoffs
-- Parallel subtask execution
-- Example: "Write comprehensive guide" → Research → Write → Reflect
-- Encrypted context sharing between agents
-
-**Exit Criteria:** 3+ agents working together, secure multi-agent communication verified
-
----
-
-### Phase 4: SaaS Platform + Compliance (Q3-Q4 2026) **[EE Module]**
+### Phase 3: SaaS Platform + Compliance (Q2-Q3 2026) **[EE Module]**
 
 **Status:** Planned
 
@@ -319,7 +292,6 @@ jan-server/
 | Phase 1: Foundation | Complete | Q4 2025 | Microservices + infra + basic security |
 | Phase 2: Agentic Core + Tools | In Progress | Q1 2026 | Planning + Memory + Reflection + 12-15 tools + encryption |
 | Phase 2.5: Early SaaS + Security | Planned | Q2 2026 | Multi-tenancy + Billing + OAuth + BYOK + SOC 2 Type I |
-| Phase 3: Multi-Agent | Planned | Q2 2026 | 3 agents collaborating + secure communication |
-| Phase 4: SaaS Platform + Compliance | Planned | Q3-Q4 2026 | Team tier + workflows + marketplace + SOC 2 Type II |
+| Phase 3: SaaS Platform + Compliance | Planned | Q3-Q4 2026 | Team tier + workflows + marketplace + SOC 2 Type II |
 
 ---
