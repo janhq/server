@@ -51,25 +51,39 @@ func cloneMessage(msg openai.ChatCompletionMessage) openai.ChatCompletionMessage
 	return clone
 }
 
-// prependInstructionSystemMessage returns a copy of messages with the instruction system message prepended.
-// A marker is appended to the content to avoid duplicate injections.
+// prependInstructionSystemMessage returns a copy of messages with the instruction system
+// message prepended. A marker is appended to avoid duplicate injections.
 func prependInstructionSystemMessage(messages []openai.ChatCompletionMessage, instruction, moduleName string) []openai.ChatCompletionMessage {
 	trimmed := strings.TrimSpace(instruction)
 	if trimmed == "" {
 		return messages
 	}
 
-	marker := moduleMarker(moduleName)
-	for _, msg := range messages {
-		if msg.Role == openai.ChatMessageRoleSystem && hasMarker(msg.Content, marker) {
-			return messages
-		}
+	// If we've already injected this module, do nothing.
+	if hasModuleMarker(messages, moduleName) {
+		return messages
 	}
+
+	marker := moduleMarker(moduleName)
+
+	var builder strings.Builder
+	builder.WriteString(trimmed)
+
+	// Special handling for project instructions: explicitly state priority
+	if moduleName == projectInstructionModuleName {
+		builder.WriteString("\n\n")
+		builder.WriteString("Project priority: These project-specific instructions have the highest priority. ")
+		builder.WriteString("If any user settings, persona, style preferences, or other guidance conflict with these project instructions, ")
+		builder.WriteString("you must follow the project instructions.")
+	}
+
+	builder.WriteString("\n")
+	builder.WriteString(marker)
 
 	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
 	result = append(result, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fmt.Sprintf("%s\n%s", trimmed, marker),
+		Content: builder.String(),
 	})
 
 	for _, msg := range messages {
@@ -84,47 +98,97 @@ func PrependProjectInstruction(messages []openai.ChatCompletionMessage, instruct
 	return prependInstructionSystemMessage(messages, instruction, projectInstructionModuleName)
 }
 
-func appendSystemContent(messages []openai.ChatCompletionMessage, additional, moduleName, defaultPersona string) []openai.ChatCompletionMessage {
+// appendSystemContent attaches "additional" instructions into a suitable system message
+// or creates a new system message if needed.
+//
+// Rules:
+//   - If the module marker already exists anywhere, we do nothing.
+//   - We NEVER modify the project_instruction system message for lower-priority modules.
+//   - When we create a new system message, we insert it right after the project_instruction
+//     message (if present) so project instructions stay visually/topologically first.
+//   - defaultPersona is the full persona sentence (if non-empty), not just a label.
+func appendSystemContent(
+	messages []openai.ChatCompletionMessage,
+	additional, moduleName, defaultPersona string,
+) []openai.ChatCompletionMessage {
+	additional = strings.TrimSpace(additional)
 	marker := moduleMarker(moduleName)
+	projectMarker := moduleMarker(projectInstructionModuleName)
+
+	// If this module was already injected, don't inject it again.
+	if hasModuleMarker(messages, moduleName) {
+		return messages
+	}
+
 	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
-	systemFound := false
+	applied := false
 
 	for _, m := range messages {
 		msg := cloneMessage(m)
-		if msg.Role == openai.ChatMessageRoleSystem {
-			if !hasMarker(msg.Content, marker) && strings.TrimSpace(additional) != "" {
-				var builder strings.Builder
-				builder.WriteString(msg.Content)
-				builder.WriteString("\n\n")
-				builder.WriteString(additional)
-				builder.WriteString("\n")
-				builder.WriteString(marker)
-				msg.Content = builder.String()
+		if msg.Role == openai.ChatMessageRoleSystem && !applied {
+			// Keep project instructions clean and highest priority:
+			// do not append persona/user settings/etc. onto that message.
+			if hasMarker(msg.Content, projectMarker) && moduleName != projectInstructionModuleName {
+				// Leave msg as-is.
+			} else if additional != "" && !hasMarker(msg.Content, marker) {
+				var b strings.Builder
+				b.WriteString(strings.TrimSpace(msg.Content))
+				b.WriteString("\n\n")
+				b.WriteString(additional)
+				b.WriteString("\n")
+				b.WriteString(marker)
+				msg.Content = b.String()
+				applied = true
 			}
-			systemFound = true
 		}
 		result = append(result, msg)
 	}
 
-	if !systemFound {
-		var builder strings.Builder
-		personaText := "You are a helpful assistant."
-		if strings.TrimSpace(defaultPersona) != "" {
-			personaText = fmt.Sprintf("You are a %s. Follow the rules strictly.", defaultPersona)
-		}
-		builder.WriteString(personaText)
-		if strings.TrimSpace(additional) != "" {
-			builder.WriteString("\n\n")
-			builder.WriteString(additional)
-		}
-		builder.WriteString("\n")
-		builder.WriteString(marker)
-		systemMsg := openai.ChatCompletionMessage{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: builder.String(),
-		}
-		result = append([]openai.ChatCompletionMessage{systemMsg}, result...)
+	// If we successfully appended to an existing system message, we're done.
+	if applied {
+		return result
 	}
+
+	// If we have nothing to say and no persona, just return.
+	if additional == "" && strings.TrimSpace(defaultPersona) == "" {
+		return result
+	}
+
+	// Create a new system message with persona + additional content.
+	var builder strings.Builder
+	personaText := strings.TrimSpace(defaultPersona)
+	if personaText == "" {
+		personaText = "You are a helpful assistant."
+	}
+	builder.WriteString(personaText)
+
+	if additional != "" {
+		builder.WriteString("\n\n")
+		builder.WriteString(additional)
+	}
+
+	builder.WriteString("\n")
+	builder.WriteString(marker)
+
+	systemMsg := openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: builder.String(),
+	}
+
+	// Insert AFTER project_instruction system message if it exists at the front,
+	// so project instructions are clearly top priority.
+	insertIdx := 0
+	if len(result) > 0 {
+		first := result[0]
+		if first.Role == openai.ChatMessageRoleSystem && hasMarker(first.Content, projectMarker) {
+			insertIdx = 1
+		}
+	}
+
+	// Insert at insertIdx
+	result = append(result, openai.ChatCompletionMessage{}) // grow slice
+	copy(result[insertIdx+1:], result[insertIdx:])
+	result[insertIdx] = systemMsg
 
 	return result
 }
@@ -217,6 +281,9 @@ func (m *ProjectInstructionModule) ShouldApply(ctx context.Context, promptCtx *C
 	if promptCtx == nil {
 		return false
 	}
+	if promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		return false
+	}
 	return strings.TrimSpace(promptCtx.ProjectInstruction) != ""
 }
 
@@ -234,22 +301,22 @@ func (m *ProjectInstructionModule) Apply(ctx context.Context, promptCtx *Context
 	return PrependProjectInstruction(messages, promptCtx.ProjectInstruction), nil
 }
 
-// PersonaModule ensures a consistent system prompt/persona is applied
+// PersonaModule ensures a consistent system prompt/persona is applied.
 type PersonaModule struct {
 	defaultPersona string
 }
 
-// NewPersonaModule creates a new persona module
+// NewPersonaModule creates a new persona module.
 func NewPersonaModule(defaultPersona string) *PersonaModule {
 	return &PersonaModule{defaultPersona: strings.TrimSpace(defaultPersona)}
 }
 
-// Name returns the module identifier
+// Name returns the module identifier.
 func (m *PersonaModule) Name() string {
 	return "persona"
 }
 
-// resolvePersona picks persona from user preferences or default
+// resolvePersona picks persona from user preferences or default.
 func (m *PersonaModule) resolvePersona(promptCtx *Context) string {
 	if promptCtx != nil {
 		if persona := personaFromPreferences(promptCtx.Preferences); persona != "" {
@@ -262,7 +329,7 @@ func (m *PersonaModule) resolvePersona(promptCtx *Context) string {
 	return "helpful assistant"
 }
 
-// ShouldApply always applies when a persona is available
+// ShouldApply applies when a persona is available and module not disabled.
 func (m *PersonaModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
 		return false
@@ -270,11 +337,14 @@ func (m *PersonaModule) ShouldApply(ctx context.Context, promptCtx *Context, mes
 	if promptCtx == nil {
 		return false
 	}
-	persona := m.resolvePersona(promptCtx)
-	return strings.TrimSpace(persona) != ""
+	if promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		return false
+	}
+	persona := strings.TrimSpace(m.resolvePersona(promptCtx))
+	return persona != ""
 }
 
-// Apply injects or prefixes the system prompt with persona instructions
+// Apply injects or prefixes the system prompt with persona instructions.
 func (m *PersonaModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
 	if ctx != nil {
 		if err := ctx.Err(); err != nil {
@@ -285,13 +355,19 @@ func (m *PersonaModule) Apply(ctx context.Context, promptCtx *Context, messages 
 		return messages, nil
 	}
 
-	persona := m.resolvePersona(promptCtx)
-	if persona == "" {
+	personaDesc := strings.TrimSpace(m.resolvePersona(promptCtx))
+	if personaDesc == "" {
 		return messages, nil
 	}
 
-	personaText := fmt.Sprintf("You are a %s. Follow the rules strictly.", persona)
-	result := appendSystemContent(messages, personaText, m.Name(), persona)
+	// Full persona sentence. Note that project/system instructions still win.
+	personaText := fmt.Sprintf(
+		"You are a %s. Use this persona for tone and behavior, but never override explicit system or project instructions. "+
+			"If any user settings or persona preferences conflict with project instructions, always follow the project instructions.",
+		personaDesc,
+	)
+
+	result := appendSystemContent(messages, "", m.Name(), personaText)
 	return result, nil
 }
 
@@ -316,6 +392,10 @@ func (m *UserProfileModule) ShouldApply(ctx context.Context, promptCtx *Context,
 	if promptCtx == nil || promptCtx.Profile == nil {
 		return false
 	}
+	if promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		return false
+	}
+
 	profile := promptCtx.Profile
 
 	// Apply when any personalization field is present (base style defaults to Friendly so non-empty).
@@ -356,6 +436,11 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 	profile := promptCtx.Profile
 	var sections []string
 
+	// General note about precedence vs project instructions.
+	sections = append(sections,
+		"User-level settings are preferences for style and context. "+
+			"If they ever conflict with explicit project or system instructions, always follow the project or system instructions.")
+
 	if styleText := baseStyleInstruction(profile.BaseStyle); styleText != "" {
 		sections = append(sections, styleText)
 	}
@@ -394,7 +479,7 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 	return result, nil
 }
 
-// WithDisabledModules returns a shallow copy of Context with module disable list merged
+// WithDisabledModules returns a shallow copy of Context with module disable list merged.
 func WithDisabledModules(ctx *Context, disable []string) *Context {
 	if ctx == nil {
 		return &Context{
@@ -412,22 +497,22 @@ func WithDisabledModules(ctx *Context, disable []string) *Context {
 	return ctx
 }
 
-// MemoryModule adds user memory to system prompts
+// MemoryModule adds user memory to system prompts.
 type MemoryModule struct {
 	enabled bool
 }
 
-// NewMemoryModule creates a new memory module
+// NewMemoryModule creates a new memory module.
 func NewMemoryModule(enabled bool) *MemoryModule {
 	return &MemoryModule{enabled: enabled}
 }
 
-// Name returns the module identifier
+// Name returns the module identifier.
 func (m *MemoryModule) Name() string {
 	return "memory"
 }
 
-// ShouldApply checks if memory should be included
+// ShouldApply checks if memory should be included.
 func (m *MemoryModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
 		return false
@@ -435,10 +520,13 @@ func (m *MemoryModule) ShouldApply(ctx context.Context, promptCtx *Context, mess
 	if !m.enabled || promptCtx == nil {
 		return false
 	}
+	if promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		return false
+	}
 	return len(promptCtx.Memory) > 0
 }
 
-// Apply adds memory to the system prompt
+// Apply adds memory to the system prompt.
 func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
 	if ctx != nil {
 		if err := ctx.Err(); err != nil {
@@ -450,7 +538,7 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 	}
 
 	var builder strings.Builder
-	builder.WriteString("Use the following personal memory for this user:\n")
+	builder.WriteString("Use the following personal memory for this user when helpful, without overriding project or system instructions:\n")
 	for _, item := range promptCtx.Memory {
 		builder.WriteString("- ")
 		builder.WriteString(item)
@@ -461,43 +549,40 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 	return result, nil
 }
 
-// ToolInstructionsModule adds tool usage instructions
+// ToolInstructionsModule adds tool usage instructions.
 type ToolInstructionsModule struct {
 	enabled bool
 }
 
-// NewToolInstructionsModule creates a new tool instructions module
+// NewToolInstructionsModule creates a new tool instructions module.
 func NewToolInstructionsModule(enabled bool) *ToolInstructionsModule {
 	return &ToolInstructionsModule{enabled: enabled}
 }
 
-// Name returns the module identifier
+// Name returns the module identifier.
 func (m *ToolInstructionsModule) Name() string {
 	return "tool_instructions"
 }
 
-// ShouldApply checks if tool instructions should be added
+// ShouldApply checks if tool instructions should be added.
 func (m *ToolInstructionsModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
 		return false
 	}
-	// Check if any preferences indicate tool usage
 	if !m.enabled {
 		return false
 	}
-
 	if promptCtx == nil {
 		return false
 	}
-
-	if detectToolUsage(promptCtx, messages) {
-		return true
+	if promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		return false
 	}
 
-	return false
+	return detectToolUsage(promptCtx, messages)
 }
 
-// Apply adds tool instructions to the system prompt
+// Apply adds tool instructions to the system prompt.
 func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
 	if ctx != nil {
 		if err := ctx.Err(); err != nil {
@@ -510,9 +595,10 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 
 	var builder strings.Builder
 	builder.WriteString("You have access to various tools. Always choose the best tool for the task.\n")
-	builder.WriteString("When you need to search for information, use web search. When you need to execute code, use the code execution tool.")
+	builder.WriteString("When you need to search for information, use web search. When you need to execute code, use the code execution tool.\n")
+	builder.WriteString("Tool usage must respect project instructions and system-level constraints at all times.")
 
-	if promptCtx != nil && promptCtx.Preferences != nil {
+	if promptCtx.Preferences != nil {
 		if desc, ok := promptCtx.Preferences["tool_descriptions"].(string); ok && strings.TrimSpace(desc) != "" {
 			builder.WriteString("\nAvailable tools: ")
 			builder.WriteString(strings.TrimSpace(desc))
@@ -531,25 +617,28 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 	return result, nil
 }
 
-// CodeAssistantModule adds code-specific instructions
+// CodeAssistantModule adds code-specific instructions.
 type CodeAssistantModule struct{}
 
-// NewCodeAssistantModule creates a new code assistant module
+// NewCodeAssistantModule creates a new code assistant module.
 func NewCodeAssistantModule() *CodeAssistantModule {
 	return &CodeAssistantModule{}
 }
 
-// Name returns the module identifier
+// Name returns the module identifier.
 func (m *CodeAssistantModule) Name() string {
 	return "code_assistant"
 }
 
-// ShouldApply checks if the question is code-related
+// ShouldApply checks if the question is code-related.
 func (m *CodeAssistantModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
 		return false
 	}
-	// Check last user message for code-related keywords
+	if promptCtx != nil && promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		return false
+	}
+	// Check last user message for code-related keywords.
 	for i := len(messages) - 1; i >= 0; i-- {
 		if messages[i].Role == openai.ChatMessageRoleUser {
 			content := strings.ToLower(messages[i].Content)
@@ -562,7 +651,7 @@ func (m *CodeAssistantModule) ShouldApply(ctx context.Context, promptCtx *Contex
 	return false
 }
 
-// Apply adds code assistant instructions
+// Apply adds code assistant instructions.
 func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
 	if ctx != nil {
 		if err := ctx.Err(); err != nil {
@@ -575,32 +664,36 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 
 	var builder strings.Builder
 	builder.WriteString("When providing code assistance:\n")
-	builder.WriteString("1. Provide clear, well-commented code\n")
-	builder.WriteString("2. Explain your approach and reasoning\n")
-	builder.WriteString("3. Include error handling where appropriate\n")
-	builder.WriteString("4. Follow best practices and conventions\n")
-	builder.WriteString("5. Suggest testing approaches when relevant")
+	builder.WriteString("1. Provide clear, well-commented code.\n")
+	builder.WriteString("2. Explain your approach and reasoning.\n")
+	builder.WriteString("3. Include error handling where appropriate.\n")
+	builder.WriteString("4. Follow best practices and conventions.\n")
+	builder.WriteString("5. Suggest testing approaches when relevant.\n")
+	builder.WriteString("6. Respect project instructions and user constraints; never violate them to simplify code.")
 
 	result := appendSystemContent(messages, builder.String(), m.Name(), "")
 	return result, nil
 }
 
-// ChainOfThoughtModule adds chain-of-thought reasoning instructions
+// ChainOfThoughtModule adds chain-of-thought reasoning instructions.
 type ChainOfThoughtModule struct{}
 
-// NewChainOfThoughtModule creates a new chain-of-thought module
+// NewChainOfThoughtModule creates a new chain-of-thought module.
 func NewChainOfThoughtModule() *ChainOfThoughtModule {
 	return &ChainOfThoughtModule{}
 }
 
-// Name returns the module identifier
+// Name returns the module identifier.
 func (m *ChainOfThoughtModule) Name() string {
 	return "chain_of_thought"
 }
 
-// ShouldApply checks if the question requires reasoning
+// ShouldApply checks if the question requires reasoning.
 func (m *ChainOfThoughtModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
+		return false
+	}
+	if promptCtx != nil && promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
 		return false
 	}
 	// Apply for complex questions
@@ -616,7 +709,7 @@ func (m *ChainOfThoughtModule) ShouldApply(ctx context.Context, promptCtx *Conte
 	return false
 }
 
-// Apply adds chain-of-thought instructions
+// Apply adds chain-of-thought instructions.
 func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
 	if ctx != nil {
 		if err := ctx.Err(); err != nil {
