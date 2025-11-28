@@ -67,9 +67,26 @@ func NewResolver(cfg *config.Config, log zerolog.Logger, keycloakClient *keycloa
 }
 
 func (r *httpResolver) ResolveMessages(ctx context.Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, bool, error) {
+	// Debug: Check for placeholders
+	if r.log.Debug().Enabled() {
+		for i, msg := range messages {
+			if matchesPlaceholder(msg.Content) {
+				r.log.Debug().Int("message_index", i).Str("content_preview", msg.Content[:min(100, len(msg.Content))]).Msg("found placeholder in message content")
+			}
+			for j, part := range msg.MultiContent {
+				if part.Type == openai.ChatMessagePartTypeImageURL && part.ImageURL != nil && matchesPlaceholder(part.ImageURL.URL) {
+					r.log.Debug().Int("message_index", i).Int("part_index", j).Str("url_preview", part.ImageURL.URL[:min(100, len(part.ImageURL.URL))]).Msg("found placeholder in image URL")
+				}
+			}
+		}
+	}
+
 	if !r.hasPlaceholder(messages) {
+		r.log.Debug().Msg("no media placeholders found in messages")
 		return messages, false, nil
 	}
+
+	r.log.Debug().Int("message_count", len(messages)).Msg("resolving media placeholders via media-api")
 
 	requestBody := map[string]interface{}{
 		"payload": map[string]interface{}{
@@ -127,8 +144,25 @@ func (r *httpResolver) ResolveMessages(ctx context.Context, messages []openai.Ch
 	}
 
 	r.log.Debug().
-		Int("message_count", len(output.Messages)).
+		Int("input_message_count", len(messages)).
+		Int("output_message_count", len(output.Messages)).
 		Msg("resolved media placeholders in chat request")
+
+	// Debug: Log details of resolved messages
+	if r.log.Debug().Enabled() {
+		for i, msg := range output.Messages {
+			contentPreview := msg.Content
+			if len(contentPreview) > 200 {
+				contentPreview = contentPreview[:200] + "..."
+			}
+			r.log.Debug().
+				Int("message_index", i).
+				Str("role", string(msg.Role)).
+				Str("content_preview", contentPreview).
+				Int("multi_content_count", len(msg.MultiContent)).
+				Msg("resolved message detail")
+		}
+	}
 
 	return output.Messages, true, nil
 }
@@ -194,4 +228,11 @@ func principalFromContext(ctx context.Context) (domain.Principal, bool) {
 	}
 	principal, ok := ctx.Value(ctxPrincipal).(domain.Principal)
 	return principal, ok
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
