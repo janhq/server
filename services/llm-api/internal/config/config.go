@@ -92,7 +92,7 @@ type Config struct {
 	PromptOrchestrationEnableMemory    bool   `env:"PROMPT_ORCHESTRATION_MEMORY" envDefault:"false"`
 	PromptOrchestrationEnableTemplates bool   `env:"PROMPT_ORCHESTRATION_TEMPLATES" envDefault:"false"`
 	PromptOrchestrationEnableTools     bool   `env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false"`
-	PromptOrchestrationDefaultPersona  string `env:"PROMPT_ORCHESTRATION_PERSONA" envDefault:"helpful assistant"`
+	PromptOrchestrationDefaultPersona  string `env:"PROMPT_ORCHESTRATION_PERSONA"`
 
 	// Memory integration
 	MemoryEnabled bool          `env:"MEMORY_ENABLED" envDefault:"false"`
