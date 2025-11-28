@@ -46,8 +46,12 @@ type ProviderModel struct {
 	Kind                    ProviderKind `json:"kind"`
 	ModelCatalogID          *uint        `json:"model_catalog_id"`
 	ModelPublicID           string       `json:"model_public_id"`            // Matches model_catalog.PublicID (canonical vendor/model format)
+	ModelDisplayName        string       `json:"model_display_name"`         // User-friendly display name for the model (defaults to ModelPublicID)
 	ProviderOriginalModelID string       `json:"provider_original_model_id"` // Original model ID from provider API (chat.Model.ID)
 	DisplayName             string       `json:"display_name"`
+	Category                string       `json:"category"`              // Category for grouping models (e.g., "Chat", "Embedding", "Image")
+	CategoryOrderNumber     int          `json:"category_order_number"` // Order number for sorting categories
+	ModelOrderNumber        int          `json:"model_order_number"`    // Order number for sorting models within a category
 	Pricing                 Pricing      `json:"pricing"`
 	TokenLimits             *TokenLimits `json:"token_limits,omitempty"` // override provider top caps
 	Family                  *string      `json:"family,omitempty"`       // e.g., "gpt-4o", "llama-3.1"

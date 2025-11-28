@@ -92,11 +92,11 @@ Like "respond in JSON", "respond concisely", "use a teacher tone", etc.
 
 The processor includes several built-in modules that are automatically applied based on context:
 
-### 0. Persona Module (Always Active)
-- **Purpose**: Ensures a base system prompt/persona is present
-- **Activation**: Always registered; uses `X-Prompt-Persona` header or `PROMPT_ORCHESTRATION_PERSONA`
-- **Adds**: Persona/system instructions to the system prompt
-- **Priority**: 0 (runs first)
+### 0. Timing Module (Always Active)
+- **Purpose**: Ensures a base system prompt with current date is present
+- **Activation**: Always registered when prompt orchestration is enabled
+- **Adds**: AI assistant intro and current date to the system prompt
+- **Priority**: -15 (runs first)
 
 ### 1. Memory Module (Optional)
 - **Purpose**: Injects user-specific memory/preferences into prompts
@@ -134,7 +134,6 @@ The processor includes several built-in modules that are automatically applied b
 | `PROMPT_ORCHESTRATION_MEMORY` | `false` | Enable memory injection |
 | `PROMPT_ORCHESTRATION_TEMPLATES` | `true` | Enable template-based prompts (CoT + code assistant) |
 | `PROMPT_ORCHESTRATION_TOOLS` | `false` | Enable tool usage instructions |
-| `PROMPT_ORCHESTRATION_PERSONA` | `helpful assistant` | Default assistant persona |
 
 ### YAML Configuration
 
@@ -148,7 +147,6 @@ services:
       enable_memory: false
       enable_templates: true
       enable_tools: false
-      default_persona: helpful assistant
 ```
 
 ### Wire Integration

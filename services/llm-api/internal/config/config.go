@@ -88,11 +88,10 @@ type Config struct {
 	MediaResolveTimeout time.Duration `env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s"`
 
 	// Prompt Orchestration
-	PromptOrchestrationEnabled         bool   `env:"PROMPT_ORCHESTRATION_ENABLED" envDefault:"false"`
-	PromptOrchestrationEnableMemory    bool   `env:"PROMPT_ORCHESTRATION_MEMORY" envDefault:"false"`
-	PromptOrchestrationEnableTemplates bool   `env:"PROMPT_ORCHESTRATION_TEMPLATES" envDefault:"false"`
-	PromptOrchestrationEnableTools     bool   `env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false"`
-	PromptOrchestrationDefaultPersona  string `env:"PROMPT_ORCHESTRATION_PERSONA"`
+	PromptOrchestrationEnabled         bool `env:"PROMPT_ORCHESTRATION_ENABLED" envDefault:"false"`
+	PromptOrchestrationEnableMemory    bool `env:"PROMPT_ORCHESTRATION_MEMORY" envDefault:"false"`
+	PromptOrchestrationEnableTemplates bool `env:"PROMPT_ORCHESTRATION_TEMPLATES" envDefault:"false"`
+	PromptOrchestrationEnableTools     bool `env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false"`
 
 	// Memory integration
 	MemoryEnabled bool          `env:"MEMORY_ENABLED" envDefault:"false"`

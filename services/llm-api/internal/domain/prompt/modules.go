@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 
@@ -11,18 +12,9 @@ import (
 )
 
 const (
-	moduleMarkerFormat           = "[[prompt-module:%s]]"
 	projectInstructionModuleName = "project_instruction"
 	userProfileModuleName        = "user_profile"
 )
-
-func moduleMarker(name string) string {
-	return fmt.Sprintf(moduleMarkerFormat, strings.ToLower(name))
-}
-
-func hasMarker(content, marker string) bool {
-	return strings.Contains(strings.ToLower(content), strings.ToLower(marker))
-}
 
 func cloneMessage(msg openai.ChatCompletionMessage) openai.ChatCompletionMessage {
 	clone := msg
@@ -52,19 +44,12 @@ func cloneMessage(msg openai.ChatCompletionMessage) openai.ChatCompletionMessage
 }
 
 // prependInstructionSystemMessage returns a copy of messages with the instruction system
-// message prepended. A marker is appended to avoid duplicate injections.
+// message prepended.
 func prependInstructionSystemMessage(messages []openai.ChatCompletionMessage, instruction, moduleName string) []openai.ChatCompletionMessage {
 	trimmed := strings.TrimSpace(instruction)
 	if trimmed == "" {
 		return messages
 	}
-
-	// If we've already injected this module, do nothing.
-	if hasModuleMarker(messages, moduleName) {
-		return messages
-	}
-
-	marker := moduleMarker(moduleName)
 
 	var builder strings.Builder
 	builder.WriteString(trimmed)
@@ -73,12 +58,9 @@ func prependInstructionSystemMessage(messages []openai.ChatCompletionMessage, in
 	if moduleName == projectInstructionModuleName {
 		builder.WriteString("\n\n")
 		builder.WriteString("Project priority: These project-specific instructions have the highest priority. ")
-		builder.WriteString("If any user settings, persona, style preferences, or other guidance conflict with these project instructions, ")
+		builder.WriteString("If any user settings, style preferences, or other guidance conflict with these project instructions, ")
 		builder.WriteString("you must follow the project instructions.")
 	}
-
-	builder.WriteString("\n")
-	builder.WriteString(marker)
 
 	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
 	result = append(result, openai.ChatCompletionMessage{
@@ -102,41 +84,32 @@ func PrependProjectInstruction(messages []openai.ChatCompletionMessage, instruct
 // or creates a new system message if needed.
 //
 // Rules:
-//   - If the module marker already exists anywhere, we do nothing.
-//   - We NEVER modify the project_instruction system message for lower-priority modules.
-//   - When we create a new system message, we insert it right after the project_instruction
-//     message (if present) so project instructions stay visually/topologically first.
-//   - defaultPersona is the full persona sentence (if non-empty), not just a label.
+//   - We NEVER modify the first system message if it contains project instructions.
+//   - When we create a new system message, we insert it right after the first
+//     system message (if present) so project instructions stay topologically first.
+//   - baseContent is the base system content (if non-empty) when creating a new message.
 func appendSystemContent(
 	messages []openai.ChatCompletionMessage,
-	additional, moduleName, defaultPersona string,
+	additional, moduleName, baseContent string,
 ) []openai.ChatCompletionMessage {
 	additional = strings.TrimSpace(additional)
-	marker := moduleMarker(moduleName)
-	projectMarker := moduleMarker(projectInstructionModuleName)
-
-	// If this module was already injected, don't inject it again.
-	if hasModuleMarker(messages, moduleName) {
-		return messages
-	}
 
 	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
 	applied := false
+	firstSystemIdx := -1
 
-	for _, m := range messages {
+	for i, m := range messages {
 		msg := cloneMessage(m)
-		if msg.Role == openai.ChatMessageRoleSystem && !applied {
-			// Keep project instructions clean and highest priority:
-			// do not append persona/user settings/etc. onto that message.
-			if hasMarker(msg.Content, projectMarker) && moduleName != projectInstructionModuleName {
-				// Leave msg as-is.
-			} else if additional != "" && !hasMarker(msg.Content, marker) {
+		if msg.Role == openai.ChatMessageRoleSystem {
+			if firstSystemIdx == -1 {
+				firstSystemIdx = i
+				// Don't modify the first system message (may contain project instructions)
+			} else if !applied && additional != "" {
+				// Append to subsequent system messages
 				var b strings.Builder
 				b.WriteString(strings.TrimSpace(msg.Content))
 				b.WriteString("\n\n")
 				b.WriteString(additional)
-				b.WriteString("\n")
-				b.WriteString(marker)
 				msg.Content = b.String()
 				applied = true
 			}
@@ -149,40 +122,34 @@ func appendSystemContent(
 		return result
 	}
 
-	// If we have nothing to say and no persona, just return.
-	if additional == "" && strings.TrimSpace(defaultPersona) == "" {
+	// If we have nothing to say and no base content, just return.
+	if additional == "" && strings.TrimSpace(baseContent) == "" {
 		return result
 	}
 
-	// Create a new system message with persona + additional content.
+	// Create a new system message with base content + additional content.
 	var builder strings.Builder
-	personaText := strings.TrimSpace(defaultPersona)
-	if personaText == "" {
-		personaText = "You are a helpful assistant."
+	baseText := strings.TrimSpace(baseContent)
+	if baseText == "" {
+		baseText = "You are a helpful assistant."
 	}
-	builder.WriteString(personaText)
+	builder.WriteString(baseText)
 
 	if additional != "" {
 		builder.WriteString("\n\n")
 		builder.WriteString(additional)
 	}
 
-	builder.WriteString("\n")
-	builder.WriteString(marker)
-
 	systemMsg := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
 		Content: builder.String(),
 	}
 
-	// Insert AFTER project_instruction system message if it exists at the front,
-	// so project instructions are clearly top priority.
+	// Insert AFTER first system message if it exists,
+	// so project instructions stay top priority.
 	insertIdx := 0
-	if len(result) > 0 {
-		first := result[0]
-		if first.Role == openai.ChatMessageRoleSystem && hasMarker(first.Content, projectMarker) {
-			insertIdx = 1
-		}
+	if firstSystemIdx >= 0 {
+		insertIdx = firstSystemIdx + 1
 	}
 
 	// Insert at insertIdx
@@ -191,33 +158,6 @@ func appendSystemContent(
 	result[insertIdx] = systemMsg
 
 	return result
-}
-
-func hasModuleMarker(messages []openai.ChatCompletionMessage, moduleName string) bool {
-	marker := moduleMarker(moduleName)
-	for _, msg := range messages {
-		if msg.Role == openai.ChatMessageRoleSystem && hasMarker(msg.Content, marker) {
-			return true
-		}
-	}
-	return false
-}
-
-func personaFromPreferences(preferences map[string]interface{}) string {
-	if preferences == nil {
-		return ""
-	}
-	if persona, ok := preferences["persona"]; ok {
-		switch val := persona.(type) {
-		case string:
-			return strings.TrimSpace(val)
-		case []byte:
-			return strings.TrimSpace(string(val))
-		default:
-			return strings.TrimSpace(fmt.Sprint(val))
-		}
-	}
-	return ""
 }
 
 func disabledModules(preferences map[string]interface{}) map[string]struct{} {
@@ -301,73 +241,49 @@ func (m *ProjectInstructionModule) Apply(ctx context.Context, promptCtx *Context
 	return PrependProjectInstruction(messages, promptCtx.ProjectInstruction), nil
 }
 
-// PersonaModule ensures a consistent system prompt/persona is applied.
-type PersonaModule struct {
-	defaultPersona string
-}
+// TimingModule injects the AI assistant intro and current date into the system prompt.
+type TimingModule struct{}
 
-// NewPersonaModule creates a new persona module.
-func NewPersonaModule(defaultPersona string) *PersonaModule {
-	return &PersonaModule{defaultPersona: strings.TrimSpace(defaultPersona)}
+// NewTimingModule creates a new timing module.
+func NewTimingModule() *TimingModule {
+	return &TimingModule{}
 }
 
 // Name returns the module identifier.
-func (m *PersonaModule) Name() string {
-	return "persona"
+func (m *TimingModule) Name() string {
+	return "timing"
 }
 
-// resolvePersona picks persona from user preferences or default.
-func (m *PersonaModule) resolvePersona(promptCtx *Context) string {
-	if promptCtx != nil {
-		if persona := personaFromPreferences(promptCtx.Preferences); persona != "" {
-			return persona
-		}
-	}
-	if m.defaultPersona != "" {
-		return m.defaultPersona
-	}
-	return "helpful assistant"
-}
-
-// ShouldApply applies when a persona is available and module not disabled.
-func (m *PersonaModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+// ShouldApply always applies when prompt orchestration is enabled and module not disabled.
+func (m *TimingModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
 		return false
 	}
-	if promptCtx == nil {
+	if promptCtx != nil && promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
 		return false
 	}
-	if promptCtx.Preferences != nil && isModuleDisabled(promptCtx.Preferences, m.Name()) {
-		return false
-	}
-	persona := strings.TrimSpace(m.resolvePersona(promptCtx))
-	return persona != ""
+	return true
 }
 
-// Apply injects or prefixes the system prompt with persona instructions.
-func (m *PersonaModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
+// Apply injects the AI assistant intro and current date.
+func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, error) {
 	if ctx != nil {
 		if err := ctx.Err(); err != nil {
 			return messages, err
 		}
 	}
-	if promptCtx == nil {
-		return messages, nil
-	}
 
-	personaDesc := strings.TrimSpace(m.resolvePersona(promptCtx))
-	if personaDesc == "" {
-		return messages, nil
-	}
+	// Format current date as "Month Day, Year" (e.g., "November 28, 2025")
+	currentDate := time.Now().Format("January 2, 2006")
 
-	// Full persona sentence. Note that project/system instructions still win.
-	personaText := fmt.Sprintf(
-		"You are a %s. Use this persona for tone and behavior, but never override explicit system or project instructions. "+
-			"If any user settings or persona preferences conflict with project instructions, always follow the project instructions.",
-		personaDesc,
+	timingText := fmt.Sprintf(
+		"You are an AI assistant that helps the user with their requests.\n"+
+			"Today is: %s.\n"+
+			"Always treat this as the current date.",
+		currentDate,
 	)
 
-	result := appendSystemContent(messages, "", m.Name(), personaText)
+	result := appendSystemContent(messages, "", m.Name(), timingText)
 	return result, nil
 }
 
@@ -658,9 +574,6 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 			return messages, err
 		}
 	}
-	if hasModuleMarker(messages, m.Name()) {
-		return messages, nil
-	}
 
 	var builder strings.Builder
 	builder.WriteString("When providing code assistance:\n")
@@ -715,9 +628,6 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 		if err := ctx.Err(); err != nil {
 			return messages, err
 		}
-	}
-	if hasModuleMarker(messages, m.Name()) {
-		return messages, nil
 	}
 
 	var builder strings.Builder

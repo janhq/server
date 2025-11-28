@@ -6,11 +6,23 @@ import (
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 )
 
+// getModelDisplayName returns ModelDisplayName if set, otherwise falls back to ModelPublicID
+func getModelDisplayName(pm *domainmodel.ProviderModel) string {
+	if pm.ModelDisplayName != "" {
+		return pm.ModelDisplayName
+	}
+	return pm.ModelPublicID
+}
+
 type ModelResponse struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	Created int64  `json:"created"`
-	OwnedBy string `json:"owned_by"`
+	ID                  string `json:"id"`
+	Object              string `json:"object"`
+	Created             int64  `json:"created"`
+	OwnedBy             string `json:"owned_by"`
+	ModelDisplayName    string `json:"model_display_name"`
+	Category            string `json:"category"`
+	CategoryOrderNumber int    `json:"category_order_number"`
+	ModelOrderNumber    int    `json:"model_order_number"`
 }
 
 type ModelResponseList struct {
@@ -19,13 +31,17 @@ type ModelResponseList struct {
 }
 
 type ModelResponseWithProvider struct {
-	ID             string `json:"id"`
-	Object         string `json:"object"`
-	Created        int64  `json:"created"`
-	OwnedBy        string `json:"owned_by"`
-	ProviderID     string `json:"provider_id"`
-	ProviderVendor string `json:"provider_vendor"`
-	ProviderName   string `json:"provider_name"`
+	ID                  string `json:"id"`
+	Object              string `json:"object"`
+	Created             int64  `json:"created"`
+	OwnedBy             string `json:"owned_by"`
+	ModelDisplayName    string `json:"model_display_name"`
+	Category            string `json:"category"`
+	CategoryOrderNumber int    `json:"category_order_number"`
+	ModelOrderNumber    int    `json:"model_order_number"`
+	ProviderID          string `json:"provider_id"`
+	ProviderVendor      string `json:"provider_vendor"`
+	ProviderName        string `json:"provider_name"`
 }
 
 type ModelWithProviderResponseList struct {
@@ -83,13 +99,17 @@ func BuildModelResponseListWithProvider(
 			continue
 		}
 		items = append(items, ModelResponseWithProvider{
-			ID:             pm.ModelPublicID,
-			Object:         "model",
-			Created:        pm.CreatedAt.Unix(),
-			OwnedBy:        provider.DisplayName,
-			ProviderID:     provider.PublicID,
-			ProviderVendor: strings.ToLower(string(provider.Kind)),
-			ProviderName:   provider.DisplayName,
+			ID:                  pm.ModelPublicID,
+			Object:              "model",
+			Created:             pm.CreatedAt.Unix(),
+			OwnedBy:             provider.DisplayName,
+			ModelDisplayName:    getModelDisplayName(pm),
+			Category:            pm.Category,
+			CategoryOrderNumber: pm.CategoryOrderNumber,
+			ModelOrderNumber:    pm.ModelOrderNumber,
+			ProviderID:          provider.PublicID,
+			ProviderVendor:      strings.ToLower(string(provider.Kind)),
+			ProviderName:        provider.DisplayName,
 		})
 	}
 
@@ -111,10 +131,14 @@ func BuildModelResponseList(
 			continue
 		}
 		items = append(items, ModelResponse{
-			ID:      pm.ModelPublicID,
-			Object:  "model",
-			Created: pm.CreatedAt.Unix(),
-			OwnedBy: provider.DisplayName,
+			ID:                  pm.ModelPublicID,
+			Object:              "model",
+			Created:             pm.CreatedAt.Unix(),
+			OwnedBy:             provider.DisplayName,
+			ModelDisplayName:    getModelDisplayName(pm),
+			Category:            pm.Category,
+			CategoryOrderNumber: pm.CategoryOrderNumber,
+			ModelOrderNumber:    pm.ModelOrderNumber,
 		})
 	}
 
@@ -163,10 +187,14 @@ func BuildProviderWithModelsResponse(
 			continue
 		}
 		modelResponses = append(modelResponses, ModelResponse{
-			ID:      model.ModelPublicID,
-			Object:  "model",
-			Created: model.CreatedAt.Unix(),
-			OwnedBy: provider.DisplayName,
+			ID:                  model.ModelPublicID,
+			Object:              "model",
+			Created:             model.CreatedAt.Unix(),
+			OwnedBy:             provider.DisplayName,
+			ModelDisplayName:    getModelDisplayName(model),
+			Category:            model.Category,
+			CategoryOrderNumber: model.CategoryOrderNumber,
+			ModelOrderNumber:    model.ModelOrderNumber,
 		})
 	}
 	return &ProviderWithModelsResponse{

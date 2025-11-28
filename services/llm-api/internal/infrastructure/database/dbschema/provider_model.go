@@ -20,8 +20,12 @@ type ProviderModel struct {
 	Kind                    string         `gorm:"size:64;not null;index"`
 	ModelCatalogID          *uint          `gorm:"index;index:idx_provider_model_catalog_active,priority:2"`
 	ModelPublicID           string         `gorm:"size:128;not null;index;uniqueIndex:ux_provider_model_public_id,priority:2"`
+	ModelDisplayName        string         `gorm:"size:255;not null;default:''"`
 	ProviderOriginalModelID string         `gorm:"size:255;not null"`
 	DisplayName             string         `gorm:"size:255;not null"`
+	Category                string         `gorm:"size:128;not null;default:'';index"`
+	CategoryOrderNumber     int            `gorm:"not null;default:0;index"`
+	ModelOrderNumber        int            `gorm:"not null;default:0;index"`
 	Pricing                 datatypes.JSON `gorm:"type:jsonb;not null"`
 	TokenLimits             datatypes.JSON `gorm:"type:jsonb"`
 	Family                  *string        `gorm:"size:128"`
@@ -67,8 +71,12 @@ func NewSchemaProviderModel(m *domainmodel.ProviderModel) (*ProviderModel, error
 		Kind:                    string(m.Kind),
 		ModelCatalogID:          m.ModelCatalogID,
 		ModelPublicID:           m.ModelPublicID,
+		ModelDisplayName:        m.ModelDisplayName,
 		ProviderOriginalModelID: m.ProviderOriginalModelID,
 		DisplayName:             m.DisplayName,
+		Category:                m.Category,
+		CategoryOrderNumber:     m.CategoryOrderNumber,
+		ModelOrderNumber:        m.ModelOrderNumber,
 		Pricing:                 datatypes.JSON(pricingJSON),
 		TokenLimits:             tokenLimitsJSON,
 		Family:                  m.Family,
@@ -131,8 +139,12 @@ func (m *ProviderModel) EtoD() (*domainmodel.ProviderModel, error) {
 		Kind:                    domainmodel.ProviderKind(m.Kind),
 		ModelCatalogID:          m.ModelCatalogID,
 		ModelPublicID:           m.ModelPublicID,
+		ModelDisplayName:        m.ModelDisplayName,
 		ProviderOriginalModelID: m.ProviderOriginalModelID,
 		DisplayName:             m.DisplayName,
+		Category:                m.Category,
+		CategoryOrderNumber:     m.CategoryOrderNumber,
+		ModelOrderNumber:        m.ModelOrderNumber,
 		Pricing:                 pricing,
 		TokenLimits:             tokenLimits,
 		Family:                  m.Family,
