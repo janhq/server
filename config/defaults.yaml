@@ -73,7 +73,6 @@ services:
       enable_memory: false
       enable_templates: false
       enable_tools: false
-      default_persona: ""
     media_resolve_url: http://kong:8000/media/v1/media/resolve
     media_resolve_timeout: 5s
   mcp_tools:

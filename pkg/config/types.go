@@ -221,9 +221,6 @@ type PromptOrchestrationConfig struct {
 
 	// Enable tools module
 	EnableTools bool `yaml:"enable_tools" json:"enable_tools" env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false" description:"Enable tool usage instructions"`
-
-	// Default persona
-	DefaultPersona string `yaml:"default_persona" json:"default_persona" env:"PROMPT_ORCHESTRATION_PERSONA" envDefault:"helpful assistant" description:"Default assistant persona"`
 }
 
 // APIKeyConfig contains API key management settings
@@ -498,9 +495,9 @@ type RetryConfig struct {
 
 // CacheConfig contains cache settings
 type CacheConfig struct {
-	Enabled bool   `yaml:"enabled" json:"enabled" env:"EMBEDDING_CACHE_ENABLED" envDefault:"true" description:"Enable embedding cache"`
-	Type    string `yaml:"type" json:"type" env:"EMBEDDING_CACHE_TYPE" envDefault:"redis" jsonschema:"enum=redis,enum=memory,enum=noop" description:"Cache type (redis, memory, noop)"`
-	Redis   RedisCacheConfig `yaml:"redis" json:"redis"`
+	Enabled bool              `yaml:"enabled" json:"enabled" env:"EMBEDDING_CACHE_ENABLED" envDefault:"true" description:"Enable embedding cache"`
+	Type    string            `yaml:"type" json:"type" env:"EMBEDDING_CACHE_TYPE" envDefault:"redis" jsonschema:"enum=redis,enum=memory,enum=noop" description:"Cache type (redis, memory, noop)"`
+	Redis   RedisCacheConfig  `yaml:"redis" json:"redis"`
 	Memory  MemoryCacheConfig `yaml:"memory" json:"memory"`
 }
 
