@@ -251,6 +251,9 @@ type ProviderModelResponse struct {
 	ModelPublicID           string                   `json:"model_public_id"`
 	ProviderOriginalModelID string                   `json:"provider_original_model_id"`
 	DisplayName             string                   `json:"display_name"`
+	Category                string                   `json:"category"`
+	CategoryOrderNumber     int                      `json:"category_order_number"`
+	ModelOrderNumber        int                      `json:"model_order_number"`
 	Pricing                 domainmodel.Pricing      `json:"pricing"`
 	TokenLimits             *domainmodel.TokenLimits `json:"token_limits,omitempty"`
 	Family                  *string                  `json:"family,omitempty"`
@@ -305,6 +308,9 @@ func BuildProviderModelResponse(
 		ModelPublicID:           providerModel.ModelPublicID,
 		ProviderOriginalModelID: providerModel.ProviderOriginalModelID,
 		DisplayName:             providerModel.DisplayName,
+		Category:                providerModel.Category,
+		CategoryOrderNumber:     providerModel.CategoryOrderNumber,
+		ModelOrderNumber:        providerModel.ModelOrderNumber,
 		Pricing:                 providerModel.Pricing,
 		TokenLimits:             providerModel.TokenLimits,
 		Family:                  providerModel.Family,

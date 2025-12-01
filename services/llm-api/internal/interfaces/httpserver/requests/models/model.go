@@ -31,16 +31,19 @@ type UpdateModelCatalogRequest struct {
 }
 
 type UpdateProviderModelRequest struct {
-	DisplayName        *string                  `json:"display_name"`
-	Pricing            *domainmodel.Pricing     `json:"pricing"`
-	TokenLimits        *domainmodel.TokenLimits `json:"token_limits"`
-	Family             *string                  `json:"family"`
-	SupportsImages     *bool                    `json:"supports_images"`
-	SupportsEmbeddings *bool                    `json:"supports_embeddings"`
-	SupportsReasoning  *bool                    `json:"supports_reasoning"`
-	SupportsAudio      *bool                    `json:"supports_audio"`
-	SupportsVideo      *bool                    `json:"supports_video"`
-	Active             *bool                    `json:"active"`
+	DisplayName         *string                  `json:"display_name"`
+	Category            *string                  `json:"category"`
+	CategoryOrderNumber *int                     `json:"category_order_number"`
+	ModelOrderNumber    *int                     `json:"model_order_number"`
+	Pricing             *domainmodel.Pricing     `json:"pricing"`
+	TokenLimits         *domainmodel.TokenLimits `json:"token_limits"`
+	Family              *string                  `json:"family"`
+	SupportsImages      *bool                    `json:"supports_images"`
+	SupportsEmbeddings  *bool                    `json:"supports_embeddings"`
+	SupportsReasoning   *bool                    `json:"supports_reasoning"`
+	SupportsAudio       *bool                    `json:"supports_audio"`
+	SupportsVideo       *bool                    `json:"supports_video"`
+	Active              *bool                    `json:"active"`
 }
 
 type BulkEnableModelsRequest struct {

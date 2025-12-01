@@ -165,6 +165,15 @@ func (h *ProviderModelHandler) UpdateProviderModel(
 	if req.DisplayName != nil {
 		providerModel.DisplayName = *req.DisplayName
 	}
+	if req.Category != nil {
+		providerModel.Category = *req.Category
+	}
+	if req.CategoryOrderNumber != nil {
+		providerModel.CategoryOrderNumber = *req.CategoryOrderNumber
+	}
+	if req.ModelOrderNumber != nil {
+		providerModel.ModelOrderNumber = *req.ModelOrderNumber
+	}
 	if req.Pricing != nil {
 		providerModel.Pricing = *req.Pricing
 	}
