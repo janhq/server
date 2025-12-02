@@ -327,19 +327,34 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 }
 
 func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, provider *Provider, models []chat.Model, autoEnableNewModels bool) ([]*ProviderModel, error) {
+	// Batch upsert catalogs (eliminates N+1 queries)
+	catalogs, createdFlags, err := s.modelCatalogService.BatchUpsertCatalogs(ctx, provider, models)
+	if err != nil {
+		log := logger.GetLogger()
+		log.Error().
+			Str("provider", provider.DisplayName).
+			Err(err).
+			Msg("failed to batch upsert catalogs")
+		return nil, err
+	}
+
+	// Process provider models
 	results := make([]*ProviderModel, 0, len(models))
 	for _, model := range models {
-		catalog, created, err := s.modelCatalogService.UpsertCatalog(ctx, provider, model)
-		if err != nil {
+		// Get catalog from batch results
+		publicID := catalogPublicID(provider.Kind, model.ID, model.CanonicalSlug)
+		catalog, exists := catalogs[publicID]
+		if !exists || catalog == nil {
 			log := logger.GetLogger()
-			log.Error().
+			log.Warn().
 				Str("model_id", model.ID).
+				Str("public_id", publicID).
 				Str("provider", provider.DisplayName).
-				Err(err).
-				Msgf("failed to upsert catalog for model '%s' from provider '%s'", model.ID, provider.DisplayName)
+				Msg("catalog not found in batch results")
 			continue
 		}
-		shouldAutoEnable := autoEnableNewModels && created
+
+		shouldAutoEnable := autoEnableNewModels && createdFlags[publicID]
 		providerModel, err := s.providerModelService.UpsertProviderModelWithOptions(ctx, provider, catalog, model, shouldAutoEnable)
 		if err != nil {
 			log := logger.GetLogger()

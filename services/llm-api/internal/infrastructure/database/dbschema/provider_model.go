@@ -22,18 +22,16 @@ type ProviderModel struct {
 	ModelPublicID           string         `gorm:"size:128;not null;index;uniqueIndex:ux_provider_model_public_id,priority:2"`
 	ModelDisplayName        string         `gorm:"size:255;not null;default:''"`
 	ProviderOriginalModelID string         `gorm:"size:255;not null"`
-	DisplayName             string         `gorm:"size:255;not null"`
 	Category                string         `gorm:"size:128;not null;default:'';index"`
 	CategoryOrderNumber     int            `gorm:"not null;default:0;index"`
 	ModelOrderNumber        int            `gorm:"not null;default:0;index"`
 	Pricing                 datatypes.JSON `gorm:"type:jsonb;not null"`
 	TokenLimits             datatypes.JSON `gorm:"type:jsonb"`
-	Family                  *string        `gorm:"size:128"`
-	SupportsImages          *bool          `gorm:"not null;default:false"`
-	SupportsEmbeddings      *bool          `gorm:"not null;default:false"`
-	SupportsReasoning       *bool          `gorm:"not null;default:false"`
-	SupportsAudio           *bool          `gorm:"not null;default:false"`
-	SupportsVideo           *bool          `gorm:"not null;default:false"`
+	SupportsAutoMode        *bool          `gorm:"not null;default:false"`
+	SupportsThinkingMode    *bool          `gorm:"not null;default:false"`
+	DefaultConversationMode string         `gorm:"size:64;not null;default:'standard'"`
+	ReasoningConfig         datatypes.JSON `gorm:"type:jsonb"`
+	ProviderFlags           datatypes.JSON `gorm:"type:jsonb"`
 	Active                  *bool          `gorm:"not null;default:true;index;index:idx_provider_model_active,priority:2;index:idx_provider_model_catalog_active,priority:3"`
 }
 
@@ -53,11 +51,27 @@ func NewSchemaProviderModel(m *domainmodel.ProviderModel) (*ProviderModel, error
 		tokenLimitsJSON = datatypes.JSON(data)
 	}
 
-	supportsImages := m.SupportsImages
-	supportsEmbeddings := m.SupportsEmbeddings
-	supportsReasoning := m.SupportsReasoning
-	supportsAudio := m.SupportsAudio
-	supportsVideo := m.SupportsVideo
+	supportsAuto := m.SupportsAutoMode
+	supportsThinking := m.SupportsThinkingMode
+	defaultMode := m.DefaultConversationMode
+
+	var reasoningConfig datatypes.JSON
+	if m.ReasoningConfig != nil {
+		data, err := json.Marshal(m.ReasoningConfig)
+		if err != nil {
+			return nil, err
+		}
+		reasoningConfig = datatypes.JSON(data)
+	}
+
+	var providerFlags datatypes.JSON
+	if len(m.ProviderFlags) > 0 {
+		data, err := json.Marshal(m.ProviderFlags)
+		if err != nil {
+			return nil, err
+		}
+		providerFlags = datatypes.JSON(data)
+	}
 	active := m.Active
 
 	return &ProviderModel{
@@ -73,18 +87,16 @@ func NewSchemaProviderModel(m *domainmodel.ProviderModel) (*ProviderModel, error
 		ModelPublicID:           m.ModelPublicID,
 		ModelDisplayName:        m.ModelDisplayName,
 		ProviderOriginalModelID: m.ProviderOriginalModelID,
-		DisplayName:             m.DisplayName,
 		Category:                m.Category,
 		CategoryOrderNumber:     m.CategoryOrderNumber,
 		ModelOrderNumber:        m.ModelOrderNumber,
 		Pricing:                 datatypes.JSON(pricingJSON),
 		TokenLimits:             tokenLimitsJSON,
-		Family:                  m.Family,
-		SupportsImages:          &supportsImages,
-		SupportsEmbeddings:      &supportsEmbeddings,
-		SupportsReasoning:       &supportsReasoning,
-		SupportsAudio:           &supportsAudio,
-		SupportsVideo:           &supportsVideo,
+		SupportsAutoMode:        &supportsAuto,
+		SupportsThinkingMode:    &supportsThinking,
+		DefaultConversationMode: defaultMode,
+		ReasoningConfig:         reasoningConfig,
+		ProviderFlags:           providerFlags,
 		Active:                  &active,
 	}, nil
 }
@@ -107,29 +119,33 @@ func (m *ProviderModel) EtoD() (*domainmodel.ProviderModel, error) {
 		tokenLimits = &limits
 	}
 
-	supportsImages := false
-	if m.SupportsImages != nil {
-		supportsImages = *m.SupportsImages
+	supportsAuto := false
+	if m.SupportsAutoMode != nil {
+		supportsAuto = *m.SupportsAutoMode
 	}
-	supportsEmbeddings := false
-	if m.SupportsEmbeddings != nil {
-		supportsEmbeddings = *m.SupportsEmbeddings
-	}
-	supportsReasoning := false
-	if m.SupportsReasoning != nil {
-		supportsReasoning = *m.SupportsReasoning
-	}
-	supportsAudio := false
-	if m.SupportsAudio != nil {
-		supportsAudio = *m.SupportsAudio
-	}
-	supportsVideo := false
-	if m.SupportsVideo != nil {
-		supportsVideo = *m.SupportsVideo
+	supportsThinking := false
+	if m.SupportsThinkingMode != nil {
+		supportsThinking = *m.SupportsThinkingMode
 	}
 	active := false
 	if m.Active != nil {
 		active = *m.Active
+	}
+
+	var reasoningConfig *domainmodel.ReasoningConfig
+	if len(m.ReasoningConfig) > 0 {
+		var config domainmodel.ReasoningConfig
+		if err := json.Unmarshal(m.ReasoningConfig, &config); err != nil {
+			return nil, err
+		}
+		reasoningConfig = &config
+	}
+
+	var providerFlags map[string]any
+	if len(m.ProviderFlags) > 0 {
+		if err := json.Unmarshal(m.ProviderFlags, &providerFlags); err != nil {
+			return nil, err
+		}
 	}
 
 	return &domainmodel.ProviderModel{
@@ -141,18 +157,16 @@ func (m *ProviderModel) EtoD() (*domainmodel.ProviderModel, error) {
 		ModelPublicID:           m.ModelPublicID,
 		ModelDisplayName:        m.ModelDisplayName,
 		ProviderOriginalModelID: m.ProviderOriginalModelID,
-		DisplayName:             m.DisplayName,
 		Category:                m.Category,
 		CategoryOrderNumber:     m.CategoryOrderNumber,
 		ModelOrderNumber:        m.ModelOrderNumber,
 		Pricing:                 pricing,
 		TokenLimits:             tokenLimits,
-		Family:                  m.Family,
-		SupportsImages:          supportsImages,
-		SupportsEmbeddings:      supportsEmbeddings,
-		SupportsReasoning:       supportsReasoning,
-		SupportsAudio:           supportsAudio,
-		SupportsVideo:           supportsVideo,
+		SupportsAutoMode:        supportsAuto,
+		SupportsThinkingMode:    supportsThinking,
+		DefaultConversationMode: m.DefaultConversationMode,
+		ReasoningConfig:         reasoningConfig,
+		ProviderFlags:           providerFlags,
 		Active:                  active,
 		CreatedAt:               m.CreatedAt,
 		UpdatedAt:               m.UpdatedAt,

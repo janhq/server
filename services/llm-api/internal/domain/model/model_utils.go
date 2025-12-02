@@ -129,3 +129,78 @@ func normalizeURL(baseURL string) string {
 	normalized = strings.TrimRight(normalized, "/")
 	return normalized
 }
+
+// catalogPublicID builds a public ID for a model catalog
+func catalogPublicID(kind ProviderKind, modelID, canonicalSlug string) string {
+	rawModelKey := canonicalSlug
+	if rawModelKey == "" {
+		rawModelKey = modelID
+	}
+	return NormalizeModelKey(kind, rawModelKey)
+}
+
+// detectEmbeddingSupport checks multiple sources to determine if model supports embeddings
+func detectEmbeddingSupport(modelID string, raw map[string]any) bool {
+	// Check model ID
+	lowerID := strings.ToLower(modelID)
+	if strings.Contains(lowerID, "embed") {
+		return true
+	}
+
+	// Check architecture output modalities
+	outputModalities := extractStringSliceFromMap(raw, "architecture", "output_modalities")
+	if containsString(outputModalities, "embedding") {
+		return true
+	}
+
+	// Check model type/category in raw metadata
+	if modelType, ok := getString(raw, "type"); ok {
+		if strings.Contains(strings.ToLower(modelType), "embed") {
+			return true
+		}
+	}
+
+	// Check category field
+	if category, ok := getString(raw, "category"); ok {
+		if strings.Contains(strings.ToLower(category), "embed") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// extractFamily attempts to identify model family from model ID
+func extractFamily(modelID string) string {
+	lowerID := strings.ToLower(modelID)
+
+	// Known model families with patterns
+	families := map[string][]string{
+		"gpt-4":      {"gpt-4", "gpt4"},
+		"gpt-3.5":    {"gpt-3.5", "gpt35"},
+		"claude-3":   {"claude-3"},
+		"claude-3.5": {"claude-3.5"},
+		"llama-3":    {"llama-3", "llama3"},
+		"llama-2":    {"llama-2", "llama2"},
+		"gemini":     {"gemini"},
+		"mistral":    {"mistral"},
+		"mixtral":    {"mixtral"},
+		"phi":        {"phi-"},
+		"qwen":       {"qwen"},
+	}
+
+	for family, patterns := range families {
+		for _, pattern := range patterns {
+			if strings.Contains(lowerID, pattern) {
+				return family
+			}
+		}
+	}
+
+	// Fallback to delimiter-based extraction
+	if idx := strings.Index(modelID, "/"); idx > 0 {
+		return strings.TrimSpace(modelID[:idx])
+	}
+
+	return ""
+}

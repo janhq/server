@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/utils/ptr"
 )
 
 // getModelDisplayName returns ModelDisplayName if set, otherwise falls back to ModelPublicID
@@ -250,7 +251,7 @@ type ProviderModelResponse struct {
 	ModelCatalogID          *string                  `json:"model_catalog_id,omitempty"`
 	ModelPublicID           string                   `json:"model_public_id"`
 	ProviderOriginalModelID string                   `json:"provider_original_model_id"`
-	DisplayName             string                   `json:"display_name"`
+	ModelDisplayName        string                   `json:"model_display_name"`
 	Category                string                   `json:"category"`
 	CategoryOrderNumber     int                      `json:"category_order_number"`
 	ModelOrderNumber        int                      `json:"model_order_number"`
@@ -300,6 +301,20 @@ func BuildProviderModelResponse(
 		modelCatalogID = &modelCatalog.PublicID
 	}
 
+	// Get capabilities from model catalog (canonical source)
+	var family *string
+	var supportsImages, supportsEmbeddings, supportsReasoning, supportsAudio, supportsVideo bool
+	if modelCatalog != nil {
+		if modelCatalog.Family != "" {
+			family = ptr.ToString(modelCatalog.Family)
+		}
+		supportsImages = modelCatalog.SupportsImages
+		supportsEmbeddings = modelCatalog.SupportsEmbeddings
+		supportsReasoning = modelCatalog.SupportsReasoning
+		supportsAudio = modelCatalog.SupportsAudio
+		supportsVideo = modelCatalog.SupportsVideo
+	}
+
 	return ProviderModelResponse{
 		ID:                      providerModel.PublicID,
 		ProviderID:              provider.PublicID,
@@ -307,18 +322,18 @@ func BuildProviderModelResponse(
 		ModelCatalogID:          modelCatalogID,
 		ModelPublicID:           providerModel.ModelPublicID,
 		ProviderOriginalModelID: providerModel.ProviderOriginalModelID,
-		DisplayName:             providerModel.DisplayName,
+		ModelDisplayName:        providerModel.ModelDisplayName,
 		Category:                providerModel.Category,
 		CategoryOrderNumber:     providerModel.CategoryOrderNumber,
 		ModelOrderNumber:        providerModel.ModelOrderNumber,
 		Pricing:                 providerModel.Pricing,
 		TokenLimits:             providerModel.TokenLimits,
-		Family:                  providerModel.Family,
-		SupportsImages:          providerModel.SupportsImages,
-		SupportsEmbeddings:      providerModel.SupportsEmbeddings,
-		SupportsReasoning:       providerModel.SupportsReasoning,
-		SupportsAudio:           providerModel.SupportsAudio,
-		SupportsVideo:           providerModel.SupportsVideo,
+		Family:                  family,
+		SupportsImages:          supportsImages,
+		SupportsEmbeddings:      supportsEmbeddings,
+		SupportsReasoning:       supportsReasoning,
+		SupportsAudio:           supportsAudio,
+		SupportsVideo:           supportsVideo,
 		Active:                  providerModel.Active,
 		CreatedAt:               providerModel.CreatedAt.Unix(),
 		UpdatedAt:               providerModel.UpdatedAt.Unix(),

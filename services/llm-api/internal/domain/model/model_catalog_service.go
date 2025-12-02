@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
-	decimal "github.com/shopspring/decimal"
 	"jan-server/services/llm-api/internal/domain/query"
 	"jan-server/services/llm-api/internal/utils/httpclients/chat"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 	"jan-server/services/llm-api/internal/utils/ptr"
+
+	decimal "github.com/shopspring/decimal"
 )
 
 type ModelCatalogService struct {
@@ -26,7 +27,7 @@ func (s *ModelCatalogService) UpsertCatalog(ctx context.Context, provider *Provi
 	if provider != nil {
 		kind = provider.Kind
 	}
-	publicID := catalogPublicID(kind, model)
+	publicID := catalogPublicID(kind, model.ID, model.CanonicalSlug)
 	if publicID == "" {
 		return nil, false, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "model identifier missing", nil, "3934616c-8447-4ba8-809e-9b3c3924c32d")
 	}
@@ -49,22 +50,97 @@ func (s *ModelCatalogService) UpsertCatalog(ctx context.Context, provider *Provi
 		catalog.ID = existing.ID
 		catalog.CreatedAt = existing.CreatedAt
 		catalog.Active = existing.Active // Preserve Active status - don't override manually disabled catalogs
-		if existing.Status == ModelCatalogStatusFilled {
+
+		// Only skip update if manually edited (status = "updated")
+		if existing.Status == ModelCatalogStatusUpdated {
 			return existing, false, nil
 		}
-		if catalog.Status == ModelCatalogStatusFilled {
-			if err := s.modelCatalogRepo.Update(ctx, catalog); err != nil {
-				return nil, false, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to update model catalog")
-			}
-			return catalog, false, nil
+
+		// Update if status is "init" or "filled"
+		if err := s.modelCatalogRepo.Update(ctx, catalog); err != nil {
+			return nil, false, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to update model catalog")
 		}
-		return existing, false, nil
+		return catalog, false, nil
 	}
 
 	if err := s.modelCatalogRepo.Create(ctx, catalog); err != nil {
 		return nil, false, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to create model catalog")
 	}
 	return catalog, true, nil
+}
+
+// BatchUpsertCatalogs performs batch upsertion of model catalogs with pre-fetched existing catalogs.
+// This eliminates N+1 queries by fetching all existing catalogs at once.
+// Returns a map of publicID -> (catalog, wasCreated, error)
+func (s *ModelCatalogService) BatchUpsertCatalogs(ctx context.Context, provider *Provider, models []chat.Model) (map[string]*ModelCatalog, map[string]bool, error) {
+	if len(models) == 0 {
+		return make(map[string]*ModelCatalog), make(map[string]bool), nil
+	}
+
+	kind := ProviderCustom
+	if provider != nil {
+		kind = provider.Kind
+	}
+
+	// Step 1: Build public IDs for all models
+	publicIDs := make([]string, 0, len(models))
+	modelsByPublicID := make(map[string]chat.Model, len(models))
+	for _, model := range models {
+		publicID := catalogPublicID(kind, model.ID, model.CanonicalSlug)
+		if publicID == "" {
+			continue // Skip models with invalid IDs
+		}
+		publicIDs = append(publicIDs, publicID)
+		modelsByPublicID[publicID] = model
+	}
+
+	// Step 2: Batch fetch existing catalogs (eliminates N+1 queries)
+	existingCatalogs, err := s.FindByPublicIDs(ctx, publicIDs)
+	if err != nil {
+		return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to batch fetch existing catalogs")
+	}
+
+	// Step 3: Process each model
+	now := time.Now().UTC()
+	results := make(map[string]*ModelCatalog, len(models))
+	createdFlags := make(map[string]bool, len(models))
+
+	for publicID, model := range modelsByPublicID {
+		existing := existingCatalogs[publicID]
+
+		catalog := buildModelCatalogFromModel(provider, model)
+		catalog.PublicID = publicID
+		catalog.LastSyncedAt = &now
+
+		if existing != nil {
+			catalog.ID = existing.ID
+			catalog.CreatedAt = existing.CreatedAt
+			catalog.Active = existing.Active
+
+			// Skip update if manually edited (status = "updated")
+			if existing.Status == ModelCatalogStatusUpdated {
+				results[publicID] = existing
+				createdFlags[publicID] = false
+				continue
+			}
+
+			// Update if status is "init" or "filled"
+			if err := s.modelCatalogRepo.Update(ctx, catalog); err != nil {
+				return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to update model catalog")
+			}
+			results[publicID] = catalog
+			createdFlags[publicID] = false
+		} else {
+			// Create new catalog
+			if err := s.modelCatalogRepo.Create(ctx, catalog); err != nil {
+				return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to create model catalog")
+			}
+			results[publicID] = catalog
+			createdFlags[publicID] = true
+		}
+	}
+
+	return results, createdFlags, nil
 }
 
 func (s *ModelCatalogService) FindByID(ctx context.Context, id uint) (*ModelCatalog, error) {
@@ -178,16 +254,6 @@ func (s *ModelCatalogService) BatchUpdateActive(ctx context.Context, filter Mode
 	return rowsAffected, nil
 }
 
-func catalogPublicID(kind ProviderKind, model chat.Model) string {
-	// Use CanonicalSlug if available, otherwise use model ID
-	rawModelKey := model.CanonicalSlug
-	if rawModelKey == "" {
-		rawModelKey = model.ID
-	}
-	// Return the canonical vendor/model format
-	return NormalizeModelKey(kind, rawModelKey)
-}
-
 func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCatalog {
 	kind := ProviderCustom
 	if provider != nil {
@@ -280,6 +346,19 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 
 	extras := copyMap(model.Raw)
 
+	// Extract capabilities (moved from provider_model)
+	inputModalities := extractStringSliceFromMap(model.Raw, "architecture", "input_modalities")
+	outputModalities := extractStringSliceFromMap(model.Raw, "architecture", "output_modalities")
+
+	supportsImages := containsString(inputModalities, "image")
+	supportsReasoning := containsString(extractStringSlice(model.Raw["supported_parameters"]), "include_reasoning")
+	supportsAudio := containsString(inputModalities, "audio") || containsString(outputModalities, "audio")
+	supportsVideo := containsString(inputModalities, "video") || containsString(outputModalities, "video")
+	supportsEmbeddings := detectEmbeddingSupport(model.ID, model.Raw)
+
+	// Extract family
+	family := extractFamily(model.ID)
+
 	return &ModelCatalog{
 		SupportedParameters: supportedParameters,
 		Architecture:        architecture,
@@ -287,5 +366,11 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 		IsModerated:         isModerated,
 		Extras:              extras,
 		Status:              status,
+		SupportsImages:      supportsImages,
+		SupportsEmbeddings:  supportsEmbeddings,
+		SupportsReasoning:   supportsReasoning,
+		SupportsAudio:       supportsAudio,
+		SupportsVideo:       supportsVideo,
+		Family:              family,
 	}
 }

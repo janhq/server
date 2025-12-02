@@ -58,7 +58,9 @@ API_TEST_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
 API_TEST_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
 API_TEST_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
 API_TEST_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
+API_TEST_MODEL_MANAGEMENT_COLLECTION = tests/automation/model-management-postman-scripts.json
 API_TEST_E2E_COLLECTION = tests/automation/test-all.postman.json
+
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
 MEDIA_API_KEY ?= changeme-media-key
@@ -629,6 +631,14 @@ test-memory:
 		--verbose \
 		--reporters cli
 	@echo " Memory-tools integration tests passed"
+
+test-model-management:
+	@echo "Running model management tests..."
+	@$(API_TEST) $(API_TEST_MODEL_MANAGEMENT_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
+		--verbose \
+		--reporters cli
+	@echo " Model management tests passed"
 
 test-e2e:
 	@echo "Running gateway end-to-end tests..."

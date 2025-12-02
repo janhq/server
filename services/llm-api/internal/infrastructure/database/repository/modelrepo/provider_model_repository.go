@@ -45,15 +45,6 @@ func (repo *ProviderModelGormRepository) applyFilter(query *gormgen.Query, sql g
 	if filter.Active != nil {
 		sql = sql.Where(query.ProviderModel.Active.Is(*filter.Active))
 	}
-	if filter.SupportsImages != nil {
-		sql = sql.Where(query.ProviderModel.SupportsImages.Is(*filter.SupportsImages))
-	}
-	if filter.SupportsEmbeddings != nil {
-		sql = sql.Where(query.ProviderModel.SupportsEmbeddings.Is(*filter.SupportsEmbeddings))
-	}
-	if filter.SupportsReasoning != nil {
-		sql = sql.Where(query.ProviderModel.SupportsReasoning.Is(*filter.SupportsReasoning))
-	}
 	return sql
 }
 

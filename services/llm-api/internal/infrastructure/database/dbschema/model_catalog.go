@@ -24,6 +24,13 @@ type ModelCatalog struct {
 	Active              *bool          `gorm:"default:true;index;index:idx_model_catalog_status_active,priority:2"`
 	Status              string         `gorm:"size:32;not null;default:'init';index;index:idx_model_catalog_status_active,priority:1"`
 	Extras              datatypes.JSON `gorm:"type:jsonb"`
+	// Capabilities (moved from provider_model)
+	SupportsImages     *bool  `gorm:"not null;default:false;index"`
+	SupportsEmbeddings *bool  `gorm:"not null;default:false;index"`
+	SupportsReasoning  *bool  `gorm:"not null;default:false;index"`
+	SupportsAudio      *bool  `gorm:"not null;default:false;index"`
+	SupportsVideo      *bool  `gorm:"not null;default:false;index"`
+	Family             string `gorm:"size:128;index"`
 }
 
 func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
@@ -60,6 +67,12 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		extrasJSON = datatypes.JSON(data)
 	}
 
+	supportsImages := m.SupportsImages
+	supportsEmbeddings := m.SupportsEmbeddings
+	supportsReasoning := m.SupportsReasoning
+	supportsAudio := m.SupportsAudio
+	supportsVideo := m.SupportsVideo
+
 	return &ModelCatalog{
 		BaseModel: BaseModel{
 			ID:        m.ID,
@@ -75,6 +88,12 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		Active:              m.Active,
 		Status:              status,
 		Extras:              extrasJSON,
+		SupportsImages:      &supportsImages,
+		SupportsEmbeddings:  &supportsEmbeddings,
+		SupportsReasoning:   &supportsReasoning,
+		SupportsAudio:       &supportsAudio,
+		SupportsVideo:       &supportsVideo,
+		Family:              m.Family,
 	}, nil
 }
 
@@ -108,6 +127,27 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 		}
 	}
 
+	supportsImages := false
+	if m.SupportsImages != nil {
+		supportsImages = *m.SupportsImages
+	}
+	supportsEmbeddings := false
+	if m.SupportsEmbeddings != nil {
+		supportsEmbeddings = *m.SupportsEmbeddings
+	}
+	supportsReasoning := false
+	if m.SupportsReasoning != nil {
+		supportsReasoning = *m.SupportsReasoning
+	}
+	supportsAudio := false
+	if m.SupportsAudio != nil {
+		supportsAudio = *m.SupportsAudio
+	}
+	supportsVideo := false
+	if m.SupportsVideo != nil {
+		supportsVideo = *m.SupportsVideo
+	}
+
 	return &domainmodel.ModelCatalog{
 		ID:                  m.ID,
 		PublicID:            m.PublicID,
@@ -125,7 +165,13 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 			}
 			return status
 		}(),
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		SupportsImages:     supportsImages,
+		SupportsEmbeddings: supportsEmbeddings,
+		SupportsReasoning:  supportsReasoning,
+		SupportsAudio:      supportsAudio,
+		SupportsVideo:      supportsVideo,
+		Family:             m.Family,
+		CreatedAt:          m.CreatedAt,
+		UpdatedAt:          m.UpdatedAt,
 	}, nil
 }

@@ -31,7 +31,7 @@ type UpdateModelCatalogRequest struct {
 }
 
 type UpdateProviderModelRequest struct {
-	DisplayName         *string                  `json:"display_name"`
+	ModelDisplayName    *string                  `json:"model_display_name"`
 	Category            *string                  `json:"category"`
 	CategoryOrderNumber *int                     `json:"category_order_number"`
 	ModelOrderNumber    *int                     `json:"model_order_number"`

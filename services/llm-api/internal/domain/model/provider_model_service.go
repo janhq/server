@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"jan-server/services/llm-api/internal/domain/query"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/utils/httpclients/chat"
 	"jan-server/services/llm-api/internal/utils/idgen"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
@@ -96,6 +97,9 @@ func (s *ProviderModelService) UpsertProviderModelWithOptions(ctx context.Contex
 	if len(existing) > 0 {
 		pm := existing[0]
 		updateProviderModelFromRaw(pm, provider, catalogID, model)
+		if err := pm.Validate(); err != nil {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, err.Error(), nil, "validation-failed")
+		}
 		if err := s.providerModelRepo.Update(ctx, pm); err != nil {
 			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to update provider model")
 		}
@@ -111,6 +115,11 @@ func (s *ProviderModelService) UpsertProviderModelWithOptions(ctx context.Contex
 	pm.PublicID = publicID
 
 	pm.Active = autoEnableNewModels
+
+	// Validate before creating
+	if err := pm.Validate(); err != nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, err.Error(), nil, "validation-failed")
+	}
 
 	if err := s.providerModelRepo.Create(ctx, pm); err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to create provider model")
@@ -129,6 +138,11 @@ func (s *ProviderModelService) FindByPublicID(ctx context.Context, publicID stri
 func (s *ProviderModelService) Update(ctx context.Context, providerModel *ProviderModel) (*ProviderModel, error) {
 	if providerModel == nil {
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider model cannot be nil", nil, "45c19f50-e0d1-4745-b6c4-be6de6ce0ec0")
+	}
+
+	// Validate before updating
+	if err := providerModel.Validate(); err != nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, err.Error(), nil, "validation-failed")
 	}
 
 	if providerModel.Active && providerModel.ModelCatalogID != nil {
@@ -196,51 +210,92 @@ func (s *ProviderModelService) BatchUpdateActive(ctx context.Context, filter Pro
 }
 
 func buildProviderModelFromRaw(provider *Provider, catalogID *uint, model chat.Model) *ProviderModel {
+	log := logger.GetLogger()
+
 	pricing := extractPricing(model.Raw["pricing"])
 	tokenLimits := extractTokenLimits(model.Raw)
-	family := extractFamily(model.ID)
-	supportsImages := containsString(extractStringSliceFromMap(model.Raw, "architecture", "input_modalities"), "image")
-	supportsReasoning := containsString(extractStringSlice(model.Raw["supported_parameters"]), "include_reasoning")
+	reasoningMeta := extractReasoningMetadata(model)
+	providerFlags := extractProviderFlags(model)
 
-	displayName := model.DisplayName
-	if displayName == "" {
-		displayName = model.ID
+	supportsAuto := false
+	if reasoningMeta.SupportsAutoMode != nil {
+		supportsAuto = *reasoningMeta.SupportsAutoMode
+	}
+	supportsThinking := false
+	if reasoningMeta.SupportsThinkingMode != nil {
+		supportsThinking = *reasoningMeta.SupportsThinkingMode
+	}
+
+	modelDisplayName := getModelDisplayName(model)
+
+	// Extract category and ordering
+	category := extractCategoryFromModel(model)
+	categoryOrder := extractCategoryOrder(model)
+	modelOrder := extractModelOrder(model)
+
+	// Log missing critical fields
+	if model.DisplayName == "" && model.ID != "" {
+		log.Warn().
+			Str("model_id", model.ID).
+			Str("provider", string(provider.Kind)).
+			Msg("Model missing display_name")
+	}
+	if len(pricing.Lines) == 0 {
+		log.Debug().
+			Str("model_id", model.ID).
+			Msg("Model missing pricing data")
 	}
 
 	// Generate ModelPublicID using NormalizeModelKey which returns canonical vendor/model format
 	kind := ProviderKind(provider.Kind)
 	modelPublicID := NormalizeModelKey(kind, model.ID)
 
-	return &ProviderModel{
+	pm := &ProviderModel{
 		ProviderID:              provider.ID,
 		Kind:                    kind,
 		ModelCatalogID:          catalogID,
 		ModelPublicID:           modelPublicID,
-		ProviderOriginalModelID: model.ID, // Store original model ID from provider
-		DisplayName:             displayName,
+		ProviderOriginalModelID: model.ID,
+		ModelDisplayName:        modelDisplayName,
+		Category:                category,
+		CategoryOrderNumber:     categoryOrder,
+		ModelOrderNumber:        modelOrder,
 		Pricing:                 pricing,
 		TokenLimits:             tokenLimits,
-		Family:                  family,
-		SupportsImages:          supportsImages,
-		SupportsEmbeddings:      strings.Contains(strings.ToLower(model.ID), "embed"),
-		SupportsReasoning:       supportsReasoning,
-		Active:                  false, // Default to inactive, will be set by caller
+		SupportsAutoMode:        supportsAuto,
+		SupportsThinkingMode:    supportsThinking,
+		Active:                  false,
 	}
+	applyReasoningMetadata(pm, reasoningMeta, false)
+	pm.ProviderFlags = providerFlags
+	return pm
 }
 
 func updateProviderModelFromRaw(pm *ProviderModel, provider *Provider, catalogID *uint, model chat.Model) {
 	pm.Kind = ProviderKind(provider.Kind) // Update Kind field to match provider
 	pm.ModelCatalogID = catalogID
-	pm.DisplayName = model.DisplayName
-	if pm.DisplayName == "" {
-		pm.DisplayName = model.ID
+	pm.ModelDisplayName = getModelDisplayName(model)
+
+	// Only update pricing if new data is available (preserve existing pricing)
+	newPricing := extractPricing(model.Raw["pricing"])
+	if len(newPricing.Lines) > 0 {
+		pm.Pricing = newPricing
 	}
-	pm.Pricing = extractPricing(model.Raw["pricing"])
+
 	pm.TokenLimits = extractTokenLimits(model.Raw)
-	pm.Family = extractFamily(model.ID)
-	pm.SupportsImages = containsString(extractStringSliceFromMap(model.Raw, "architecture", "input_modalities"), "image")
-	pm.SupportsEmbeddings = strings.Contains(strings.ToLower(model.ID), "embed")
-	pm.SupportsReasoning = containsString(extractStringSlice(model.Raw["supported_parameters"]), "include_reasoning")
+	reasoningMeta := extractReasoningMetadata(model)
+	applyReasoningMetadata(pm, reasoningMeta, true)
+
+	// Update category and ordering
+	pm.Category = extractCategoryFromModel(model)
+	pm.CategoryOrderNumber = extractCategoryOrder(model)
+	pm.ModelOrderNumber = extractModelOrder(model)
+
+	flags := extractProviderFlags(model)
+	if len(flags) > 0 {
+		pm.ProviderFlags = flags
+	}
+
 	// Don't update Active field - keep existing value for already-synced models
 	pm.UpdatedAt = time.Now().UTC()
 }
@@ -278,28 +333,36 @@ func extractTokenLimits(raw map[string]any) *TokenLimits {
 	if raw == nil {
 		return nil
 	}
+
+	limitsMap := raw
+	if nested, ok := raw["token_limits"].(map[string]any); ok {
+		limitsMap = nested
+	}
+
+	hasContextLength := false
+	hasMaxCompletion := false
 	limits := TokenLimits{}
-	if contextLen, ok := floatFromAny(raw["context_length"]); ok {
+
+	if contextLen, ok := floatFromAny(limitsMap["context_length"]); ok {
 		limits.ContextLength = int(contextLen)
+		hasContextLength = true
+	} else if contextLen, ok := floatFromAny(raw["context_length"]); ok {
+		limits.ContextLength = int(contextLen)
+		hasContextLength = true
 	}
-	if maxCompletion, ok := floatFromAny(raw["max_completion_tokens"]); ok {
+	if maxCompletion, ok := floatFromAny(limitsMap["max_completion_tokens"]); ok {
 		limits.MaxCompletionTokens = int(maxCompletion)
+		hasMaxCompletion = true
+	} else if maxCompletion, ok := floatFromAny(raw["max_completion_tokens"]); ok {
+		limits.MaxCompletionTokens = int(maxCompletion)
+		hasMaxCompletion = true
 	}
-	if limits.ContextLength == 0 && limits.MaxCompletionTokens == 0 {
+
+	// Return nil only if no token limit data exists at all
+	if !hasContextLength && !hasMaxCompletion {
 		return nil
 	}
 	return &limits
-}
-
-// Extracts the model family from the modelID using common delimiters ("/", "-", ":").
-func extractFamily(modelID string) *string {
-	delimiters := []string{"/", "-", ":"}
-	for _, delim := range delimiters {
-		if idx := strings.Index(modelID, delim); idx > 0 {
-			return ptr.ToString(strings.TrimSpace(modelID[:idx]))
-		}
-	}
-	return nil
 }
 
 func (s *ProviderModelService) FindModelCountsByProviderIDs(ctx context.Context, providerIDs []uint) (map[uint]int64, error) {
@@ -336,4 +399,358 @@ func (s *ProviderModelService) FindActiveModelCountsByProviderIDs(ctx context.Co
 	}
 
 	return counts, nil
+}
+
+// getModelDisplayName returns the best available display name for a model
+func getModelDisplayName(model chat.Model) string {
+	if model.DisplayName != "" {
+		return model.DisplayName
+	}
+	if model.Name != "" {
+		return model.Name
+	}
+	if model.ID != "" {
+		return model.ID
+	}
+	// Fallback to canonical slug or generate unique name
+	if model.CanonicalSlug != "" {
+		return model.CanonicalSlug
+	}
+	return "Unnamed Model"
+}
+
+// extractCategoryFromModel extracts category from provider API with legacy fallback
+func extractCategoryFromModel(model chat.Model) string {
+	// Priority 1: Use category from provider API if available
+	if cat, ok := getString(model.Raw, "category"); ok && cat != "" {
+		return cat
+	}
+
+	// Priority 2: Check for "top_provider" field (OpenRouter-specific)
+	if topProvider, ok := model.Raw["top_provider"].(map[string]any); ok {
+		if cat, ok := getString(topProvider, "category"); ok && cat != "" {
+			return cat
+		}
+	}
+
+	// Priority 3: Legacy fallback - infer from model properties
+	return inferLegacyCategory(model)
+}
+
+// inferLegacyCategory infers category from model capabilities when provider doesn't supply it
+func inferLegacyCategory(model chat.Model) string {
+	// Check for reasoning models
+	if containsString(extractStringSlice(model.Raw["supported_parameters"]), "include_reasoning") {
+		return "Reasoning"
+	}
+
+	// Check for embedding models
+	if detectEmbeddingSupport(model.ID, model.Raw) {
+		return "Embedding"
+	}
+
+	inputModalities := extractStringSliceFromMap(model.Raw, "architecture", "input_modalities")
+	outputModalities := extractStringSliceFromMap(model.Raw, "architecture", "output_modalities")
+
+	// Check for image generation models
+	if containsString(outputModalities, "image") {
+		return "Image Generation"
+	}
+
+	// Check for vision models (input images but no output)
+	if containsString(inputModalities, "image") && !containsString(outputModalities, "image") {
+		return "Vision"
+	}
+
+	// Check for audio models
+	if containsString(inputModalities, "audio") || containsString(outputModalities, "audio") {
+		return "Audio"
+	}
+
+	// Check for video models
+	if containsString(inputModalities, "video") || containsString(outputModalities, "video") {
+		return "Video"
+	}
+
+	// Default to Chat for text-based models
+	return "Chat"
+}
+
+// extractCategoryOrder extracts category ordering from provider API
+func extractCategoryOrder(model chat.Model) int {
+	// Try to get from provider API
+	if order, ok := floatFromAny(model.Raw["category_order"]); ok {
+		return int(order)
+	}
+	if order, ok := floatFromAny(model.Raw["category_order_number"]); ok {
+		return int(order)
+	}
+	return 0
+}
+
+// extractModelOrder extracts model ordering from provider API
+func extractModelOrder(model chat.Model) int {
+	// Try to get from provider API
+	if order, ok := floatFromAny(model.Raw["model_order"]); ok {
+		return int(order)
+	}
+	if order, ok := floatFromAny(model.Raw["model_order_number"]); ok {
+		return int(order)
+	}
+	return 0
+}
+
+type ReasoningMetadata struct {
+	SupportsThinkingMode    *bool
+	SupportsAutoMode        *bool
+	DefaultConversationMode string
+	ReasoningConfig         *ReasoningConfig
+}
+
+func extractReasoningMetadata(model chat.Model) ReasoningMetadata {
+	meta := ReasoningMetadata{}
+	rawReasoning, _ := model.Raw["reasoning"].(map[string]any)
+	rawThinking, _ := model.Raw["thinking"].(map[string]any)
+	supportedParams := extractStringSlice(model.Raw["supported_parameters"])
+
+	setBool := func(target **bool, value any) {
+		if b, ok := boolFromAny(value); ok {
+			*target = ptr.ToBool(b)
+		}
+	}
+
+	// Initialize reasoning config
+	config := &ReasoningConfig{}
+	hasReasoningConfig := false
+
+	if rawReasoning != nil {
+		setBool(&meta.SupportsAutoMode, rawReasoning["auto"])
+		setBool(&meta.SupportsAutoMode, rawReasoning["supports_auto"])
+		setBool(&meta.SupportsThinkingMode, rawReasoning["thinking"])
+		setBool(&meta.SupportsThinkingMode, rawReasoning["supports_thinking"])
+
+		if defaultMode, ok := getString(rawReasoning, "default_mode"); ok {
+			meta.DefaultConversationMode = defaultMode
+		} else if defaultMode, ok := getString(rawReasoning, "default_conversation_mode"); ok {
+			meta.DefaultConversationMode = defaultMode
+		}
+
+		// Extract default effort
+		if defEffort, ok := getString(rawReasoning, "default_effort"); ok {
+			config.DefaultEffort = defEffort
+			hasReasoningConfig = true
+		}
+		if defEffort, ok := getString(rawReasoning, "reasoning_default_effort"); ok && config.DefaultEffort == "" {
+			config.DefaultEffort = defEffort
+			hasReasoningConfig = true
+		}
+
+		// Extract effort levels
+		if effortLevels := extractStringSlice(rawReasoning["effort_levels"]); len(effortLevels) > 0 {
+			config.EffortLevels = effortLevels
+			hasReasoningConfig = true
+		}
+		if len(config.EffortLevels) == 0 {
+			if effortLevels := extractStringSlice(rawReasoning["reasoning_effort_levels"]); len(effortLevels) > 0 {
+				config.EffortLevels = effortLevels
+				hasReasoningConfig = true
+			}
+		}
+
+		// Extract max tokens
+		if maxTokens, ok := floatFromAny(rawReasoning["max_tokens"]); ok {
+			mt := int(maxTokens)
+			config.MaxTokens = &mt
+			hasReasoningConfig = true
+		}
+		if maxTokens, ok := floatFromAny(rawReasoning["reasoning_max_tokens"]); ok && config.MaxTokens == nil {
+			mt := int(maxTokens)
+			config.MaxTokens = &mt
+			hasReasoningConfig = true
+		}
+
+		// Extract latency hint
+		if latency, ok := floatFromAny(rawReasoning["latency_hint_ms"]); ok {
+			l := int(latency)
+			config.LatencyHintMs = &l
+			hasReasoningConfig = true
+		}
+		if latency, ok := floatFromAny(rawReasoning["latency_ms"]); ok && config.LatencyHintMs == nil {
+			l := int(latency)
+			config.LatencyHintMs = &l
+			hasReasoningConfig = true
+		}
+
+		// Extract price multiplier
+		if multiplier, ok := floatFromAny(rawReasoning["price_multiplier"]); ok {
+			config.PriceMultiplier = &multiplier
+			hasReasoningConfig = true
+		} else if multiplier, ok := floatFromAny(rawReasoning["reasoning_price_multiplier"]); ok {
+			config.PriceMultiplier = &multiplier
+			hasReasoningConfig = true
+		}
+
+		// Extract mode display
+		if modeDisplay := extractReasoningModeDisplay(rawReasoning["modes"]); len(modeDisplay) > 0 {
+			config.ModeDisplay = modeDisplay
+			hasReasoningConfig = true
+		}
+		if len(config.ModeDisplay) == 0 {
+			if modeDisplay := extractReasoningModeDisplay(rawReasoning["mode_display"]); len(modeDisplay) > 0 {
+				config.ModeDisplay = modeDisplay
+				hasReasoningConfig = true
+			}
+		}
+	}
+
+	if rawThinking != nil {
+		setBool(&meta.SupportsThinkingMode, rawThinking["enabled"])
+
+		if maxTokens, ok := floatFromAny(rawThinking["max_tokens"]); ok && config.MaxTokens == nil {
+			mt := int(maxTokens)
+			config.MaxTokens = &mt
+			hasReasoningConfig = true
+		}
+		if latency, ok := floatFromAny(rawThinking["latency_ms"]); ok && config.LatencyHintMs == nil {
+			l := int(latency)
+			config.LatencyHintMs = &l
+			hasReasoningConfig = true
+		}
+	}
+
+	if meta.SupportsThinkingMode == nil && containsString(supportedParams, "reasoning_effort") {
+		meta.SupportsThinkingMode = ptr.ToBool(true)
+	}
+	if meta.SupportsAutoMode == nil && containsString(supportedParams, "auto") {
+		meta.SupportsAutoMode = ptr.ToBool(true)
+	}
+
+	// Only set reasoning config if we extracted any data
+	if hasReasoningConfig {
+		meta.ReasoningConfig = config
+	}
+
+	return meta
+}
+
+func applyReasoningMetadata(pm *ProviderModel, meta ReasoningMetadata, preserveExisting bool) {
+	if preserveExisting {
+		if meta.SupportsAutoMode != nil {
+			pm.SupportsAutoMode = *meta.SupportsAutoMode
+		}
+		if meta.SupportsThinkingMode != nil {
+			pm.SupportsThinkingMode = *meta.SupportsThinkingMode
+		}
+	} else {
+		pm.SupportsAutoMode = boolOrDefault(meta.SupportsAutoMode, pm.SupportsAutoMode)
+		pm.SupportsThinkingMode = boolOrDefault(meta.SupportsThinkingMode, pm.SupportsThinkingMode)
+	}
+
+	if meta.DefaultConversationMode != "" {
+		pm.DefaultConversationMode = normalizeConversationMode(meta.DefaultConversationMode, pm.DefaultConversationMode)
+	} else if !preserveExisting && pm.DefaultConversationMode == "" {
+		pm.DefaultConversationMode = "standard"
+	}
+
+	// Apply reasoning config
+	if meta.ReasoningConfig != nil {
+		pm.ReasoningConfig = meta.ReasoningConfig
+	} else if !preserveExisting {
+		pm.ReasoningConfig = nil
+	}
+
+	if pm.DefaultConversationMode == "" {
+		pm.DefaultConversationMode = normalizeConversationMode("", pm.DefaultConversationMode)
+	}
+}
+
+func normalizeConversationMode(mode string, fallback string) string {
+	m := strings.ToLower(strings.TrimSpace(mode))
+	switch m {
+	case "auto", "automatic":
+		return "auto"
+	case "thinking", "reasoning", "long_thought":
+		return "thinking"
+	case "fast", "standard", "default", "":
+		if fallback != "" {
+			return fallback
+		}
+		return "standard"
+	default:
+		return m
+	}
+}
+
+func extractReasoningModeDisplay(value any) []ReasoningModeOption {
+	result := []ReasoningModeOption{}
+	items, ok := value.([]any)
+	if !ok {
+		return result
+	}
+	for _, item := range items {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := getString(entry, "name")
+		displayName, _ := getString(entry, "display_name")
+		description, _ := getString(entry, "description")
+		var latency *int
+		if v, ok := floatFromAny(entry["latency_hint_ms"]); ok {
+			val := int(v)
+			latency = &val
+		}
+		var priceMultiplier *float64
+		if v, ok := floatFromAny(entry["price_hint_multiplier"]); ok {
+			val := v
+			priceMultiplier = &val
+		}
+		if name == "" && displayName == "" {
+			continue
+		}
+		result = append(result, ReasoningModeOption{
+			Name:                name,
+			DisplayName:         displayName,
+			Description:         description,
+			LatencyHintMs:       latency,
+			PriceHintMultiplier: priceMultiplier,
+		})
+	}
+	return result
+}
+
+func extractProviderFlags(model chat.Model) map[string]any {
+	if flags, ok := model.Raw["provider_flags"].(map[string]any); ok {
+		return flags
+	}
+	return nil
+}
+
+func boolOrDefault(value *bool, fallback bool) bool {
+	if value != nil {
+		return *value
+	}
+	return fallback
+}
+
+func boolFromAny(value any) (bool, bool) {
+	switch v := value.(type) {
+	case bool:
+		return v, true
+	case string:
+		l := strings.ToLower(strings.TrimSpace(v))
+		if l == "true" || l == "1" || l == "yes" {
+			return true, true
+		}
+		if l == "false" || l == "0" || l == "no" {
+			return false, true
+		}
+	case float64:
+		return v != 0, true
+	case int:
+		return v != 0, true
+	case int64:
+		return v != 0, true
+	}
+	return false, false
 }
