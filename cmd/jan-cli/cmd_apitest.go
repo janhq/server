@@ -41,6 +41,7 @@ var runApiTestCmd = &cobra.Command{
 var (
 	envVars   []string
 	verbose   bool
+	debug     bool
 	reporters []string
 	timeout   int
 )
@@ -50,6 +51,7 @@ func init() {
 
 	runApiTestCmd.Flags().StringArrayVar(&envVars, "env-var", []string{}, "Environment variable (key=value)")
 	runApiTestCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
+	runApiTestCmd.Flags().BoolVar(&debug, "debug", false, "Debug mode - print full request and response details")
 	runApiTestCmd.Flags().StringArrayVar(&reporters, "reporters", []string{"cli"}, "Reporters to use")
 	runApiTestCmd.Flags().IntVar(&timeout, "timeout-request", 30000, "Request timeout in milliseconds")
 }
@@ -201,9 +203,11 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 
 	// Create request
 	var bodyReader io.Reader
+	var bodyContent string
 	if item.Request.Body != nil {
 		if item.Request.Body.Mode == "raw" {
 			body := replaceVariables(item.Request.Body.Raw, envMap)
+			bodyContent = body
 			bodyReader = strings.NewReader(body)
 		} else if item.Request.Body.Mode == "urlencoded" {
 			formData := url.Values{}
@@ -212,7 +216,8 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 				value := replaceVariables(param.Value, envMap)
 				formData.Set(key, value)
 			}
-			bodyReader = strings.NewReader(formData.Encode())
+			bodyContent = formData.Encode()
+			bodyReader = strings.NewReader(bodyContent)
 		}
 	}
 
@@ -229,6 +234,24 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 	for _, header := range item.Request.Header {
 		value := replaceVariables(header.Value, envMap)
 		req.Header.Set(header.Key, value)
+	}
+
+	// Debug: Print full request
+	if debug {
+		fmt.Printf("\n%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", prefix)
+		fmt.Printf("%s🔍 REQUEST DEBUG: %s\n", prefix, item.Name)
+		fmt.Printf("%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", prefix)
+		fmt.Printf("%s%s %s\n", prefix, item.Request.Method, urlStr)
+		fmt.Printf("%s\n%sHeaders:\n", prefix, prefix)
+		for key, values := range req.Header {
+			for _, value := range values {
+				fmt.Printf("%s  %s: %s\n", prefix, key, value)
+			}
+		}
+		if bodyContent != "" {
+			fmt.Printf("%s\n%sBody:\n%s%s\n", prefix, prefix, prefix, bodyContent)
+		}
+		fmt.Printf("%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", prefix)
 	}
 
 	// Execute request
@@ -250,6 +273,25 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 	respBody, _ := io.ReadAll(resp.Body)
 
 	result.Duration = time.Since(start)
+
+	// Debug: Print full response
+	if debug {
+		fmt.Printf("\n%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", prefix)
+		fmt.Printf("%s🔍 RESPONSE DEBUG: %s\n", prefix, item.Name)
+		fmt.Printf("%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n", prefix)
+		fmt.Printf("%sStatus: %d %s\n", prefix, resp.StatusCode, http.StatusText(resp.StatusCode))
+		fmt.Printf("%sDuration: %dms\n", prefix, result.Duration.Milliseconds())
+		fmt.Printf("%s\n%sHeaders:\n", prefix, prefix)
+		for key, values := range resp.Header {
+			for _, value := range values {
+				fmt.Printf("%s  %s: %s\n", prefix, key, value)
+			}
+		}
+		if len(respBody) > 0 {
+			fmt.Printf("%s\n%sBody:\n%s%s\n", prefix, prefix, prefix, string(respBody))
+		}
+		fmt.Printf("%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n", prefix)
+	}
 
 	if verbose {
 		fmt.Printf("%s  ← %d %s (%dms)\n", prefix, resp.StatusCode, http.StatusText(resp.StatusCode), result.Duration.Milliseconds())
@@ -275,7 +317,24 @@ func buildURL(urlInterface interface{}, envMap map[string]string) string {
 	case map[string]interface{}:
 		// Handle Postman URL object format
 		if raw, ok := v["raw"].(string); ok {
-			return replaceVariables(raw, envMap)
+			url := replaceVariables(raw, envMap)
+
+			// Handle path variables (e.g., :id, :public_id)
+			if variables, ok := v["variable"].([]interface{}); ok {
+				for _, varInterface := range variables {
+					if varMap, ok := varInterface.(map[string]interface{}); ok {
+						if key, ok := varMap["key"].(string); ok {
+							if value, ok := varMap["value"].(string); ok {
+								// Replace :key with actual value
+								replacedValue := replaceVariables(value, envMap)
+								url = strings.ReplaceAll(url, ":"+key, replacedValue)
+							}
+						}
+					}
+				}
+			}
+
+			return url
 		}
 		// Also try "url" field
 		if urlStr, ok := v["url"].(string); ok {
@@ -434,10 +493,12 @@ func extractVarSetPattern(line string) (varName string, jsonPath string) {
 			if len(parts) == 2 {
 				// Extract variable name (remove quotes)
 				varName = strings.Trim(strings.TrimSpace(parts[0]), "'\"")
-				// Extract JSON path (e.g., "data.access_token")
+				// Extract JSON path (e.g., "data.access_token" or "body.id")
 				jsonPath = strings.TrimSpace(parts[1])
-				// Remove "data." prefix if present
+				// Remove common prefixes
 				jsonPath = strings.TrimPrefix(jsonPath, "data.")
+				jsonPath = strings.TrimPrefix(jsonPath, "body.")
+				jsonPath = strings.TrimPrefix(jsonPath, "responseData.")
 				jsonPath = strings.Trim(jsonPath, "'\"")
 			}
 		}
@@ -487,30 +548,30 @@ func printResults(results []TestResult, totalDuration time.Duration) {
 	fmt.Printf("│ Test Results                                                        │\n")
 	fmt.Printf("└─────────────────────────────────────────────────────────────────────┘\n\n")
 
-	if failed > 0 {
-		fmt.Printf("❌ Failed Tests:\n\n")
-		for _, result := range results {
-			if !result.Passed {
-				fmt.Printf("  ✗ %s\n", result.Name)
-				if result.Error != "" {
-					fmt.Printf("    %s\n", result.Error)
-				}
-				fmt.Printf("    Duration: %dms\n\n", result.Duration.Milliseconds())
+	// Print all test results with visual indicators
+	for _, result := range results {
+		if result.Passed {
+			fmt.Printf("  ✓✓✓ %s (%dms)\n", result.Name, result.Duration.Milliseconds())
+		} else {
+			fmt.Printf("  ✗✗✗ %s (%dms)\n", result.Name, result.Duration.Milliseconds())
+			if result.Error != "" {
+				fmt.Printf("      %s\n", result.Error)
 			}
 		}
 	}
 
+	fmt.Printf("\n")
 	fmt.Printf("Summary:\n")
 	fmt.Printf("  Total:    %d tests\n", len(results))
-	fmt.Printf("  Passed:   %d ✓\n", passed)
+	fmt.Printf("  Passed:   %d ✓✓✓\n", passed)
 	if failed > 0 {
-		fmt.Printf("  Failed:   %d ✗\n", failed)
+		fmt.Printf("  Failed:   %d ✗✗✗\n", failed)
 	}
 	fmt.Printf("  Duration: %dms\n\n", totalDuration.Milliseconds())
 
 	if failed == 0 {
-		fmt.Printf("✓ All tests passed!\n\n")
+		fmt.Printf("✓✓✓ All tests passed!\n\n")
 	} else {
-		fmt.Printf("✗ Some tests failed\n\n")
+		fmt.Printf("✗✗✗ Some tests failed\n\n")
 	}
 }

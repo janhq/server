@@ -211,7 +211,7 @@ postgresql:
 llmApi:
   env:
     JAN_DEFAULT_NODE_SETUP: "false"  # Disable if no Jan provider available
-    DATABASE_URL: "postgres://..."   # Auto-configured via secret
+    DB_POSTGRESQL_WRITE_DSN: "postgres://..."   # Auto-configured via secret
     KEYCLOAK_BASE_URL: "http://..."  # Auto-configured
     BACKEND_CLIENT_ID: "llm-api"
     CLIENT: "jan-client"

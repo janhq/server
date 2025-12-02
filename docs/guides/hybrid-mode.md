@@ -61,7 +61,7 @@ Hybrid mode keeps infrastructure in Docker while letting you run services direct
 
 | Variable | Purpose |
 |----------|---------|
-| `DB_DSN` / `DATABASE_URL` | PostgreSQL connection string. Use `localhost` when running on host |
+| `DB_POSTGRESQL_WRITE_DSN` | PostgreSQL connection string. Use `localhost` when running on host |
 | `KEYCLOAK_BASE_URL` / `ISSUER` / `JWKS_URL` | Auth endpoints (use `http://localhost:8085`) |
 | `HTTP_PORT` | Local service port (8080, 8082, 8285, 8091, etc.) |
 | `LOG_LEVEL` / `LOG_FORMAT` | Logging controls |
@@ -92,14 +92,14 @@ As soon as your host process stops responding to `/healthz`, Kong routes traffic
 - Run `make health-check` after switching services to confirm Kong sees them as healthy
 - Use `make logs-api` / `make logs-mcp` to monitor containerized dependencies while your host service runs
 - Need database access? `make db-console` opens `psql` using the same credentials set in `.env`
-- Monitoring works the same—`make monitor-up` gives you Grafana/Prometheus/Jaeger pointed at both Docker and host processes
+- Monitoring works the sameï¿½`make monitor-up` gives you Grafana/Prometheus/Jaeger pointed at both Docker and host processes
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
 | Kong keeps hitting the Docker container | Ensure the host service listens on the same port and returns 200 on `/healthz` |
-| Service cannot reach PostgreSQL | Update `DB_DSN` to use `localhost` instead of `api-db` when running on host |
+| Service cannot reach PostgreSQL | Update `DB_POSTGRESQL_WRITE_DSN` to use `localhost` instead of `api-db` when running on host |
 | Environment variables missing | Pass `--env .env` (default) or a custom env file to `jan-cli dev run` |
 | Port already in use | Stop the other listener or change `HTTP_PORT` before running the host service |
 | Want to debug multiple services | Run `jan-cli dev run ...` in multiple terminals; each command stops its corresponding container first |

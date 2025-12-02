@@ -56,7 +56,7 @@ spec:
           value: {{ .Values.llmApi.env.JAN_DEFAULT_NODE_SETUP | quote }}
         - name: JAN_DEFAULT_NODE_URL
           value: {{ .Values.llmApi.env.JAN_DEFAULT_NODE_URL | quote }}
-        - name: DATABASE_URL
+        - name: DB_POSTGRESQL_WRITE_DSN
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-llm-api-secret

@@ -183,3 +183,9 @@ ALTER TABLE llm_api.provider_models DROP COLUMN IF EXISTS supports_audio;
 ALTER TABLE llm_api.provider_models DROP COLUMN IF EXISTS supports_video;
 ALTER TABLE llm_api.provider_models DROP COLUMN IF EXISTS family;
 
+-- ============================================================================
+-- SECTION 5: Remove legacy llm_api.models table (no longer used)
+-- ============================================================================
+DROP TRIGGER IF EXISTS models_updated_at ON llm_api.models;
+DROP TABLE IF EXISTS llm_api.models;
+

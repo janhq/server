@@ -57,7 +57,7 @@ spec:
           value: {{ .Values.responseApi.env.MAX_TOOL_EXECUTION_DEPTH | quote }}
         - name: TOOL_EXECUTION_TIMEOUT
           value: {{ .Values.responseApi.env.TOOL_EXECUTION_TIMEOUT | quote }}
-        - name: RESPONSE_DATABASE_URL
+        - name: DB_POSTGRESQL_WRITE_DSN
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-response-api-secret

@@ -44,14 +44,19 @@
 # VARIABLES
 # ============================================================================================================
 
+# Docker Compose
 COMPOSE = docker compose
 COMPOSE_DEV_FULL = docker compose -f docker-compose.yml -f docker-compose.dev-full.yml
 MONITOR_COMPOSE = docker compose -f docker/observability.yml
+
+# API Testing
 ifeq ($(OS),Windows_NT)
 API_TEST = powershell -ExecutionPolicy Bypass -File jan-cli.ps1 api-test run
 else
 API_TEST = bash jan-cli.sh api-test run
 endif
+
+# Test Collections
 API_TEST_AUTH_COLLECTION = tests/automation/auth-postman-scripts.json
 API_TEST_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.json
 API_TEST_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
@@ -60,6 +65,14 @@ API_TEST_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
 API_TEST_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
 API_TEST_MODEL_MANAGEMENT_COLLECTION = tests/automation/model-management-postman-scripts.json
 API_TEST_E2E_COLLECTION = tests/automation/test-all.postman.json
+
+# Test Options
+TEST_API_DEBUG ?= true
+ifeq ($(TEST_API_DEBUG),true)
+API_TEST_FLAGS = --debug --verbose
+else
+API_TEST_FLAGS = --verbose
+endif
 
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
@@ -576,7 +589,7 @@ test-auth:
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=jan-client" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Authentication tests passed"
 
@@ -589,7 +602,7 @@ test-conversations:
 		--env-var "keycloak_admin_password=admin" \
 		--env-var "realm=jan" \
 		--env-var "client_id_public=jan-client" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Conversation API tests passed"
 
@@ -598,7 +611,7 @@ test-response:
 	@$(API_TEST) $(API_TEST_RESPONSES_COLLECTION) \
 		--env-var "response_api_url=http://localhost:8000/responses" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Response API tests passed"
 
@@ -607,7 +620,7 @@ test-media:
 	@$(API_TEST) $(API_TEST_MEDIA_COLLECTION) \
 		--env-var "media_api_url=http://localhost:8000/media" \
 		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Media API tests passed"
 
@@ -616,7 +629,7 @@ test-mcp-integration:
 	@$(API_TEST) $(API_TEST_MCP_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " MCP integration tests passed"
 
@@ -628,51 +641,36 @@ test-memory:
 		--env-var "user_id=user_test_001" \
 		--env-var "project_id=proj_test_001" \
 		--env-var "conversation_id=conv_test_001" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Memory-tools integration tests passed"
 
 test-model-management:
 	@echo "Running model management tests..."
 	@$(API_TEST) $(API_TEST_MODEL_MANAGEMENT_COLLECTION) \
+		--env-var "base_url=http://localhost:8000" \
 		--env-var "kong_url=http://localhost:8000" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Model management tests passed"
 
 test-e2e:
 	@echo "Running gateway end-to-end tests..."
 	@$(API_TEST) $(API_TEST_E2E_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
 		--env-var "gateway_url=http://localhost:8000" \
 		--env-var "media_api_url=http://localhost:8000/media" \
 		--env-var "response_api_url=http://localhost:8000/responses" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
 		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
-		--verbose \
+		$(API_TEST_FLAGS) \
 		--reporters cli
-	@echo "o. Gateway end-to-end tests passed"
+	@echo " Gateway end-to-end tests passed"
 
+# Deprecated: Use TEST_API_DEBUG=true make test-auth instead
 api-test-debug:
 	@echo "Running authentication tests with debug output..."
-ifeq ($(OS),Windows_NT)
-	@$(API_TEST) $(API_TEST_AUTH_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "keycloak_base_url=http://localhost:8085" \
-		--env-var "keycloak_admin=admin" \
-		--env-var "keycloak_admin_password=admin" \
-		--env-var "realm=jan" \
-		--env-var "client_id_public=jan-client" \
-		--verbose
-else
-	@$(API_TEST) $(API_TEST_AUTH_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "keycloak_base_url=http://localhost:8085" \
-		--env-var "keycloak_admin=admin" \
-		--env-var "keycloak_admin_password=admin" \
-		--env-var "realm=jan" \
-		--env-var "client_id_public=jan-client" \
-		--verbose
-endif
+	@$(MAKE) test-auth TEST_API_DEBUG=true
 
 
 # ============================================================================================================

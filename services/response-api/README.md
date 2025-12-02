@@ -47,7 +47,7 @@ Useful targets:
 | --- | --- | --- |
 | `SERVICE_NAME` | Logical service name | `response-api` |
 | `HTTP_PORT` | HTTP listen port | `8082` |
-| `RESPONSE_DATABASE_URL` | PostgreSQL DSN | `postgres://postgres:postgres@localhost:5432/response_api?sslmode=disable` |
+| `DB_POSTGRESQL_WRITE_DSN` | PostgreSQL DSN | `postgres://postgres:postgres@localhost:5432/response_api?sslmode=disable` |
 | `LLM_API_URL` | Base URL for `llm-api` | `http://localhost:8080` |
 | `MCP_TOOLS_URL` | Base URL for `mcp-tools` | `http://localhost:8091` |
 | `MAX_TOOL_EXECUTION_DEPTH` | Max recursive tool chain depth | `8` |
@@ -86,7 +86,7 @@ On startup the service runs migrations for:
 - `conversation_items`
 - `tool_executions`
 
-Each table uses JSONB columns for flexible payload storage. Point `RESPONSE_DATABASE_URL` at your cluster before starting the service.
+Each table uses JSONB columns for flexible payload storage. Point `DB_POSTGRESQL_WRITE_DSN` at your cluster before starting the service.
 
 ## Authentication
 

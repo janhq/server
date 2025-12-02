@@ -100,6 +100,23 @@ func (providerHandler *ProviderHandler) GetAllProviders(ctx context.Context) ([]
 	return result, nil
 }
 
+func (providerHandler *ProviderHandler) GetProviderByPublicID(ctx context.Context, publicID string) (*modelresponses.ProviderResponse, error) {
+	if strings.TrimSpace(publicID) == "" {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "d5d9dc70-4dd1-4063-b0be-990d69ee7086")
+	}
+
+	provider, err := providerHandler.providerService.FindByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to find provider")
+	}
+	if provider == nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "97728060-34f7-4451-8b9a-5df38ac3364f")
+	}
+
+	response := modelresponses.BuildProviderResponse(provider)
+	return &response, nil
+}
+
 func (providerHandler *ProviderHandler) SelectProviderModelForModelPublicID(ctx context.Context, modelPublicID string) (*domainmodel.ProviderModel, *domainmodel.Provider, error) {
 	if strings.TrimSpace(modelPublicID) == "" {
 		return nil, nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "model key is required", nil, "abeb247f-ef80-44bf-921b-6e2c92ffca73")
@@ -110,6 +127,7 @@ func (providerHandler *ProviderHandler) SelectProviderModelForModelPublicID(ctx 
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if len(providerModels) == 0 {
 		return nil, nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "model not found in accessible providers", nil, "caa8476d-1b95-42a7-a96b-18b0c11b2f64")
 	}
@@ -118,6 +136,7 @@ func (providerHandler *ProviderHandler) SelectProviderModelForModelPublicID(ctx 
 	if selectedProviderModel == nil {
 		return nil, nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "no valid provider found for model", nil, "265747b1-0aee-4a99-863e-99a7af8ada5e")
 	}
+
 	selectedProvider, err := providerHandler.providerService.GetByID(ctx, selectedProviderModel.ProviderID)
 	if err != nil {
 		return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get provider details")

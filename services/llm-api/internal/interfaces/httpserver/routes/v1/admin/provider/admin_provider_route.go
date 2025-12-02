@@ -27,6 +27,7 @@ func (AdminProviderRoute *AdminProviderRoute) RegisterRouter(router *gin.RouterG
 
 	providerRoute.GET("", AdminProviderRoute.GetAllProviders)
 	providerRoute.POST("", AdminProviderRoute.RegisterProvider)
+	providerRoute.GET("/:provider_public_id", AdminProviderRoute.GetProvider)
 	providerRoute.PATCH("/:provider_public_id", AdminProviderRoute.UpdateProvider)
 
 }
@@ -80,6 +81,30 @@ func (route *AdminProviderRoute) RegisterProvider(reqCtx *gin.Context) {
 	}
 
 	reqCtx.JSON(http.StatusOK, providerWithModels)
+}
+
+// GetProvider
+// @Summary Get a provider
+// @Description Retrieves a provider by its public ID
+// @Tags Admin Provider API
+// @Security BearerAuth
+// @Produce json
+// @Param provider_public_id path string true "Provider public ID"
+// @Success 200 {object} modelresponses.ProviderResponse "Provider details"
+// @Failure 404 {object} responses.ErrorResponse "Provider not found"
+// @Failure 500 {object} responses.ErrorResponse "Failed to retrieve provider"
+// @Router /v1/admin/providers/{provider_public_id} [get]
+func (route *AdminProviderRoute) GetProvider(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+	publicID := reqCtx.Param("provider_public_id")
+
+	providerResponse, err := route.providerHandler.GetProviderByPublicID(ctx, publicID)
+	if err != nil {
+		responses.HandleError(reqCtx, err, "Failed to retrieve provider")
+		return
+	}
+
+	reqCtx.JSON(http.StatusOK, providerResponse)
 }
 
 // UpdateProvider

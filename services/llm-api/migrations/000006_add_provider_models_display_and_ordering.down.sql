@@ -182,3 +182,22 @@ ALTER TABLE llm_api.provider_models
 ALTER TABLE llm_api.provider_models
     DROP COLUMN IF EXISTS model_display_name;
 
+-- ============================================================================
+-- STEP 5: Restore legacy llm_api.models table and trigger (removed in 000006 up)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS llm_api.models (
+    id VARCHAR(255) PRIMARY KEY,
+    provider VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    family VARCHAR(255),
+    capabilities JSONB,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER IF NOT EXISTS models_updated_at
+    BEFORE UPDATE ON llm_api.models
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+

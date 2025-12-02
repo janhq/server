@@ -1,9 +1,15 @@
 package requestmodels
 
 type ModelCatalogFilterParams struct {
-	Status      *string `form:"status"`
-	IsModerated *bool   `form:"is_moderated"`
-	Active      *bool   `form:"active"`
+	Status             *string `form:"status"`
+	IsModerated        *bool   `form:"is_moderated"`
+	Active             *bool   `form:"active"`
+	SupportsImages     *bool   `form:"supports_images"`
+	SupportsEmbeddings *bool   `form:"supports_embeddings"`
+	SupportsReasoning  *bool   `form:"supports_reasoning"`
+	SupportsAudio      *bool   `form:"supports_audio"`
+	SupportsVideo      *bool   `form:"supports_video"`
+	Family             *string `form:"family"`
 }
 
 type ProviderModelFilterParams struct {

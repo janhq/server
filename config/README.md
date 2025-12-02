@@ -297,7 +297,7 @@ Environment variables (e.g., `${VLLM_INTERNAL_KEY}`) are expanded at load time, 
 1. Create `config/myenv.env`:
 ```bash
 # My Custom Environment
-DB_DSN=postgres://user:pass@custom-db:5432/dbname
+DB_POSTGRESQL_WRITE_DSN=postgres://user:pass@custom-db:5432/dbname
 KEYCLOAK_BASE_URL=http://custom-keycloak:8085
 # ... other overrides
 ```

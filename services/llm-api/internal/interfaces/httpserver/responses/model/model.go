@@ -231,6 +231,7 @@ func BuildProviderResponseList(providers []*domainmodel.Provider) []ProviderResp
 
 type ModelCatalogResponse struct {
 	ID                  string                          `json:"id"`
+	PublicID            string                          `json:"public_id"`
 	SupportedParameters domainmodel.SupportedParameters `json:"supported_parameters"`
 	Architecture        domainmodel.Architecture        `json:"architecture"`
 	Tags                []string                        `json:"tags,omitempty"`
@@ -239,6 +240,12 @@ type ModelCatalogResponse struct {
 	Active              *bool                           `json:"active,omitempty"`
 	Extras              map[string]any                  `json:"extras,omitempty"`
 	Status              domainmodel.ModelCatalogStatus  `json:"status"`
+	Family              *string                         `json:"family,omitempty"`
+	SupportsImages      bool                            `json:"supports_images"`
+	SupportsEmbeddings  bool                            `json:"supports_embeddings"`
+	SupportsReasoning   bool                            `json:"supports_reasoning"`
+	SupportsAudio       bool                            `json:"supports_audio"`
+	SupportsVideo       bool                            `json:"supports_video"`
 	LastSyncedAt        *int64                          `json:"last_synced_at,omitempty"`
 	CreatedAt           int64                           `json:"created_at"`
 	UpdatedAt           int64                           `json:"updated_at"`
@@ -274,9 +281,14 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 		ts := catalog.LastSyncedAt.Unix()
 		lastSyncedAt = &ts
 	}
+	var family *string
+	if catalog.Family != "" {
+		family = ptr.ToString(catalog.Family)
+	}
 
 	return ModelCatalogResponse{
 		ID:                  catalog.PublicID,
+		PublicID:            catalog.PublicID,
 		SupportedParameters: catalog.SupportedParameters,
 		Architecture:        catalog.Architecture,
 		Tags:                catalog.Tags,
@@ -285,6 +297,12 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 		Active:              catalog.Active,
 		Extras:              catalog.Extras,
 		Status:              catalog.Status,
+		Family:              family,
+		SupportsImages:      catalog.SupportsImages,
+		SupportsEmbeddings:  catalog.SupportsEmbeddings,
+		SupportsReasoning:   catalog.SupportsReasoning,
+		SupportsAudio:       catalog.SupportsAudio,
+		SupportsVideo:       catalog.SupportsVideo,
 		LastSyncedAt:        lastSyncedAt,
 		CreatedAt:           catalog.CreatedAt.Unix(),
 		UpdatedAt:           catalog.UpdatedAt.Unix(),

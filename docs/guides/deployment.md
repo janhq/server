@@ -205,7 +205,7 @@ make dev-full-down            # remove containers
 
 ```bash
 # Database
-DATABASE_URL=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
+DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
 
 # Keycloak/Auth
 KEYCLOAK_BASE_URL=http://localhost:8085

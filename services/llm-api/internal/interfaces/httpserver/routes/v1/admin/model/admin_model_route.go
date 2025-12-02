@@ -237,6 +237,40 @@ func (route *AdminModelRoute) buildModelCatalogFilter(reqCtx *gin.Context) reque
 		filter.IsModerated = &isModerated
 	}
 
+	if activeStr := reqCtx.Query("active"); activeStr != "" {
+		active := activeStr == "true"
+		filter.Active = &active
+	}
+
+	if supportsImagesStr := reqCtx.Query("supports_images"); supportsImagesStr != "" {
+		value := supportsImagesStr == "true"
+		filter.SupportsImages = &value
+	}
+
+	if supportsEmbeddingsStr := reqCtx.Query("supports_embeddings"); supportsEmbeddingsStr != "" {
+		value := supportsEmbeddingsStr == "true"
+		filter.SupportsEmbeddings = &value
+	}
+
+	if supportsReasoningStr := reqCtx.Query("supports_reasoning"); supportsReasoningStr != "" {
+		value := supportsReasoningStr == "true"
+		filter.SupportsReasoning = &value
+	}
+
+	if supportsAudioStr := reqCtx.Query("supports_audio"); supportsAudioStr != "" {
+		value := supportsAudioStr == "true"
+		filter.SupportsAudio = &value
+	}
+
+	if supportsVideoStr := reqCtx.Query("supports_video"); supportsVideoStr != "" {
+		value := supportsVideoStr == "true"
+		filter.SupportsVideo = &value
+	}
+
+	if family := strings.TrimSpace(reqCtx.Query("family")); family != "" {
+		filter.Family = &family
+	}
+
 	return filter
 }
 

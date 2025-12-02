@@ -105,6 +105,30 @@ func (h *ModelCatalogHandler) ListCatalogs(
 		filter.Active = filterParams.Active
 	}
 
+	if filterParams.SupportsImages != nil {
+		filter.SupportsImages = filterParams.SupportsImages
+	}
+
+	if filterParams.SupportsEmbeddings != nil {
+		filter.SupportsEmbeddings = filterParams.SupportsEmbeddings
+	}
+
+	if filterParams.SupportsReasoning != nil {
+		filter.SupportsReasoning = filterParams.SupportsReasoning
+	}
+
+	if filterParams.SupportsAudio != nil {
+		filter.SupportsAudio = filterParams.SupportsAudio
+	}
+
+	if filterParams.SupportsVideo != nil {
+		filter.SupportsVideo = filterParams.SupportsVideo
+	}
+
+	if filterParams.Family != nil {
+		filter.Family = filterParams.Family
+	}
+
 	total, err := h.modelCatalogService.Count(ctx, filter)
 	if err != nil {
 		return nil, 0, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to count model catalogs")

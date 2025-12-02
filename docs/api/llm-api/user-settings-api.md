@@ -433,7 +433,7 @@ Run the migration to create the `user_settings` table with JSONB columns:
 make migrate-up
 
 # Or manually:
-migrate -path ./migrations -database "$DB_DSN" up
+migrate -path ./migrations -database "$DB_POSTGRESQL_WRITE_DSN" up
 ```
 
 ### JSONB Storage Structure
