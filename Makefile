@@ -609,8 +609,10 @@ test-conversations:
 test-response:
 	@echo "Running response API tests..."
 	@$(API_TEST) $(API_TEST_RESPONSES_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
 		--env-var "response_api_url=http://localhost:8000/responses" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
+		--timeout-request 120000 \
 		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Response API tests passed"
@@ -618,6 +620,7 @@ test-response:
 test-media:
 	@echo "Running media API tests..."
 	@$(API_TEST) $(API_TEST_MEDIA_COLLECTION) \
+		--env-var "kong_url=http://localhost:8000" \
 		--env-var "media_api_url=http://localhost:8000/media" \
 		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
 		$(API_TEST_FLAGS) \
@@ -629,6 +632,7 @@ test-mcp-integration:
 	@$(API_TEST) $(API_TEST_MCP_COLLECTION) \
 		--env-var "kong_url=http://localhost:8000" \
 		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
+		--env-var "searxng_url=http://localhost:8086" \
 		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " MCP integration tests passed"
@@ -638,6 +642,7 @@ test-memory:
 	@$(API_TEST) $(API_TEST_MEMORY_COLLECTION) \
 		--env-var "base_url=http://localhost:8090" \
 		--env-var "embedding_url=http://localhost:8091" \
+		--env-var "llm_api_url=http://localhost:8080" \
 		--env-var "user_id=user_test_001" \
 		--env-var "project_id=proj_test_001" \
 		--env-var "conversation_id=conv_test_001" \
