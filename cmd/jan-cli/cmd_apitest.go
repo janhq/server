@@ -65,6 +65,7 @@ type PostmanCollection struct {
 	} `json:"info"`
 	Item  []PostmanItem  `json:"item"`
 	Event []PostmanEvent `json:"event,omitempty"`
+	Auth  *PostmanAuth   `json:"auth,omitempty"`
 }
 
 type PostmanItem struct {
@@ -72,6 +73,7 @@ type PostmanItem struct {
 	Request  *PostmanRequest `json:"request,omitempty"`
 	Item     []PostmanItem   `json:"item,omitempty"`
 	Event    []PostmanEvent  `json:"event,omitempty"`
+	Auth     *PostmanAuth    `json:"auth,omitempty"`
 	Disabled bool            `json:"disabled,omitempty"`
 }
 
@@ -159,7 +161,7 @@ func runApiTest(cmd *cobra.Command, args []string) error {
 	totalStart := time.Now()
 
 	for _, item := range collection.Item {
-		itemResults := runItem(item, envMap, "")
+		itemResults := runItem(item, envMap, "", collection.Auth)
 		results = append(results, itemResults...)
 	}
 
@@ -178,7 +180,7 @@ func runApiTest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestResult {
+func runItem(item PostmanItem, envMap map[string]string, prefix string, parentAuth *PostmanAuth) []TestResult {
 	results := []TestResult{}
 
 	if item.Disabled {
@@ -193,8 +195,12 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 		if verbose {
 			fmt.Printf("\n📁 %s\n", item.Name)
 		}
+		effectiveAuth := parentAuth
+		if item.Auth != nil {
+			effectiveAuth = item.Auth
+		}
 		for _, subItem := range item.Item {
-			subResults := runItem(subItem, envMap, prefix+"  ")
+			subResults := runItem(subItem, envMap, prefix+"  ", effectiveAuth)
 			results = append(results, subResults...)
 		}
 		return results
@@ -208,6 +214,10 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 	result := TestResult{
 		Name:   item.Name,
 		Passed: true,
+	}
+
+	if envMap["access_token"] == "" {
+		envMap["access_token"] = firstNonEmpty(envMap["kc_admin_access_token"], envMap["guest_access_token"], envMap["llm_api_token"])
 	}
 
 	processPreRequestScripts(item, envMap)
@@ -259,8 +269,17 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 		req.Header.Set(header.Key, value)
 	}
 
-	if item.Request.Auth != nil && strings.EqualFold(item.Request.Auth.Type, "bearer") {
-		for _, entry := range item.Request.Auth.Bearer {
+	effectiveAuth := item.Request.Auth
+	if effectiveAuth == nil {
+		if item.Auth != nil {
+			effectiveAuth = item.Auth
+		} else {
+			effectiveAuth = parentAuth
+		}
+	}
+
+	if effectiveAuth != nil && strings.EqualFold(effectiveAuth.Type, "bearer") {
+		for _, entry := range effectiveAuth.Bearer {
 			if token, ok := entry["value"].(string); ok && token != "" {
 				req.Header.Set("Authorization", "Bearer "+replaceVariables(token, envMap))
 				break
@@ -339,6 +358,9 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string) []TestRe
 		statusAllowed = resp.StatusCode < 400
 	} else {
 		statusAllowed = intSliceContains(allowedStatusCodes, resp.StatusCode)
+		if !statusAllowed && resp.StatusCode == http.StatusCreated && intSliceContains(allowedStatusCodes, http.StatusOK) {
+			statusAllowed = true
+		}
 	}
 
 	if !statusAllowed {
@@ -671,6 +693,9 @@ func applyDefaultExtractions(responseData map[string]interface{}, envMap map[str
 		if envMap["llm_api_token"] == "" {
 			envMap["llm_api_token"] = token
 		}
+		if envMap["access_token"] == "" {
+			envMap["access_token"] = token
+		}
 	}
 
 	if envMap["model_id"] == "" {
@@ -731,15 +756,47 @@ func applyDefaultExtractions(responseData map[string]interface{}, envMap map[str
 			envMap["long_task_response_id"] = id
 		}
 	}
+
+	if envMap["provider_id"] == "" {
+		if id, ok := responseData["provider_id"].(string); ok && id != "" {
+			envMap["provider_id"] = id
+		} else if id, ok := responseData["id"].(string); ok && strings.HasPrefix(id, "prov_") {
+			envMap["provider_id"] = id
+		}
+		if envMap["provider_id"] == "" {
+			if dataArr, ok := responseData["data"].([]interface{}); ok && len(dataArr) > 0 {
+				if first, ok := dataArr[0].(map[string]interface{}); ok {
+					if id, ok := first["id"].(string); ok && strings.HasPrefix(id, "prov_") {
+						envMap["provider_id"] = id
+					} else if pid, ok := first["provider_id"].(string); ok && pid != "" {
+						envMap["provider_id"] = pid
+					}
+				}
+			}
+		}
+	}
+
+	if envMap["provider_public_id"] == "" {
+		if pid, ok := responseData["public_id"].(string); ok && pid != "" {
+			envMap["provider_public_id"] = pid
+		}
+		if envMap["provider_public_id"] == "" && envMap["provider_id"] != "" {
+			envMap["provider_public_id"] = envMap["provider_id"]
+		}
+	}
 }
 
 func ensureDefaultTokens(envMap map[string]string) {
+	ensureAdminToken(envMap)
 	if envMap["llm_api_token"] != "" {
 		return
 	}
 
 	if token := firstNonEmpty(envMap["guest_access_token"], envMap["kc_admin_access_token"], envMap["access_token"]); token != "" {
 		envMap["llm_api_token"] = token
+		if envMap["access_token"] == "" {
+			envMap["access_token"] = token
+		}
 		return
 	}
 
@@ -788,6 +845,69 @@ func ensureDefaultTokens(envMap map[string]string) {
 		envMap["kc_admin_access_token"] = token
 	}
 	envMap["llm_api_token"] = token
+	if envMap["access_token"] == "" {
+		envMap["access_token"] = token
+	}
+
+	ensureAdminToken(envMap)
+}
+
+func ensureAdminToken(envMap map[string]string) {
+	if envMap["kc_admin_access_token"] != "" {
+		return
+	}
+
+	adminUser := firstNonEmpty(envMap["keycloak_admin"], envMap["KEYCLOAK_ADMIN"], os.Getenv("KEYCLOAK_ADMIN"))
+	adminPass := firstNonEmpty(envMap["keycloak_admin_password"], envMap["KEYCLOAK_ADMIN_PASSWORD"], os.Getenv("KEYCLOAK_ADMIN_PASSWORD"))
+	if adminUser == "" || adminPass == "" {
+		return
+	}
+
+	kcURL := firstNonEmpty(envMap["keycloak_admin_url"], envMap["keycloak_base_url"], os.Getenv("KEYCLOAK_ADMIN_URL"), os.Getenv("KEYCLOAK_BASE_URL"))
+	if kcURL == "" {
+		kcURL = "http://localhost:8085"
+	}
+	tokenURL := strings.TrimSuffix(kcURL, "/") + "/realms/master/protocol/openid-connect/token"
+
+	form := url.Values{}
+	form.Set("grant_type", "password")
+	form.Set("client_id", "admin-cli")
+	form.Set("username", adminUser)
+	form.Set("password", adminPass)
+
+	req, err := http.NewRequest(http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		return
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return
+	}
+	token, _ := payload["access_token"].(string)
+	if token == "" {
+		return
+	}
+	envMap["kc_admin_access_token"] = token
+	if envMap["access_token"] == "" {
+		envMap["access_token"] = token
+	}
 }
 
 func firstNonEmpty(values ...string) string {
