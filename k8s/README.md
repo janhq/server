@@ -210,7 +210,12 @@ postgresql:
 ```yaml
 llmApi:
   env:
-    JAN_DEFAULT_NODE_SETUP: "false"  # Disable if no Jan provider available
+    VLLM_ENABLED: "true"
+    VLLM_PROVIDER_URL: "http://localhost:8101/v1"
+    REMOTE_LLM_ENABLED: "false"
+    REMOTE_LLM_PROVIDER_URL: ""
+    REMOTE_API_KEY: ""
+    JAN_PROVIDER_CONFIGS: "true"
     DB_POSTGRESQL_WRITE_DSN: "postgres://..."   # Auto-configured via secret
     KEYCLOAK_BASE_URL: "http://..."  # Auto-configured
     BACKEND_CLIENT_ID: "llm-api"

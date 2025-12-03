@@ -57,10 +57,7 @@ type Config struct {
 
 	// Model Provider
 	ModelProviderSecret       string                   `env:"MODEL_PROVIDER_SECRET" envDefault:"jan-model-provider-secret-2024"`
-	JanDefaultNodeSetup       bool                     `env:"JAN_DEFAULT_NODE_SETUP" envDefault:"true"`
-	JanDefaultNodeURL         string                   `env:"JAN_DEFAULT_NODE_URL" envDefault:"http://localhost:8101/v1"`
-	JanDefaultNodeAPIKey      string                   `env:"JAN_DEFAULT_NODE_API_KEY" envDefault:"changeme"`
-	JanProviderConfigsEnabled bool                     `env:"JAN_PROVIDER_CONFIGS" envDefault:"false"`
+	JanProviderConfigsEnabled bool                     `env:"JAN_PROVIDER_CONFIGS" envDefault:"true"`
 	JanProviderConfigSet      string                   `env:"JAN_PROVIDER_CONFIG_SET" envDefault:"default"`
 	JanProviderConfigFile     string                   `env:"JAN_PROVIDER_CONFIGS_FILE"`
 	ProviderBootstrap         *ProviderBootstrapConfig `env:"-"`

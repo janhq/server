@@ -213,8 +213,14 @@ BACKEND_CLIENT_ID=llm-api
 BACKEND_CLIENT_SECRET=your-secret
 CLIENT=jan-client
 
-# Optional
-JAN_DEFAULT_NODE_SETUP=false  # Disable if no Jan provider
+# Provider toggles
+VLLM_ENABLED=true
+VLLM_PROVIDER_URL=http://localhost:8101/v1
+REMOTE_LLM_ENABLED=false
+REMOTE_LLM_PROVIDER_URL=
+REMOTE_API_KEY=
+JAN_PROVIDER_CONFIGS=true
+JAN_PROVIDER_CONFIG_SET=default
 HTTP_PORT=8080
 LOG_LEVEL=debug
 ```
