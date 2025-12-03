@@ -1,4 +1,4 @@
-# Jan Server Roadmap - Compact Edition
+# Jan Server Roadmap 
 
 > **TL;DR:** Building an AI-powered todo/notes app with autonomous agents that can research, plan, write, and collaborate. Open source core + commercial Enterprise Edition. Powered by local Jan models (jan-v2, jan-v3).
 
@@ -15,6 +15,16 @@
 
 **Model Strategy:** Jan models first - optimized for agentic workflows with fine-tuning for planning and reflection. Remote providers as optional fallback.
 
+**Self-hosted AI**
+We are building **local-first AI infrastructure**:
+
+- Users should be able to run useful AI workloads on low-spec machines.
+- Teams and companies should be able to run scalable, multi-user AI backends on their own servers.
+- The **same OpenAI-compatible API** should work in both cases (and in tests against cloud backends).
+
+Cloud is supported, but the **future is local AI setup**:
+- Local inference is the default.
+- Remote endpoints are helpers for testing/benchmarking/overflow — not a requirement.
 ---
 
 ## Architecture
@@ -28,8 +38,52 @@
 - Team collaboration, SSO, RBAC
 - Enterprise features (on-premise, custom SLAs)
 
+**Local inference is mandatory** 
+- Every valid Jan Server deployment must have **at least one local model runtime** configured.
+- The system should **start and remain usable offline** as long as local models are available.
+- Remote endpoints (OpenAI, Together, company cloud Jan, etc.) are optional extras.
 ---
 
+
+### 2. Two local setups: Lite vs Heavy (both with local inference)
+
+### A. Lightweight local setup (low hardware, but still offline-capable)
+
+Target: laptops, NUCs, old desktops, maybe 8–16 GB RAM, no big GPU.
+
+**Characteristics:**
+
+* One **small, quantized model** (e.g. 7B/8B, Q4/Q5) running locally.
+* CPU or tiny GPU/NPU backend (lite vllm via Jan, etc.).
+* Minimal services:
+
+  * `llm-api` with a **“lite” runtime** (llama.cpp-style)
+  * `response-api` (optional, depending how integrated you want tools/agents)
+  * Local storage (SQLite or embedded DB)
+* Skips:
+
+  * Kong / Keycloak / full auth stack
+  * Heavy observability
+
+
+### B. Heavy local setup (company / homelab server)
+
+Target: multi-user, multi-model, GPUs, bigger RAM. Still **no requirement** for external APIs.
+
+**Characteristics:**
+
+* vLLM or similar GPU runtime(s)
+* Multiple local models:
+
+  * Small fast ones
+  * Big accurate ones
+* Full stack:
+
+  * Kong gateway
+  * Keycloak / SSO
+  * `llm-api`, `response-api`, `media-api`, `mcp-tools`
+  * Monitoring (Prometheus / Grafana / Jaeger)
+---
 ## Roadmap (2026 Focus)
 
 ### Phase 1: Foundation (Completed - Q4 2025)
