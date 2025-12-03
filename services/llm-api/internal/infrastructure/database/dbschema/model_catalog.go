@@ -24,6 +24,7 @@ type ModelCatalog struct {
 	Active              *bool          `gorm:"default:true;index;index:idx_model_catalog_status_active,priority:2"`
 	Status              string         `gorm:"size:32;not null;default:'init';index;index:idx_model_catalog_status_active,priority:1"`
 	Extras              datatypes.JSON `gorm:"type:jsonb"`
+	Experimental        *bool          `gorm:"not null;default:false;index"`
 	// Capabilities (moved from provider_model)
 	SupportsImages     *bool  `gorm:"not null;default:false;index"`
 	SupportsEmbeddings *bool  `gorm:"not null;default:false;index"`
@@ -72,6 +73,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 	supportsReasoning := m.SupportsReasoning
 	supportsAudio := m.SupportsAudio
 	supportsVideo := m.SupportsVideo
+	experimental := m.Experimental
 
 	return &ModelCatalog{
 		BaseModel: BaseModel{
@@ -88,6 +90,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		Active:              m.Active,
 		Status:              status,
 		Extras:              extrasJSON,
+		Experimental:        &experimental,
 		SupportsImages:      &supportsImages,
 		SupportsEmbeddings:  &supportsEmbeddings,
 		SupportsReasoning:   &supportsReasoning,
@@ -125,6 +128,11 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 		if err := json.Unmarshal(m.Extras, &extras); err != nil {
 			return nil, err
 		}
+	}
+
+	experimental := false
+	if m.Experimental != nil {
+		experimental = *m.Experimental
 	}
 
 	supportsImages := false
@@ -165,6 +173,7 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 			}
 			return status
 		}(),
+		Experimental:       experimental,
 		SupportsImages:     supportsImages,
 		SupportsEmbeddings: supportsEmbeddings,
 		SupportsReasoning:  supportsReasoning,

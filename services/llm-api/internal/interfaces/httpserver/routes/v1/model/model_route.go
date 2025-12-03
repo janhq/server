@@ -7,6 +7,7 @@ import (
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
+	middleware "jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
 	modelresponses "jan-server/services/llm-api/internal/interfaces/httpserver/responses/model"
 	modelProvider "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
@@ -127,5 +128,18 @@ func (route *ModelRoute) GetModelCatalog(reqCtx *gin.Context) {
 		return
 	}
 
+	// Enforce experimental access based on feature flag
+	if shouldHideExperimental(reqCtx, catalog) {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeNotFound, "model catalog not found", "c9abaf8c-f1a2-4f7a-8f04-7f0c83f3d987")
+		return
+	}
+
 	reqCtx.JSON(http.StatusOK, catalog)
+}
+
+func shouldHideExperimental(c *gin.Context, catalog *modelresponses.ModelCatalogResponse) bool {
+	if catalog == nil {
+		return false
+	}
+	return catalog.Experimental && !middleware.FeatureEnabled(c, "experimental_models")
 }

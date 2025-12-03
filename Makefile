@@ -64,6 +64,7 @@ API_TEST_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
 API_TEST_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
 API_TEST_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
 API_TEST_MODEL_MANAGEMENT_COLLECTION = tests/automation/model-management-postman-scripts.json
+API_TEST_USER_MANAGEMENT_COLLECTION = tests/automation/user-management-postman-scripts.json
 API_TEST_E2E_COLLECTION = tests/automation/test-all.postman.json
 
 # Test Options
@@ -649,6 +650,24 @@ test-memory:
 		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Memory-tools integration tests passed"
+
+test-user-management:
+	@echo "Running user management tests..."
+ifeq ($(OS),Windows_NT)
+	@set ADMIN_BYPASS=true && set DISABLE_ADMIN_AUTH=true && $(API_TEST) $(API_TEST_USER_MANAGEMENT_COLLECTION) \
+		--env-var "base_url=http://localhost:8000" \
+		--env-var "kong_url=http://localhost:8000" \
+		$(API_TEST_FLAGS) \
+		--reporters cli
+else
+	@ADMIN_BYPASS=true DISABLE_ADMIN_AUTH=true $(API_TEST) $(API_TEST_USER_MANAGEMENT_COLLECTION) \
+		--env-var "base_url=http://localhost:8000" \
+		--env-var "kong_url=http://localhost:8000" \
+		$(API_TEST_FLAGS) \
+		--reporters cli
+endif
+	@echo " User management tests passed"
+
 
 test-model-management:
 	@echo "Running model management tests..."

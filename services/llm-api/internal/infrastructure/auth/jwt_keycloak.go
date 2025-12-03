@@ -24,7 +24,10 @@ type PrincipalClaims struct {
 	Name              string
 	Picture           string
 	Roles             []string
+	Groups            []string
+	FeatureFlags      []string
 	Scopes            []string
+	Attributes        map[string]any
 	ExpiresAt         time.Time
 	IssuedAt          time.Time
 	NotBefore         time.Time
@@ -232,6 +235,14 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		scopes = strings.Split(scopeStr, " ")
 	}
 
+	groups := extractStringSlice(mapClaims["groups"])
+	featureFlags := extractStringSlice(mapClaims["feature_flags"])
+
+	var attributes map[string]any
+	if rawAttrs, ok := mapClaims["attributes"].(map[string]any); ok && len(rawAttrs) > 0 {
+		attributes = rawAttrs
+	}
+
 	expires := jwtNumericTime(mapClaims["exp"])
 	issued := jwtNumericTime(mapClaims["iat"])
 	notBefore := jwtNumericTime(mapClaims["nbf"])
@@ -253,6 +264,9 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		Picture:           picture,
 		Roles:             roles,
 		Scopes:            scopes,
+		Groups:            groups,
+		FeatureFlags:      featureFlags,
+		Attributes:        attributes,
 		ExpiresAt:         expires,
 		IssuedAt:          issued,
 		NotBefore:         notBefore,
@@ -260,6 +274,26 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		Audience:          audiences,
 		AuthorizedParty:   azp,
 	}, nil
+}
+
+func extractStringSlice(value any) []string {
+	if value == nil {
+		return nil
+	}
+
+	switch raw := value.(type) {
+	case []any:
+		out := make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	case []string:
+		return raw
+	}
+	return nil
 }
 
 // Ready indicates whether JWKS has been successfully loaded.

@@ -65,6 +65,18 @@ func PrincipalFromContext(c *gin.Context) (domain.Principal, bool) {
 
 func setPrincipal(c *gin.Context, principal domain.Principal) {
 	c.Set(principalContextKey, principal)
+	// expose commonly-used identity values for downstream handlers
+	c.Set("user_id", principal.ID)
+	c.Set("user_email", principal.Email)
+	if len(principal.Groups) > 0 {
+		c.Set("user_groups", principal.Groups)
+	}
+	if len(principal.FeatureFlags) > 0 {
+		c.Set("feature_flags", principal.FeatureFlags)
+	}
+	if len(principal.Roles) > 0 {
+		c.Set("realm_roles", principal.Roles)
+	}
 	c.Request.Header.Set("X-Principal-Id", principal.ID)
 	c.Request.Header.Set("X-Auth-Method", string(principal.AuthMethod))
 	if principal.ID != "" {
@@ -187,6 +199,10 @@ func principalFromJWT(c *gin.Context, validator *authvalidator.KeycloakValidator
 		Username:        claims.PreferredUsername,
 		Email:           claims.Email,
 		Name:            claims.Name,
+		Roles:           claims.Roles,
+		Groups:          claims.Groups,
+		FeatureFlags:    claims.FeatureFlags,
+		Attributes:      claims.Attributes,
 		Scopes:          claims.Scopes,
 		Credentials:     credentials,
 	}, true, nil

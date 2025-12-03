@@ -40,6 +40,9 @@ func (repo *ModelCatalogGormRepository) applyFilter(query *gormgen.Query, sql go
 	if filter.Status != nil {
 		sql = sql.Where(query.ModelCatalog.Status.Eq(string(*filter.Status)))
 	}
+	if filter.Experimental != nil {
+		sql = sql.Where(query.ModelCatalog.Experimental.Is(*filter.Experimental))
+	}
 	return sql
 }
 

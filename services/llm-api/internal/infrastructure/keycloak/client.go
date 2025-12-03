@@ -878,6 +878,26 @@ type KeycloakUser struct {
 	Roles     []string `json:"roles,omitempty"`
 }
 
+// AdminUserRequest represents admin user create/update payload.
+type AdminUserRequest struct {
+	Username string           `json:"username,omitempty"`
+	Email    string           `json:"email,omitempty"`
+	First    string           `json:"firstName,omitempty"`
+	Last     string           `json:"lastName,omitempty"`
+	Enabled  *bool            `json:"enabled,omitempty"`
+	Attrs    map[string][]any `json:"attributes,omitempty"`
+	Roles    []string         `json:"roles,omitempty"`
+	Groups   []string         `json:"groups,omitempty"`
+	Password *string          `json:"password,omitempty"`
+}
+
+type Group struct {
+	ID         string           `json:"id"`
+	Name       string           `json:"name"`
+	Path       string           `json:"path"`
+	Attributes map[string][]any `json:"attributes,omitempty"`
+}
+
 // GetUserBySubject retrieves a user from Keycloak by their subject (user ID)
 func (c *Client) GetUserBySubject(ctx context.Context, subject string) (*KeycloakUser, error) {
 	if strings.TrimSpace(subject) == "" {
@@ -1016,4 +1036,496 @@ func getBool(m map[string]any, key string) bool {
 		}
 	}
 	return false
+}
+
+// adminAuthToken returns a bearer token for admin operations.
+func (c *Client) adminAuthToken(ctx context.Context) (string, error) {
+	serviceToken, err := c.serviceAccountToken(ctx)
+	if err != nil {
+		return "", err
+	}
+	return c.adminAccessToken(ctx, serviceToken.AccessToken), nil
+}
+
+// ---- Admin User Operations ----
+
+// ListUsers returns users with pagination.
+func (c *Client) ListUsers(ctx context.Context, first, max int) ([]KeycloakUser, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/users?first=%d&max=%d", first, max)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("list users failed: %s", strings.TrimSpace(string(payload)))
+	}
+
+	var raw []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+
+	var users []KeycloakUser
+	for _, u := range raw {
+		users = append(users, KeycloakUser{
+			ID:        getString(u, "id"),
+			Username:  getString(u, "username"),
+			Email:     getString(u, "email"),
+			FirstName: getString(u, "firstName"),
+			LastName:  getString(u, "lastName"),
+			Enabled:   getBool(u, "enabled"),
+		})
+	}
+	return users, nil
+}
+
+// GetUser returns a single user.
+func (c *Client) GetUser(ctx context.Context, id string) (*KeycloakUser, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint("/users/"+url.PathEscape(id)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("get user failed: %s", strings.TrimSpace(string(payload)))
+	}
+	var u KeycloakUser
+	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// CreateUser creates a user and returns the ID.
+func (c *Client) CreateUser(ctx context.Context, req AdminUserRequest) (string, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return "", err
+	}
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.adminEndpoint("/users"), bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return "", fmt.Errorf("create user failed: %s", strings.TrimSpace(string(payload)))
+	}
+	id := extractIDFromLocation(resp.Header.Get("Location"))
+	return id, nil
+}
+
+// UpdateUser updates user properties.
+func (c *Client) UpdateUser(ctx context.Context, id string, req AdminUserRequest) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	if req.Username == "" {
+		existing, err := c.GetUser(ctx, id)
+		if err != nil {
+			return err
+		}
+		req.Username = existing.Username
+		if req.Email == "" {
+			req.Email = existing.Email
+		}
+	}
+	body, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPut, c.adminEndpoint("/users/"+url.PathEscape(id)), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("update user failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+// DeleteUser deletes the user.
+func (c *Client) DeleteUser(ctx context.Context, id string) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.adminEndpoint("/users/"+url.PathEscape(id)), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("delete user failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+// SetUserEnabled toggles enabled flag.
+func (c *Client) SetUserEnabled(ctx context.Context, id string, enabled bool) error {
+	current, err := c.GetUser(ctx, id)
+	if err != nil {
+		return err
+	}
+	req := AdminUserRequest{
+		Username: current.Username,
+		Email:    current.Email,
+		Enabled:  &enabled,
+	}
+	return c.UpdateUser(ctx, id, req)
+}
+
+// AssignRealmRole adds a realm role to a user.
+func (c *Client) AssignRealmRole(ctx context.Context, userID, roleName string) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	role, err := c.getRealmRole(ctx, token, roleName)
+	if err != nil {
+		return err
+	}
+	body, err := json.Marshal([]map[string]any{role})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.adminEndpoint(fmt.Sprintf("/users/%s/role-mappings/realm", url.PathEscape(userID))), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("assign role failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+// RemoveRealmRole removes a realm role from a user.
+func (c *Client) RemoveRealmRole(ctx context.Context, userID, roleName string) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	role, err := c.getRealmRole(ctx, token, roleName)
+	if err != nil {
+		return err
+	}
+	body, err := json.Marshal([]map[string]any{role})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.adminEndpoint(fmt.Sprintf("/users/%s/role-mappings/realm", url.PathEscape(userID))), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("remove role failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+// ---- Group operations ----
+
+func (c *Client) ListGroups(ctx context.Context, first, max int) ([]Group, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/groups?first=%d&max=%d", first, max)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("list groups failed: %s", strings.TrimSpace(string(payload)))
+	}
+	var raw []Group
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func (c *Client) GetGroup(ctx context.Context, id string) (*Group, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint("/groups/"+url.PathEscape(id)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("get group failed: %s", strings.TrimSpace(string(payload)))
+	}
+	var g Group
+	if err := json.NewDecoder(resp.Body).Decode(&g); err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
+func (c *Client) CreateGroup(ctx context.Context, name string) (string, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return "", err
+	}
+	body, _ := json.Marshal(map[string]string{"name": name})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.adminEndpoint("/groups"), bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return "", fmt.Errorf("create group failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return extractIDFromLocation(resp.Header.Get("Location")), nil
+}
+
+func (c *Client) UpdateGroup(ctx context.Context, id, name string, attributes map[string][]any) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	body, _ := json.Marshal(map[string]any{
+		"name":       name,
+		"attributes": attributes,
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.adminEndpoint("/groups/"+url.PathEscape(id)), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("update group failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+func (c *Client) DeleteGroup(ctx context.Context, id string) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.adminEndpoint("/groups/"+url.PathEscape(id)), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("delete group failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+func (c *Client) ListGroupMembers(ctx context.Context, groupID string, first, max int) ([]KeycloakUser, error) {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/groups/%s/members?first=%d&max=%d", url.PathEscape(groupID), first, max)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("list group members failed: %s", strings.TrimSpace(string(payload)))
+	}
+	var raw []KeycloakUser
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func (c *Client) AddUserToGroup(ctx context.Context, userID, groupID string) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.adminEndpoint(fmt.Sprintf("/users/%s/groups/%s", url.PathEscape(userID), url.PathEscape(groupID))), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("add user to group failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+func (c *Client) RemoveUserFromGroup(ctx context.Context, userID, groupID string) error {
+	token, err := c.adminAuthToken(ctx)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.adminEndpoint(fmt.Sprintf("/users/%s/groups/%s", url.PathEscape(userID), url.PathEscape(groupID))), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("remove user from group failed: %s", strings.TrimSpace(string(payload)))
+	}
+	return nil
+}
+
+func (c *Client) GetGroupAttributes(ctx context.Context, groupID string) (map[string][]any, error) {
+	group, err := c.GetGroup(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	return group.Attributes, nil
+}
+
+func (c *Client) SetGroupAttributes(ctx context.Context, groupID string, attrs map[string][]any) error {
+	group, err := c.GetGroup(ctx, groupID)
+	if err != nil {
+		return err
+	}
+	return c.UpdateGroup(ctx, groupID, group.Name, attrs)
+}
+
+// Feature flag helpers (group attributes)
+func (c *Client) GetGroupFeatureFlags(ctx context.Context, groupID string) ([]string, error) {
+	attrs, err := c.GetGroupAttributes(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	raw := attrs["feature_flags"]
+	flags := make([]string, 0, len(raw))
+	for _, v := range raw {
+		if s, ok := v.(string); ok {
+			flags = append(flags, s)
+		}
+	}
+	return flags, nil
+}
+
+func (c *Client) SetGroupFeatureFlags(ctx context.Context, groupID string, flags []string) error {
+	attrVals := make([]any, 0, len(flags))
+	for _, f := range flags {
+		attrVals = append(attrVals, f)
+	}
+	return c.SetGroupAttributes(ctx, groupID, map[string][]any{
+		"feature_flags": attrVals,
+	})
 }

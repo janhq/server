@@ -41,6 +41,7 @@ func newModelCatalog(db *gorm.DB, opts ...gen.DOOption) modelCatalog {
 	_modelCatalog.Active = field.NewBool(tableName, "active")
 	_modelCatalog.Status = field.NewString(tableName, "status")
 	_modelCatalog.Extras = field.NewField(tableName, "extras")
+	_modelCatalog.Experimental = field.NewBool(tableName, "experimental")
 
 	_modelCatalog.fillFieldMap()
 
@@ -64,6 +65,7 @@ type modelCatalog struct {
 	Active              field.Bool
 	Status              field.String
 	Extras              field.Field
+	Experimental        field.Bool
 
 	fieldMap map[string]field.Expr
 }
@@ -93,6 +95,7 @@ func (m *modelCatalog) updateTableName(table string) *modelCatalog {
 	m.Active = field.NewBool(table, "active")
 	m.Status = field.NewString(table, "status")
 	m.Extras = field.NewField(table, "extras")
+	m.Experimental = field.NewBool(table, "experimental")
 
 	m.fillFieldMap()
 
@@ -109,7 +112,7 @@ func (m *modelCatalog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (m *modelCatalog) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 13)
+	m.fieldMap = make(map[string]field.Expr, 14)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
@@ -123,6 +126,7 @@ func (m *modelCatalog) fillFieldMap() {
 	m.fieldMap["active"] = m.Active
 	m.fieldMap["status"] = m.Status
 	m.fieldMap["extras"] = m.Extras
+	m.fieldMap["experimental"] = m.Experimental
 }
 
 func (m modelCatalog) clone(db *gorm.DB) modelCatalog {

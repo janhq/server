@@ -42,6 +42,7 @@ type ModelCatalog struct {
 	Active              *bool               `json:"active,omitempty"`
 	Extras              map[string]any      `json:"extras,omitempty"`
 	Status              ModelCatalogStatus  `json:"status"`
+	Experimental        bool                `json:"experimental"`
 	// Capabilities (moved from provider_model)
 	SupportsImages     bool   `json:"supports_images"`
 	SupportsEmbeddings bool   `json:"supports_embeddings"`
@@ -62,6 +63,7 @@ type ModelCatalogFilter struct {
 	Status             *ModelCatalogStatus
 	LastSyncedAfter    *time.Time
 	LastSyncedBefore   *time.Time
+	Experimental       *bool
 	SupportsImages     *bool
 	SupportsEmbeddings *bool
 	SupportsReasoning  *bool

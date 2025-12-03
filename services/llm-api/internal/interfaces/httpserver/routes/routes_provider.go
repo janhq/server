@@ -4,6 +4,7 @@ import (
 	"github.com/google/wire"
 
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers"
+	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
@@ -40,6 +41,9 @@ var RouteProvider = wire.NewSet(
 	modelhandler.NewModelHandler,
 	modelhandler.NewModelCatalogHandler,
 	modelhandler.NewProviderModelHandler,
+	adminhandler.NewAdminUserHandler,
+	adminhandler.NewAdminGroupHandler,
+	adminhandler.NewFeatureFlagHandler,
 	projecthandler.NewProjectHandler,
 	usersettingshandler.NewUserSettingsHandler,
 

@@ -345,6 +345,10 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 	}
 
 	extras := copyMap(model.Raw)
+	experimental := false
+	if val, ok := model.Raw["experimental"].(bool); ok {
+		experimental = val
+	}
 
 	// Extract capabilities (moved from provider_model)
 	inputModalities := extractStringSliceFromMap(model.Raw, "architecture", "input_modalities")
@@ -366,6 +370,7 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 		IsModerated:         isModerated,
 		Extras:              extras,
 		Status:              status,
+		Experimental:        experimental,
 		SupportsImages:      supportsImages,
 		SupportsEmbeddings:  supportsEmbeddings,
 		SupportsReasoning:   supportsReasoning,
