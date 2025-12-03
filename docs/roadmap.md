@@ -44,12 +44,11 @@ Cloud is supported, but the **future is local AI setup**:
 - Remote endpoints (OpenAI, Together, company cloud Jan, etc.) are optional extras.
 ---
 
-
 ### 2. Two local setups: Lite vs Heavy (both with local inference)
 
 ### A. Lightweight local setup (low hardware, but still offline-capable)
 
-Target: laptops, NUCs, old desktops, maybe 8–16 GB RAM, no big GPU.
+Target: laptops, NUCs, old desktops, maybe 8–16 GB VRAM,
 
 **Characteristics:**
 
@@ -57,7 +56,7 @@ Target: laptops, NUCs, old desktops, maybe 8–16 GB RAM, no big GPU.
 * CPU or tiny GPU/NPU backend (lite vllm via Jan, etc.).
 * Minimal services:
 
-  * `llm-api` with a **“lite” runtime** (llama.cpp-style)
+  * `llm-api` with a **“lite” runtime** (vllm style)
   * `response-api` (optional, depending how integrated you want tools/agents)
   * Local storage (SQLite or embedded DB)
 * Skips:
