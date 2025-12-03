@@ -492,8 +492,8 @@ func (c *Client) exchangeForUser(ctx context.Context, adminToken, userID string)
 	if c.clientID != "" {
 		values.Set("audience", c.clientID)
 	}
-	// Request tokens scoped for the frontend client so they pass audience/azp validation
-	values.Set("scope", "openid profile email")
+	// Request minimal scope so realms without profile/email still work
+	values.Set("scope", "openid")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.tokenEndpoint(), strings.NewReader(values.Encode()))
 	if err != nil {

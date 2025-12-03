@@ -224,7 +224,21 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		if rawRoles, ok := realmAccess["roles"].([]interface{}); ok {
 			for _, role := range rawRoles {
 				if s, ok := role.(string); ok {
-					roles = append(roles, s)
+					roles = appendUnique(roles, s)
+				}
+			}
+		}
+	}
+	// Include client-level roles as well (resource_access.<client>.roles)
+	if resourceAccess, ok := mapClaims["resource_access"].(map[string]any); ok {
+		for _, entry := range resourceAccess {
+			if clientMap, ok := entry.(map[string]any); ok {
+				if rawRoles, ok := clientMap["roles"].([]interface{}); ok {
+					for _, role := range rawRoles {
+						if s, ok := role.(string); ok {
+							roles = appendUnique(roles, s)
+						}
+					}
 				}
 			}
 		}
@@ -294,6 +308,15 @@ func extractStringSlice(value any) []string {
 		return raw
 	}
 	return nil
+}
+
+func appendUnique(slice []string, item string) []string {
+	for _, existing := range slice {
+		if existing == item {
+			return slice
+		}
+	}
+	return append(slice, item)
 }
 
 // Ready indicates whether JWKS has been successfully loaded.
