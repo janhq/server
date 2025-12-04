@@ -96,7 +96,7 @@ func (s *ProviderModelService) UpsertProviderModelWithOptions(ctx context.Contex
 
 	if len(existing) > 0 {
 		pm := existing[0]
-		updateProviderModelFromRaw(pm, provider, catalogID, model)
+		updateProviderModelFromRaw(pm, provider, catalog, model)
 		if err := pm.Validate(); err != nil {
 			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, err.Error(), nil, "validation-failed")
 		}
@@ -209,6 +209,14 @@ func (s *ProviderModelService) BatchUpdateActive(ctx context.Context, filter Pro
 	return rowsAffected, nil
 }
 
+func (s *ProviderModelService) BatchUpdateModelDisplayName(ctx context.Context, filter ProviderModelFilter, modelDisplayName string) (int64, error) {
+	rowsAffected, err := s.providerModelRepo.BatchUpdateModelDisplayName(ctx, filter, modelDisplayName)
+	if err != nil {
+		return 0, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to batch update model display name")
+	}
+	return rowsAffected, nil
+}
+
 func buildProviderModelFromRaw(provider *Provider, catalogID *uint, model chat.Model) *ProviderModel {
 	log := logger.GetLogger()
 
@@ -271,10 +279,22 @@ func buildProviderModelFromRaw(provider *Provider, catalogID *uint, model chat.M
 	return pm
 }
 
-func updateProviderModelFromRaw(pm *ProviderModel, provider *Provider, catalogID *uint, model chat.Model) {
+func updateProviderModelFromRaw(pm *ProviderModel, provider *Provider, catalog *ModelCatalog, model chat.Model) {
 	pm.Kind = ProviderKind(provider.Kind) // Update Kind field to match provider
-	pm.ModelCatalogID = catalogID
-	pm.ModelDisplayName = getModelDisplayName(model)
+
+	// Update catalog ID
+	if catalog != nil {
+		pm.ModelCatalogID = &catalog.ID
+	} else {
+		pm.ModelCatalogID = nil
+	}
+
+	// Only update ModelDisplayName if catalog hasn't been manually updated
+	// If catalog.Status == "updated", preserve existing ModelDisplayName to respect admin changes
+	if catalog == nil || catalog.Status != ModelCatalogStatusUpdated {
+		pm.ModelDisplayName = getModelDisplayName(model)
+	}
+	// else: preserve existing pm.ModelDisplayName
 
 	// Only update pricing if new data is available (preserve existing pricing)
 	newPricing := extractPricing(model.Raw["pricing"])

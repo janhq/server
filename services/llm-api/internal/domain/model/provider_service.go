@@ -345,10 +345,11 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 }
 
 func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, provider *Provider, models []chat.Model, autoEnableNewModels bool) ([]*ProviderModel, error) {
+	log := logger.GetLogger()
+
 	// Batch upsert catalogs (eliminates N+1 queries)
 	catalogs, createdFlags, err := s.modelCatalogService.BatchUpsertCatalogs(ctx, provider, models)
 	if err != nil {
-		log := logger.GetLogger()
 		log.Error().
 			Str("provider", provider.DisplayName).
 			Err(err).
@@ -356,14 +357,33 @@ func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, pro
 		return nil, err
 	}
 
-	// Process provider models
+	// Batch fetch existing provider models to check what already exists
+	existingModels, err := s.providerModelService.FindByFilter(ctx, ProviderModelFilter{
+		ProviderID: ptr.ToUint(provider.ID),
+	})
+	if err != nil {
+		log.Error().
+			Str("provider", provider.DisplayName).
+			Err(err).
+			Msg("failed to fetch existing provider models")
+		return nil, err
+	}
+
+	// Build a map of existing modelPublicIDs for fast lookup
+	existingModelPublicIDs := make(map[string]bool)
+	for _, existingModel := range existingModels {
+		existingModelPublicIDs[existingModel.ModelPublicID] = true
+	}
+
+	// Process provider models - only insert new ones
 	results := make([]*ProviderModel, 0, len(models))
+	skippedCount := 0
+
 	for _, model := range models {
 		// Get catalog from batch results
 		publicID := catalogPublicID(provider.Kind, model.ID, model.CanonicalSlug)
 		catalog, exists := catalogs[publicID]
 		if !exists || catalog == nil {
-			log := logger.GetLogger()
 			log.Warn().
 				Str("model_id", model.ID).
 				Str("public_id", publicID).
@@ -372,10 +392,20 @@ func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, pro
 			continue
 		}
 
+		// Generate ModelPublicID to check if it already exists
+		kind := ProviderKind(provider.Kind)
+		modelPublicID := NormalizeModelKey(kind, model.ID)
+
+		// Skip if model already exists in provider_models
+		if existingModelPublicIDs[modelPublicID] {
+			skippedCount++
+			continue
+		}
+
+		// Only create new models
 		shouldAutoEnable := autoEnableNewModels && createdFlags[publicID]
 		providerModel, err := s.providerModelService.UpsertProviderModelWithOptions(ctx, provider, catalog, model, shouldAutoEnable)
 		if err != nil {
-			log := logger.GetLogger()
 			log.Error().
 				Str("model_id", model.ID).
 				Str("provider", provider.DisplayName).
@@ -384,6 +414,14 @@ func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, pro
 			continue
 		}
 		results = append(results, providerModel)
+	}
+
+	if skippedCount > 0 {
+		log.Info().
+			Str("provider", provider.DisplayName).
+			Int("skipped", skippedCount).
+			Int("created", len(results)).
+			Msg("skipped existing models during sync")
 	}
 
 	now := time.Now().UTC()

@@ -133,4 +133,5 @@ type ProviderModelRepository interface {
 	FindByFilter(ctx context.Context, filter ProviderModelFilter, p *query.Pagination) ([]*ProviderModel, error)
 	Count(ctx context.Context, filter ProviderModelFilter) (int64, error)
 	BatchUpdateActive(ctx context.Context, filter ProviderModelFilter, active bool) (int64, error)
+	BatchUpdateModelDisplayName(ctx context.Context, filter ProviderModelFilter, modelDisplayName string) (int64, error)
 }

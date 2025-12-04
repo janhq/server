@@ -171,3 +171,14 @@ func (repo *ProviderModelGormRepository) BatchUpdateActive(ctx context.Context, 
 	}
 	return result.RowsAffected, nil
 }
+
+func (repo *ProviderModelGormRepository) BatchUpdateModelDisplayName(ctx context.Context, filter domainmodel.ProviderModelFilter, modelDisplayName string) (int64, error) {
+	query := repo.db.GetQuery(ctx)
+	sql := query.ProviderModel.WithContext(ctx)
+	sql = repo.applyFilter(query, sql, filter)
+	result, err := sql.Update(query.ProviderModel.ModelDisplayName, modelDisplayName)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected, nil
+}

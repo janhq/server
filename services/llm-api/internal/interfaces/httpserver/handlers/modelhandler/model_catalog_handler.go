@@ -101,6 +101,16 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	}
 	if req.ModelDisplayName != nil {
 		catalog.ModelDisplayName = *req.ModelDisplayName
+		// Update model_display_name in all provider_models that reference this catalog
+		if catalog.ID != 0 {
+			filter := domainmodel.ProviderModelFilter{
+				ModelCatalogID: &catalog.ID,
+			}
+			_, err := h.providerModelService.BatchUpdateModelDisplayName(ctx, filter, *req.ModelDisplayName)
+			if err != nil {
+				return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update provider models display name")
+			}
+		}
 	}
 	if req.ContextLength != nil {
 		val := int(*req.ContextLength)
