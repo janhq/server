@@ -65,8 +65,8 @@ func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requ
 	return modelresponses.BuildProviderResponseWithModels(result, syncModels), nil
 }
 
-func (providerHandler *ProviderHandler) GetAllProviders(ctx context.Context) ([]modelresponses.ProviderWithModelCountResponse, error) {
-	providers, err := providerHandler.providerService.FindAllProviders(ctx)
+func (providerHandler *ProviderHandler) GetAllProviders(ctx context.Context, filter domainmodel.ProviderFilter) ([]modelresponses.ProviderWithModelCountResponse, error) {
+	providers, err := providerHandler.providerService.FindProviders(ctx, filter)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get providers")
 	}

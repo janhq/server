@@ -34,10 +34,13 @@ const (
 type ModelCatalog struct {
 	ID                  uint                `json:"id"`
 	PublicID            string              `json:"public_id"`
+	ModelDisplayName    string              `json:"model_display_name,omitempty"`
+	Description         *string             `json:"description,omitempty"`
 	SupportedParameters SupportedParameters `json:"supported_parameters"`
 	Architecture        Architecture        `json:"architecture"`
 	Tags                []string            `json:"tags,omitempty"`
 	Notes               *string             `json:"notes,omitempty"`
+	ContextLength       *int                `json:"context_length,omitempty"`
 	IsModerated         *bool               `json:"is_moderated,omitempty"`
 	Active              *bool               `json:"active,omitempty"`
 	Extras              map[string]any      `json:"extras,omitempty"`

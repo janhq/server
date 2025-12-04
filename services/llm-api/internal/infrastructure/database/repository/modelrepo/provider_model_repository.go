@@ -2,6 +2,7 @@ package modelrepo
 
 import (
 	"context"
+	"strings"
 
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/query"
@@ -44,6 +45,18 @@ func (repo *ProviderModelGormRepository) applyFilter(query *gormgen.Query, sql g
 	}
 	if filter.Active != nil {
 		sql = sql.Where(query.ProviderModel.Active.Is(*filter.Active))
+	}
+	if filter.SupportsImages != nil {
+		sql = sql.LeftJoin(query.ModelCatalog, query.ModelCatalog.ID.EqCol(query.ProviderModel.ModelCatalogID))
+		sql = sql.Where(query.ModelCatalog.SupportsImages.Is(*filter.SupportsImages))
+	}
+	if filter.SearchText != nil && strings.TrimSpace(*filter.SearchText) != "" {
+		pat := "%" + strings.TrimSpace(*filter.SearchText) + "%"
+		cond1 := query.ProviderModel.ModelPublicID.Like(pat)
+		cond2 := query.ProviderModel.ModelDisplayName.Like(pat)
+		cond3 := query.ProviderModel.ProviderOriginalModelID.Like(pat)
+		cond4 := query.ProviderModel.Kind.Like(pat)
+		sql = sql.Where(cond1).Or(cond2).Or(cond3).Or(cond4)
 	}
 	return sql
 }

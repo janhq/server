@@ -49,8 +49,24 @@ type UpdateUserRequest struct {
 func (h *AdminUserHandler) ListUsers(c *gin.Context) {
 	first, _ := strconv.Atoi(c.DefaultQuery("first", "0"))
 	max, _ := strconv.Atoi(c.DefaultQuery("max", "50"))
+	search := strings.TrimSpace(c.Query("search"))
+	groupID := strings.TrimSpace(c.Query("group_id"))
+	role := strings.TrimSpace(c.Query("role"))
 
-	users, err := h.kc.ListUsers(c.Request.Context(), first, max)
+	var enabled *bool
+	if raw, ok := c.GetQuery("enabled"); ok && strings.TrimSpace(raw) != "" {
+		val := strings.EqualFold(raw, "true") || raw == "1"
+		enabled = &val
+	}
+
+	users, err := h.kc.ListUsers(c.Request.Context(), keycloak.ListUsersParams{
+		First:   first,
+		Max:     max,
+		Search:  search,
+		Enabled: enabled,
+		GroupID: groupID,
+		Role:    role,
+	})
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "keycloak_error", "message": err.Error()})
 		return

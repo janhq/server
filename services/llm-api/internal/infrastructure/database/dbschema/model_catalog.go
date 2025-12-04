@@ -16,10 +16,13 @@ func init() {
 type ModelCatalog struct {
 	BaseModel
 	PublicID            string         `gorm:"size:64;not null;uniqueIndex"`
+	ModelDisplayName    string         `gorm:"size:255;not null;default:''"`
+	Description         *string        `gorm:"type:text"`
 	SupportedParameters datatypes.JSON `gorm:"type:jsonb;not null"`
 	Architecture        datatypes.JSON `gorm:"type:jsonb;not null"`
 	Tags                datatypes.JSON `gorm:"type:jsonb"`
 	Notes               *string        `gorm:"type:text"`
+	ContextLength       *int           `gorm:"column:context_length"`
 	IsModerated         *bool          `gorm:"index"`
 	Active              *bool          `gorm:"default:true;index;index:idx_model_catalog_status_active,priority:2"`
 	Status              string         `gorm:"size:32;not null;default:'init';index;index:idx_model_catalog_status_active,priority:1"`
@@ -82,10 +85,13 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 			UpdatedAt: m.UpdatedAt,
 		},
 		PublicID:            m.PublicID,
+		ModelDisplayName:    m.ModelDisplayName,
+		Description:         m.Description,
 		SupportedParameters: datatypes.JSON(supportedParametersJSON),
 		Architecture:        datatypes.JSON(architectureJSON),
 		Tags:                tagsJSON,
 		Notes:               m.Notes,
+		ContextLength:       m.ContextLength,
 		IsModerated:         m.IsModerated,
 		Active:              m.Active,
 		Status:              status,
@@ -159,10 +165,13 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 	return &domainmodel.ModelCatalog{
 		ID:                  m.ID,
 		PublicID:            m.PublicID,
+		ModelDisplayName:    m.ModelDisplayName,
+		Description:         m.Description,
 		SupportedParameters: supportedParameters,
 		Architecture:        architecture,
 		Tags:                tags,
 		Notes:               m.Notes,
+		ContextLength:       m.ContextLength,
 		IsModerated:         m.IsModerated,
 		Active:              m.Active,
 		Extras:              extras,

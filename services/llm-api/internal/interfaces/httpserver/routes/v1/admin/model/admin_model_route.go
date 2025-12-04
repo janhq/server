@@ -295,6 +295,10 @@ func (route *AdminModelRoute) buildProviderModelFilter(reqCtx *gin.Context) requ
 		filter.SupportsImages = &supportsImages
 	}
 
+	if search := strings.TrimSpace(reqCtx.Query("search")); search != "" {
+		filter.SearchText = &search
+	}
+
 	return filter
 }
 

@@ -2,6 +2,7 @@ package modelrepo
 
 import (
 	"context"
+	"strings"
 
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/query"
@@ -42,6 +43,13 @@ func (repo *ProviderGormRepository) applyFilter(query *gormgen.Query, sql gormge
 	}
 	if filter.LastSyncedBefore != nil {
 		sql = sql.Where(query.Provider.LastSyncedAt.Lte(*filter.LastSyncedBefore))
+	}
+	if filter.SearchText != nil && strings.TrimSpace(*filter.SearchText) != "" {
+		pat := "%" + strings.TrimSpace(*filter.SearchText) + "%"
+		cond1 := query.Provider.PublicID.Like(pat)
+		cond2 := query.Provider.DisplayName.Like(pat)
+		cond3 := query.Provider.Kind.Like(pat)
+		sql = sql.Where(cond1).Or(cond2).Or(cond3)
 	}
 	return sql
 }

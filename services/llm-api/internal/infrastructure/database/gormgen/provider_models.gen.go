@@ -38,15 +38,17 @@ func newProviderModel(db *gorm.DB, opts ...gen.DOOption) providerModel {
 	_providerModel.ModelCatalogID = field.NewUint(tableName, "model_catalog_id")
 	_providerModel.ModelPublicID = field.NewString(tableName, "model_public_id")
 	_providerModel.ProviderOriginalModelID = field.NewString(tableName, "provider_original_model_id")
-	_providerModel.DisplayName = field.NewString(tableName, "display_name")
+	_providerModel.ModelDisplayName = field.NewString(tableName, "model_display_name")
+	_providerModel.Category = field.NewString(tableName, "category")
+	_providerModel.CategoryOrderNumber = field.NewInt(tableName, "category_order_number")
+	_providerModel.ModelOrderNumber = field.NewInt(tableName, "model_order_number")
 	_providerModel.Pricing = field.NewField(tableName, "pricing")
 	_providerModel.TokenLimits = field.NewField(tableName, "token_limits")
-	_providerModel.Family = field.NewString(tableName, "family")
-	_providerModel.SupportsImages = field.NewBool(tableName, "supports_images")
-	_providerModel.SupportsEmbeddings = field.NewBool(tableName, "supports_embeddings")
-	_providerModel.SupportsReasoning = field.NewBool(tableName, "supports_reasoning")
-	_providerModel.SupportsAudio = field.NewBool(tableName, "supports_audio")
-	_providerModel.SupportsVideo = field.NewBool(tableName, "supports_video")
+	_providerModel.SupportsAutoMode = field.NewBool(tableName, "supports_auto_mode")
+	_providerModel.SupportsThinkingMode = field.NewBool(tableName, "supports_thinking_mode")
+	_providerModel.DefaultConversationMode = field.NewString(tableName, "default_conversation_mode")
+	_providerModel.ProviderFlags = field.NewField(tableName, "provider_flags")
+	_providerModel.ReasoningConfig = field.NewField(tableName, "reasoning_config")
 	_providerModel.Active = field.NewBool(tableName, "active")
 
 	_providerModel.fillFieldMap()
@@ -68,15 +70,17 @@ type providerModel struct {
 	ModelCatalogID          field.Uint
 	ModelPublicID           field.String
 	ProviderOriginalModelID field.String
-	DisplayName             field.String
+	ModelDisplayName        field.String
+	Category                field.String
+	CategoryOrderNumber     field.Int
+	ModelOrderNumber        field.Int
 	Pricing                 field.Field
 	TokenLimits             field.Field
-	Family                  field.String
-	SupportsImages          field.Bool
-	SupportsEmbeddings      field.Bool
-	SupportsReasoning       field.Bool
-	SupportsAudio           field.Bool
-	SupportsVideo           field.Bool
+	SupportsAutoMode        field.Bool
+	SupportsThinkingMode    field.Bool
+	DefaultConversationMode field.String
+	ProviderFlags           field.Field
+	ReasoningConfig         field.Field
 	Active                  field.Bool
 
 	fieldMap map[string]field.Expr
@@ -104,15 +108,17 @@ func (p *providerModel) updateTableName(table string) *providerModel {
 	p.ModelCatalogID = field.NewUint(table, "model_catalog_id")
 	p.ModelPublicID = field.NewString(table, "model_public_id")
 	p.ProviderOriginalModelID = field.NewString(table, "provider_original_model_id")
-	p.DisplayName = field.NewString(table, "display_name")
+	p.ModelDisplayName = field.NewString(table, "model_display_name")
+	p.Category = field.NewString(table, "category")
+	p.CategoryOrderNumber = field.NewInt(table, "category_order_number")
+	p.ModelOrderNumber = field.NewInt(table, "model_order_number")
 	p.Pricing = field.NewField(table, "pricing")
 	p.TokenLimits = field.NewField(table, "token_limits")
-	p.Family = field.NewString(table, "family")
-	p.SupportsImages = field.NewBool(table, "supports_images")
-	p.SupportsEmbeddings = field.NewBool(table, "supports_embeddings")
-	p.SupportsReasoning = field.NewBool(table, "supports_reasoning")
-	p.SupportsAudio = field.NewBool(table, "supports_audio")
-	p.SupportsVideo = field.NewBool(table, "supports_video")
+	p.SupportsAutoMode = field.NewBool(table, "supports_auto_mode")
+	p.SupportsThinkingMode = field.NewBool(table, "supports_thinking_mode")
+	p.DefaultConversationMode = field.NewString(table, "default_conversation_mode")
+	p.ProviderFlags = field.NewField(table, "provider_flags")
+	p.ReasoningConfig = field.NewField(table, "reasoning_config")
 	p.Active = field.NewBool(table, "active")
 
 	p.fillFieldMap()
@@ -130,7 +136,7 @@ func (p *providerModel) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (p *providerModel) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 20)
+	p.fieldMap = make(map[string]field.Expr, 22)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
@@ -141,15 +147,17 @@ func (p *providerModel) fillFieldMap() {
 	p.fieldMap["model_catalog_id"] = p.ModelCatalogID
 	p.fieldMap["model_public_id"] = p.ModelPublicID
 	p.fieldMap["provider_original_model_id"] = p.ProviderOriginalModelID
-	p.fieldMap["display_name"] = p.DisplayName
+	p.fieldMap["model_display_name"] = p.ModelDisplayName
+	p.fieldMap["category"] = p.Category
+	p.fieldMap["category_order_number"] = p.CategoryOrderNumber
+	p.fieldMap["model_order_number"] = p.ModelOrderNumber
 	p.fieldMap["pricing"] = p.Pricing
 	p.fieldMap["token_limits"] = p.TokenLimits
-	p.fieldMap["family"] = p.Family
-	p.fieldMap["supports_images"] = p.SupportsImages
-	p.fieldMap["supports_embeddings"] = p.SupportsEmbeddings
-	p.fieldMap["supports_reasoning"] = p.SupportsReasoning
-	p.fieldMap["supports_audio"] = p.SupportsAudio
-	p.fieldMap["supports_video"] = p.SupportsVideo
+	p.fieldMap["supports_auto_mode"] = p.SupportsAutoMode
+	p.fieldMap["supports_thinking_mode"] = p.SupportsThinkingMode
+	p.fieldMap["default_conversation_mode"] = p.DefaultConversationMode
+	p.fieldMap["provider_flags"] = p.ProviderFlags
+	p.fieldMap["reasoning_config"] = p.ReasoningConfig
 	p.fieldMap["active"] = p.Active
 }
 

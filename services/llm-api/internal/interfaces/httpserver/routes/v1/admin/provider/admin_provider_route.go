@@ -1,9 +1,12 @@
 package provider
 
 import (
+	"net/http"
+	"strings"
+
+	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	requestmodels "jan-server/services/llm-api/internal/interfaces/httpserver/requests/models"
-	"net/http"
 
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
 
@@ -44,7 +47,13 @@ func (AdminProviderRoute *AdminProviderRoute) RegisterRouter(router *gin.RouterG
 func (route *AdminProviderRoute) GetAllProviders(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
-	providersWithCounts, err := route.providerHandler.GetAllProviders(ctx)
+	search := strings.TrimSpace(reqCtx.Query("search"))
+	filter := domainmodel.ProviderFilter{}
+	if search != "" {
+		filter.SearchText = &search
+	}
+
+	providersWithCounts, err := route.providerHandler.GetAllProviders(ctx, filter)
 	if err != nil {
 		responses.HandleError(reqCtx, err, "Failed to retrieve providers")
 		return

@@ -230,6 +230,10 @@ func (s *ProviderService) FindAllProviders(ctx context.Context) ([]*Provider, er
 	return s.providerRepo.FindByFilter(ctx, filter, nil)
 }
 
+func (s *ProviderService) FindProviders(ctx context.Context, filter ProviderFilter) ([]*Provider, error) {
+	return s.providerRepo.FindByFilter(ctx, filter, nil)
+}
+
 func (s *ProviderService) FindAllActiveProviders(ctx context.Context) ([]*Provider, error) {
 	filter := ProviderFilter{Active: ptr.ToBool(true)}
 	return s.providerRepo.FindByFilter(ctx, filter, nil)
@@ -316,11 +320,25 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		// Apply default capabilities for missing keys (don't override user-provided values)
 		provider.Metadata = setDefaultCapabilities(provider.Kind, sanitized)
 	}
+	shouldDisableProviderModels := false
+	if input.Active != nil {
+		shouldDisableProviderModels = provider.Active && !*input.Active
+	}
 	if input.Active != nil {
 		provider.Active = *input.Active
 	}
 	if err := s.providerRepo.Update(ctx, provider); err != nil {
 		return nil, err
+	}
+
+	if shouldDisableProviderModels {
+		// Disable all provider models when the provider is disabled to keep routing consistent
+		filter := ProviderModelFilter{
+			ProviderID: ptr.ToUint(provider.ID),
+		}
+		if _, err := s.providerModelService.BatchUpdateActive(ctx, filter, false); err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to disable provider models")
+		}
 	}
 
 	return provider, nil

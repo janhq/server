@@ -878,6 +878,16 @@ type KeycloakUser struct {
 	Roles     []string `json:"roles,omitempty"`
 }
 
+// ListUsersParams defines filters for listing users.
+type ListUsersParams struct {
+	First   int
+	Max     int
+	Search  string
+	Enabled *bool
+	GroupID string
+	Role    string
+}
+
 // AdminUserRequest represents admin user create/update payload.
 type AdminUserRequest struct {
 	Username string           `json:"username,omitempty"`
@@ -1038,6 +1048,54 @@ func getBool(m map[string]any, key string) bool {
 	return false
 }
 
+func mapUsers(raw []map[string]any) []KeycloakUser {
+	users := make([]KeycloakUser, 0, len(raw))
+	for _, u := range raw {
+		users = append(users, KeycloakUser{
+			ID:        getString(u, "id"),
+			Username:  getString(u, "username"),
+			Email:     getString(u, "email"),
+			FirstName: getString(u, "firstName"),
+			LastName:  getString(u, "lastName"),
+			Enabled:   getBool(u, "enabled"),
+		})
+	}
+	return users
+}
+
+func filterAndLimitUsers(users []KeycloakUser, params ListUsersParams, extraFilter func(KeycloakUser) bool) []KeycloakUser {
+	var filtered []KeycloakUser
+	search := strings.ToLower(strings.TrimSpace(params.Search))
+
+	matches := func(u KeycloakUser) bool {
+		if extraFilter != nil && !extraFilter(u) {
+			return false
+		}
+		if params.Enabled != nil && u.Enabled != *params.Enabled {
+			return false
+		}
+		if search != "" {
+			if !strings.Contains(strings.ToLower(u.Username), search) &&
+				!strings.Contains(strings.ToLower(u.Email), search) &&
+				!strings.Contains(strings.ToLower(u.FirstName), search) &&
+				!strings.Contains(strings.ToLower(u.LastName), search) {
+				return false
+			}
+		}
+		return true
+	}
+
+	for _, u := range users {
+		if matches(u) {
+			filtered = append(filtered, u)
+			if params.Max > 0 && len(filtered) >= params.Max {
+				break
+			}
+		}
+	}
+	return filtered
+}
+
 // adminAuthToken returns a bearer token for admin operations.
 func (c *Client) adminAuthToken(ctx context.Context) (string, error) {
 	serviceToken, err := c.serviceAccountToken(ctx)
@@ -1049,14 +1107,101 @@ func (c *Client) adminAuthToken(ctx context.Context) (string, error) {
 
 // ---- Admin User Operations ----
 
-// ListUsers returns users with pagination.
-func (c *Client) ListUsers(ctx context.Context, first, max int) ([]KeycloakUser, error) {
+// ListUsers returns users with pagination and optional filters (search/enabled/group/role).
+func (c *Client) ListUsers(ctx context.Context, params ListUsersParams) ([]KeycloakUser, error) {
+	// defaults
+	if params.Max == 0 {
+		params.Max = 50
+	}
+	if params.First < 0 {
+		params.First = 0
+	}
+
+	trimmedGroup := strings.TrimSpace(params.GroupID)
+	trimmedRole := strings.TrimSpace(params.Role)
+
+	switch {
+	case trimmedGroup != "" && trimmedRole != "":
+		groupUsers, err := c.ListGroupMembers(ctx, trimmedGroup, params.First, params.Max)
+		if err != nil {
+			return nil, err
+		}
+		roleUsers, err := c.ListUsersByRole(ctx, trimmedRole, params.First, params.Max)
+		if err != nil {
+			return nil, err
+		}
+		roleSet := make(map[string]struct{}, len(roleUsers))
+		for _, u := range roleUsers {
+			roleSet[u.ID] = struct{}{}
+		}
+		return filterAndLimitUsers(groupUsers, params, func(u KeycloakUser) bool {
+			_, ok := roleSet[u.ID]
+			return ok
+		}), nil
+	case trimmedGroup != "":
+		groupUsers, err := c.ListGroupMembers(ctx, trimmedGroup, params.First, params.Max)
+		if err != nil {
+			return nil, err
+		}
+		return filterAndLimitUsers(groupUsers, params, nil), nil
+	case trimmedRole != "":
+		roleUsers, err := c.ListUsersByRole(ctx, trimmedRole, params.First, params.Max)
+		if err != nil {
+			return nil, err
+		}
+		return filterAndLimitUsers(roleUsers, params, nil), nil
+	default:
+		token, err := c.adminAuthToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		query := fmt.Sprintf("first=%d&max=%d", params.First, params.Max)
+		if strings.TrimSpace(params.Search) != "" {
+			query += "&search=" + url.QueryEscape(strings.TrimSpace(params.Search))
+		}
+		if params.Enabled != nil {
+			if *params.Enabled {
+				query += "&enabled=true"
+			} else {
+				query += "&enabled=false"
+			}
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint("/users?"+query), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			return nil, fmt.Errorf("list users failed: %s", strings.TrimSpace(string(payload)))
+		}
+
+		var raw []map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+			return nil, err
+		}
+
+		users := mapUsers(raw)
+		return filterAndLimitUsers(users, params, nil), nil
+	}
+}
+
+// ListUsersByRole returns users with the given realm role.
+func (c *Client) ListUsersByRole(ctx context.Context, role string, first, max int) ([]KeycloakUser, error) {
 	token, err := c.adminAuthToken(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/users?first=%d&max=%d", first, max)), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/roles/%s/users?first=%d&max=%d", url.PathEscape(role), first, max)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1069,7 +1214,7 @@ func (c *Client) ListUsers(ctx context.Context, first, max int) ([]KeycloakUser,
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("list users failed: %s", strings.TrimSpace(string(payload)))
+		return nil, fmt.Errorf("list users by role failed: %s", strings.TrimSpace(string(payload)))
 	}
 
 	var raw []map[string]any
@@ -1077,18 +1222,7 @@ func (c *Client) ListUsers(ctx context.Context, first, max int) ([]KeycloakUser,
 		return nil, err
 	}
 
-	var users []KeycloakUser
-	for _, u := range raw {
-		users = append(users, KeycloakUser{
-			ID:        getString(u, "id"),
-			Username:  getString(u, "username"),
-			Email:     getString(u, "email"),
-			FirstName: getString(u, "firstName"),
-			LastName:  getString(u, "lastName"),
-			Enabled:   getBool(u, "enabled"),
-		})
-	}
-	return users, nil
+	return mapUsers(raw), nil
 }
 
 // GetUser returns a single user.

@@ -43,6 +43,24 @@ func (repo *ModelCatalogGormRepository) applyFilter(query *gormgen.Query, sql go
 	if filter.Experimental != nil {
 		sql = sql.Where(query.ModelCatalog.Experimental.Is(*filter.Experimental))
 	}
+	if filter.SupportsImages != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsImages.Is(*filter.SupportsImages))
+	}
+	if filter.SupportsEmbeddings != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsEmbeddings.Is(*filter.SupportsEmbeddings))
+	}
+	if filter.SupportsReasoning != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsReasoning.Is(*filter.SupportsReasoning))
+	}
+	if filter.SupportsAudio != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsAudio.Is(*filter.SupportsAudio))
+	}
+	if filter.SupportsVideo != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsVideo.Is(*filter.SupportsVideo))
+	}
+	if filter.Family != nil && *filter.Family != "" {
+		sql = sql.Where(query.ModelCatalog.Family.Eq(*filter.Family))
+	}
 	return sql
 }
 

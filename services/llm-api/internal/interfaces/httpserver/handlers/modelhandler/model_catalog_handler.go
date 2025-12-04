@@ -66,11 +66,45 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	if req.Notes != nil {
 		catalog.Notes = req.Notes
 	}
+	if req.Description != nil {
+		catalog.Description = req.Description
+	}
 	if req.IsModerated != nil {
 		catalog.IsModerated = req.IsModerated
 	}
 	if req.Extras != nil {
 		catalog.Extras = *req.Extras
+	}
+	if req.Active != nil {
+		catalog.Active = req.Active
+	}
+	if req.Experimental != nil {
+		catalog.Experimental = *req.Experimental
+	}
+	if req.SupportsImages != nil {
+		catalog.SupportsImages = *req.SupportsImages
+	}
+	if req.SupportsEmbeddings != nil {
+		catalog.SupportsEmbeddings = *req.SupportsEmbeddings
+	}
+	if req.SupportsReasoning != nil {
+		catalog.SupportsReasoning = *req.SupportsReasoning
+	}
+	if req.SupportsAudio != nil {
+		catalog.SupportsAudio = *req.SupportsAudio
+	}
+	if req.SupportsVideo != nil {
+		catalog.SupportsVideo = *req.SupportsVideo
+	}
+	if req.Family != nil {
+		catalog.Family = *req.Family
+	}
+	if req.ModelDisplayName != nil {
+		catalog.ModelDisplayName = *req.ModelDisplayName
+	}
+	if req.ContextLength != nil {
+		val := int(*req.ContextLength)
+		catalog.ContextLength = &val
 	}
 
 	// Mark as updated by admin (prevents auto-sync from overwriting)

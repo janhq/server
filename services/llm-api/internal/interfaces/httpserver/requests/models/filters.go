@@ -17,4 +17,5 @@ type ProviderModelFilterParams struct {
 	ModelKey         *string `form:"model_key"`
 	Active           *bool   `form:"active"`
 	SupportsImages   *bool   `form:"supports_images"`
+	SearchText       *string `form:"search"`
 }

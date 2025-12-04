@@ -232,10 +232,13 @@ func BuildProviderResponseList(providers []*domainmodel.Provider) []ProviderResp
 type ModelCatalogResponse struct {
 	ID                  string                          `json:"id"`
 	PublicID            string                          `json:"public_id"`
+	ModelDisplayName    string                          `json:"model_display_name,omitempty"`
+	Description         *string                         `json:"description,omitempty"`
 	SupportedParameters domainmodel.SupportedParameters `json:"supported_parameters"`
 	Architecture        domainmodel.Architecture        `json:"architecture"`
 	Tags                []string                        `json:"tags,omitempty"`
 	Notes               *string                         `json:"notes,omitempty"`
+	ContextLength       *int                            `json:"context_length,omitempty"`
 	IsModerated         *bool                           `json:"is_moderated,omitempty"`
 	Active              *bool                           `json:"active,omitempty"`
 	Extras              map[string]any                  `json:"extras,omitempty"`
@@ -290,10 +293,13 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 	return ModelCatalogResponse{
 		ID:                  catalog.PublicID,
 		PublicID:            catalog.PublicID,
+		ModelDisplayName:    catalog.ModelDisplayName,
+		Description:         catalog.Description,
 		SupportedParameters: catalog.SupportedParameters,
 		Architecture:        catalog.Architecture,
 		Tags:                catalog.Tags,
 		Notes:               catalog.Notes,
+		ContextLength:       catalog.ContextLength,
 		IsModerated:         catalog.IsModerated,
 		Active:              catalog.Active,
 		Extras:              catalog.Extras,

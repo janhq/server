@@ -26,8 +26,19 @@ type UpdateModelCatalogRequest struct {
 	Architecture        *domainmodel.Architecture        `json:"architecture"`
 	Tags                *[]string                        `json:"tags"`
 	Notes               *string                          `json:"notes"`
+	Description         *string                          `json:"description"`
 	IsModerated         *bool                            `json:"is_moderated"`
 	Extras              *map[string]any                  `json:"extras"`
+	Active              *bool                            `json:"active"`
+	Experimental        *bool                            `json:"experimental"`
+	SupportsImages      *bool                            `json:"supports_images"`
+	SupportsEmbeddings  *bool                            `json:"supports_embeddings"`
+	SupportsReasoning   *bool                            `json:"supports_reasoning"`
+	SupportsAudio       *bool                            `json:"supports_audio"`
+	SupportsVideo       *bool                            `json:"supports_video"`
+	Family              *string                          `json:"family"`
+	ModelDisplayName    *string                          `json:"model_display_name"`
+	ContextLength       *float64                         `json:"context_length"`
 }
 
 type UpdateProviderModelRequest struct {

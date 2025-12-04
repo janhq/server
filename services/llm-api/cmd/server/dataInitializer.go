@@ -7,6 +7,7 @@ import (
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
 
@@ -20,6 +21,19 @@ func (d *DataInitializer) Install(ctx context.Context) error {
 	cfg := config.GetGlobal()
 
 	if entries := cfg.ProviderBootstrapEntries(); len(entries) > 0 {
+		// If we already have active providers in the database, skip bootstrapping from providers.yml.
+		activeProviders, err := d.provider.FindAllActiveProviders(ctx)
+		if err != nil {
+			return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to check existing providers before bootstrap")
+		}
+		if len(activeProviders) > 0 {
+			log := logger.GetLogger()
+			log.Info().
+				Int("active_providers", len(activeProviders)).
+				Msg("skipping providers.yml bootstrap because active providers already exist")
+			return nil
+		}
+
 		if err := d.setupConfiguredProviders(ctx, entries); err != nil {
 			return err
 		}

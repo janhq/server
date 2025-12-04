@@ -265,9 +265,19 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 		status = ModelCatalogStatusFilled
 	}
 
+	modelDisplayName := ""
+	if displayName, ok := getString(model.Raw, "display_name"); ok && displayName != "" {
+		modelDisplayName = displayName
+	}
+
 	var notes *string
+	if rawNotes, ok := getString(model.Raw, "notes"); ok && rawNotes != "" {
+		notes = ptr.ToString(rawNotes)
+	}
+
+	var description *string
 	if desc, ok := getString(model.Raw, "description"); ok && desc != "" {
-		notes = ptr.ToString(desc)
+		description = ptr.ToString(desc)
 	}
 
 	defaultParameterNames := []string{
@@ -350,6 +360,14 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 		experimental = val
 	}
 
+	var contextLength *int
+	if rawCtx, ok := model.Raw["context_length"]; ok {
+		if ctxLen, ok := floatFromAny(rawCtx); ok {
+			val := int(ctxLen)
+			contextLength = &val
+		}
+	}
+
 	// Extract capabilities (moved from provider_model)
 	inputModalities := extractStringSliceFromMap(model.Raw, "architecture", "input_modalities")
 	outputModalities := extractStringSliceFromMap(model.Raw, "architecture", "output_modalities")
@@ -364,9 +382,12 @@ func buildModelCatalogFromModel(provider *Provider, model chat.Model) *ModelCata
 	family := extractFamily(model.ID)
 
 	return &ModelCatalog{
+		ModelDisplayName:    modelDisplayName,
+		Description:         description,
 		SupportedParameters: supportedParameters,
 		Architecture:        architecture,
 		Notes:               notes,
+		ContextLength:       contextLength,
 		IsModerated:         isModerated,
 		Extras:              extras,
 		Status:              status,

@@ -33,15 +33,24 @@ func newModelCatalog(db *gorm.DB, opts ...gen.DOOption) modelCatalog {
 	_modelCatalog.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_modelCatalog.DeletedAt = field.NewField(tableName, "deleted_at")
 	_modelCatalog.PublicID = field.NewString(tableName, "public_id")
+	_modelCatalog.ModelDisplayName = field.NewString(tableName, "model_display_name")
+	_modelCatalog.Description = field.NewString(tableName, "description")
 	_modelCatalog.SupportedParameters = field.NewField(tableName, "supported_parameters")
 	_modelCatalog.Architecture = field.NewField(tableName, "architecture")
 	_modelCatalog.Tags = field.NewField(tableName, "tags")
 	_modelCatalog.Notes = field.NewString(tableName, "notes")
+	_modelCatalog.ContextLength = field.NewInt(tableName, "context_length")
 	_modelCatalog.IsModerated = field.NewBool(tableName, "is_moderated")
 	_modelCatalog.Active = field.NewBool(tableName, "active")
 	_modelCatalog.Status = field.NewString(tableName, "status")
 	_modelCatalog.Extras = field.NewField(tableName, "extras")
 	_modelCatalog.Experimental = field.NewBool(tableName, "experimental")
+	_modelCatalog.SupportsImages = field.NewBool(tableName, "supports_images")
+	_modelCatalog.SupportsEmbeddings = field.NewBool(tableName, "supports_embeddings")
+	_modelCatalog.SupportsReasoning = field.NewBool(tableName, "supports_reasoning")
+	_modelCatalog.SupportsAudio = field.NewBool(tableName, "supports_audio")
+	_modelCatalog.SupportsVideo = field.NewBool(tableName, "supports_video")
+	_modelCatalog.Family = field.NewString(tableName, "family")
 
 	_modelCatalog.fillFieldMap()
 
@@ -57,15 +66,24 @@ type modelCatalog struct {
 	UpdatedAt           field.Time
 	DeletedAt           field.Field
 	PublicID            field.String
+	ModelDisplayName    field.String
+	Description         field.String
 	SupportedParameters field.Field
 	Architecture        field.Field
 	Tags                field.Field
 	Notes               field.String
+	ContextLength       field.Int
 	IsModerated         field.Bool
 	Active              field.Bool
 	Status              field.String
 	Extras              field.Field
 	Experimental        field.Bool
+	SupportsImages      field.Bool
+	SupportsEmbeddings  field.Bool
+	SupportsReasoning   field.Bool
+	SupportsAudio       field.Bool
+	SupportsVideo       field.Bool
+	Family              field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -87,15 +105,24 @@ func (m *modelCatalog) updateTableName(table string) *modelCatalog {
 	m.UpdatedAt = field.NewTime(table, "updated_at")
 	m.DeletedAt = field.NewField(table, "deleted_at")
 	m.PublicID = field.NewString(table, "public_id")
+	m.ModelDisplayName = field.NewString(table, "model_display_name")
+	m.Description = field.NewString(table, "description")
 	m.SupportedParameters = field.NewField(table, "supported_parameters")
 	m.Architecture = field.NewField(table, "architecture")
 	m.Tags = field.NewField(table, "tags")
 	m.Notes = field.NewString(table, "notes")
+	m.ContextLength = field.NewInt(table, "context_length")
 	m.IsModerated = field.NewBool(table, "is_moderated")
 	m.Active = field.NewBool(table, "active")
 	m.Status = field.NewString(table, "status")
 	m.Extras = field.NewField(table, "extras")
 	m.Experimental = field.NewBool(table, "experimental")
+	m.SupportsImages = field.NewBool(table, "supports_images")
+	m.SupportsEmbeddings = field.NewBool(table, "supports_embeddings")
+	m.SupportsReasoning = field.NewBool(table, "supports_reasoning")
+	m.SupportsAudio = field.NewBool(table, "supports_audio")
+	m.SupportsVideo = field.NewBool(table, "supports_video")
+	m.Family = field.NewString(table, "family")
 
 	m.fillFieldMap()
 
@@ -112,21 +139,30 @@ func (m *modelCatalog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (m *modelCatalog) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 14)
+	m.fieldMap = make(map[string]field.Expr, 23)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
 	m.fieldMap["deleted_at"] = m.DeletedAt
 	m.fieldMap["public_id"] = m.PublicID
+	m.fieldMap["model_display_name"] = m.ModelDisplayName
+	m.fieldMap["description"] = m.Description
 	m.fieldMap["supported_parameters"] = m.SupportedParameters
 	m.fieldMap["architecture"] = m.Architecture
 	m.fieldMap["tags"] = m.Tags
 	m.fieldMap["notes"] = m.Notes
+	m.fieldMap["context_length"] = m.ContextLength
 	m.fieldMap["is_moderated"] = m.IsModerated
 	m.fieldMap["active"] = m.Active
 	m.fieldMap["status"] = m.Status
 	m.fieldMap["extras"] = m.Extras
 	m.fieldMap["experimental"] = m.Experimental
+	m.fieldMap["supports_images"] = m.SupportsImages
+	m.fieldMap["supports_embeddings"] = m.SupportsEmbeddings
+	m.fieldMap["supports_reasoning"] = m.SupportsReasoning
+	m.fieldMap["supports_audio"] = m.SupportsAudio
+	m.fieldMap["supports_video"] = m.SupportsVideo
+	m.fieldMap["family"] = m.Family
 }
 
 func (m modelCatalog) clone(db *gorm.DB) modelCatalog {

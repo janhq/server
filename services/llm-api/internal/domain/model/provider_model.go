@@ -119,6 +119,8 @@ type ProviderModelFilter struct {
 	ModelPublicID  *string
 	ModelPublicIDs *[]string
 	Active         *bool
+	SupportsImages *bool
+	SearchText     *string
 }
 
 // ProviderModelRepository abstracts persistence for provider models.

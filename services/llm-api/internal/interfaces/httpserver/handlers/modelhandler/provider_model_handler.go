@@ -71,7 +71,14 @@ func (h *ProviderModelHandler) ListProviderModels(
 		filter.Active = filterParams.Active
 	}
 
-	
+	if filterParams.SearchText != nil {
+		filter.SearchText = filterParams.SearchText
+	}
+
+	if filterParams.SupportsImages != nil {
+		filter.SupportsImages = filterParams.SupportsImages
+	}
+
 	if filterParams.ProviderPublicID != nil {
 		provider, err := h.providerService.FindByPublicID(ctx, *filterParams.ProviderPublicID)
 		if err != nil {
