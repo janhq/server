@@ -141,5 +141,15 @@ func shouldHideExperimental(c *gin.Context, catalog *modelresponses.ModelCatalog
 	if catalog == nil {
 		return false
 	}
-	return catalog.Experimental && !middleware.FeatureEnabled(c, "experimental_models")
+	// Legacy experimental flag check
+	if catalog.Experimental && !middleware.FeatureEnabled(c, "experimental_models") {
+		return true
+	}
+	// New requires_feature_flag check
+	if catalog.RequiresFeatureFlag != nil && *catalog.RequiresFeatureFlag != "" {
+		if !middleware.FeatureEnabled(c, *catalog.RequiresFeatureFlag) {
+			return true
+		}
+	}
+	return false
 }

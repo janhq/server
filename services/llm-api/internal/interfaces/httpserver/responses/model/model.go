@@ -245,6 +245,7 @@ type ModelCatalogResponse struct {
 	Status              domainmodel.ModelCatalogStatus  `json:"status"`
 	Family              *string                         `json:"family,omitempty"`
 	Experimental        bool                            `json:"experimental"`
+	RequiresFeatureFlag *string                         `json:"requires_feature_flag,omitempty"`
 	SupportsImages      bool                            `json:"supports_images"`
 	SupportsEmbeddings  bool                            `json:"supports_embeddings"`
 	SupportsReasoning   bool                            `json:"supports_reasoning"`
@@ -306,6 +307,7 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 		Status:              catalog.Status,
 		Family:              family,
 		Experimental:        catalog.Experimental,
+		RequiresFeatureFlag: catalog.RequiresFeatureFlag,
 		SupportsImages:      catalog.SupportsImages,
 		SupportsEmbeddings:  catalog.SupportsEmbeddings,
 		SupportsReasoning:   catalog.SupportsReasoning,

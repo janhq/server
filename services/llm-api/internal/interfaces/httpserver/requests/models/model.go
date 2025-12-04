@@ -31,6 +31,7 @@ type UpdateModelCatalogRequest struct {
 	Extras              *map[string]any                  `json:"extras"`
 	Active              *bool                            `json:"active"`
 	Experimental        *bool                            `json:"experimental"`
+	RequiresFeatureFlag *string                          `json:"requires_feature_flag"`
 	SupportsImages      *bool                            `json:"supports_images"`
 	SupportsEmbeddings  *bool                            `json:"supports_embeddings"`
 	SupportsReasoning   *bool                            `json:"supports_reasoning"`

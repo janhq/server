@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"gorm.io/gorm"
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/query"
 	"jan-server/services/llm-api/internal/infrastructure/database/dbschema"
 	"jan-server/services/llm-api/internal/infrastructure/database/gormgen"
 	"jan-server/services/llm-api/internal/infrastructure/database/transaction"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
+
+	"gorm.io/gorm"
 )
 
 type ModelCatalogGormRepository struct {
@@ -42,6 +43,9 @@ func (repo *ModelCatalogGormRepository) applyFilter(query *gormgen.Query, sql go
 	}
 	if filter.Experimental != nil {
 		sql = sql.Where(query.ModelCatalog.Experimental.Is(*filter.Experimental))
+	}
+	if filter.RequiresFeatureFlag != nil {
+		sql = sql.Where(query.ModelCatalog.RequiresFeatureFlag.Eq(*filter.RequiresFeatureFlag))
 	}
 	if filter.SupportsImages != nil {
 		sql = sql.Where(query.ModelCatalog.SupportsImages.Is(*filter.SupportsImages))

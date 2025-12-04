@@ -59,13 +59,20 @@ func (h *AdminUserHandler) ListUsers(c *gin.Context) {
 		enabled = &val
 	}
 
+	// Parse exclude_guests parameter
+	excludeGuests := false
+	if raw := strings.TrimSpace(c.Query("exclude_guests")); raw != "" {
+		excludeGuests = strings.EqualFold(raw, "true") || raw == "1"
+	}
+
 	users, err := h.kc.ListUsers(c.Request.Context(), keycloak.ListUsersParams{
-		First:   first,
-		Max:     max,
-		Search:  search,
-		Enabled: enabled,
-		GroupID: groupID,
-		Role:    role,
+		First:         first,
+		Max:           max,
+		Search:        search,
+		Enabled:       enabled,
+		GroupID:       groupID,
+		Role:          role,
+		ExcludeGuests: excludeGuests,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "keycloak_error", "message": err.Error()})

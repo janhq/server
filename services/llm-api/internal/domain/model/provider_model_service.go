@@ -257,6 +257,10 @@ func buildProviderModelFromRaw(provider *Provider, catalogID *uint, model chat.M
 	// Generate ModelPublicID using NormalizeModelKey which returns canonical vendor/model format
 	kind := ProviderKind(provider.Kind)
 	modelPublicID := NormalizeModelKey(kind, model.ID)
+	// if modelPublicID contains string "jan", set category to "jan"
+	if strings.Contains(modelPublicID, "jan") {
+		category = "jan"
+	}
 
 	pm := &ProviderModel{
 		ProviderID:              provider.ID,
@@ -459,6 +463,7 @@ func extractCategoryFromModel(model chat.Model) string {
 
 // inferLegacyCategory infers category from model capabilities when provider doesn't supply it
 func inferLegacyCategory(model chat.Model) string {
+
 	// Check for reasoning models
 	if containsString(extractStringSlice(model.Raw["supported_parameters"]), "include_reasoning") {
 		return "Reasoning"

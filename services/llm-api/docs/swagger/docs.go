@@ -3829,8 +3829,14 @@ const docTemplate = `{
                 "architecture": {
                     "$ref": "#/definitions/model.Architecture"
                 },
+                "context_length": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "integer"
+                },
+                "description": {
+                    "type": "string"
                 },
                 "experimental": {
                     "type": "boolean"
@@ -3851,10 +3857,16 @@ const docTemplate = `{
                 "last_synced_at": {
                     "type": "integer"
                 },
+                "model_display_name": {
+                    "type": "string"
+                },
                 "notes": {
                     "type": "string"
                 },
                 "public_id": {
+                    "type": "string"
+                },
+                "requires_feature_flag": {
                     "type": "string"
                 },
                 "status": {
@@ -4824,21 +4836,57 @@ const docTemplate = `{
         "requestmodels.UpdateModelCatalogRequest": {
             "type": "object",
             "properties": {
+                "active": {
+                    "type": "boolean"
+                },
                 "architecture": {
                     "$ref": "#/definitions/model.Architecture"
+                },
+                "context_length": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "experimental": {
+                    "type": "boolean"
                 },
                 "extras": {
                     "type": "object",
                     "additionalProperties": {}
                 },
+                "family": {
+                    "type": "string"
+                },
                 "is_moderated": {
                     "type": "boolean"
+                },
+                "model_display_name": {
+                    "type": "string"
                 },
                 "notes": {
                     "type": "string"
                 },
+                "requires_feature_flag": {
+                    "type": "string"
+                },
                 "supported_parameters": {
                     "$ref": "#/definitions/model.SupportedParameters"
+                },
+                "supports_audio": {
+                    "type": "boolean"
+                },
+                "supports_embeddings": {
+                    "type": "boolean"
+                },
+                "supports_images": {
+                    "type": "boolean"
+                },
+                "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_video": {
+                    "type": "boolean"
                 },
                 "tags": {
                     "type": "array",

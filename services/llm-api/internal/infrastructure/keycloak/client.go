@@ -869,23 +869,26 @@ type APIKeyUserInfo struct {
 
 // KeycloakUser represents a user in Keycloak
 type KeycloakUser struct {
-	ID        string   `json:"id"`
-	Username  string   `json:"username"`
-	Email     string   `json:"email"`
-	FirstName string   `json:"firstName"`
-	LastName  string   `json:"lastName"`
-	Enabled   bool     `json:"enabled"`
-	Roles     []string `json:"roles,omitempty"`
+	ID           string   `json:"id"`
+	Username     string   `json:"username"`
+	Email        string   `json:"email"`
+	FirstName    string   `json:"firstName"`
+	LastName     string   `json:"lastName"`
+	Enabled      bool     `json:"enabled"`
+	Roles        []string `json:"roles,omitempty"`
+	Groups       []string `json:"groups,omitempty"`
+	FeatureFlags []string `json:"featureFlags,omitempty"`
 }
 
 // ListUsersParams defines filters for listing users.
 type ListUsersParams struct {
-	First   int
-	Max     int
-	Search  string
-	Enabled *bool
-	GroupID string
-	Role    string
+	First         int
+	Max           int
+	Search        string
+	Enabled       *bool
+	GroupID       string
+	Role          string
+	ExcludeGuests bool // If true, exclude users with 'guest' role
 }
 
 // AdminUserRequest represents admin user create/update payload.
@@ -1074,6 +1077,14 @@ func filterAndLimitUsers(users []KeycloakUser, params ListUsersParams, extraFilt
 		if params.Enabled != nil && u.Enabled != *params.Enabled {
 			return false
 		}
+		// Exclude guests if requested
+		if params.ExcludeGuests {
+			for _, role := range u.Roles {
+				if role == "guest" {
+					return false
+				}
+			}
+		}
 		if search != "" {
 			if !strings.Contains(strings.ToLower(u.Username), search) &&
 				!strings.Contains(strings.ToLower(u.Email), search) &&
@@ -1094,6 +1105,170 @@ func filterAndLimitUsers(users []KeycloakUser, params ListUsersParams, extraFilt
 		}
 	}
 	return filtered
+}
+
+// getUserRoles fetches realm roles for a specific user
+func (c *Client) getUserRoles(ctx context.Context, token, userID string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/users/%s/role-mappings/realm", url.PathEscape(userID))), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("get user roles failed: status %d", resp.StatusCode)
+	}
+
+	var roles []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&roles); err != nil {
+		return nil, err
+	}
+
+	result := make([]string, 0, len(roles))
+	for _, role := range roles {
+		if name := getString(role, "name"); name != "" {
+			result = append(result, name)
+		}
+	}
+	return result, nil
+}
+
+// enrichUsersWithRoles fetches roles for each user and populates the Roles field
+func (c *Client) enrichUsersWithRoles(ctx context.Context, token string, users []KeycloakUser) []KeycloakUser {
+	enriched := make([]KeycloakUser, len(users))
+	for i, u := range users {
+		enriched[i] = u
+		roles, err := c.getUserRoles(ctx, token, u.ID)
+		if err == nil {
+			enriched[i].Roles = roles
+		}
+	}
+	return enriched
+}
+
+// getUserGroups fetches groups for a specific user
+func (c *Client) getUserGroups(ctx context.Context, token, userID string) ([]string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/users/%s/groups", url.PathEscape(userID))), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("get user groups failed: status %d", resp.StatusCode)
+	}
+
+	var groups []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&groups); err != nil {
+		return nil, err
+	}
+
+	result := make([]string, 0, len(groups))
+	for _, group := range groups {
+		if path := getString(group, "path"); path != "" {
+			result = append(result, path)
+		}
+	}
+	return result, nil
+}
+
+// getUserFeatureFlags fetches effective feature flags for a user by aggregating from all their groups
+func (c *Client) getUserFeatureFlags(ctx context.Context, token, userID string) ([]string, error) {
+	// Get user's groups
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.adminEndpoint(fmt.Sprintf("/users/%s/groups", url.PathEscape(userID))), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("get user groups failed: status %d", resp.StatusCode)
+	}
+
+	var groups []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&groups); err != nil {
+		return nil, err
+	}
+
+	// Collect unique feature flags from all groups
+	flagSet := make(map[string]struct{})
+	for _, group := range groups {
+		if attrs, ok := group["attributes"].(map[string]any); ok {
+			if flags, ok := attrs["feature_flags"].([]any); ok {
+				for _, flag := range flags {
+					if flagStr, ok := flag.(string); ok {
+						flagSet[flagStr] = struct{}{}
+					}
+				}
+			}
+		}
+	}
+
+	// Convert set to slice
+	result := make([]string, 0, len(flagSet))
+	for flag := range flagSet {
+		result = append(result, flag)
+	}
+	return result, nil
+}
+
+// enrichUsersWithGroupsAndFlags fetches groups and feature flags for each user
+func (c *Client) enrichUsersWithGroupsAndFlags(ctx context.Context, token string, users []KeycloakUser) []KeycloakUser {
+	enriched := make([]KeycloakUser, len(users))
+	for i, u := range users {
+		enriched[i] = u
+		groups, err := c.getUserGroups(ctx, token, u.ID)
+		if err == nil {
+			enriched[i].Groups = groups
+		}
+		flags, err := c.getUserFeatureFlags(ctx, token, u.ID)
+		if err == nil {
+			enriched[i].FeatureFlags = flags
+		}
+	}
+	return enriched
+}
+
+// enrichUsersComplete fetches roles, groups, and feature flags for each user
+func (c *Client) enrichUsersComplete(ctx context.Context, token string, users []KeycloakUser) []KeycloakUser {
+	enriched := make([]KeycloakUser, len(users))
+	for i, u := range users {
+		enriched[i] = u
+		// Fetch roles
+		roles, err := c.getUserRoles(ctx, token, u.ID)
+		if err == nil {
+			enriched[i].Roles = roles
+		}
+		// Fetch groups
+		groups, err := c.getUserGroups(ctx, token, u.ID)
+		if err == nil {
+			enriched[i].Groups = groups
+		}
+		// Fetch feature flags
+		flags, err := c.getUserFeatureFlags(ctx, token, u.ID)
+		if err == nil {
+			enriched[i].FeatureFlags = flags
+		}
+	}
+	return enriched
 }
 
 // adminAuthToken returns a bearer token for admin operations.
@@ -1134,6 +1309,12 @@ func (c *Client) ListUsers(ctx context.Context, params ListUsersParams) ([]Keycl
 		for _, u := range roleUsers {
 			roleSet[u.ID] = struct{}{}
 		}
+		// Always enrich with roles, groups, and feature flags
+		token, err := c.adminAuthToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+		groupUsers = c.enrichUsersComplete(ctx, token, groupUsers)
 		return filterAndLimitUsers(groupUsers, params, func(u KeycloakUser) bool {
 			_, ok := roleSet[u.ID]
 			return ok
@@ -1143,12 +1324,24 @@ func (c *Client) ListUsers(ctx context.Context, params ListUsersParams) ([]Keycl
 		if err != nil {
 			return nil, err
 		}
+		// Always enrich with roles, groups, and feature flags
+		token, err := c.adminAuthToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+		groupUsers = c.enrichUsersComplete(ctx, token, groupUsers)
 		return filterAndLimitUsers(groupUsers, params, nil), nil
 	case trimmedRole != "":
 		roleUsers, err := c.ListUsersByRole(ctx, trimmedRole, params.First, params.Max)
 		if err != nil {
 			return nil, err
 		}
+		// Always enrich with roles, groups, and feature flags
+		token, err := c.adminAuthToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+		roleUsers = c.enrichUsersComplete(ctx, token, roleUsers)
 		return filterAndLimitUsers(roleUsers, params, nil), nil
 	default:
 		token, err := c.adminAuthToken(ctx)
@@ -1190,6 +1383,8 @@ func (c *Client) ListUsers(ctx context.Context, params ListUsersParams) ([]Keycl
 		}
 
 		users := mapUsers(raw)
+		// Always enrich users with roles, groups, and feature flags
+		users = c.enrichUsersComplete(ctx, token, users)
 		return filterAndLimitUsers(users, params, nil), nil
 	}
 }

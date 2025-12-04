@@ -46,6 +46,7 @@ type ModelCatalog struct {
 	Extras              map[string]any      `json:"extras,omitempty"`
 	Status              ModelCatalogStatus  `json:"status"`
 	Experimental        bool                `json:"experimental"`
+	RequiresFeatureFlag *string             `json:"requires_feature_flag,omitempty"` // Feature flag key required to access this model
 	// Capabilities (moved from provider_model)
 	SupportsImages     bool   `json:"supports_images"`
 	SupportsEmbeddings bool   `json:"supports_embeddings"`
@@ -59,20 +60,21 @@ type ModelCatalog struct {
 }
 
 type ModelCatalogFilter struct {
-	IDs                *[]uint
-	PublicID           *string
-	IsModerated        *bool
-	Active             *bool
-	Status             *ModelCatalogStatus
-	LastSyncedAfter    *time.Time
-	LastSyncedBefore   *time.Time
-	Experimental       *bool
-	SupportsImages     *bool
-	SupportsEmbeddings *bool
-	SupportsReasoning  *bool
-	SupportsAudio      *bool
-	SupportsVideo      *bool
-	Family             *string
+	IDs                 *[]uint
+	PublicID            *string
+	IsModerated         *bool
+	Active              *bool
+	Status              *ModelCatalogStatus
+	LastSyncedAfter     *time.Time
+	LastSyncedBefore    *time.Time
+	Experimental        *bool
+	RequiresFeatureFlag *string
+	SupportsImages      *bool
+	SupportsEmbeddings  *bool
+	SupportsReasoning   *bool
+	SupportsAudio       *bool
+	SupportsVideo       *bool
+	Family              *string
 }
 
 type ModelCatalogRepository interface {

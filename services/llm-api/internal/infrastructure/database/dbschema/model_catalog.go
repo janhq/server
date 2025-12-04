@@ -28,6 +28,7 @@ type ModelCatalog struct {
 	Status              string         `gorm:"size:32;not null;default:'init';index;index:idx_model_catalog_status_active,priority:1"`
 	Extras              datatypes.JSON `gorm:"type:jsonb"`
 	Experimental        *bool          `gorm:"not null;default:false;index"`
+	RequiresFeatureFlag *string        `gorm:"size:50;index"`
 	// Capabilities (moved from provider_model)
 	SupportsImages     *bool  `gorm:"not null;default:false;index"`
 	SupportsEmbeddings *bool  `gorm:"not null;default:false;index"`
@@ -97,6 +98,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		Status:              status,
 		Extras:              extrasJSON,
 		Experimental:        &experimental,
+		RequiresFeatureFlag: m.RequiresFeatureFlag,
 		SupportsImages:      &supportsImages,
 		SupportsEmbeddings:  &supportsEmbeddings,
 		SupportsReasoning:   &supportsReasoning,
@@ -182,14 +184,15 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 			}
 			return status
 		}(),
-		Experimental:       experimental,
-		SupportsImages:     supportsImages,
-		SupportsEmbeddings: supportsEmbeddings,
-		SupportsReasoning:  supportsReasoning,
-		SupportsAudio:      supportsAudio,
-		SupportsVideo:      supportsVideo,
-		Family:             m.Family,
-		CreatedAt:          m.CreatedAt,
-		UpdatedAt:          m.UpdatedAt,
+		Experimental:        experimental,
+		RequiresFeatureFlag: m.RequiresFeatureFlag,
+		SupportsImages:      supportsImages,
+		SupportsEmbeddings:  supportsEmbeddings,
+		SupportsReasoning:   supportsReasoning,
+		SupportsAudio:       supportsAudio,
+		SupportsVideo:       supportsVideo,
+		Family:              m.Family,
+		CreatedAt:           m.CreatedAt,
+		UpdatedAt:           m.UpdatedAt,
 	}, nil
 }

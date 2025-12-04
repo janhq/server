@@ -81,6 +81,9 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	if req.Experimental != nil {
 		catalog.Experimental = *req.Experimental
 	}
+	if req.RequiresFeatureFlag != nil {
+		catalog.RequiresFeatureFlag = req.RequiresFeatureFlag
+	}
 	if req.SupportsImages != nil {
 		catalog.SupportsImages = *req.SupportsImages
 	}
@@ -147,6 +150,14 @@ func (h *ModelCatalogHandler) ListCatalogs(
 
 	if filterParams.Active != nil {
 		filter.Active = filterParams.Active
+	}
+
+	if filterParams.Experimental != nil {
+		filter.Experimental = filterParams.Experimental
+	}
+
+	if filterParams.RequiresFeatureFlag != nil {
+		filter.RequiresFeatureFlag = filterParams.RequiresFeatureFlag
 	}
 
 	if filterParams.SupportsImages != nil {

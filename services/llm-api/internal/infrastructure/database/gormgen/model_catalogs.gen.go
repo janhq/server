@@ -45,6 +45,7 @@ func newModelCatalog(db *gorm.DB, opts ...gen.DOOption) modelCatalog {
 	_modelCatalog.Status = field.NewString(tableName, "status")
 	_modelCatalog.Extras = field.NewField(tableName, "extras")
 	_modelCatalog.Experimental = field.NewBool(tableName, "experimental")
+	_modelCatalog.RequiresFeatureFlag = field.NewString(tableName, "requires_feature_flag")
 	_modelCatalog.SupportsImages = field.NewBool(tableName, "supports_images")
 	_modelCatalog.SupportsEmbeddings = field.NewBool(tableName, "supports_embeddings")
 	_modelCatalog.SupportsReasoning = field.NewBool(tableName, "supports_reasoning")
@@ -78,6 +79,7 @@ type modelCatalog struct {
 	Status              field.String
 	Extras              field.Field
 	Experimental        field.Bool
+	RequiresFeatureFlag field.String
 	SupportsImages      field.Bool
 	SupportsEmbeddings  field.Bool
 	SupportsReasoning   field.Bool
@@ -117,6 +119,7 @@ func (m *modelCatalog) updateTableName(table string) *modelCatalog {
 	m.Status = field.NewString(table, "status")
 	m.Extras = field.NewField(table, "extras")
 	m.Experimental = field.NewBool(table, "experimental")
+	m.RequiresFeatureFlag = field.NewString(table, "requires_feature_flag")
 	m.SupportsImages = field.NewBool(table, "supports_images")
 	m.SupportsEmbeddings = field.NewBool(table, "supports_embeddings")
 	m.SupportsReasoning = field.NewBool(table, "supports_reasoning")
@@ -139,7 +142,7 @@ func (m *modelCatalog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (m *modelCatalog) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 23)
+	m.fieldMap = make(map[string]field.Expr, 24)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
@@ -157,6 +160,7 @@ func (m *modelCatalog) fillFieldMap() {
 	m.fieldMap["status"] = m.Status
 	m.fieldMap["extras"] = m.Extras
 	m.fieldMap["experimental"] = m.Experimental
+	m.fieldMap["requires_feature_flag"] = m.RequiresFeatureFlag
 	m.fieldMap["supports_images"] = m.SupportsImages
 	m.fieldMap["supports_embeddings"] = m.SupportsEmbeddings
 	m.fieldMap["supports_reasoning"] = m.SupportsReasoning
