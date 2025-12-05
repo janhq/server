@@ -10,7 +10,7 @@
 
 **Status:** ✅ Complete | **Date:** December 2025
 
-Major expansion of admin capabilities with comprehensive management APIs, enhanced model catalog features, and robust middleware stack.
+Major expansion of admin capabilities with comprehensive management APIs, enhanced model catalog features, user personalization system, and robust middleware stack.
 
 #### What's New
 - **Admin API Endpoints**: Full operations for user management, group management, and feature flag administration
@@ -19,11 +19,17 @@ Major expansion of admin capabilities with comprehensive management APIs, enhanc
   - Experimental model support with explicit flagging
   - Advanced capability filtering (images, embeddings, reasoning, audio, video)
   - Model ordering and categorization improvements
+- **User Personalization & Project Instructions**:
+  - Custom project instructions per workspace/conversation
+  - User-specific preferences and settings storage
+  - Context-aware instruction injection for enhanced AI responses
+  - Project-level configuration management
 - **Database Schema Updates**:
   - Feature flags table with user/group assignments
   - Audit logging for admin operations
-  - Model display names and ordering fields
+  - Model display names and ordering fields 
   - Enhanced provider model metadata
+  - Project instructions and user preferences tables
 - **Middleware Additions**:
   - Admin authorization middleware for protected endpoints
   - Token bucket rate limiting for API protection
