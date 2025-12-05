@@ -273,11 +273,11 @@ The llm-api service can preload providers from a YAML manifest. Enable it via:
 
 ```bash
 JAN_PROVIDER_CONFIGS=true
-JAN_PROVIDER_CONFIGS_FILE=config/providers.yml
+JAN_PROVIDER_CONFIGS_FILE=configs/providers.yml
 JAN_PROVIDER_CONFIG_SET=default
 ```
 
-`JAN_PROVIDER_CONFIGS_FILE` defaults to `config/providers.yml` inside `services/llm-api` (copied to `/app/config/providers.yml` in Docker). Each set under the `providers` key defines one or more providers:
+`JAN_PROVIDER_CONFIGS_FILE` defaults to `configs/providers.yml` inside `services/llm-api` (copied to `/app/config/providers.yml` in Docker). Each set under the `providers` key defines one or more providers:
 
 ```yaml
 providers:

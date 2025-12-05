@@ -57,7 +57,7 @@ services:
     log_level: info
     log_format: json
     auto_migrate: true
-    provider_config_file: config/providers.yml
+    provider_config_file: configs/providers.yml
     provider_config_set: default
     provider_configs_enabled: true
     api_key:

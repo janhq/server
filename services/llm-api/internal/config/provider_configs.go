@@ -13,7 +13,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 )
 
-const DefaultProviderConfigFile = "config/providers.yml"
+const DefaultProviderConfigFile = "configs/providers.yml"
 
 // ProviderBootstrapEntry describes a provider that should be bootstrapped on startup.
 type ProviderBootstrapEntry struct {

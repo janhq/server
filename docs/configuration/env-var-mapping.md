@@ -81,7 +81,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 **Provider Config:**
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `JAN_PROVIDER_CONFIGS_FILE` | string | `config/providers.yml` | `JAN_PROVIDER_CONFIGS_FILE` | TODO Path may differ |
+| `JAN_PROVIDER_CONFIGS_FILE` | string | `configs/providers.yml` | `JAN_PROVIDER_CONFIGS_FILE` | TODO Path may differ |
 | `JAN_PROVIDER_CONFIG_SET` | string | `default` | `JAN_PROVIDER_CONFIG_SET` | OK Aligned |
 | `JAN_PROVIDER_CONFIGS` | bool | `true` | `JAN_PROVIDER_CONFIGS` | OK Aligned |
 
