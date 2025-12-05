@@ -248,7 +248,7 @@ curl -X POST http://localhost:8090/v1/memory/load \
 To enable advanced features:
 
 ```yaml
-# config.yaml
+# configs/config.yaml
 memory_tools:
   llm:
     enabled: true

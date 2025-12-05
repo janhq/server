@@ -816,6 +816,47 @@
                     }
                 }
             },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Provider API"
+                ],
+                "summary": "Delete a provider",
+                "description": "Deletes a provider by its public ID along with its provider models",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider public ID",
+                        "name": "provider_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Provider deleted"
+                    },
+                    "404": {
+                        "description": "Provider not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete provider",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {
@@ -1209,6 +1250,50 @@
             }
         },
         "/v1/admin/providers/{provider_public_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a provider by its public ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Provider API"
+                ],
+                "summary": "Get a provider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider public ID",
+                        "name": "provider_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Provider details",
+                        "schema": {
+                            "$ref": "#/definitions/modelresponses.ProviderResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Provider not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve provider",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {
@@ -3777,12 +3862,24 @@
                 "architecture": {
                     "$ref": "#/definitions/model.Architecture"
                 },
+                "context_length": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "experimental": {
+                    "type": "boolean"
                 },
                 "extras": {
                     "type": "object",
                     "additionalProperties": {}
+                },
+                "family": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -3793,7 +3890,16 @@
                 "last_synced_at": {
                     "type": "integer"
                 },
+                "model_display_name": {
+                    "type": "string"
+                },
                 "notes": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "requires_feature_flag": {
                     "type": "string"
                 },
                 "status": {
@@ -3801,6 +3907,21 @@
                 },
                 "supported_parameters": {
                     "$ref": "#/definitions/model.SupportedParameters"
+                },
+                "supports_audio": {
+                    "type": "boolean"
+                },
+                "supports_embeddings": {
+                    "type": "boolean"
+                },
+                "supports_images": {
+                    "type": "boolean"
+                },
+                "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_video": {
+                    "type": "boolean"
                 },
                 "tags": {
                     "type": "array",
@@ -3816,11 +3937,23 @@
         "modelresponses.ModelResponse": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "category_order_number": {
+                    "type": "integer"
+                },
                 "created": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "object": {
                     "type": "string"
@@ -3847,11 +3980,23 @@
         "modelresponses.ModelResponseWithProvider": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "category_order_number": {
+                    "type": "integer"
+                },
                 "created": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "object": {
                     "type": "string"
@@ -3890,11 +4035,14 @@
                 "active": {
                     "type": "boolean"
                 },
-                "created_at": {
+                "category": {
+                    "type": "string"
+                },
+                "category_order_number": {
                     "type": "integer"
                 },
-                "display_name": {
-                    "type": "string"
+                "created_at": {
+                    "type": "integer"
                 },
                 "family": {
                     "type": "string"
@@ -3904,6 +4052,12 @@
                 },
                 "model_catalog_id": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "model_public_id": {
                     "type": "string"
@@ -4715,21 +4869,57 @@
         "requestmodels.UpdateModelCatalogRequest": {
             "type": "object",
             "properties": {
+                "active": {
+                    "type": "boolean"
+                },
                 "architecture": {
                     "$ref": "#/definitions/model.Architecture"
+                },
+                "context_length": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "experimental": {
+                    "type": "boolean"
                 },
                 "extras": {
                     "type": "object",
                     "additionalProperties": {}
                 },
+                "family": {
+                    "type": "string"
+                },
                 "is_moderated": {
                     "type": "boolean"
+                },
+                "model_display_name": {
+                    "type": "string"
                 },
                 "notes": {
                     "type": "string"
                 },
+                "requires_feature_flag": {
+                    "type": "string"
+                },
                 "supported_parameters": {
                     "$ref": "#/definitions/model.SupportedParameters"
+                },
+                "supports_audio": {
+                    "type": "boolean"
+                },
+                "supports_embeddings": {
+                    "type": "boolean"
+                },
+                "supports_images": {
+                    "type": "boolean"
+                },
+                "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_video": {
+                    "type": "boolean"
                 },
                 "tags": {
                     "type": "array",
@@ -4745,11 +4935,20 @@
                 "active": {
                     "type": "boolean"
                 },
-                "display_name": {
+                "category": {
                     "type": "string"
+                },
+                "category_order_number": {
+                    "type": "integer"
                 },
                 "family": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "pricing": {
                     "$ref": "#/definitions/model.Pricing"

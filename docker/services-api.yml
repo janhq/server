@@ -47,7 +47,7 @@ services:
       MODEL_PROVIDER_SECRET: ${MODEL_PROVIDER_SECRET:-jan-model-provider-secret-2024}
       JAN_PROVIDER_CONFIGS: ${JAN_PROVIDER_CONFIGS:-true}
       JAN_PROVIDER_CONFIG_SET: ${JAN_PROVIDER_CONFIG_SET:-default}
-      JAN_PROVIDER_CONFIGS_FILE: ${JAN_PROVIDER_CONFIGS_FILE:-config/providers.yml}
+      JAN_PROVIDER_CONFIGS_FILE: ${JAN_PROVIDER_CONFIGS_FILE:-configs/providers.yml}
       
       # vLLM Provider
       VLLM_PROVIDER_URL: ${VLLM_PROVIDER_URL:-http://vllm-jan-gpu:8101/v1}
@@ -83,7 +83,7 @@ services:
       # vllm-jan-gpu:
       #   condition: service_healthy
     volumes:
-      - ../services/llm-api/config:/app/config:ro
+      - ../services/llm-api/configs:/app/config:ro
       - ../services/llm-api/migrations:/app/migrations:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${HTTP_PORT:-8080}/healthz"]
@@ -137,7 +137,7 @@ services:
       keycloak:
         condition: service_healthy
     volumes:
-      - ../services/media-api/config:/app/config:ro
+      - ../services/media-api/configs:/app/config:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${MEDIA_API_PORT:-8285}/healthz"]
       interval: 10s

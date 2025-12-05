@@ -19,6 +19,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"jan-server/services/media-api/internal/config"
+	"jan-server/services/media-api/internal/utils/platformerrors"
 	"jan-server/services/media-api/utils/mediaid"
 )
 
@@ -313,7 +314,7 @@ func (s *Service) loadBytes(ctx context.Context, source Source) ([]byte, error) 
 	case "remote_url", "remoteuri", "remote":
 		return s.fetchRemote(ctx, source.URL)
 	default:
-		return nil, fmt.Errorf("unknown source type %s", source.Type)
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("unknown source type %s", source.Type), nil, "")
 	}
 }
 

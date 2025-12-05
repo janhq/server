@@ -2,6 +2,7 @@ package modelrepo
 
 import (
 	"context"
+	"strings"
 
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/query"
@@ -46,13 +47,16 @@ func (repo *ProviderModelGormRepository) applyFilter(query *gormgen.Query, sql g
 		sql = sql.Where(query.ProviderModel.Active.Is(*filter.Active))
 	}
 	if filter.SupportsImages != nil {
-		sql = sql.Where(query.ProviderModel.SupportsImages.Is(*filter.SupportsImages))
+		sql = sql.LeftJoin(query.ModelCatalog, query.ModelCatalog.ID.EqCol(query.ProviderModel.ModelCatalogID))
+		sql = sql.Where(query.ModelCatalog.SupportsImages.Is(*filter.SupportsImages))
 	}
-	if filter.SupportsEmbeddings != nil {
-		sql = sql.Where(query.ProviderModel.SupportsEmbeddings.Is(*filter.SupportsEmbeddings))
-	}
-	if filter.SupportsReasoning != nil {
-		sql = sql.Where(query.ProviderModel.SupportsReasoning.Is(*filter.SupportsReasoning))
+	if filter.SearchText != nil && strings.TrimSpace(*filter.SearchText) != "" {
+		pat := "%" + strings.TrimSpace(*filter.SearchText) + "%"
+		cond1 := query.ProviderModel.ModelPublicID.Like(pat)
+		cond2 := query.ProviderModel.ModelDisplayName.Like(pat)
+		cond3 := query.ProviderModel.ProviderOriginalModelID.Like(pat)
+		cond4 := query.ProviderModel.Kind.Like(pat)
+		sql = sql.Where(cond1).Or(cond2).Or(cond3).Or(cond4)
 	}
 	return sql
 }
@@ -162,6 +166,17 @@ func (repo *ProviderModelGormRepository) BatchUpdateActive(ctx context.Context, 
 	sql := query.ProviderModel.WithContext(ctx)
 	sql = repo.applyFilter(query, sql, filter)
 	result, err := sql.Update(query.ProviderModel.Active, active)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected, nil
+}
+
+func (repo *ProviderModelGormRepository) BatchUpdateModelDisplayName(ctx context.Context, filter domainmodel.ProviderModelFilter, modelDisplayName string) (int64, error) {
+	query := repo.db.GetQuery(ctx)
+	sql := query.ProviderModel.WithContext(ctx)
+	sql = repo.applyFilter(query, sql, filter)
+	result, err := sql.Update(query.ProviderModel.ModelDisplayName, modelDisplayName)
 	if err != nil {
 		return 0, err
 	}

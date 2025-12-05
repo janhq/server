@@ -24,14 +24,27 @@ FROM alpine:latest
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl
 
+# Create non-root user
+RUN addgroup -g 10001 appuser && \
+    adduser -D -u 10001 -G appuser appuser
+
 WORKDIR /app
+
+# Create cache directory with proper permissions
+RUN mkdir -p /app/.cache && chown appuser:appuser /app/.cache
 
 # Copy the binary from builder
 COPY --from=builder /app/memory-tools .
 
 # Copy config and migrations
-COPY config ./config
+COPY configs ./config
 COPY migrations ./migrations
+
+# Change ownership
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8090

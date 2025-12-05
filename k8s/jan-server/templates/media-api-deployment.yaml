@@ -65,7 +65,7 @@ spec:
           value: {{ .Values.mediaApi.env.ACCOUNT | quote }}
         - name: AUTH_JWKS_URL
           value: {{ .Values.mediaApi.env.AUTH_JWKS_URL | quote }}
-        - name: MEDIA_DATABASE_URL
+        - name: DB_POSTGRESQL_WRITE_DSN
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-media-api-secret

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/rs/zerolog"
 	openai "github.com/sashabaranov/go-openai"
@@ -24,10 +23,10 @@ type moduleEntry struct {
 
 func modulePriority(module Module) int {
 	switch module.(type) {
+	case *TimingModule:
+		return -15
 	case *ProjectInstructionModule:
 		return -10
-	case *PersonaModule:
-		return 0
 	case *UserProfileModule:
 		return 5
 	case *MemoryModule:
@@ -57,12 +56,10 @@ func NewProcessor(config ProcessorConfig, log zerolog.Logger) *ProcessorImpl {
 		return processor
 	}
 
-	processor.RegisterModule(NewProjectInstructionModule())
+	// Always register timing module for AI assistant intro and current date
+	processor.RegisterModule(NewTimingModule())
 
-	// Always ensure a base persona/system prompt exists when a default is provided
-	if strings.TrimSpace(config.DefaultPersona) != "" {
-		processor.RegisterModule(NewPersonaModule(config.DefaultPersona))
-	}
+	processor.RegisterModule(NewProjectInstructionModule())
 
 	processor.RegisterModule(NewUserProfileModule())
 

@@ -71,6 +71,10 @@ func (h *ProviderModelHandler) ListProviderModels(
 		filter.Active = filterParams.Active
 	}
 
+	if filterParams.SearchText != nil {
+		filter.SearchText = filterParams.SearchText
+	}
+
 	if filterParams.SupportsImages != nil {
 		filter.SupportsImages = filterParams.SupportsImages
 	}
@@ -162,32 +166,23 @@ func (h *ProviderModelHandler) UpdateProviderModel(
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider model not found", nil, "bef76423-07b2-438a-9899-c7f8ecac3e09")
 	}
 
-	if req.DisplayName != nil {
-		providerModel.DisplayName = *req.DisplayName
+	if req.ModelDisplayName != nil {
+		providerModel.ModelDisplayName = *req.ModelDisplayName
+	}
+	if req.Category != nil {
+		providerModel.Category = *req.Category
+	}
+	if req.CategoryOrderNumber != nil {
+		providerModel.CategoryOrderNumber = *req.CategoryOrderNumber
+	}
+	if req.ModelOrderNumber != nil {
+		providerModel.ModelOrderNumber = *req.ModelOrderNumber
 	}
 	if req.Pricing != nil {
 		providerModel.Pricing = *req.Pricing
 	}
 	if req.TokenLimits != nil {
 		providerModel.TokenLimits = req.TokenLimits
-	}
-	if req.Family != nil {
-		providerModel.Family = req.Family
-	}
-	if req.SupportsImages != nil {
-		providerModel.SupportsImages = *req.SupportsImages
-	}
-	if req.SupportsEmbeddings != nil {
-		providerModel.SupportsEmbeddings = *req.SupportsEmbeddings
-	}
-	if req.SupportsReasoning != nil {
-		providerModel.SupportsReasoning = *req.SupportsReasoning
-	}
-	if req.SupportsAudio != nil {
-		providerModel.SupportsAudio = *req.SupportsAudio
-	}
-	if req.SupportsVideo != nil {
-		providerModel.SupportsVideo = *req.SupportsVideo
 	}
 	if req.Active != nil {
 		providerModel.Active = *req.Active

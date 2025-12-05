@@ -27,6 +27,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/interfaces/httpserver"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers"
+	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
@@ -86,6 +87,7 @@ func CreateApplication() (*Application, error) {
 	projectService := project.NewProjectService(projectRepository)
 	conversationHandler := conversationhandler.NewConversationHandler(conversationService, projectService)
 	client := infrastructure.ProvideKeycloakClient(config, zerologLogger)
+	adminAuditLogger := infrastructure.ProvideAdminAuditLogger(db, zerologLogger)
 	resolver := infrastructure.ProvideMediaResolver(config, zerologLogger, client)
 	processorConfig := domain.ProvidePromptProcessorConfig(config, zerologLogger)
 	processorImpl := prompt.NewProcessor(processorConfig, zerologLogger)
@@ -102,7 +104,10 @@ func CreateApplication() (*Application, error) {
 	providerModelHandler := modelhandler.NewProviderModelHandler(providerModelService, providerService, modelCatalogService)
 	adminModelRoute := model3.NewAdminModelRoute(modelHandler, modelCatalogHandler, providerModelHandler)
 	adminProviderRoute := provider2.NewAdminProviderRoute(providerHandler)
-	adminRoute := admin.NewAdminRoute(adminModelRoute, adminProviderRoute)
+	adminUserHandler := adminhandler.NewAdminUserHandler(client, adminAuditLogger)
+	adminGroupHandler := adminhandler.NewAdminGroupHandler(client, adminAuditLogger)
+	featureFlagHandler := adminhandler.NewFeatureFlagHandler(database, adminAuditLogger)
+	adminRoute := admin.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler)
 	userSettingsHandler := usersettingshandler.NewUserSettingsHandler(usersettingsService, zerologLogger)
 	usersRoute := users.NewUsersRoute(userSettingsHandler, authHandler)
 	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute, usersRoute)

@@ -36,11 +36,15 @@ func newConversation(db *gorm.DB, opts ...gen.DOOption) conversation {
 	_conversation.Object = field.NewString(tableName, "object")
 	_conversation.Title = field.NewString(tableName, "title")
 	_conversation.UserID = field.NewUint(tableName, "user_id")
+	_conversation.ProjectID = field.NewUint(tableName, "project_id")
+	_conversation.ProjectPublicID = field.NewString(tableName, "project_public_id")
 	_conversation.Status = field.NewString(tableName, "status")
 	_conversation.ActiveBranch = field.NewString(tableName, "active_branch")
 	_conversation.Referrer = field.NewString(tableName, "referrer")
 	_conversation.Metadata = field.NewField(tableName, "metadata")
 	_conversation.IsPrivate = field.NewBool(tableName, "is_private")
+	_conversation.InstructionVersion = field.NewInt(tableName, "instruction_version")
+	_conversation.EffectiveInstructionSnapshot = field.NewString(tableName, "effective_instruction_snapshot")
 	_conversation.Items = conversationHasManyItems{
 		db: db.Session(&gorm.Session{}),
 
@@ -107,21 +111,25 @@ func newConversation(db *gorm.DB, opts ...gen.DOOption) conversation {
 type conversation struct {
 	conversationDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	PublicID     field.String
-	Object       field.String
-	Title        field.String
-	UserID       field.Uint
-	Status       field.String
-	ActiveBranch field.String
-	Referrer     field.String
-	Metadata     field.Field
-	IsPrivate    field.Bool
-	Items        conversationHasManyItems
+	ALL                          field.Asterisk
+	ID                           field.Uint
+	CreatedAt                    field.Time
+	UpdatedAt                    field.Time
+	DeletedAt                    field.Field
+	PublicID                     field.String
+	Object                       field.String
+	Title                        field.String
+	UserID                       field.Uint
+	ProjectID                    field.Uint
+	ProjectPublicID              field.String
+	Status                       field.String
+	ActiveBranch                 field.String
+	Referrer                     field.String
+	Metadata                     field.Field
+	IsPrivate                    field.Bool
+	InstructionVersion           field.Int
+	EffectiveInstructionSnapshot field.String
+	Items                        conversationHasManyItems
 
 	Branches conversationHasManyBranches
 
@@ -150,11 +158,15 @@ func (c *conversation) updateTableName(table string) *conversation {
 	c.Object = field.NewString(table, "object")
 	c.Title = field.NewString(table, "title")
 	c.UserID = field.NewUint(table, "user_id")
+	c.ProjectID = field.NewUint(table, "project_id")
+	c.ProjectPublicID = field.NewString(table, "project_public_id")
 	c.Status = field.NewString(table, "status")
 	c.ActiveBranch = field.NewString(table, "active_branch")
 	c.Referrer = field.NewString(table, "referrer")
 	c.Metadata = field.NewField(table, "metadata")
 	c.IsPrivate = field.NewBool(table, "is_private")
+	c.InstructionVersion = field.NewInt(table, "instruction_version")
+	c.EffectiveInstructionSnapshot = field.NewString(table, "effective_instruction_snapshot")
 
 	c.fillFieldMap()
 
@@ -171,7 +183,7 @@ func (c *conversation) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (c *conversation) fillFieldMap() {
-	c.fieldMap = make(map[string]field.Expr, 16)
+	c.fieldMap = make(map[string]field.Expr, 20)
 	c.fieldMap["id"] = c.ID
 	c.fieldMap["created_at"] = c.CreatedAt
 	c.fieldMap["updated_at"] = c.UpdatedAt
@@ -180,11 +192,15 @@ func (c *conversation) fillFieldMap() {
 	c.fieldMap["object"] = c.Object
 	c.fieldMap["title"] = c.Title
 	c.fieldMap["user_id"] = c.UserID
+	c.fieldMap["project_id"] = c.ProjectID
+	c.fieldMap["project_public_id"] = c.ProjectPublicID
 	c.fieldMap["status"] = c.Status
 	c.fieldMap["active_branch"] = c.ActiveBranch
 	c.fieldMap["referrer"] = c.Referrer
 	c.fieldMap["metadata"] = c.Metadata
 	c.fieldMap["is_private"] = c.IsPrivate
+	c.fieldMap["instruction_version"] = c.InstructionVersion
+	c.fieldMap["effective_instruction_snapshot"] = c.EffectiveInstructionSnapshot
 
 }
 

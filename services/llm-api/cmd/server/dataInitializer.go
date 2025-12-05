@@ -7,6 +7,7 @@ import (
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
 
@@ -20,16 +21,23 @@ func (d *DataInitializer) Install(ctx context.Context) error {
 	cfg := config.GetGlobal()
 
 	if entries := cfg.ProviderBootstrapEntries(); len(entries) > 0 {
+		// If we already have active providers in the database, skip bootstrapping from providers.yml.
+		activeProviders, err := d.provider.FindAllActiveProviders(ctx)
+		if err != nil {
+			return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to check existing providers before bootstrap")
+		}
+		if len(activeProviders) > 0 {
+			log := logger.GetLogger()
+			log.Info().
+				Int("active_providers", len(activeProviders)).
+				Msg("skipping providers.yml bootstrap because active providers already exist")
+			return nil
+		}
+
 		if err := d.setupConfiguredProviders(ctx, entries); err != nil {
 			return err
 		}
 		return nil
-	}
-
-	if cfg.JanDefaultNodeSetup {
-		if err := d.setupJanDefaultProvider(ctx); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -41,27 +49,6 @@ func (d *DataInitializer) setupConfiguredProviders(ctx context.Context, entries 
 		if err := d.bootstrapProvider(ctx, entry); err != nil {
 			return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, fmt.Sprintf("failed to bootstrap provider %q", entry.Name))
 		}
-	}
-	return nil
-}
-
-func (d *DataInitializer) setupJanDefaultProvider(ctx context.Context) error {
-	entry := config.ProviderBootstrapEntry{
-		Name:    "vLLM Provider",
-		Vendor:  string(model.ProviderJan),
-		BaseURL: config.GetGlobal().JanDefaultNodeURL,
-		APIKey:  config.GetGlobal().JanDefaultNodeAPIKey,
-		Active:  true,
-		Metadata: map[string]string{
-			"description":            "Default access to vLLM Provider",
-			"auto_enable_new_models": "true",
-		},
-		AutoEnableNewModels: true,
-		SyncModels:          true,
-	}
-
-	if err := d.bootstrapProvider(ctx, entry); err != nil {
-		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to setup Jan provider")
 	}
 	return nil
 }
