@@ -14,7 +14,6 @@ type ProcessorConfig struct {
 	EnableMemory    bool
 	EnableTemplates bool
 	EnableTools     bool
-	DefaultPersona  string
 }
 
 // Context contains contextual information for prompt processing

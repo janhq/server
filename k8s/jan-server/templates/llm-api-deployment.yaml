@@ -52,11 +52,19 @@ spec:
           value: {{ .Values.llmApi.env.AUTO_MIGRATE | quote }}
         - name: OTEL_ENABLED
           value: {{ .Values.llmApi.env.OTEL_ENABLED | quote }}
-        - name: JAN_DEFAULT_NODE_SETUP
-          value: {{ .Values.llmApi.env.JAN_DEFAULT_NODE_SETUP | quote }}
-        - name: JAN_DEFAULT_NODE_URL
-          value: {{ .Values.llmApi.env.JAN_DEFAULT_NODE_URL | quote }}
-        - name: DATABASE_URL
+        - name: VLLM_ENABLED
+          value: {{ .Values.llmApi.env.VLLM_ENABLED | quote }}
+        - name: VLLM_PROVIDER_URL
+          value: {{ .Values.llmApi.env.VLLM_PROVIDER_URL | quote }}
+        - name: REMOTE_LLM_ENABLED
+          value: {{ .Values.llmApi.env.REMOTE_LLM_ENABLED | quote }}
+        - name: REMOTE_LLM_PROVIDER_URL
+          value: {{ .Values.llmApi.env.REMOTE_LLM_PROVIDER_URL | quote }}
+        - name: REMOTE_API_KEY
+          value: {{ .Values.llmApi.env.REMOTE_API_KEY | quote }}
+        - name: JAN_PROVIDER_CONFIGS
+          value: {{ .Values.llmApi.env.JAN_PROVIDER_CONFIGS | quote }}
+        - name: DB_POSTGRESQL_WRITE_DSN
           valueFrom:
             secretKeyRef:
               name: {{ include "jan-server.fullname" . }}-llm-api-secret

@@ -17,53 +17,65 @@ import (
 
 var (
 	Q                  = new(Query)
+	APIKey             *aPIKey
 	Conversation       *conversation
 	ConversationBranch *conversationBranch
 	ConversationItem   *conversationItem
 	Model              *model
 	ModelCatalog       *modelCatalog
+	Project            *project
 	Provider           *provider
 	ProviderModel      *providerModel
 	User               *user
+	UserSettings       *userSettings
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	APIKey = &Q.APIKey
 	Conversation = &Q.Conversation
 	ConversationBranch = &Q.ConversationBranch
 	ConversationItem = &Q.ConversationItem
 	Model = &Q.Model
 	ModelCatalog = &Q.ModelCatalog
+	Project = &Q.Project
 	Provider = &Q.Provider
 	ProviderModel = &Q.ProviderModel
 	User = &Q.User
+	UserSettings = &Q.UserSettings
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:                 db,
+		APIKey:             newAPIKey(db, opts...),
 		Conversation:       newConversation(db, opts...),
 		ConversationBranch: newConversationBranch(db, opts...),
 		ConversationItem:   newConversationItem(db, opts...),
 		Model:              newModel(db, opts...),
 		ModelCatalog:       newModelCatalog(db, opts...),
+		Project:            newProject(db, opts...),
 		Provider:           newProvider(db, opts...),
 		ProviderModel:      newProviderModel(db, opts...),
 		User:               newUser(db, opts...),
+		UserSettings:       newUserSettings(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
+	APIKey             aPIKey
 	Conversation       conversation
 	ConversationBranch conversationBranch
 	ConversationItem   conversationItem
 	Model              model
 	ModelCatalog       modelCatalog
+	Project            project
 	Provider           provider
 	ProviderModel      providerModel
 	User               user
+	UserSettings       userSettings
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -71,14 +83,17 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:                 db,
+		APIKey:             q.APIKey.clone(db),
 		Conversation:       q.Conversation.clone(db),
 		ConversationBranch: q.ConversationBranch.clone(db),
 		ConversationItem:   q.ConversationItem.clone(db),
 		Model:              q.Model.clone(db),
 		ModelCatalog:       q.ModelCatalog.clone(db),
+		Project:            q.Project.clone(db),
 		Provider:           q.Provider.clone(db),
 		ProviderModel:      q.ProviderModel.clone(db),
 		User:               q.User.clone(db),
+		UserSettings:       q.UserSettings.clone(db),
 	}
 }
 
@@ -93,38 +108,47 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:                 db,
+		APIKey:             q.APIKey.replaceDB(db),
 		Conversation:       q.Conversation.replaceDB(db),
 		ConversationBranch: q.ConversationBranch.replaceDB(db),
 		ConversationItem:   q.ConversationItem.replaceDB(db),
 		Model:              q.Model.replaceDB(db),
 		ModelCatalog:       q.ModelCatalog.replaceDB(db),
+		Project:            q.Project.replaceDB(db),
 		Provider:           q.Provider.replaceDB(db),
 		ProviderModel:      q.ProviderModel.replaceDB(db),
 		User:               q.User.replaceDB(db),
+		UserSettings:       q.UserSettings.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
+	APIKey             IAPIKeyDo
 	Conversation       IConversationDo
 	ConversationBranch IConversationBranchDo
 	ConversationItem   IConversationItemDo
 	Model              IModelDo
 	ModelCatalog       IModelCatalogDo
+	Project            IProjectDo
 	Provider           IProviderDo
 	ProviderModel      IProviderModelDo
 	User               IUserDo
+	UserSettings       IUserSettingsDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		APIKey:             q.APIKey.WithContext(ctx),
 		Conversation:       q.Conversation.WithContext(ctx),
 		ConversationBranch: q.ConversationBranch.WithContext(ctx),
 		ConversationItem:   q.ConversationItem.WithContext(ctx),
 		Model:              q.Model.WithContext(ctx),
 		ModelCatalog:       q.ModelCatalog.WithContext(ctx),
+		Project:            q.Project.WithContext(ctx),
 		Provider:           q.Provider.WithContext(ctx),
 		ProviderModel:      q.ProviderModel.WithContext(ctx),
 		User:               q.User.WithContext(ctx),
+		UserSettings:       q.UserSettings.WithContext(ctx),
 	}
 }
 

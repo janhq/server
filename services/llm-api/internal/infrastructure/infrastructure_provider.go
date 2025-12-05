@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 
+	"jan-server/services/llm-api/internal/application/audit"
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/infrastructure/auth"
 	"jan-server/services/llm-api/internal/infrastructure/crontab"
@@ -113,6 +114,11 @@ func ProvideMediaResolver(cfg *config.Config, log zerolog.Logger, kc *keycloak.C
 	return mediaresolver.NewResolver(cfg, log, kc)
 }
 
+// ProvideAdminAuditLogger supplies audit logging helper.
+func ProvideAdminAuditLogger(db *gorm.DB, logger zerolog.Logger) *audit.AdminAuditLogger {
+	return audit.NewAdminAuditLogger(db, logger)
+}
+
 // Infrastructure holds all infrastructure dependencies
 type Infrastructure struct {
 	DB                *gorm.DB
@@ -169,4 +175,7 @@ var InfrastructureProvider = wire.NewSet(
 
 	// Infrastructure struct
 	NewInfrastructure,
+
+	// Audit logger
+	ProvideAdminAuditLogger,
 )

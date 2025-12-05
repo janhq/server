@@ -37,7 +37,7 @@ HTTPPort int `env:"HTTP_PORT"`
 HTTPPort int `env:"HTTP_PORT"` // OK Already matches!
 
 // Before (llm-api):
-DatabaseURL string `env:"DATABASE_URL"`
+DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN,notEmpty"`
 
 // After (should use components):
 // Build from POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, etc.

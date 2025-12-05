@@ -3,23 +3,27 @@ on:
   push:
     branches:
       - main
+      - dev-test
     paths:
       - "services/llm-api/**"
       - "services/mcp-tools/**"
       - "services/media-api/**"
       - "services/response-api/**"
       - "services/memory-tools/**"
+      - "pkg/**"
       - .github/workflows/dev.yml
       - .github/workflows/template-docker.yml
   pull_request:
     branches:
       - main
+      - dev-test
     paths:
       - "services/llm-api/**"
       - "services/mcp-tools/**"
       - "services/media-api/**"
       - "services/response-api/**"
       - "services/memory-tools/**"
+      - "pkg/**"
       - .github/workflows/dev.yml
       - .github/workflows/template-docker.yml
 
@@ -33,6 +37,7 @@ jobs:
       response-api: ${{ steps.filter.outputs.response-api }}
       memory-tools: ${{ steps.filter.outputs.memory-tools }}
       vector-store: ${{ steps.filter.outputs.vector-store }}
+      pkg: ${{ steps.filter.outputs.pkg }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -52,10 +57,12 @@ jobs:
               - 'services/memory-tools/**'
             vector-store:
               - 'services/mcp-tools/tools/vector-store-service/**'
+            pkg:
+              - 'pkg/**'
 
   build-llm-api:
     needs: changes
-    if: needs.changes.outputs.llm-api == 'true'
+    if: needs.changes.outputs.llm-api == 'true' || needs.changes.outputs.pkg == 'true'
     uses: ./.github/workflows/template-docker.yml
     secrets: inherit
     with:
@@ -70,7 +77,7 @@ jobs:
 
   build-mcp-tools:
     needs: changes
-    if: needs.changes.outputs.mcp-tools == 'true'
+    if: needs.changes.outputs.mcp-tools == 'true' || needs.changes.outputs.pkg == 'true'
     uses: ./.github/workflows/template-docker.yml
     secrets: inherit
     with:
@@ -85,7 +92,7 @@ jobs:
 
   build-media-api:
     needs: changes
-    if: needs.changes.outputs.media-api == 'true'
+    if: needs.changes.outputs.media-api == 'true' || needs.changes.outputs.pkg == 'true'
     uses: ./.github/workflows/template-docker.yml
     secrets: inherit
     with:
@@ -100,7 +107,7 @@ jobs:
 
   build-response-api:
     needs: changes
-    if: needs.changes.outputs.response-api == 'true'
+    if: needs.changes.outputs.response-api == 'true' || needs.changes.outputs.pkg == 'true'
     uses: ./.github/workflows/template-docker.yml
     secrets: inherit
     with:
@@ -115,7 +122,7 @@ jobs:
 
   build-memory-tools:
     needs: changes
-    if: needs.changes.outputs.memory-tools == 'true'
+    if: needs.changes.outputs.memory-tools == 'true' || needs.changes.outputs.pkg == 'true'
     uses: ./.github/workflows/template-docker.yml
     secrets: inherit
     with:
@@ -130,7 +137,7 @@ jobs:
 
   build-vector-store:
     needs: changes
-    if: needs.changes.outputs.vector-store == 'true'
+    if: needs.changes.outputs.vector-store == 'true' || needs.changes.outputs.pkg == 'true'
     uses: ./.github/workflows/template-docker.yml
     secrets: inherit
     with:

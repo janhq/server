@@ -137,7 +137,7 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | Variable | Description |
 | --- | --- |
 | `MEDIA_API_PORT` | HTTP listen port (default `8285`). |
-| `MEDIA_DATABASE_URL` | Postgres DSN for metadata. |
+| `DB_POSTGRESQL_WRITE_DSN` | Postgres DSN for metadata. |
 | `MEDIA_S3_ENDPOINT` | S3-compatible endpoint (`https://s3.menlo.ai`). |
 | `MEDIA_S3_PUBLIC_ENDPOINT` | Optional public endpoint used when returning presigned URLs (e.g., `http://localhost:9000`). |
 | `MEDIA_S3_ACCESS_KEY_ID` / `MEDIA_S3_SECRET_ACCESS_KEY` | Credentials (`XXXXX` / `YYYY`). |

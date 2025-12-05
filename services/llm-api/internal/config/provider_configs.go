@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"jan-server/services/llm-api/internal/infrastructure/logger"
 )
 
-const DefaultProviderConfigFile = "config/providers.yml"
+const DefaultProviderConfigFile = "configs/providers.yml"
 
 // ProviderBootstrapEntry describes a provider that should be bootstrapped on startup.
 type ProviderBootstrapEntry struct {
@@ -54,6 +56,7 @@ func LoadProviderBootstrapConfig(path string) (*ProviderBootstrapConfig, error) 
 		return nil, errors.New("provider config path is empty!!!")
 	}
 
+	log := logger.GetLogger()
 	cleanPath := filepath.Clean(path)
 	data, err := os.ReadFile(cleanPath)
 	if err != nil {
@@ -69,6 +72,7 @@ func LoadProviderBootstrapConfig(path string) (*ProviderBootstrapConfig, error) 
 			return nil, fmt.Errorf("read provider config %q: %w", cleanPath, err)
 		}
 	}
+	log.Info().Str("path", cleanPath).Msg("loading provider config file")
 
 	var doc providerConfigDocument
 	if err := yaml.Unmarshal(data, &doc); err != nil {
@@ -89,10 +93,25 @@ func LoadProviderBootstrapConfig(path string) (*ProviderBootstrapConfig, error) 
 			continue
 		}
 		for idx, entry := range entries {
+			entryLogger := log.With().Str("set", setName).Int("index", idx).Str("name", entry.Name).Logger()
+			enabled, err := parseEnabled(entry.EnableRaw)
+			if err != nil {
+				return nil, fmt.Errorf("providers.%s[%d]: %w", setName, idx, err)
+			}
+			if !enabled {
+				entryLogger.Info().Msg("skipping provider (enable=false)")
+				continue
+			}
 			normalized, err := normalizeProviderEntry(entry)
 			if err != nil {
 				return nil, fmt.Errorf("providers.%s[%d]: %w", setName, idx, err)
 			}
+			entryLogger.Info().
+				Str("vendor", normalized.Vendor).
+				Str("base_url", normalized.BaseURL).
+				Bool("sync_models", normalized.SyncModels).
+				Bool("auto_enable_new_models", normalized.AutoEnableNewModels).
+				Msg("including provider for bootstrap")
 			result.sets[setName] = append(result.sets[setName], normalized)
 		}
 	}
@@ -109,6 +128,7 @@ type providerConfigDocument struct {
 }
 
 type providerConfigEntry struct {
+	EnableRaw   string            `yaml:"enable"`
 	Name        string            `yaml:"name"`
 	Type        string            `yaml:"type"`
 	Vendor      string            `yaml:"vendor"`
@@ -124,6 +144,11 @@ type providerConfigEntry struct {
 }
 
 func normalizeProviderEntry(entry providerConfigEntry) (ProviderBootstrapEntry, error) {
+	enabled, err := parseEnabled(entry.EnableRaw)
+	if err != nil {
+		return ProviderBootstrapEntry{}, err
+	}
+
 	vendor := firstNonEmpty(entry.Type, entry.Vendor)
 	vendor = strings.TrimSpace(vendor)
 	if vendor == "" {
@@ -178,7 +203,7 @@ func normalizeProviderEntry(entry providerConfigEntry) (ProviderBootstrapEntry, 
 		Vendor:              vendor,
 		BaseURL:             baseURL,
 		APIKey:              apiKey,
-		Active:              active,
+		Active:              active && enabled,
 		Metadata:            metadata,
 		AutoEnableNewModels: autoEnable,
 		SyncModels:          syncModels,
@@ -218,4 +243,50 @@ func ensureStringMap(in map[string]string) map[string]string {
 		return make(map[string]string)
 	}
 	return in
+}
+
+func parseEnabled(raw string) (bool, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return true, nil
+	}
+
+	resolved := expandWithDefault(value)
+	resolved = strings.TrimSpace(resolved)
+	if resolved == "" {
+		return true, nil
+	}
+
+	parsed, err := strconv.ParseBool(resolved)
+	if err != nil {
+		return false, fmt.Errorf("enable: %w", err)
+	}
+	return parsed, nil
+}
+
+// expandWithDefault expands ${VAR} and ${VAR:-default} syntax using os envs.
+func expandWithDefault(raw string) string {
+	if !strings.Contains(raw, "${") {
+		return os.ExpandEnv(raw)
+	}
+	start := strings.Index(raw, "${")
+	end := strings.Index(raw[start:], "}")
+	if start == -1 || end == -1 {
+		return os.ExpandEnv(raw)
+	}
+	end = start + end
+	expr := raw[start+2 : end]
+	defaultVal := ""
+	varName := expr
+	if strings.Contains(expr, ":-") {
+		parts := strings.SplitN(expr, ":-", 2)
+		varName = parts[0]
+		defaultVal = parts[1]
+	}
+	val := os.Getenv(varName)
+	if val == "" {
+		val = defaultVal
+	}
+	resolved := raw[:start] + val + raw[end+1:]
+	return os.ExpandEnv(resolved)
 }

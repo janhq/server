@@ -3,6 +3,7 @@ package authhandler
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,12 +42,14 @@ type AccessTokenResponse struct {
 }
 
 type GetMeResponse struct {
-	ID         string `json:"id"`
-	Username   string `json:"username,omitempty"`
-	Email      string `json:"email,omitempty"`
-	Subject    string `json:"subject"`
-	AuthMethod string `json:"auth_method"`
-	Name       string `json:"name,omitempty"`
+	ID         string   `json:"id"`
+	Username   string   `json:"username,omitempty"`
+	Email      string   `json:"email,omitempty"`
+	Subject    string   `json:"subject"`
+	AuthMethod string   `json:"auth_method"`
+	Name       string   `json:"name,omitempty"`
+	Roles      []string `json:"roles,omitempty"`
+	IsAdmin    bool     `json:"is_admin"`
 }
 
 // Logout removes authentication tokens
@@ -192,6 +195,20 @@ func (h *TokenHandler) GetMe(c *gin.Context) {
 		name = principal.Username
 	}
 
+	// Determine admin status: realm role, client role, or attribute flag
+	isAdmin := false
+	for _, role := range principal.Roles {
+		if strings.EqualFold(role, "admin") {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin && principal.Attributes != nil {
+		if flag, ok := principal.Attributes["is_admin"].(bool); ok && flag {
+			isAdmin = true
+		}
+	}
+
 	c.JSON(http.StatusOK, GetMeResponse{
 		ID:         principal.ID,
 		Username:   principal.Username,
@@ -199,6 +216,8 @@ func (h *TokenHandler) GetMe(c *gin.Context) {
 		Email:      principal.Email,
 		Subject:    principal.Subject,
 		AuthMethod: string(principal.AuthMethod),
+		Roles:      principal.Roles,
+		IsAdmin:    isAdmin,
 	})
 }
 

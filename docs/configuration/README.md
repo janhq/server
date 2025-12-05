@@ -228,7 +228,7 @@ Migrating from old environment-variable-only approach:
 ```go
 type Config struct {
  HTTPPort int `env:"HTTP_PORT" envDefault:"8080"`
- DatabaseURL string `env:"DATABASE_URL" envDefault:"postgres://..."`
+ DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN,notEmpty"`
  LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
  AuthEnabled bool `env:"AUTH_ENABLED" envDefault:"false"`
  //... 50+ more variables

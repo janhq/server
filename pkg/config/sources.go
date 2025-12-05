@@ -88,7 +88,7 @@ func buildDefaultConfigForLoader() *Config {
 				LogLevel:               "info",
 				LogFormat:              "json",
 				AutoMigrate:            true,
-				ProviderConfigFile:     "config/providers.yml",
+				ProviderConfigFile:     "configs/providers.yml",
 				ProviderConfigSet:      "default",
 				ProviderConfigsEnabled: true,
 				APIKey: APIKeyConfig{

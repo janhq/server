@@ -234,6 +234,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 	// Track which services to enable
 	useLocalVLLM := false
 	profiles := []string{"infra", "api", "mcp"} // Always include core services
+	updates["JAN_PROVIDER_CONFIGS"] = "true"
 
 	if providerChoice == "1" {
 		// Local vLLM setup
@@ -245,9 +246,17 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 			updates["HF_TOKEN"] = hfToken
 		}
 
-		// Disable remote provider, enable local
-		updates["JAN_PROVIDER_CONFIGS"] = "true"
-		updates["JAN_DEFAULT_NODE_SETUP"] = "false"
+		fmt.Print("VLLM_INTERNAL_KEY (press Enter to keep current or default): ")
+		internalKey, _ := reader.ReadString('\n')
+		internalKey = strings.TrimSpace(internalKey)
+		if internalKey != "" {
+			updates["VLLM_INTERNAL_KEY"] = internalKey
+		}
+
+		updates["VLLM_ENABLED"] = "true"
+		updates["REMOTE_LLM_ENABLED"] = "false"
+		updates["VLLM_PROVIDER_URL"] = "http://vllm-jan-gpu:8001/v1"
+		updates["VLLM_TOOL_SUPPORT"] = "true"
 		profiles = append(profiles, "full") // Add vLLM
 		useLocalVLLM = true
 
@@ -263,11 +272,12 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 		apiKey, _ := reader.ReadString('\n')
 		apiKey = strings.TrimSpace(apiKey)
 
+		updates["VLLM_ENABLED"] = "false"
+		updates["REMOTE_LLM_ENABLED"] = "true"
+		updates["REMOTE_LLM_PROVIDER_URL"] = remoteURL
+		updates["REMOTE_API_KEY"] = apiKey
+
 		if remoteURL != "" {
-			updates["JAN_DEFAULT_NODE_SETUP"] = "true"
-			updates["JAN_DEFAULT_NODE_URL"] = remoteURL
-			updates["JAN_DEFAULT_NODE_API_KEY"] = apiKey
-			updates["JAN_PROVIDER_CONFIGS"] = "false"
 			updates["HF_TOKEN"] = "not_required_for_remote_provider"
 			// Note: infra, api, mcp already in profiles
 			fmt.Println("✓ Will use remote provider:", remoteURL)

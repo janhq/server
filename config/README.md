@@ -273,31 +273,39 @@ The llm-api service can preload providers from a YAML manifest. Enable it via:
 
 ```bash
 JAN_PROVIDER_CONFIGS=true
-JAN_PROVIDER_CONFIGS_FILE=config/providers.yml
+JAN_PROVIDER_CONFIGS_FILE=configs/providers.yml
 JAN_PROVIDER_CONFIG_SET=default
 ```
 
-`JAN_PROVIDER_CONFIGS_FILE` defaults to `config/providers.yml` inside `services/llm-api` (copied to `/app/config/providers.yml` in Docker). Each set under the `providers` key defines one or more providers:
+`JAN_PROVIDER_CONFIGS_FILE` defaults to `configs/providers.yml` inside `services/llm-api` (copied to `/app/config/providers.yml` in Docker). Each set under the `providers` key defines one or more providers:
 
 ```yaml
 providers:
   default:
     - name: Local vLLM Provider
-      type: jan
-      url: http://vllm-jan-gpu:8101/v1
+      enable: ${VLLM_ENABLED}
+      type: vllm
+      url: ${VLLM_PROVIDER_URL}
       api_key: ${VLLM_INTERNAL_KEY}
+      auto_enable_new_models: true
+      sync_models: true
+    - name: Remote LLM Provider
+      enable: ${REMOTE_LLM_ENABLED}
+      type: jan
+      url: ${REMOTE_LLM_PROVIDER_URL}
+      api_key: ${REMOTE_API_KEY}
       auto_enable_new_models: true
       sync_models: true
 ```
 
-Environment variables (e.g., `${VLLM_INTERNAL_KEY}`) are expanded at load time, so secrets stay in `.env`. Create multiple sets such as `default`, `production`, etc., and select one with `JAN_PROVIDER_CONFIG_SET`. When the YAML flag is disabled, llm-api falls back to the legacy `JAN_DEFAULT_NODE_*` variables.
+Environment variables (e.g., `${VLLM_INTERNAL_KEY}`) are expanded at load time, so secrets stay in `.env`. Create multiple sets such as `default`, `production`, etc., and select one with `JAN_PROVIDER_CONFIG_SET`.
 
 ### Adding a New Environment
 
 1. Create `config/myenv.env`:
 ```bash
 # My Custom Environment
-DB_DSN=postgres://user:pass@custom-db:5432/dbname
+DB_POSTGRESQL_WRITE_DSN=postgres://user:pass@custom-db:5432/dbname
 KEYCLOAK_BASE_URL=http://custom-keycloak:8085
 # ... other overrides
 ```

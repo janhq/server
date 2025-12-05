@@ -6,6 +6,7 @@ import (
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure/memory"
+	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
@@ -36,4 +37,7 @@ var HandlerProvider = wire.NewSet(
 	modelhandler.NewProviderHandler,
 	modelhandler.NewModelCatalogHandler,
 	modelhandler.NewProviderModelHandler,
+	adminhandler.NewAdminUserHandler,
+	adminhandler.NewAdminGroupHandler,
+	adminhandler.NewFeatureFlagHandler,
 )

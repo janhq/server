@@ -57,6 +57,5 @@ func ProvidePromptProcessorConfig(cfg *config.Config, log zerolog.Logger) prompt
 		EnableMemory:    cfg.PromptOrchestrationEnableMemory,
 		EnableTemplates: cfg.PromptOrchestrationEnableTemplates,
 		EnableTools:     cfg.PromptOrchestrationEnableTools,
-		DefaultPersona:  cfg.PromptOrchestrationDefaultPersona,
 	}
 }

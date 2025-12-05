@@ -45,14 +45,14 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/v1/chat/completion
 | Component | Port | Environment Variable |
 |-----------|------|---------------------|
 | **HTTP Server** | 8080 | `HTTP_PORT` |
-| **Database** | 5432 | `DB_DSN` |
+| **Database** | 5432 | `DB_POSTGRESQL_WRITE_DSN` |
 | **Keycloak** | 8085 | `KEYCLOAK_BASE_URL` |
 
 ### Required Environment Variables
 
 ```bash
 HTTP_PORT=8080 # HTTP listen port
-DB_DSN=postgres://jan_user:password@api-db:5432/jan_llm_api?sslmode=disable
+DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:password@api-db:5432/jan_llm_api?sslmode=disable
 LOG_LEVEL=info # debug, info, warn, error
 LOG_FORMAT=json # json or text
 KEYCLOAK_BASE_URL=http://keycloak:8085 # Keycloak URL
