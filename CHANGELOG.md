@@ -13,7 +13,7 @@
 Major expansion of admin capabilities with comprehensive management APIs, enhanced model catalog features, and robust middleware stack.
 
 #### What's New
-- **Admin API Endpoints**: Full CRUD operations for user management, group management, and feature flag administration
+- **Admin API Endpoints**: Full operations for user management, group management, and feature flag administration
 - **Model Catalog Enhancements**: 
   - Feature flag integration for controlled model access
   - Experimental model support with explicit flagging
@@ -22,7 +22,7 @@ Major expansion of admin capabilities with comprehensive management APIs, enhanc
 - **Database Schema Updates**:
   - Feature flags table with user/group assignments
   - Audit logging for admin operations
-  - Model display names and ordering fields (`category_order_number`, `model_order_number`)
+  - Model display names and ordering fields
   - Enhanced provider model metadata
 - **Middleware Additions**:
   - Admin authorization middleware for protected endpoints
