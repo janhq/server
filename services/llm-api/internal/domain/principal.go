@@ -19,7 +19,11 @@ type Principal struct {
 	Username        string
 	Email           string
 	Name            string
+	Roles           []string
+	Groups          []string
+	FeatureFlags    []string
 	Scopes          []string
+	Attributes      map[string]any
 	Credentials     map[string]string
 }
 

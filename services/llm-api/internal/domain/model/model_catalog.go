@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	decimal "github.com/shopspring/decimal"
 	"jan-server/services/llm-api/internal/domain/query"
+
+	decimal "github.com/shopspring/decimal"
 )
 
 type SupportedParameters struct {
@@ -33,27 +34,47 @@ const (
 type ModelCatalog struct {
 	ID                  uint                `json:"id"`
 	PublicID            string              `json:"public_id"`
+	ModelDisplayName    string              `json:"model_display_name,omitempty"`
+	Description         *string             `json:"description,omitempty"`
 	SupportedParameters SupportedParameters `json:"supported_parameters"`
 	Architecture        Architecture        `json:"architecture"`
 	Tags                []string            `json:"tags,omitempty"`
 	Notes               *string             `json:"notes,omitempty"`
+	ContextLength       *int                `json:"context_length,omitempty"`
 	IsModerated         *bool               `json:"is_moderated,omitempty"`
 	Active              *bool               `json:"active,omitempty"`
 	Extras              map[string]any      `json:"extras,omitempty"`
 	Status              ModelCatalogStatus  `json:"status"`
-	LastSyncedAt        *time.Time
-	CreatedAt           time.Time `json:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	Experimental        bool                `json:"experimental"`
+	RequiresFeatureFlag *string             `json:"requires_feature_flag,omitempty"` // Feature flag key required to access this model
+	// Capabilities (moved from provider_model)
+	SupportsImages     bool   `json:"supports_images"`
+	SupportsEmbeddings bool   `json:"supports_embeddings"`
+	SupportsReasoning  bool   `json:"supports_reasoning"`
+	SupportsAudio      bool   `json:"supports_audio"`
+	SupportsVideo      bool   `json:"supports_video"`
+	Family             string `json:"family,omitempty"` // e.g., "gpt-4o", "llama-3.1"
+	LastSyncedAt       *time.Time
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 type ModelCatalogFilter struct {
-	IDs              *[]uint
-	PublicID         *string
-	IsModerated      *bool
-	Active           *bool
-	Status           *ModelCatalogStatus
-	LastSyncedAfter  *time.Time
-	LastSyncedBefore *time.Time
+	IDs                 *[]uint
+	PublicID            *string
+	IsModerated         *bool
+	Active              *bool
+	Status              *ModelCatalogStatus
+	LastSyncedAfter     *time.Time
+	LastSyncedBefore    *time.Time
+	Experimental        *bool
+	RequiresFeatureFlag *string
+	SupportsImages      *bool
+	SupportsEmbeddings  *bool
+	SupportsReasoning   *bool
+	SupportsAudio       *bool
+	SupportsVideo       *bool
+	Family              *string
 }
 
 type ModelCatalogRepository interface {

@@ -110,7 +110,7 @@ func buildDefaultConfig() *config.Config {
 				LogLevel:               "info",
 				LogFormat:              "json",
 				AutoMigrate:            true,
-				ProviderConfigFile:     "config/providers.yml",
+				ProviderConfigFile:     "configs/providers.yml",
 				ProviderConfigSet:      "default",
 				ProviderConfigsEnabled: true,
 				APIKey: config.APIKeyConfig{

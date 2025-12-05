@@ -24,7 +24,10 @@ type PrincipalClaims struct {
 	Name              string
 	Picture           string
 	Roles             []string
+	Groups            []string
+	FeatureFlags      []string
 	Scopes            []string
+	Attributes        map[string]any
 	ExpiresAt         time.Time
 	IssuedAt          time.Time
 	NotBefore         time.Time
@@ -221,7 +224,21 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		if rawRoles, ok := realmAccess["roles"].([]interface{}); ok {
 			for _, role := range rawRoles {
 				if s, ok := role.(string); ok {
-					roles = append(roles, s)
+					roles = appendUnique(roles, s)
+				}
+			}
+		}
+	}
+	// Include client-level roles as well (resource_access.<client>.roles)
+	if resourceAccess, ok := mapClaims["resource_access"].(map[string]any); ok {
+		for _, entry := range resourceAccess {
+			if clientMap, ok := entry.(map[string]any); ok {
+				if rawRoles, ok := clientMap["roles"].([]interface{}); ok {
+					for _, role := range rawRoles {
+						if s, ok := role.(string); ok {
+							roles = appendUnique(roles, s)
+						}
+					}
 				}
 			}
 		}
@@ -230,6 +247,14 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 	var scopes []string
 	if scopeStr, ok := mapClaims["scope"].(string); ok && scopeStr != "" {
 		scopes = strings.Split(scopeStr, " ")
+	}
+
+	groups := extractStringSlice(mapClaims["groups"])
+	featureFlags := extractStringSlice(mapClaims["feature_flags"])
+
+	var attributes map[string]any
+	if rawAttrs, ok := mapClaims["attributes"].(map[string]any); ok && len(rawAttrs) > 0 {
+		attributes = rawAttrs
 	}
 
 	expires := jwtNumericTime(mapClaims["exp"])
@@ -253,6 +278,9 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		Picture:           picture,
 		Roles:             roles,
 		Scopes:            scopes,
+		Groups:            groups,
+		FeatureFlags:      featureFlags,
+		Attributes:        attributes,
 		ExpiresAt:         expires,
 		IssuedAt:          issued,
 		NotBefore:         notBefore,
@@ -260,6 +288,35 @@ func (v *KeycloakValidator) Validate(_ context.Context, rawToken string) (*Princ
 		Audience:          audiences,
 		AuthorizedParty:   azp,
 	}, nil
+}
+
+func extractStringSlice(value any) []string {
+	if value == nil {
+		return nil
+	}
+
+	switch raw := value.(type) {
+	case []any:
+		out := make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	case []string:
+		return raw
+	}
+	return nil
+}
+
+func appendUnique(slice []string, item string) []string {
+	for _, existing := range slice {
+		if existing == item {
+			return slice
+		}
+	}
+	return append(slice, item)
 }
 
 // Ready indicates whether JWKS has been successfully loaded.

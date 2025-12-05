@@ -184,6 +184,7 @@ type ProviderFilter struct {
 	IsModerated      *bool
 	LastSyncedAfter  *time.Time
 	LastSyncedBefore *time.Time
+	SearchText       *string
 }
 
 type AccessibleModels struct {

@@ -197,7 +197,7 @@ func (h *KeycloakOAuthHandler) InitiateLogin(c *gin.Context) {
 	params.Add("client_id", h.clientID)
 	params.Add("redirect_uri", h.redirectURI)
 	params.Add("response_type", "code")
-	params.Add("scope", "openid profile email")
+	params.Add("scope", "openid") // use minimal scope to avoid invalid_scope on realms without profile/email
 	params.Add("state", state)
 	params.Add("code_challenge", codeChallenge)
 	params.Add("code_challenge_method", "S256")

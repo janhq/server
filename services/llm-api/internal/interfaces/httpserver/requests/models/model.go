@@ -26,21 +26,36 @@ type UpdateModelCatalogRequest struct {
 	Architecture        *domainmodel.Architecture        `json:"architecture"`
 	Tags                *[]string                        `json:"tags"`
 	Notes               *string                          `json:"notes"`
+	Description         *string                          `json:"description"`
 	IsModerated         *bool                            `json:"is_moderated"`
 	Extras              *map[string]any                  `json:"extras"`
+	Active              *bool                            `json:"active"`
+	Experimental        *bool                            `json:"experimental"`
+	RequiresFeatureFlag *string                          `json:"requires_feature_flag"`
+	SupportsImages      *bool                            `json:"supports_images"`
+	SupportsEmbeddings  *bool                            `json:"supports_embeddings"`
+	SupportsReasoning   *bool                            `json:"supports_reasoning"`
+	SupportsAudio       *bool                            `json:"supports_audio"`
+	SupportsVideo       *bool                            `json:"supports_video"`
+	Family              *string                          `json:"family"`
+	ModelDisplayName    *string                          `json:"model_display_name"`
+	ContextLength       *float64                         `json:"context_length"`
 }
 
 type UpdateProviderModelRequest struct {
-	DisplayName        *string                  `json:"display_name"`
-	Pricing            *domainmodel.Pricing     `json:"pricing"`
-	TokenLimits        *domainmodel.TokenLimits `json:"token_limits"`
-	Family             *string                  `json:"family"`
-	SupportsImages     *bool                    `json:"supports_images"`
-	SupportsEmbeddings *bool                    `json:"supports_embeddings"`
-	SupportsReasoning  *bool                    `json:"supports_reasoning"`
-	SupportsAudio      *bool                    `json:"supports_audio"`
-	SupportsVideo      *bool                    `json:"supports_video"`
-	Active             *bool                    `json:"active"`
+	ModelDisplayName    *string                  `json:"model_display_name"`
+	Category            *string                  `json:"category"`
+	CategoryOrderNumber *int                     `json:"category_order_number"`
+	ModelOrderNumber    *int                     `json:"model_order_number"`
+	Pricing             *domainmodel.Pricing     `json:"pricing"`
+	TokenLimits         *domainmodel.TokenLimits `json:"token_limits"`
+	Family              *string                  `json:"family"`
+	SupportsImages      *bool                    `json:"supports_images"`
+	SupportsEmbeddings  *bool                    `json:"supports_embeddings"`
+	SupportsReasoning   *bool                    `json:"supports_reasoning"`
+	SupportsAudio       *bool                    `json:"supports_audio"`
+	SupportsVideo       *bool                    `json:"supports_video"`
+	Active              *bool                    `json:"active"`
 }
 
 type BulkEnableModelsRequest struct {

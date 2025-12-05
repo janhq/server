@@ -102,7 +102,7 @@ Port int `yaml:"port" json:"port" env:"POSTGRES_PORT" envDefault:"5432"
 - Managed through YAML + env vars
 
 ### Service `/config` or `/configs` - Pluggable Configs (CI/CD Managed)
-- `services/llm-api/config/providers.yml` - Model providers
+- `services/llm-api/configs/providers.yml` - Model providers
 - `services/mcp-tools/configs/mcp-providers.yml` - MCP tools
 - These files are **replaced by CI/CD**, not loaded from root config
 

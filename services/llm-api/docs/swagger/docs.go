@@ -1217,6 +1217,50 @@ const docTemplate = `{
             }
         },
         "/v1/admin/providers/{provider_public_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a provider by its public ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Provider API"
+                ],
+                "summary": "Get a provider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider public ID",
+                        "name": "provider_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Provider details",
+                        "schema": {
+                            "$ref": "#/definitions/modelresponses.ProviderResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Provider not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve provider",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {
@@ -3785,12 +3829,24 @@ const docTemplate = `{
                 "architecture": {
                     "$ref": "#/definitions/model.Architecture"
                 },
+                "context_length": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "experimental": {
+                    "type": "boolean"
                 },
                 "extras": {
                     "type": "object",
                     "additionalProperties": {}
+                },
+                "family": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -3801,7 +3857,16 @@ const docTemplate = `{
                 "last_synced_at": {
                     "type": "integer"
                 },
+                "model_display_name": {
+                    "type": "string"
+                },
                 "notes": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "requires_feature_flag": {
                     "type": "string"
                 },
                 "status": {
@@ -3809,6 +3874,21 @@ const docTemplate = `{
                 },
                 "supported_parameters": {
                     "$ref": "#/definitions/model.SupportedParameters"
+                },
+                "supports_audio": {
+                    "type": "boolean"
+                },
+                "supports_embeddings": {
+                    "type": "boolean"
+                },
+                "supports_images": {
+                    "type": "boolean"
+                },
+                "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_video": {
+                    "type": "boolean"
                 },
                 "tags": {
                     "type": "array",
@@ -3824,11 +3904,23 @@ const docTemplate = `{
         "modelresponses.ModelResponse": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "category_order_number": {
+                    "type": "integer"
+                },
                 "created": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "object": {
                     "type": "string"
@@ -3855,11 +3947,23 @@ const docTemplate = `{
         "modelresponses.ModelResponseWithProvider": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "category_order_number": {
+                    "type": "integer"
+                },
                 "created": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "object": {
                     "type": "string"
@@ -3898,11 +4002,14 @@ const docTemplate = `{
                 "active": {
                     "type": "boolean"
                 },
-                "created_at": {
+                "category": {
+                    "type": "string"
+                },
+                "category_order_number": {
                     "type": "integer"
                 },
-                "display_name": {
-                    "type": "string"
+                "created_at": {
+                    "type": "integer"
                 },
                 "family": {
                     "type": "string"
@@ -3912,6 +4019,12 @@ const docTemplate = `{
                 },
                 "model_catalog_id": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "model_public_id": {
                     "type": "string"
@@ -4723,21 +4836,57 @@ const docTemplate = `{
         "requestmodels.UpdateModelCatalogRequest": {
             "type": "object",
             "properties": {
+                "active": {
+                    "type": "boolean"
+                },
                 "architecture": {
                     "$ref": "#/definitions/model.Architecture"
+                },
+                "context_length": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "experimental": {
+                    "type": "boolean"
                 },
                 "extras": {
                     "type": "object",
                     "additionalProperties": {}
                 },
+                "family": {
+                    "type": "string"
+                },
                 "is_moderated": {
                     "type": "boolean"
+                },
+                "model_display_name": {
+                    "type": "string"
                 },
                 "notes": {
                     "type": "string"
                 },
+                "requires_feature_flag": {
+                    "type": "string"
+                },
                 "supported_parameters": {
                     "$ref": "#/definitions/model.SupportedParameters"
+                },
+                "supports_audio": {
+                    "type": "boolean"
+                },
+                "supports_embeddings": {
+                    "type": "boolean"
+                },
+                "supports_images": {
+                    "type": "boolean"
+                },
+                "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_video": {
+                    "type": "boolean"
                 },
                 "tags": {
                     "type": "array",
@@ -4753,11 +4902,20 @@ const docTemplate = `{
                 "active": {
                     "type": "boolean"
                 },
-                "display_name": {
+                "category": {
                     "type": "string"
+                },
+                "category_order_number": {
+                    "type": "integer"
                 },
                 "family": {
                     "type": "string"
+                },
+                "model_display_name": {
+                    "type": "string"
+                },
+                "model_order_number": {
+                    "type": "integer"
                 },
                 "pricing": {
                     "$ref": "#/definitions/model.Pricing"

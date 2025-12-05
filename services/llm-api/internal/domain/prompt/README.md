@@ -59,7 +59,6 @@ The processor includes several built-in modules that are automatically applied b
 | `PROMPT_ORCHESTRATION_MEMORY` | `false` | Enable memory injection |
 | `PROMPT_ORCHESTRATION_TEMPLATES` | `true` | Enable template-based prompts |
 | `PROMPT_ORCHESTRATION_TOOLS` | `false` | Enable tool usage instructions |
-| `PROMPT_ORCHESTRATION_PERSONA` | `helpful assistant` | Default assistant persona |
 
 ### YAML Configuration
 
@@ -73,7 +72,6 @@ services:
       enable_memory: false
       enable_templates: true
       enable_tools: false
-      default_persona: helpful assistant
 ```
 
 ## Implementation Details

@@ -15,8 +15,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 RUN useradd --system --home /app --no-create-home --uid 10001 appuser
 WORKDIR /app
+RUN mkdir -p /app/.cache && chown appuser:appuser /app/.cache
 COPY --from=builder /out/llm-api /app/llm-api
-COPY config /app/config
+COPY configs /app/configs
 COPY docs /app/docs
 COPY migrations /app/migrations
 USER appuser

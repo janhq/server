@@ -8,19 +8,19 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 
 | Centralized Env Var | Type | Default | Services Using | Notes |
 |---------------------|------|---------|----------------|-------|
-| `POSTGRES_HOST` | string | `api-db` | llm-api | Replaces `DATABASE_URL` component |
-| `POSTGRES_PORT` | int | `5432` | llm-api | Replaces `DATABASE_URL` component |
-| `POSTGRES_USER` | string | `jan_user` | llm-api | Replaces `DATABASE_URL` component |
-| `POSTGRES_PASSWORD` | string | `jan_password` | llm-api | From secrets, replaces `DATABASE_URL` component |
-| `POSTGRES_DB` | string | `jan_llm_api` | llm-api | Replaces `DATABASE_URL` component |
-| `POSTGRES_SSL_MODE` | string | `disable` | llm-api | Replaces `DATABASE_URL` component |
+| `POSTGRES_HOST` | string | `api-db` | llm-api | Used in `DB_POSTGRESQL_WRITE_DSN` |
+| `POSTGRES_PORT` | int | `5432` | llm-api | Used in `DB_POSTGRESQL_WRITE_DSN` |
+| `POSTGRES_USER` | string | `jan_user` | llm-api | Used in `DB_POSTGRESQL_WRITE_DSN` |
+| `POSTGRES_PASSWORD` | string | `jan_password` | llm-api | From secrets, used in `DB_POSTGRESQL_WRITE_DSN` |
+| `POSTGRES_DB` | string | `jan_llm_api` | llm-api | Used in `DB_POSTGRESQL_WRITE_DSN` |
+| `POSTGRES_SSL_MODE` | string | `disable` | llm-api | Used in `DB_POSTGRESQL_WRITE_DSN` |
 | `POSTGRES_MAX_CONNECTIONS` | int | `100` | llm-api | New standardized var |
 | `POSTGRES_MAX_IDLE_CONNS` | int | `5` | llm-api | New standardized var |
 | `POSTGRES_MAX_OPEN_CONNS` | int | `15` | llm-api | New standardized var |
 | `DB_CONN_MAX_LIFETIME` | duration | `30m` | llm-api | OK Already aligned |
 
 **Migration Notes:**
-- Services currently using `DATABASE_URL` should transition to component-based env vars
+- All services use `DB_POSTGRESQL_WRITE_DSN` for database connections
 - Connection URL is built from components: `postgres://user:password@host:port/database?sslmode=disable`
 - This allows better secret management (password separate from URL)
 
@@ -81,7 +81,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 **Provider Config:**
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
-| `JAN_PROVIDER_CONFIGS_FILE` | string | `config/providers.yml` | `JAN_PROVIDER_CONFIGS_FILE` | TODO Path may differ |
+| `JAN_PROVIDER_CONFIGS_FILE` | string | `configs/providers.yml` | `JAN_PROVIDER_CONFIGS_FILE` | TODO Path may differ |
 | `JAN_PROVIDER_CONFIG_SET` | string | `default` | `JAN_PROVIDER_CONFIG_SET` | OK Aligned |
 | `JAN_PROVIDER_CONFIGS` | bool | `true` | `JAN_PROVIDER_CONFIGS` | OK Aligned |
 
@@ -108,7 +108,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 | Centralized Env Var | Type | Default | Current Var | Status |
 |---------------------|------|---------|-------------|--------|
 | `MEMORY_TOOLS_PORT` | int | `8090` | `MEMORY_TOOLS_PORT` | OK Aligned |
-| `DB_POSTGRESQL_WRITE_DSN` | string | (computed) | `DATABASE_URL` | ✅ Migrated |
+| `DB_POSTGRESQL_WRITE_DSN` | string | (computed) | - | ✅ Standard |
 | `DB_POSTGRESQL_READ1_DSN` | string | - | - | ✅ New (optional) |
 | `MEMORY_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | TODO Need prefix |
 | `MEMORY_LOG_FORMAT` | string | `json` | `LOG_FORMAT` | TODO Need prefix |
@@ -120,7 +120,7 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 | `EMBEDDING_CACHE_TTL` | duration | `1h` | `EMBEDDING_CACHE_TTL` | OK Aligned |
 
 **Migration Notes:**
-- Database configuration migrated from single `DATABASE_URL` to `DB_POSTGRESQL_WRITE_DSN` and optional `DB_POSTGRESQL_READ1_DSN`
+- Database configuration uses `DB_POSTGRESQL_WRITE_DSN` and optional `DB_POSTGRESQL_READ1_DSN` for read replicas
 - Supports read/write splitting for better scalability
 - Can share database with other services or use separate database
 - Read replica is optional; falls back to write DSN if not configured
@@ -216,7 +216,7 @@ OK **Already Aligned - No Changes Needed:**
 TODO **Requires Prefix/Rename:**
 - Service-specific HTTP_PORT -> {SERVICE}_PORT
 - Service-specific LOG_LEVEL -> {SERVICE}_LOG_LEVEL
-- Database URL components (transition from DATABASE_URL)
+- Database URL components
 
 ### Phase 3: Medium Priority (Sprint 3.3)
 TODO **New Variables - Add Support:**

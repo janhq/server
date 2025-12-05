@@ -122,7 +122,7 @@ You can run a service completely outside Docker by providing the same environmen
 # Example for llm-api
 docker compose up -d api-db keycloak kong   # ensure infra is running
 cd services/llm-api
-export DB_DSN="postgres://jan_user:${POSTGRES_PASSWORD}@localhost:5432/jan_llm_api?sslmode=disable"
+export DB_POSTGRESQL_WRITE_DSN="postgres://jan_user:${POSTGRES_PASSWORD}@localhost:5432/jan_llm_api?sslmode=disable"
 export KEYCLOAK_BASE_URL="http://localhost:8085"
 export JWKS_URL="http://localhost:8085/realms/jan/protocol/openid-connect/certs"
 export ISSUER="http://localhost:8085/realms/jan"

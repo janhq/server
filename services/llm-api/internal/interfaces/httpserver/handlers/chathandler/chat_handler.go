@@ -265,6 +265,17 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	var response *openai.ChatCompletionResponse
 
+	// Debug: Log final messages sent to LLM
+	logInstance := logger.GetLogger()
+	if logInstance.Debug().Enabled() {
+		finalMessagesJSON, _ := json.Marshal(request.Messages)
+		logInstance.Debug().
+			RawJSON("final_messages_to_llm", finalMessagesJSON).
+			Str("model", request.Model).
+			Bool("stream", request.Stream).
+			Msg("sending request to LLM")
+	}
+
 	// Handle streaming vs non-streaming
 	observability.AddSpanEvent(ctx, "calling_llm")
 	llmStartTime := time.Now()
@@ -274,6 +285,25 @@ func (h *ChatHandler) CreateChatCompletion(
 		response, err = h.callCompletion(ctx, chatClient, request.ChatCompletionRequest)
 	}
 	llmDuration := time.Since(llmStartTime)
+
+	// Debug: Log LLM response
+	if logInstance.Debug().Enabled() {
+		if err != nil {
+			logInstance.Debug().
+				Err(err).
+				Dur("llm_duration_ms", llmDuration).
+				Msg("LLM call failed")
+		} else if response != nil {
+			responseJSON, _ := json.Marshal(response)
+			logInstance.Debug().
+				RawJSON("llm_response", responseJSON).
+				Dur("llm_duration_ms", llmDuration).
+				Int("prompt_tokens", response.Usage.PromptTokens).
+				Int("completion_tokens", response.Usage.CompletionTokens).
+				Int("total_tokens", response.Usage.TotalTokens).
+				Msg("LLM call completed")
+		}
+	}
 
 	if err != nil {
 		observability.RecordError(ctx, err)
@@ -443,8 +473,16 @@ func (h *ChatHandler) streamCompletion(
 }
 
 func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.Context, messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
+	log := logger.GetLogger()
+
 	if h.mediaResolver == nil || len(messages) == 0 {
 		return messages
+	}
+
+	// Debug: Log input messages
+	if log.Debug().Enabled() {
+		messagesJSON, _ := json.Marshal(messages)
+		log.Debug().RawJSON("input_messages", messagesJSON).Msg("resolveMediaPlaceholders: input")
 	}
 
 	if reqCtx != nil {
@@ -458,14 +496,26 @@ func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.
 
 	resolved, changed, err := h.mediaResolver.ResolveMessages(ctx, messages)
 	if err != nil {
-		log := logger.GetLogger()
 		log.Warn().Err(err).Msg("media placeholder resolution failed")
 		return messages
 	}
 	if changed {
 		observability.AddSpanEvent(ctx, "media_placeholders_resolved")
+
+		// Debug: Log resolved messages
+		if log.Debug().Enabled() {
+			resolvedJSON, _ := json.Marshal(resolved)
+			log.Debug().RawJSON("resolved_messages", resolvedJSON).Msg("resolveMediaPlaceholders: output (changed)")
+		}
+
 		return resolved
 	}
+
+	// Debug: Log unchanged messages
+	if log.Debug().Enabled() {
+		log.Debug().Msg("resolveMediaPlaceholders: output (no change)")
+	}
+
 	return messages
 }
 

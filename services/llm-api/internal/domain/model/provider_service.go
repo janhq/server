@@ -230,9 +230,37 @@ func (s *ProviderService) FindAllProviders(ctx context.Context) ([]*Provider, er
 	return s.providerRepo.FindByFilter(ctx, filter, nil)
 }
 
+func (s *ProviderService) FindProviders(ctx context.Context, filter ProviderFilter) ([]*Provider, error) {
+	return s.providerRepo.FindByFilter(ctx, filter, nil)
+}
+
 func (s *ProviderService) FindAllActiveProviders(ctx context.Context) ([]*Provider, error) {
 	filter := ProviderFilter{Active: ptr.ToBool(true)}
 	return s.providerRepo.FindByFilter(ctx, filter, nil)
+}
+
+func (s *ProviderService) DeleteProviderByPublicID(ctx context.Context, publicID string) error {
+	if strings.TrimSpace(publicID) == "" {
+		return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "35b02081-5c0d-4d65-9841-c1d7a5300829")
+	}
+
+	provider, err := s.providerRepo.FindByPublicID(ctx, publicID)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to find provider")
+	}
+	if provider == nil {
+		return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, "provider not found", nil, "9f6ec5ff-5ce1-4df6-9871-7dd89da8c548")
+	}
+
+	if err := s.providerModelService.DeleteByProviderID(ctx, provider.ID); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to delete provider models")
+	}
+
+	if err := s.providerRepo.DeleteByID(ctx, provider.ID); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to delete provider")
+	}
+
+	return nil
 }
 
 func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProviderInput) (*Provider, error) {
@@ -316,6 +344,10 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		// Apply default capabilities for missing keys (don't override user-provided values)
 		provider.Metadata = setDefaultCapabilities(provider.Kind, sanitized)
 	}
+	shouldDisableProviderModels := false
+	if input.Active != nil {
+		shouldDisableProviderModels = provider.Active && !*input.Active
+	}
 	if input.Active != nil {
 		provider.Active = *input.Active
 	}
@@ -323,26 +355,81 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		return nil, err
 	}
 
+	if shouldDisableProviderModels {
+		// Disable all provider models when the provider is disabled to keep routing consistent
+		filter := ProviderModelFilter{
+			ProviderID: ptr.ToUint(provider.ID),
+		}
+		if _, err := s.providerModelService.BatchUpdateActive(ctx, filter, false); err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to disable provider models")
+		}
+	}
+
 	return provider, nil
 }
 
 func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, provider *Provider, models []chat.Model, autoEnableNewModels bool) ([]*ProviderModel, error) {
+	log := logger.GetLogger()
+
+	// Batch upsert catalogs (eliminates N+1 queries)
+	catalogs, createdFlags, err := s.modelCatalogService.BatchUpsertCatalogs(ctx, provider, models)
+	if err != nil {
+		log.Error().
+			Str("provider", provider.DisplayName).
+			Err(err).
+			Msg("failed to batch upsert catalogs")
+		return nil, err
+	}
+
+	// Batch fetch existing provider models to check what already exists
+	existingModels, err := s.providerModelService.FindByFilter(ctx, ProviderModelFilter{
+		ProviderID: ptr.ToUint(provider.ID),
+	})
+	if err != nil {
+		log.Error().
+			Str("provider", provider.DisplayName).
+			Err(err).
+			Msg("failed to fetch existing provider models")
+		return nil, err
+	}
+
+	// Build a map of existing modelPublicIDs for fast lookup
+	existingModelPublicIDs := make(map[string]bool)
+	for _, existingModel := range existingModels {
+		existingModelPublicIDs[existingModel.ModelPublicID] = true
+	}
+
+	// Process provider models - only insert new ones
 	results := make([]*ProviderModel, 0, len(models))
+	skippedCount := 0
+
 	for _, model := range models {
-		catalog, created, err := s.modelCatalogService.UpsertCatalog(ctx, provider, model)
-		if err != nil {
-			log := logger.GetLogger()
-			log.Error().
+		// Get catalog from batch results
+		publicID := catalogPublicID(provider.Kind, model.ID, model.CanonicalSlug)
+		catalog, exists := catalogs[publicID]
+		if !exists || catalog == nil {
+			log.Warn().
 				Str("model_id", model.ID).
+				Str("public_id", publicID).
 				Str("provider", provider.DisplayName).
-				Err(err).
-				Msgf("failed to upsert catalog for model '%s' from provider '%s'", model.ID, provider.DisplayName)
+				Msg("catalog not found in batch results")
 			continue
 		}
-		shouldAutoEnable := autoEnableNewModels && created
+
+		// Generate ModelPublicID to check if it already exists
+		kind := ProviderKind(provider.Kind)
+		modelPublicID := NormalizeModelKey(kind, model.ID)
+
+		// Skip if model already exists in provider_models
+		if existingModelPublicIDs[modelPublicID] {
+			skippedCount++
+			continue
+		}
+
+		// Only create new models
+		shouldAutoEnable := autoEnableNewModels && createdFlags[publicID]
 		providerModel, err := s.providerModelService.UpsertProviderModelWithOptions(ctx, provider, catalog, model, shouldAutoEnable)
 		if err != nil {
-			log := logger.GetLogger()
 			log.Error().
 				Str("model_id", model.ID).
 				Str("provider", provider.DisplayName).
@@ -351,6 +438,14 @@ func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, pro
 			continue
 		}
 		results = append(results, providerModel)
+	}
+
+	if skippedCount > 0 {
+		log.Info().
+			Str("provider", provider.DisplayName).
+			Int("skipped", skippedCount).
+			Int("created", len(results)).
+			Msg("skipped existing models during sync")
 	}
 
 	now := time.Now().UTC()

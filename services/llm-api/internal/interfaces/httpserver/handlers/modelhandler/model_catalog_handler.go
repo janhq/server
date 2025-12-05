@@ -66,11 +66,58 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	if req.Notes != nil {
 		catalog.Notes = req.Notes
 	}
+	if req.Description != nil {
+		catalog.Description = req.Description
+	}
 	if req.IsModerated != nil {
 		catalog.IsModerated = req.IsModerated
 	}
 	if req.Extras != nil {
 		catalog.Extras = *req.Extras
+	}
+	if req.Active != nil {
+		catalog.Active = req.Active
+	}
+	if req.Experimental != nil {
+		catalog.Experimental = *req.Experimental
+	}
+	if req.RequiresFeatureFlag != nil {
+		catalog.RequiresFeatureFlag = req.RequiresFeatureFlag
+	}
+	if req.SupportsImages != nil {
+		catalog.SupportsImages = *req.SupportsImages
+	}
+	if req.SupportsEmbeddings != nil {
+		catalog.SupportsEmbeddings = *req.SupportsEmbeddings
+	}
+	if req.SupportsReasoning != nil {
+		catalog.SupportsReasoning = *req.SupportsReasoning
+	}
+	if req.SupportsAudio != nil {
+		catalog.SupportsAudio = *req.SupportsAudio
+	}
+	if req.SupportsVideo != nil {
+		catalog.SupportsVideo = *req.SupportsVideo
+	}
+	if req.Family != nil {
+		catalog.Family = *req.Family
+	}
+	if req.ModelDisplayName != nil {
+		catalog.ModelDisplayName = *req.ModelDisplayName
+		// Update model_display_name in all provider_models that reference this catalog
+		if catalog.ID != 0 {
+			filter := domainmodel.ProviderModelFilter{
+				ModelCatalogID: &catalog.ID,
+			}
+			_, err := h.providerModelService.BatchUpdateModelDisplayName(ctx, filter, *req.ModelDisplayName)
+			if err != nil {
+				return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update provider models display name")
+			}
+		}
+	}
+	if req.ContextLength != nil {
+		val := int(*req.ContextLength)
+		catalog.ContextLength = &val
 	}
 
 	// Mark as updated by admin (prevents auto-sync from overwriting)
@@ -103,6 +150,38 @@ func (h *ModelCatalogHandler) ListCatalogs(
 
 	if filterParams.Active != nil {
 		filter.Active = filterParams.Active
+	}
+
+	if filterParams.Experimental != nil {
+		filter.Experimental = filterParams.Experimental
+	}
+
+	if filterParams.RequiresFeatureFlag != nil {
+		filter.RequiresFeatureFlag = filterParams.RequiresFeatureFlag
+	}
+
+	if filterParams.SupportsImages != nil {
+		filter.SupportsImages = filterParams.SupportsImages
+	}
+
+	if filterParams.SupportsEmbeddings != nil {
+		filter.SupportsEmbeddings = filterParams.SupportsEmbeddings
+	}
+
+	if filterParams.SupportsReasoning != nil {
+		filter.SupportsReasoning = filterParams.SupportsReasoning
+	}
+
+	if filterParams.SupportsAudio != nil {
+		filter.SupportsAudio = filterParams.SupportsAudio
+	}
+
+	if filterParams.SupportsVideo != nil {
+		filter.SupportsVideo = filterParams.SupportsVideo
+	}
+
+	if filterParams.Family != nil {
+		filter.Family = filterParams.Family
 	}
 
 	total, err := h.modelCatalogService.Count(ctx, filter)

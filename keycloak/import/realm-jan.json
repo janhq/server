@@ -9,6 +9,17 @@
   "verifyEmail": false,
   "registrationEmailAsUsername": true,
   "requiredActions": [],
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 2592000,
+  "ssoSessionMaxLifespan": 2592000,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespan": 5184000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
   "attributes": {
     "tokenExchangeEnabled": "true"
   },
@@ -117,6 +128,86 @@
             "claim.name": "pid",
             "jsonType.label": "String"
           }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "feature_flags",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "feature_flags",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm_access",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email_verified",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "emailVerified",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email_verified",
+            "jsonType.label": "boolean"
+          }
+        }
+      ],
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "groups",
+      "description": "Group membership",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     }
@@ -124,15 +215,62 @@
   "roles": {
     "realm": [
       {
-        "name": "guest",
-        "description": "Ephemeral guest user"
+        "name": "admin",
+        "description": "Administrator with full system access"
       },
       {
         "name": "user",
         "description": "Registered user"
+      },
+      {
+        "name": "guest",
+        "description": "Ephemeral guest user"
       }
     ]
   },
+  "groups": [
+    {
+      "name": "jan_group",
+      "path": "/jan_group",
+      "attributes": {
+        "feature_flags": ["experimental_models"]
+      },
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "pilot_users",
+      "path": "/pilot_users",
+      "attributes": {
+        "feature_flags": ["experimental_models"]
+      },
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "standard",
+      "path": "/standard",
+      "attributes": {
+        "feature_flags": []
+      },
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "guest",
+      "path": "/guest",
+      "attributes": {
+        "feature_flags": []
+      },
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    }
+  ],
+  "defaultGroups": ["/standard"],
   "internationalizationEnabled": false,
   "eventsEnabled": false
 }

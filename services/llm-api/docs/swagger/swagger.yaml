@@ -954,23 +954,47 @@ definitions:
         type: boolean
       architecture:
         $ref: '#/definitions/model.Architecture'
+      context_length:
+        type: integer
       created_at:
         type: integer
+      description:
+        type: string
+      experimental:
+        type: boolean
       extras:
         additionalProperties: {}
         type: object
+      family:
+        type: string
       id:
         type: string
       is_moderated:
         type: boolean
       last_synced_at:
         type: integer
+      model_display_name:
+        type: string
       notes:
+        type: string
+      public_id:
+        type: string
+      requires_feature_flag:
         type: string
       status:
         $ref: '#/definitions/model.ModelCatalogStatus'
       supported_parameters:
         $ref: '#/definitions/model.SupportedParameters'
+      supports_audio:
+        type: boolean
+      supports_embeddings:
+        type: boolean
+      supports_images:
+        type: boolean
+      supports_reasoning:
+        type: boolean
+      supports_video:
+        type: boolean
       tags:
         items:
           type: string
@@ -980,10 +1004,18 @@ definitions:
     type: object
   modelresponses.ModelResponse:
     properties:
+      category:
+        type: string
+      category_order_number:
+        type: integer
       created:
         type: integer
       id:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       object:
         type: string
       owned_by:
@@ -1000,10 +1032,18 @@ definitions:
     type: object
   modelresponses.ModelResponseWithProvider:
     properties:
+      category:
+        type: string
+      category_order_number:
+        type: integer
       created:
         type: integer
       id:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       object:
         type: string
       owned_by:
@@ -1028,16 +1068,22 @@ definitions:
     properties:
       active:
         type: boolean
+      category:
+        type: string
+      category_order_number:
+        type: integer
       created_at:
         type: integer
-      display_name:
-        type: string
       family:
         type: string
       id:
         type: string
       model_catalog_id:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       model_public_id:
         type: string
       pricing:
@@ -1609,17 +1655,41 @@ definitions:
     type: object
   requestmodels.UpdateModelCatalogRequest:
     properties:
+      active:
+        type: boolean
       architecture:
         $ref: '#/definitions/model.Architecture'
+      context_length:
+        type: number
+      description:
+        type: string
+      experimental:
+        type: boolean
       extras:
         additionalProperties: {}
         type: object
+      family:
+        type: string
       is_moderated:
         type: boolean
+      model_display_name:
+        type: string
       notes:
+        type: string
+      requires_feature_flag:
         type: string
       supported_parameters:
         $ref: '#/definitions/model.SupportedParameters'
+      supports_audio:
+        type: boolean
+      supports_embeddings:
+        type: boolean
+      supports_images:
+        type: boolean
+      supports_reasoning:
+        type: boolean
+      supports_video:
+        type: boolean
       tags:
         items:
           type: string
@@ -1629,10 +1699,16 @@ definitions:
     properties:
       active:
         type: boolean
-      display_name:
+      category:
         type: string
+      category_order_number:
+        type: integer
       family:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       pricing:
         $ref: '#/definitions/model.Pricing'
       supports_audio:
@@ -2472,6 +2548,60 @@ paths:
       tags:
       - Admin Provider API
   /v1/admin/providers/{provider_public_id}:
+    get:
+      description: Retrieves a provider by its public ID
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Provider details
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to retrieve provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a provider
+      tags:
+      - Admin Provider API
+    delete:
+      description: Deletes a provider by its public ID along with its provider models
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Provider deleted
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to delete provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a provider
+      tags:
+      - Admin Provider API
     patch:
       consumes:
       - application/json

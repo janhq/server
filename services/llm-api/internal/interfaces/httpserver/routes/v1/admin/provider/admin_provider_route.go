@@ -1,9 +1,12 @@
 package provider
 
 import (
+	"net/http"
+	"strings"
+
+	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	requestmodels "jan-server/services/llm-api/internal/interfaces/httpserver/requests/models"
-	"net/http"
 
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
 
@@ -27,7 +30,9 @@ func (AdminProviderRoute *AdminProviderRoute) RegisterRouter(router *gin.RouterG
 
 	providerRoute.GET("", AdminProviderRoute.GetAllProviders)
 	providerRoute.POST("", AdminProviderRoute.RegisterProvider)
+	providerRoute.GET("/:provider_public_id", AdminProviderRoute.GetProvider)
 	providerRoute.PATCH("/:provider_public_id", AdminProviderRoute.UpdateProvider)
+	providerRoute.DELETE("/:provider_public_id", AdminProviderRoute.DeleteProvider)
 
 }
 
@@ -43,7 +48,13 @@ func (AdminProviderRoute *AdminProviderRoute) RegisterRouter(router *gin.RouterG
 func (route *AdminProviderRoute) GetAllProviders(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
-	providersWithCounts, err := route.providerHandler.GetAllProviders(ctx)
+	search := strings.TrimSpace(reqCtx.Query("search"))
+	filter := domainmodel.ProviderFilter{}
+	if search != "" {
+		filter.SearchText = &search
+	}
+
+	providersWithCounts, err := route.providerHandler.GetAllProviders(ctx, filter)
 	if err != nil {
 		responses.HandleError(reqCtx, err, "Failed to retrieve providers")
 		return
@@ -82,6 +93,30 @@ func (route *AdminProviderRoute) RegisterProvider(reqCtx *gin.Context) {
 	reqCtx.JSON(http.StatusOK, providerWithModels)
 }
 
+// GetProvider
+// @Summary Get a provider
+// @Description Retrieves a provider by its public ID
+// @Tags Admin Provider API
+// @Security BearerAuth
+// @Produce json
+// @Param provider_public_id path string true "Provider public ID"
+// @Success 200 {object} modelresponses.ProviderResponse "Provider details"
+// @Failure 404 {object} responses.ErrorResponse "Provider not found"
+// @Failure 500 {object} responses.ErrorResponse "Failed to retrieve provider"
+// @Router /v1/admin/providers/{provider_public_id} [get]
+func (route *AdminProviderRoute) GetProvider(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+	publicID := reqCtx.Param("provider_public_id")
+
+	providerResponse, err := route.providerHandler.GetProviderByPublicID(ctx, publicID)
+	if err != nil {
+		responses.HandleError(reqCtx, err, "Failed to retrieve provider")
+		return
+	}
+
+	reqCtx.JSON(http.StatusOK, providerResponse)
+}
+
 // UpdateProvider
 // @Summary Update a provider
 // @Description Updates an existing provider's configuration
@@ -113,4 +148,27 @@ func (route *AdminProviderRoute) UpdateProvider(reqCtx *gin.Context) {
 	}
 
 	reqCtx.JSON(http.StatusOK, providerResponse)
+}
+
+// DeleteProvider
+// @Summary Delete a provider
+// @Description Deletes a provider by its public ID along with its provider models
+// @Tags Admin Provider API
+// @Security BearerAuth
+// @Produce json
+// @Param provider_public_id path string true "Provider public ID"
+// @Success 204 "Provider deleted"
+// @Failure 404 {object} responses.ErrorResponse "Provider not found"
+// @Failure 500 {object} responses.ErrorResponse "Failed to delete provider"
+// @Router /v1/admin/providers/{provider_public_id} [delete]
+func (route *AdminProviderRoute) DeleteProvider(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+	publicID := reqCtx.Param("provider_public_id")
+
+	if err := route.providerHandler.DeleteProvider(ctx, publicID); err != nil {
+		responses.HandleError(reqCtx, err, "Failed to delete provider")
+		return
+	}
+
+	reqCtx.Status(http.StatusNoContent)
 }

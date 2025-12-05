@@ -4,13 +4,26 @@ import (
 	"strings"
 
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/utils/ptr"
 )
 
+// getModelDisplayName returns ModelDisplayName if set, otherwise falls back to ModelPublicID
+func getModelDisplayName(pm *domainmodel.ProviderModel) string {
+	if pm.ModelDisplayName != "" {
+		return pm.ModelDisplayName
+	}
+	return pm.ModelPublicID
+}
+
 type ModelResponse struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	Created int64  `json:"created"`
-	OwnedBy string `json:"owned_by"`
+	ID                  string `json:"id"`
+	Object              string `json:"object"`
+	Created             int64  `json:"created"`
+	OwnedBy             string `json:"owned_by"`
+	ModelDisplayName    string `json:"model_display_name"`
+	Category            string `json:"category"`
+	CategoryOrderNumber int    `json:"category_order_number"`
+	ModelOrderNumber    int    `json:"model_order_number"`
 }
 
 type ModelResponseList struct {
@@ -19,13 +32,17 @@ type ModelResponseList struct {
 }
 
 type ModelResponseWithProvider struct {
-	ID             string `json:"id"`
-	Object         string `json:"object"`
-	Created        int64  `json:"created"`
-	OwnedBy        string `json:"owned_by"`
-	ProviderID     string `json:"provider_id"`
-	ProviderVendor string `json:"provider_vendor"`
-	ProviderName   string `json:"provider_name"`
+	ID                  string `json:"id"`
+	Object              string `json:"object"`
+	Created             int64  `json:"created"`
+	OwnedBy             string `json:"owned_by"`
+	ModelDisplayName    string `json:"model_display_name"`
+	Category            string `json:"category"`
+	CategoryOrderNumber int    `json:"category_order_number"`
+	ModelOrderNumber    int    `json:"model_order_number"`
+	ProviderID          string `json:"provider_id"`
+	ProviderVendor      string `json:"provider_vendor"`
+	ProviderName        string `json:"provider_name"`
 }
 
 type ModelWithProviderResponseList struct {
@@ -83,13 +100,17 @@ func BuildModelResponseListWithProvider(
 			continue
 		}
 		items = append(items, ModelResponseWithProvider{
-			ID:             pm.ModelPublicID,
-			Object:         "model",
-			Created:        pm.CreatedAt.Unix(),
-			OwnedBy:        provider.DisplayName,
-			ProviderID:     provider.PublicID,
-			ProviderVendor: strings.ToLower(string(provider.Kind)),
-			ProviderName:   provider.DisplayName,
+			ID:                  pm.ModelPublicID,
+			Object:              "model",
+			Created:             pm.CreatedAt.Unix(),
+			OwnedBy:             provider.DisplayName,
+			ModelDisplayName:    getModelDisplayName(pm),
+			Category:            pm.Category,
+			CategoryOrderNumber: pm.CategoryOrderNumber,
+			ModelOrderNumber:    pm.ModelOrderNumber,
+			ProviderID:          provider.PublicID,
+			ProviderVendor:      strings.ToLower(string(provider.Kind)),
+			ProviderName:        provider.DisplayName,
 		})
 	}
 
@@ -111,10 +132,14 @@ func BuildModelResponseList(
 			continue
 		}
 		items = append(items, ModelResponse{
-			ID:      pm.ModelPublicID,
-			Object:  "model",
-			Created: pm.CreatedAt.Unix(),
-			OwnedBy: provider.DisplayName,
+			ID:                  pm.ModelPublicID,
+			Object:              "model",
+			Created:             pm.CreatedAt.Unix(),
+			OwnedBy:             provider.DisplayName,
+			ModelDisplayName:    getModelDisplayName(pm),
+			Category:            pm.Category,
+			CategoryOrderNumber: pm.CategoryOrderNumber,
+			ModelOrderNumber:    pm.ModelOrderNumber,
 		})
 	}
 
@@ -163,10 +188,14 @@ func BuildProviderWithModelsResponse(
 			continue
 		}
 		modelResponses = append(modelResponses, ModelResponse{
-			ID:      model.ModelPublicID,
-			Object:  "model",
-			Created: model.CreatedAt.Unix(),
-			OwnedBy: provider.DisplayName,
+			ID:                  model.ModelPublicID,
+			Object:              "model",
+			Created:             model.CreatedAt.Unix(),
+			OwnedBy:             provider.DisplayName,
+			ModelDisplayName:    getModelDisplayName(model),
+			Category:            model.Category,
+			CategoryOrderNumber: model.CategoryOrderNumber,
+			ModelOrderNumber:    model.ModelOrderNumber,
 		})
 	}
 	return &ProviderWithModelsResponse{
@@ -202,14 +231,26 @@ func BuildProviderResponseList(providers []*domainmodel.Provider) []ProviderResp
 
 type ModelCatalogResponse struct {
 	ID                  string                          `json:"id"`
+	PublicID            string                          `json:"public_id"`
+	ModelDisplayName    string                          `json:"model_display_name,omitempty"`
+	Description         *string                         `json:"description,omitempty"`
 	SupportedParameters domainmodel.SupportedParameters `json:"supported_parameters"`
 	Architecture        domainmodel.Architecture        `json:"architecture"`
 	Tags                []string                        `json:"tags,omitempty"`
 	Notes               *string                         `json:"notes,omitempty"`
+	ContextLength       *int                            `json:"context_length,omitempty"`
 	IsModerated         *bool                           `json:"is_moderated,omitempty"`
 	Active              *bool                           `json:"active,omitempty"`
 	Extras              map[string]any                  `json:"extras,omitempty"`
 	Status              domainmodel.ModelCatalogStatus  `json:"status"`
+	Family              *string                         `json:"family,omitempty"`
+	Experimental        bool                            `json:"experimental"`
+	RequiresFeatureFlag *string                         `json:"requires_feature_flag,omitempty"`
+	SupportsImages      bool                            `json:"supports_images"`
+	SupportsEmbeddings  bool                            `json:"supports_embeddings"`
+	SupportsReasoning   bool                            `json:"supports_reasoning"`
+	SupportsAudio       bool                            `json:"supports_audio"`
+	SupportsVideo       bool                            `json:"supports_video"`
 	LastSyncedAt        *int64                          `json:"last_synced_at,omitempty"`
 	CreatedAt           int64                           `json:"created_at"`
 	UpdatedAt           int64                           `json:"updated_at"`
@@ -222,7 +263,10 @@ type ProviderModelResponse struct {
 	ModelCatalogID          *string                  `json:"model_catalog_id,omitempty"`
 	ModelPublicID           string                   `json:"model_public_id"`
 	ProviderOriginalModelID string                   `json:"provider_original_model_id"`
-	DisplayName             string                   `json:"display_name"`
+	ModelDisplayName        string                   `json:"model_display_name"`
+	Category                string                   `json:"category"`
+	CategoryOrderNumber     int                      `json:"category_order_number"`
+	ModelOrderNumber        int                      `json:"model_order_number"`
 	Pricing                 domainmodel.Pricing      `json:"pricing"`
 	TokenLimits             *domainmodel.TokenLimits `json:"token_limits,omitempty"`
 	Family                  *string                  `json:"family,omitempty"`
@@ -242,17 +286,33 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 		ts := catalog.LastSyncedAt.Unix()
 		lastSyncedAt = &ts
 	}
+	var family *string
+	if catalog.Family != "" {
+		family = ptr.ToString(catalog.Family)
+	}
 
 	return ModelCatalogResponse{
 		ID:                  catalog.PublicID,
+		PublicID:            catalog.PublicID,
+		ModelDisplayName:    catalog.ModelDisplayName,
+		Description:         catalog.Description,
 		SupportedParameters: catalog.SupportedParameters,
 		Architecture:        catalog.Architecture,
 		Tags:                catalog.Tags,
 		Notes:               catalog.Notes,
+		ContextLength:       catalog.ContextLength,
 		IsModerated:         catalog.IsModerated,
 		Active:              catalog.Active,
 		Extras:              catalog.Extras,
 		Status:              catalog.Status,
+		Family:              family,
+		Experimental:        catalog.Experimental,
+		RequiresFeatureFlag: catalog.RequiresFeatureFlag,
+		SupportsImages:      catalog.SupportsImages,
+		SupportsEmbeddings:  catalog.SupportsEmbeddings,
+		SupportsReasoning:   catalog.SupportsReasoning,
+		SupportsAudio:       catalog.SupportsAudio,
+		SupportsVideo:       catalog.SupportsVideo,
 		LastSyncedAt:        lastSyncedAt,
 		CreatedAt:           catalog.CreatedAt.Unix(),
 		UpdatedAt:           catalog.UpdatedAt.Unix(),
@@ -269,6 +329,20 @@ func BuildProviderModelResponse(
 		modelCatalogID = &modelCatalog.PublicID
 	}
 
+	// Get capabilities from model catalog (canonical source)
+	var family *string
+	var supportsImages, supportsEmbeddings, supportsReasoning, supportsAudio, supportsVideo bool
+	if modelCatalog != nil {
+		if modelCatalog.Family != "" {
+			family = ptr.ToString(modelCatalog.Family)
+		}
+		supportsImages = modelCatalog.SupportsImages
+		supportsEmbeddings = modelCatalog.SupportsEmbeddings
+		supportsReasoning = modelCatalog.SupportsReasoning
+		supportsAudio = modelCatalog.SupportsAudio
+		supportsVideo = modelCatalog.SupportsVideo
+	}
+
 	return ProviderModelResponse{
 		ID:                      providerModel.PublicID,
 		ProviderID:              provider.PublicID,
@@ -276,15 +350,18 @@ func BuildProviderModelResponse(
 		ModelCatalogID:          modelCatalogID,
 		ModelPublicID:           providerModel.ModelPublicID,
 		ProviderOriginalModelID: providerModel.ProviderOriginalModelID,
-		DisplayName:             providerModel.DisplayName,
+		ModelDisplayName:        providerModel.ModelDisplayName,
+		Category:                providerModel.Category,
+		CategoryOrderNumber:     providerModel.CategoryOrderNumber,
+		ModelOrderNumber:        providerModel.ModelOrderNumber,
 		Pricing:                 providerModel.Pricing,
 		TokenLimits:             providerModel.TokenLimits,
-		Family:                  providerModel.Family,
-		SupportsImages:          providerModel.SupportsImages,
-		SupportsEmbeddings:      providerModel.SupportsEmbeddings,
-		SupportsReasoning:       providerModel.SupportsReasoning,
-		SupportsAudio:           providerModel.SupportsAudio,
-		SupportsVideo:           providerModel.SupportsVideo,
+		Family:                  family,
+		SupportsImages:          supportsImages,
+		SupportsEmbeddings:      supportsEmbeddings,
+		SupportsReasoning:       supportsReasoning,
+		SupportsAudio:           supportsAudio,
+		SupportsVideo:           supportsVideo,
 		Active:                  providerModel.Active,
 		CreatedAt:               providerModel.CreatedAt.Unix(),
 		UpdatedAt:               providerModel.UpdatedAt.Unix(),
