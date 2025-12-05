@@ -217,6 +217,28 @@ func (s *ProviderModelService) BatchUpdateModelDisplayName(ctx context.Context, 
 	return rowsAffected, nil
 }
 
+func (s *ProviderModelService) DeleteByProviderID(ctx context.Context, providerID uint) error {
+	if providerID == 0 {
+		return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider_id is required", nil, "1d0c2ebe-1585-45e6-bfb4-0e6ec98e7e2b")
+	}
+
+	filter := ProviderModelFilter{
+		ProviderID: &providerID,
+	}
+	models, err := s.providerModelRepo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to find provider models for deletion")
+	}
+
+	for _, model := range models {
+		if err := s.providerModelRepo.DeleteByID(ctx, model.ID); err != nil {
+			return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, fmt.Sprintf("failed to delete provider model %d", model.ID))
+		}
+	}
+
+	return nil
+}
+
 func buildProviderModelFromRaw(provider *Provider, catalogID *uint, model chat.Model) *ProviderModel {
 	log := logger.GetLogger()
 
@@ -497,8 +519,8 @@ func inferLegacyCategory(model chat.Model) string {
 		return "Video"
 	}
 
-	// Default to Chat for text-based models
-	return "Chat"
+	// Default to legacy for text-based models
+	return "legacy"
 }
 
 // extractCategoryOrder extracts category ordering from provider API

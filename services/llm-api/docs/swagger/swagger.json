@@ -816,6 +816,47 @@
                     }
                 }
             },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Provider API"
+                ],
+                "summary": "Delete a provider",
+                "description": "Deletes a provider by its public ID along with its provider models",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider public ID",
+                        "name": "provider_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Provider deleted"
+                    },
+                    "404": {
+                        "description": "Provider not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete provider",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {

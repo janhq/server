@@ -32,6 +32,7 @@ func (AdminProviderRoute *AdminProviderRoute) RegisterRouter(router *gin.RouterG
 	providerRoute.POST("", AdminProviderRoute.RegisterProvider)
 	providerRoute.GET("/:provider_public_id", AdminProviderRoute.GetProvider)
 	providerRoute.PATCH("/:provider_public_id", AdminProviderRoute.UpdateProvider)
+	providerRoute.DELETE("/:provider_public_id", AdminProviderRoute.DeleteProvider)
 
 }
 
@@ -147,4 +148,27 @@ func (route *AdminProviderRoute) UpdateProvider(reqCtx *gin.Context) {
 	}
 
 	reqCtx.JSON(http.StatusOK, providerResponse)
+}
+
+// DeleteProvider
+// @Summary Delete a provider
+// @Description Deletes a provider by its public ID along with its provider models
+// @Tags Admin Provider API
+// @Security BearerAuth
+// @Produce json
+// @Param provider_public_id path string true "Provider public ID"
+// @Success 204 "Provider deleted"
+// @Failure 404 {object} responses.ErrorResponse "Provider not found"
+// @Failure 500 {object} responses.ErrorResponse "Failed to delete provider"
+// @Router /v1/admin/providers/{provider_public_id} [delete]
+func (route *AdminProviderRoute) DeleteProvider(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+	publicID := reqCtx.Param("provider_public_id")
+
+	if err := route.providerHandler.DeleteProvider(ctx, publicID); err != nil {
+		responses.HandleError(reqCtx, err, "Failed to delete provider")
+		return
+	}
+
+	reqCtx.Status(http.StatusNoContent)
 }

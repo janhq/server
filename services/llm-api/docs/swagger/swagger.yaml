@@ -2576,6 +2576,32 @@ paths:
       summary: Get a provider
       tags:
       - Admin Provider API
+    delete:
+      description: Deletes a provider by its public ID along with its provider models
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Provider deleted
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to delete provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a provider
+      tags:
+      - Admin Provider API
     patch:
       consumes:
       - application/json

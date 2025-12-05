@@ -239,6 +239,30 @@ func (s *ProviderService) FindAllActiveProviders(ctx context.Context) ([]*Provid
 	return s.providerRepo.FindByFilter(ctx, filter, nil)
 }
 
+func (s *ProviderService) DeleteProviderByPublicID(ctx context.Context, publicID string) error {
+	if strings.TrimSpace(publicID) == "" {
+		return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "35b02081-5c0d-4d65-9841-c1d7a5300829")
+	}
+
+	provider, err := s.providerRepo.FindByPublicID(ctx, publicID)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to find provider")
+	}
+	if provider == nil {
+		return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, "provider not found", nil, "9f6ec5ff-5ce1-4df6-9871-7dd89da8c548")
+	}
+
+	if err := s.providerModelService.DeleteByProviderID(ctx, provider.ID); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to delete provider models")
+	}
+
+	if err := s.providerRepo.DeleteByID(ctx, provider.ID); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to delete provider")
+	}
+
+	return nil
+}
+
 func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProviderInput) (*Provider, error) {
 	// Check if provider exists by display name (since Name field doesn't exist in filter)
 	filter := ProviderFilter{}

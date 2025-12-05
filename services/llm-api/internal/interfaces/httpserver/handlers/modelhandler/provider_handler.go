@@ -257,6 +257,18 @@ func (h *ProviderHandler) UpdateProvider(
 	return &response, nil
 }
 
+func (h *ProviderHandler) DeleteProvider(ctx context.Context, publicID string) error {
+	if strings.TrimSpace(publicID) == "" {
+		return platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "0c3f68da-0aa4-4a7c-9cec-c22d47c86f8b")
+	}
+
+	if err := h.providerService.DeleteProviderByPublicID(ctx, publicID); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to delete provider")
+	}
+
+	return nil
+}
+
 // TODO(pricing): Remove pricing calculation from model handler
 // This function calculates the lowest price for a provider model, but pricing logic
 // should be handled by a dedicated billing domain, not in the model management layer.
