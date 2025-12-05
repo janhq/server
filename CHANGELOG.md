@@ -4,6 +4,39 @@
 
 ---
 
+## December 2025
+
+### [v0.0.13] - Admin API & Model Catalog Enhancements
+
+**Status:** ✅ Complete | **Date:** December 2025
+
+Major expansion of admin capabilities with comprehensive management APIs, enhanced model catalog features, and robust middleware stack.
+
+#### What's New
+- **Admin API Endpoints**: Full CRUD operations for user management, group management, and feature flag administration
+- **Model Catalog Enhancements**: 
+  - Feature flag integration for controlled model access
+  - Experimental model support with explicit flagging
+  - Advanced capability filtering (images, embeddings, reasoning, audio, video)
+  - Model ordering and categorization improvements
+- **Database Schema Updates**:
+  - Feature flags table with user/group assignments
+  - Audit logging for admin operations
+  - Model display names and ordering fields (`category_order_number`, `model_order_number`)
+  - Enhanced provider model metadata
+- **Middleware Additions**:
+  - Admin authorization middleware for protected endpoints
+  - Token bucket rate limiting for API protection
+  - Feature flag checking middleware for gated features
+  - Request validation and sanitization
+
+#### Developer Experience
+- Platform web admin UI for model catalog management
+- Comprehensive API documentation for admin endpoints
+- Improved error handling and validation messages
+
+---
+
 ## November 2025
 
 ### [v0.0.12] - Microservices Architecture Release
