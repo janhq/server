@@ -93,6 +93,9 @@ services:
       VECTOR_STORE_URL: ${VECTOR_STORE_URL:-http://vector-store:3015}
       SANDBOXFUSION_URL: ${SANDBOXFUSION_URL:-http://sandboxfusion:8080}
       MEMORY_TOOLS_URL: ${MEMORY_TOOLS_URL:-http://memory-tools:8090}
+
+      # Optional tool toggles
+      MCP_ENABLE_MEMORY_RETRIEVE: ${MCP_ENABLE_MEMORY_RETRIEVE:-true}
       
       # MCP Configuration
       MCP_CONFIG_FILE: ${MCP_CONFIG_FILE:-configs/mcp-providers.yml}
@@ -107,8 +110,9 @@ services:
       #   condition: service_healthy
       vector-store:
         condition: service_started
-      memory-tools:
-        condition: service_started
+      # memory-tools is optional - only needed when memory profile is enabled
+      # memory-tools:
+      #   condition: service_started
       # sandboxfusion:
       #   condition: service_started
     volumes:

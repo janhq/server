@@ -609,6 +609,7 @@ func applyMemoryDefaults(envPath string) error {
 	profiles := parseProfiles(strings.Split(string(data), "\n"))
 	updates := make(map[string]string)
 	setMemoryDefaults(updates, &profiles, false, false)
+	updates["MCP_ENABLE_MEMORY_RETRIEVE"] = "true"
 	if len(profiles) > 0 {
 		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
 	}
@@ -619,9 +620,12 @@ func applyMemoryDefaults(envPath string) error {
 func applyMemorySettings(updates map[string]string, profiles *[]string, enable bool, externalEmbedding bool, useRedis bool) {
 	if enable {
 		setMemoryDefaults(updates, profiles, externalEmbedding, useRedis)
+		updates["MCP_ENABLE_MEMORY_RETRIEVE"] = "true"
 		fmt.Println("Memory tools enabled (profile: memory)")
 	} else {
 		updates["MEMORY_TOOLS_ENABLED"] = "false"
+		updates["MCP_ENABLE_MEMORY_RETRIEVE"] = "false"
+		updates["PROMPT_ORCHESTRATION_MEMORY"] = "false"
 		fmt.Println("Memory tools disabled (enable later by editing .env)")
 	}
 }
