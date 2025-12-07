@@ -33,22 +33,35 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load config: %v", err))
 	}
+	if !cfg.AuthEnabled && !cfg.AllowInsecure {
+		panic("AUTH_ENABLED=false requires MCP_TOOLS_ALLOW_INSECURE=true for local/dev-only usage")
+	}
 
 	// Initialize logger
 	logger.Init(cfg.LogLevel, cfg.LogFormat)
 	log.Info().
 		Str("http_port", cfg.HTTPPort).
+		Str("http_host", cfg.HTTPHost).
 		Str("log_level", cfg.LogLevel).
 		Msg("Starting MCP Tools service")
+	if !cfg.AuthEnabled {
+		log.Warn().Msg("Authentication is disabled; only proceed because MCP_TOOLS_ALLOW_INSECURE=true")
+	}
 
 	// Initialize infrastructure
 	searchClient := searchclient.NewSearchClient(searchclient.ClientConfig{
-		Engine:        searchclient.Engine(cfg.SearchEngine),
-		SerperAPIKey:  cfg.SerperAPIKey,
-		SearxngURL:    cfg.SearxngURL,
-		DomainFilters: cfg.SerperDomainFilter,
-		LocationHint:  cfg.SerperLocationHint,
-		OfflineMode:   cfg.SerperOfflineMode,
+		Engine:                searchclient.Engine(cfg.SearchEngine),
+		SerperAPIKey:          cfg.SerperAPIKey,
+		SearxngURL:            cfg.SearxngURL,
+		DomainFilters:         cfg.SerperDomainFilter,
+		LocationHint:          cfg.SerperLocationHint,
+		OfflineMode:           cfg.SerperOfflineMode,
+		FallbackEnabled:       cfg.ScrapeFallbackEnabled,
+		FallbackAllowList:     cfg.ScrapeAllowList,
+		FallbackDenyList:      cfg.ScrapeDenyList,
+		FallbackMaxBodyBytes:  cfg.FallbackMaxBodyBytes,
+		FallbackMaxRedirects:  cfg.FallbackMaxRedirects,
+		FallbackTimeoutSecond: cfg.FallbackRequestTimeout,
 	})
 	searchService := domainsearch.NewSearchService(searchClient)
 
@@ -62,7 +75,7 @@ func main() {
 		log.Warn().Msg("SandboxFusion python_exec tool disabled via config")
 	case cfg.SandboxFusionURL != "":
 		sandboxClient := sandboxfusionclient.NewClient(cfg.SandboxFusionURL)
-		sandboxMCP = mcp.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval, cfg.EnablePythonExec)
+		sandboxMCP = mcp.NewSandboxFusionMCP(sandboxClient, cfg.SandboxFusionRequireApproval, cfg.EnablePythonExec, cfg.AuthEnabled)
 	default:
 		log.Warn().Msg("SandboxFusion URL not configured, python_exec tool will not be available")
 	}
@@ -102,12 +115,15 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize auth validator")
 	}
+	if cfg.AuthEnabled && (authValidator == nil || !authValidator.Ready()) {
+		log.Fatal().Msg("Auth is enabled but validator is not ready; verify AUTH_ISSUER, ACCOUNT, and AUTH_JWKS_URL")
+	}
 
 	// Setup HTTP server
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middlewares.RequestLogger())
-	router.Use(middlewares.CORS())
+	router.Use(middlewares.CORS(cfg.AllowedCORSOrigins))
 
 	// Apply auth middleware (will skip health checks internally)
 	if authValidator != nil {
@@ -134,7 +150,7 @@ func main() {
 	// Register MCP routes
 	v1 := router.Group("/v1")
 	mcpRoute.RegisterRouter(v1) // Start server
-	addr := fmt.Sprintf(":%s", cfg.HTTPPort)
+	addr := fmt.Sprintf("%s:%s", cfg.HTTPHost, cfg.HTTPPort)
 	log.Info().Str("address", addr).Msg("Server listening")
 
 	if err := router.Run(addr); err != nil {

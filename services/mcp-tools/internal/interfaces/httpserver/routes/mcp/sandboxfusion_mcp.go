@@ -24,9 +24,12 @@ type SandboxFusionMCP struct {
 	client          *sandboxfusion.Client
 	requireApproval bool
 	enabled         bool
+	authEnabled     bool
 }
 
-func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool, enabled bool) *SandboxFusionMCP {
+const maxSandboxCodeLength = 20000
+
+func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool, enabled bool, authEnabled bool) *SandboxFusionMCP {
 	if client == nil {
 		return nil
 	}
@@ -34,6 +37,7 @@ func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool, ena
 		client:          client,
 		requireApproval: requireApproval,
 		enabled:         enabled,
+		authEnabled:     authEnabled,
 	}
 }
 
@@ -43,6 +47,10 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcpserver.MCPServer) {
 	}
 	if !s.enabled {
 		log.Warn().Msg("python_exec MCP tool disabled via config")
+		return
+	}
+	if !s.authEnabled {
+		log.Warn().Msg("authentication disabled; refusing to register python_exec MCP tool")
 		return
 	}
 
@@ -57,16 +65,19 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcpserver.MCPServer) {
 			if s.requireApproval {
 				if args := req.GetArguments(); args != nil {
 					if approvedRaw, ok := args["approved"]; !ok || approvedRaw == nil || !req.GetBool("approved", false) {
-						return nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true")
+						return nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true after out-of-band approval")
 					}
 				} else {
-					return nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true")
+					return nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true after out-of-band approval")
 				}
 			}
 
 			code, err := req.RequireString("code")
 			if err != nil {
 				return nil, err
+			}
+			if len(code) > maxSandboxCodeLength {
+				return nil, fmt.Errorf("sandboxfusion code too large (max %d bytes)", maxSandboxCodeLength)
 			}
 
 			runReq := sandboxfusion.RunCodeRequest{

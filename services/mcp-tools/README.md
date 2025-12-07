@@ -45,6 +45,38 @@ services/mcp-tools/
 
 ```
 
+## Quickstart
+
+### Secure default (recommended)
+```bash
+# Auth required by default
+export AUTH_ENABLED=true
+export AUTH_ISSUER=http://localhost:8085/realms/jan
+export ACCOUNT=account
+export AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
+# Networking
+export MCP_TOOLS_HTTP_HOST=127.0.0.1
+export MCP_TOOLS_HTTP_PORT=8091
+export MCP_TOOLS_ALLOWED_ORIGINS=http://localhost:3000
+# Start
+cd services/mcp-tools
+go run .
+```
+
+### Local/dev without auth (explicit opt-in)
+```bash
+export AUTH_ENABLED=false
+export MCP_TOOLS_ALLOW_INSECURE=true   # required to bypass secure defaults
+export MCP_TOOLS_ALLOWED_ORIGINS=http://localhost:3000
+cd services/mcp-tools
+go run .
+```
+
+### Notes
+- `MCP_ENABLE_PYTHON_EXEC` defaults to `false`; set `true` only when you have SandboxFusion ready.
+- `MCP_SCRAPE_FALLBACK_ENABLED` defaults to `false`; enable cautiously and set `MCP_SCRAPE_ALLOW_LIST`/`MCP_SCRAPE_DENY_LIST`.
+- Binding is localhost by default (`MCP_TOOLS_HTTP_HOST=127.0.0.1`); change only when fronted by an authenticated gateway.
+
 ## Available Tools
 
 ### 1. google_search

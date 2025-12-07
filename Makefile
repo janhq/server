@@ -62,6 +62,7 @@ API_TEST_CONVERSATION_COLLECTION = tests/automation/conversations-postman-script
 API_TEST_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
 API_TEST_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
 API_TEST_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
+API_TEST_MCP_SECURITY_COLLECTION = tests/automation/mcp-security-hardening.postman.json
 API_TEST_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
 API_TEST_MODEL_MANAGEMENT_COLLECTION = tests/automation/model-management-postman-scripts.json
 API_TEST_USER_MANAGEMENT_COLLECTION = tests/automation/user-management-postman-scripts.json
@@ -74,6 +75,8 @@ API_TEST_FLAGS = --debug --verbose
 else
 API_TEST_FLAGS = --verbose
 endif
+
+MCP_TOOLS_URL ?= http://127.0.0.1:8091
 
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
@@ -575,9 +578,9 @@ endif
 
 # --- Integration Tests (API Test) ---
 
-.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e api-test-debug
+.PHONY: test-all test-auth test-conversations test-response test-media test-mcp test-mcp-integration test-memory test-e2e api-test-debug
 
-test-all: test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e
+test-all: test-auth test-conversations test-response test-media test-mcp test-mcp-integration test-memory test-e2e
 	@echo ""
 	@echo " All integration tests passed!"
 
@@ -627,6 +630,20 @@ test-media:
 		$(API_TEST_FLAGS) \
 		--reporters cli
 	@echo " Media API tests passed"
+
+test-mcp:
+	@echo "Running MCP security hardening tests..."
+	@echo " Checking MCP Tools health at $(MCP_TOOLS_URL)/healthz ..."
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "try { iwr -UseBasicParsing -TimeoutSec 5 '$(MCP_TOOLS_URL)/healthz' | Out-Null; exit 0 } catch { exit 1 }" || (echo " mcp-tools is not running at $(MCP_TOOLS_URL). Start it (AUTH_ENABLED=true with valid AUTH_ISSUER/ACCOUNT/AUTH_JWKS_URL) then re-run make test-mcp." && exit 1)
+else
+	@curl --fail --silent --max-time 5 "$(MCP_TOOLS_URL)/healthz" >/dev/null || (echo " mcp-tools is not running at $(MCP_TOOLS_URL). Start it (AUTH_ENABLED=true with valid AUTH_ISSUER/ACCOUNT/AUTH_JWKS_URL) then re-run make test-mcp." && exit 1)
+endif
+	@$(API_TEST) $(API_TEST_MCP_SECURITY_COLLECTION) \
+		--env-var "mcp_tools_url=$(MCP_TOOLS_URL)" \
+		$(API_TEST_FLAGS) \
+		--reporters cli
+	@echo " MCP security hardening tests passed"
 
 test-mcp-integration:
 	@echo "Running MCP integration tests..."

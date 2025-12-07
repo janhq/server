@@ -30,7 +30,7 @@ func ProvideSandboxFusionMCP(
 	if client == nil {
 		return nil
 	}
-	return mcp.NewSandboxFusionMCP(client, cfg.SandboxFusionRequireApproval, cfg.EnablePythonExec)
+	return mcp.NewSandboxFusionMCP(client, cfg.SandboxFusionRequireApproval, cfg.EnablePythonExec, cfg.AuthEnabled)
 }
 
 // ProvideMemoryMCP creates a MemoryMCP if configured

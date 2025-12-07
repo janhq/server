@@ -1,0 +1,96 @@
+{
+  "info": {
+    "name": "MCP Security Hardening",
+    "description": "Smoke coverage for secured defaults on the MCP Tools service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health endpoint stays open",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{mcp_tools_url}}/healthz"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('health returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "MCP rejects unauthenticated requests",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"jsonrpc\":\"2.0\",\"id\":\"unauth-list\",\"method\":\"tools/list\"}"
+        },
+        "url": "{{mcp_tools_url}}/v1/mcp"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('unauthenticated call blocked', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "python_exec disabled without auth token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"jsonrpc\":\"2.0\",\"id\":\"unauth-python\",\"method\":\"tools/call\",\"params\":{\"name\":\"python_exec\",\"arguments\":{\"code\":\"print('hi')\"}}}"
+        },
+        "url": "{{mcp_tools_url}}/v1/mcp"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('python_exec not reachable without auth', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "mcp_tools_url",
+      "value": "http://127.0.0.1:8091"
+    }
+  ]
+}

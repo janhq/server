@@ -2,7 +2,10 @@ package search
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -32,12 +35,18 @@ const (
 
 // ClientConfig captures the knobs exposed to operators for the search client.
 type ClientConfig struct {
-	Engine        Engine
-	SerperAPIKey  string
-	SearxngURL    string
-	DomainFilters []string
-	LocationHint  string
-	OfflineMode   bool
+	Engine                Engine
+	SerperAPIKey          string
+	SearxngURL            string
+	DomainFilters         []string
+	LocationHint          string
+	OfflineMode           bool
+	FallbackEnabled       bool
+	FallbackAllowList     []string
+	FallbackDenyList      []string
+	FallbackMaxBodyBytes  int64
+	FallbackMaxRedirects  int
+	FallbackTimeoutSecond int
 }
 
 // SearchClient implements domainsearch.SearchClient with pluggable backends.
@@ -46,6 +55,8 @@ type SearchClient struct {
 	serperClient   *resty.Client
 	fallbackClient *resty.Client
 	searxClient    *resty.Client
+	fallbackAllow  cidrRules
+	fallbackDeny   cidrRules
 }
 
 var _ domainsearch.SearchClient = (*SearchClient)(nil)
@@ -64,7 +75,12 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 
 	fallbackHTTP := resty.New().
 		SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
-		SetTimeout(15 * time.Second)
+		SetTimeout(time.Duration(cfg.FallbackTimeoutSecond) * time.Second)
+
+	if cfg.FallbackMaxRedirects <= 0 {
+		cfg.FallbackMaxRedirects = 2
+	}
+	fallbackHTTP.SetRedirectPolicy(resty.FlexibleRedirectPolicy(cfg.FallbackMaxRedirects))
 
 	searxHTTP := resty.New().
 		SetHeader("User-Agent", "Jan-MCP-Tools/1.0").
@@ -80,6 +96,8 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 		serperClient:   serperHTTP,
 		fallbackClient: fallbackHTTP,
 		searxClient:    searxHTTP,
+		fallbackAllow:  buildCIDRRules(cfg.FallbackAllowList),
+		fallbackDeny:   buildCIDRRules(cfg.FallbackDenyList),
 	}
 }
 
@@ -125,6 +143,9 @@ func (c *SearchClient) FetchWebpage(ctx context.Context, query domainsearch.Fetc
 		if res, err := c.fetchViaSerper(ctx, query); err == nil {
 			return res, nil
 		}
+	}
+	if !c.cfg.FallbackEnabled {
+		return nil, fmt.Errorf("fallback scraping disabled; configure SERPER_API_KEY or enable MCP_SCRAPE_FALLBACK_ENABLED")
 	}
 	return c.fetchFallback(ctx, query)
 }
@@ -349,6 +370,10 @@ func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.Fe
 }
 
 func (c *SearchClient) fetchFallback(ctx context.Context, query domainsearch.FetchWebpageRequest) (*domainsearch.FetchWebpageResponse, error) {
+	if err := c.validateFallbackURL(ctx, query.Url); err != nil {
+		return nil, err
+	}
+
 	resp, err := c.fallbackClient.R().
 		SetContext(ctx).
 		SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
@@ -361,6 +386,9 @@ func (c *SearchClient) fetchFallback(ctx context.Context, query domainsearch.Fet
 	}
 
 	bodyBytes := resp.Body()
+	if c.cfg.FallbackMaxBodyBytes > 0 && int64(len(bodyBytes)) > c.cfg.FallbackMaxBodyBytes {
+		return nil, fmt.Errorf("fallback fetch body exceeded limit of %d bytes", c.cfg.FallbackMaxBodyBytes)
+	}
 	text := extractVisibleText(bodyBytes)
 	if text == "" {
 		text = string(bodyBytes)
@@ -442,6 +470,171 @@ func (c *SearchClient) searchViaDuckDuckGo(ctx context.Context, query domainsear
 
 func (c *SearchClient) hasAPIKey() bool {
 	return strings.TrimSpace(c.cfg.SerperAPIKey) != ""
+}
+
+func (c *SearchClient) validateFallbackURL(ctx context.Context, rawURL string) error {
+	if strings.TrimSpace(rawURL) == "" {
+		return errors.New("fallback fetch requires a URL")
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("unsupported URL scheme: %s", parsed.Scheme)
+	}
+	if parsed.Host == "" {
+		return errors.New("URL missing host")
+	}
+	if parsed.User != nil && parsed.User.String() != "" {
+		return errors.New("URL with credentials is not allowed")
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return errors.New("invalid hostname")
+	}
+	host = strings.ToLower(host)
+	if matchHost(host, c.fallbackDeny.hosts) || matchHost(host, blockedHosts) {
+		return fmt.Errorf("host %s is blocked", host)
+	}
+
+	var ips []net.IP
+	if ip := net.ParseIP(host); ip != nil {
+		ips = []net.IP{ip}
+	} else {
+		resolved, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+		if err != nil {
+			return fmt.Errorf("failed to resolve host %s: %w", host, err)
+		}
+		ips = resolved
+	}
+
+	for _, ip := range ips {
+		if matchCIDRList(ip, c.fallbackDeny.cidrs) {
+			return fmt.Errorf("target IP %s denied by configuration", ip.String())
+		}
+		if matchCIDRList(ip, blockedIPNets) || isPrivateIP(ip) || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			if c.fallbackAllow.ipAllowed(ip) || matchHost(host, c.fallbackAllow.hosts) {
+				continue
+			}
+			return fmt.Errorf("target IP %s is not allowed for scraping", ip.String())
+		}
+		if c.fallbackAllow.ipAllowed(ip) {
+			continue
+		}
+	}
+
+	return nil
+}
+
+type cidrRules struct {
+	hosts []string
+	cidrs []*net.IPNet
+}
+
+func buildCIDRRules(entries []string) cidrRules {
+	var hosts []string
+	var cidrs []*net.IPNet
+	for _, entry := range entries {
+		trimmed := strings.TrimSpace(entry)
+		if trimmed == "" {
+			continue
+		}
+		if _, network, err := net.ParseCIDR(trimmed); err == nil {
+			cidrs = append(cidrs, network)
+			continue
+		}
+		hosts = append(hosts, strings.ToLower(trimmed))
+	}
+	return cidrRules{hosts: hosts, cidrs: cidrs}
+}
+
+func (c cidrRules) ipAllowed(ip net.IP) bool {
+	return matchCIDRList(ip, c.cidrs)
+}
+
+func matchCIDRList(ip net.IP, nets []*net.IPNet) bool {
+	for _, cidr := range nets {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchHost(host string, rules []string) bool {
+	for _, rule := range rules {
+		if host == rule {
+			return true
+		}
+		if strings.HasPrefix(rule, ".") && strings.HasSuffix(host, rule) {
+			return true
+		}
+		if strings.HasPrefix(host, ".") && strings.HasSuffix(rule, host) {
+			return true
+		}
+		if strings.HasPrefix(host, ".") && host == "."+rule {
+			return true
+		}
+		if strings.HasPrefix(rule, "*.") {
+			trimmed := strings.TrimPrefix(rule, "*.")
+			if strings.HasSuffix(host, trimmed) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isPrivateIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	privateBlocks := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"127.0.0.0/8",
+		"169.254.0.0/16",
+		"100.64.0.0/10",
+		"0.0.0.0/8",
+		"::1/128",
+		"fc00::/7",
+		"fe80::/10",
+	}
+	nets := parseCIDRs(privateBlocks)
+	return matchCIDRList(ip, nets)
+}
+
+func parseCIDRs(cidrs []string) []*net.IPNet {
+	var nets []*net.IPNet
+	for _, cidr := range cidrs {
+		if _, block, err := net.ParseCIDR(cidr); err == nil {
+			nets = append(nets, block)
+		}
+	}
+	return nets
+}
+
+var blockedIPNets = parseCIDRs([]string{
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"127.0.0.0/8",
+	"169.254.0.0/16",
+	"100.64.0.0/10",
+	"0.0.0.0/8",
+	"224.0.0.0/4",
+	"240.0.0.0/4",
+	"::1/128",
+	"fc00::/7",
+	"fe80::/10",
+})
+
+var blockedHosts = []string{
+	"metadata.google.internal",
+	"metadata",
+	"localhost",
 }
 
 // --- Helper types + functions reused from the legacy client ---

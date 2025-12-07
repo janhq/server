@@ -4,6 +4,24 @@ The MCP Tools API provides AI tools for web search, web scraping, and code execu
 
 ## Quick Start
 
+### Secure defaults (recommended)
+- Auth is **enabled by default**. Set these before starting:
+  - `AUTH_ENABLED=true`
+  - `AUTH_ISSUER=http://localhost:8085/realms/jan` (or your issuer)
+  - `ACCOUNT=account` (audience)
+  - `AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs`
+- Bind + CORS: `MCP_TOOLS_HTTP_HOST=127.0.0.1` (default) and set `MCP_TOOLS_ALLOWED_ORIGINS=http://localhost:3000` for your UI.
+- Start: `cd services/mcp-tools && go run .`
+- Call: `POST http://127.0.0.1:8091/v1/mcp` with a valid Bearer token.
+
+### Local/dev without auth (explicit opt-in)
+```
+export AUTH_ENABLED=false
+export MCP_TOOLS_ALLOW_INSECURE=true   # required to bypass the secure default
+export MCP_TOOLS_ALLOWED_ORIGINS=http://localhost:3000
+cd services/mcp-tools && go run .
+```
+
 ### URLs
 - **Direct access**: http://localhost:8091
 - **Through gateway**: http://localhost:8000/v1/mcp (Kong also exposes `/mcp/*` and forwards to `/v1/...`)
@@ -24,10 +42,11 @@ All tools use JSON-RPC 2.0 protocol. You send a request with tool name and param
 
 | Component | Port | Key Environment Variables |
 |-----------|------|--------------------------|
-| **HTTP Server** | 8091 | `MCP_TOOLS_HTTP_PORT` |
-| **Search Providers** | 443 | `SERPER_API_KEY`, `MCP_SEARCH_ENGINE`, `SEARXNG_URL` |
+| **HTTP Server** | 8091 | `MCP_TOOLS_HTTP_PORT`, `MCP_TOOLS_HTTP_HOST`, `MCP_TOOLS_ALLOWED_ORIGINS` |
+| **Search Providers** | 443 | `SERPER_API_KEY`, `MCP_SEARCH_ENGINE`, `SEARXNG_URL`, `MCP_SCRAPE_FALLBACK_ENABLED`, `MCP_SCRAPE_ALLOW_LIST`, `MCP_SCRAPE_DENY_LIST` |
 | **Vector Store** | 3015 | `VECTOR_STORE_URL` |
-| **SandboxFusion** | 8080 | `SANDBOXFUSION_URL`, `MCP_SANDBOX_REQUIRE_APPROVAL` |
+| **SandboxFusion** | 8080 | `SANDBOXFUSION_URL`, `MCP_ENABLE_PYTHON_EXEC`, `MCP_SANDBOX_REQUIRE_APPROVAL` |
+| **Auth** | N/A | `AUTH_ENABLED` (default true), `MCP_TOOLS_ALLOW_INSECURE` (dev-only override), `AUTH_ISSUER`, `AUTH_JWKS_URL`, `ACCOUNT` |
 
 ### Required Environment Variables
 
@@ -40,11 +59,14 @@ VECTOR_STORE_URL=http://vector-store-mcp:3015
 SANDBOXFUSION_URL=http://sandbox-fusion:8080
 OTEL_ENABLED=false
 
-# Auth (optional)
+# Auth (secure default)
 AUTH_ENABLED=true
 AUTH_ISSUER=http://localhost:8085/realms/jan
 ACCOUNT=account
 AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
+
+# Dev-only override (remove in prod)
+MCP_TOOLS_ALLOW_INSECURE=false    # set true only with AUTH_ENABLED=false for local dev
 ```
 
 ### Optional Configuration
@@ -52,11 +74,17 @@ AUTH_JWKS_URL=http://keycloak:8085/realms/jan/protocol/openid-connect/certs
 ```bash
 MCP_TOOLS_LOG_LEVEL=info
 MCP_TOOLS_LOG_FORMAT=json          # json | console
+MCP_TOOLS_ALLOWED_ORIGINS=http://localhost:3000
+MCP_TOOLS_HTTP_HOST=127.0.0.1      # bind to localhost by default
 SANDBOXFUSION_TIMEOUT=30s
 SERPER_DOMAIN_FILTER=example.com,another.com
 SERPER_LOCATION_HINT=California, United States
 SERPER_OFFLINE_MODE=false
 MCP_SANDBOX_REQUIRE_APPROVAL=true  # force clients to set `approved: true`
+MCP_ENABLE_PYTHON_EXEC=false       # opt-in for python_exec tool
+MCP_SCRAPE_FALLBACK_ENABLED=false  # disable raw HTTP fallback unless explicitly needed
+MCP_SCRAPE_ALLOW_LIST=
+MCP_SCRAPE_DENY_LIST=169.254.169.254,metadata.google.internal
 ```
 
 ## JSON-RPC 2.0 Protocol
