@@ -167,7 +167,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("Access your services:")
 	fmt.Println("  • API Gateway:      http://localhost:8000")
-	fmt.Println("  • API Docs:         http://localhost:8000/v1/swagger/")
+	fmt.Println("  • API Docs:         http://localhost:8000/api/swagger/index.html")
 	fmt.Println("  • LLM API:          http://localhost:8080")
 	fmt.Println("  • Keycloak:         http://localhost:8085 (admin/admin)")
 
