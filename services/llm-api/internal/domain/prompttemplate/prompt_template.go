@@ -74,7 +74,13 @@ type PromptTemplateRepository interface {
 
 // Common template keys
 const (
-	TemplateKeyDeepResearch = "deep_research"
+	TemplateKeyDeepResearch     = "deep_research"
+	TemplateKeyTiming           = "timing"
+	TemplateKeyMemory           = "memory"
+	TemplateKeyToolInstructions = "tool_instructions"
+	TemplateKeyCodeAssistant    = "code_assistant"
+	TemplateKeyChainOfThought   = "chain_of_thought"
+	TemplateKeyUserProfile      = "user_profile"
 )
 
 // Template categories
@@ -82,6 +88,7 @@ const (
 	CategoryOrchestration = "orchestration"
 	CategorySystem        = "system"
 	CategoryTool          = "tool"
+	CategoryReasoning     = "reasoning"
 )
 
 // DefaultDeepResearchPrompt is the default prompt for the Deep Research agent.
@@ -151,3 +158,47 @@ var DefaultDeepResearchMetadata = map[string]any{
 	"requires_tools":        true,
 	"required_capabilities": []string{"reasoning"},
 }
+
+// DefaultTimingPrompt is the default prompt for timing/date context
+const DefaultTimingPrompt = `You are Jan, a helpful AI assistant who helps the user with their requests.
+Today is: {{.CurrentDate}}.
+Always treat this as the current date.`
+
+// DefaultMemoryPrompt is the default prompt for user memory injection
+const DefaultMemoryPrompt = `Use the following personal memory for this user when helpful, without overriding project or system instructions:
+{{range .MemoryItems}}- {{.}}
+{{end}}`
+
+// DefaultToolInstructionsPrompt is the default prompt for tool usage guidance
+const DefaultToolInstructionsPrompt = `You have access to various tools. Always choose the best tool for the task.
+When you need to search for information, use web search. When you need to execute code, use the code execution tool.
+Tool usage must respect project instructions and system-level constraints at all times.`
+
+// DefaultCodeAssistantPrompt is the default prompt for code assistance
+const DefaultCodeAssistantPrompt = `When providing code assistance:
+1. Provide clear, well-commented code.
+2. Explain your approach and reasoning.
+3. Include error handling where appropriate.
+4. Follow best practices and conventions.
+5. Suggest testing approaches when relevant.
+6. Respect project instructions and user constraints; never violate them to simplify code.`
+
+// DefaultChainOfThoughtPrompt is the default prompt for chain-of-thought reasoning
+const DefaultChainOfThoughtPrompt = `For complex questions, think step-by-step:
+1. Break down the problem
+2. Analyze each component
+3. Consider different perspectives
+4. Synthesize your conclusion
+5. Provide a clear, structured answer`
+
+// DefaultUserProfilePrompt is the default prompt template for user profile injection
+const DefaultUserProfilePrompt = `User-level settings are preferences for style and context. If they ever conflict with explicit project or system instructions, always follow the project or system instructions.
+
+{{if .BaseStyle}}{{.BaseStyleInstruction}}
+
+{{end}}{{if .CustomInstructions}}Custom instructions from the user:
+{{.CustomInstructions}}
+
+{{end}}{{if .UserContext}}User context:
+{{range .UserContext}}- {{.}}
+{{end}}{{end}}`

@@ -279,26 +279,134 @@ func (s *Service) getDefaultDeepResearchTemplate() *PromptTemplate {
 	}
 }
 
+func (s *Service) getDefaultTimingTemplate() *PromptTemplate {
+	description := "Provides current date context to the AI assistant"
+	return &PromptTemplate{
+		Name:        "Timing and Date Context",
+		Description: &description,
+		Category:    CategorySystem,
+		TemplateKey: TemplateKeyTiming,
+		Content:     DefaultTimingPrompt,
+		Variables:   []string{"CurrentDate"},
+		Metadata:    map[string]any{},
+		IsActive:    true,
+		IsSystem:    true,
+		Version:     1,
+	}
+}
+
+func (s *Service) getDefaultMemoryTemplate() *PromptTemplate {
+	description := "Injects user-specific memory and preferences into prompts"
+	return &PromptTemplate{
+		Name:        "User Memory Injection",
+		Description: &description,
+		Category:    CategoryOrchestration,
+		TemplateKey: TemplateKeyMemory,
+		Content:     DefaultMemoryPrompt,
+		Variables:   []string{"MemoryItems"},
+		Metadata:    map[string]any{},
+		IsActive:    true,
+		IsSystem:    true,
+		Version:     1,
+	}
+}
+
+func (s *Service) getDefaultToolInstructionsTemplate() *PromptTemplate {
+	description := "Provides guidance for using available tools effectively"
+	return &PromptTemplate{
+		Name:        "Tool Usage Instructions",
+		Description: &description,
+		Category:    CategoryTool,
+		TemplateKey: TemplateKeyToolInstructions,
+		Content:     DefaultToolInstructionsPrompt,
+		Variables:   []string{},
+		Metadata:    map[string]any{},
+		IsActive:    true,
+		IsSystem:    true,
+		Version:     1,
+	}
+}
+
+func (s *Service) getDefaultCodeAssistantTemplate() *PromptTemplate {
+	description := "Provides guidelines for code assistance and programming help"
+	return &PromptTemplate{
+		Name:        "Code Assistant Instructions",
+		Description: &description,
+		Category:    CategoryOrchestration,
+		TemplateKey: TemplateKeyCodeAssistant,
+		Content:     DefaultCodeAssistantPrompt,
+		Variables:   []string{},
+		Metadata:    map[string]any{},
+		IsActive:    true,
+		IsSystem:    true,
+		Version:     1,
+	}
+}
+
+func (s *Service) getDefaultChainOfThoughtTemplate() *PromptTemplate {
+	description := "Encourages step-by-step reasoning for complex questions"
+	return &PromptTemplate{
+		Name:        "Chain of Thought Reasoning",
+		Description: &description,
+		Category:    CategoryReasoning,
+		TemplateKey: TemplateKeyChainOfThought,
+		Content:     DefaultChainOfThoughtPrompt,
+		Variables:   []string{},
+		Metadata:    map[string]any{},
+		IsActive:    true,
+		IsSystem:    true,
+		Version:     1,
+	}
+}
+
+func (s *Service) getDefaultUserProfileTemplate() *PromptTemplate {
+	description := "Injects user profile preferences and context for personalized responses"
+	return &PromptTemplate{
+		Name:        "User Profile Personalization",
+		Description: &description,
+		Category:    CategoryOrchestration,
+		TemplateKey: TemplateKeyUserProfile,
+		Content:     DefaultUserProfilePrompt,
+		Variables:   []string{"BaseStyle", "BaseStyleInstruction", "CustomInstructions", "UserContext"},
+		Metadata:    map[string]any{},
+		IsActive:    true,
+		IsSystem:    true,
+		Version:     1,
+	}
+}
+
 // EnsureDefaultTemplates seeds the database with default system templates if they don't exist.
 // This should be called during application startup.
 func (s *Service) EnsureDefaultTemplates(ctx context.Context) error {
-	// Check if Deep Research template exists
-	_, err := s.repo.FindByTemplateKey(ctx, TemplateKeyDeepResearch)
-	if err != nil {
-		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
-			// Create the default Deep Research template
-			defaultTemplate := s.getDefaultDeepResearchTemplate()
-			publicID, idErr := idgen.GenerateSecureID("pt", 24)
-			if idErr != nil {
-				return fmt.Errorf("failed to generate ID for default template: %w", idErr)
+	templates := map[string]func() *PromptTemplate{
+		TemplateKeyDeepResearch:     s.getDefaultDeepResearchTemplate,
+		TemplateKeyTiming:           s.getDefaultTimingTemplate,
+		TemplateKeyMemory:           s.getDefaultMemoryTemplate,
+		TemplateKeyToolInstructions: s.getDefaultToolInstructionsTemplate,
+		TemplateKeyCodeAssistant:    s.getDefaultCodeAssistantTemplate,
+		TemplateKeyChainOfThought:   s.getDefaultChainOfThoughtTemplate,
+		TemplateKeyUserProfile:      s.getDefaultUserProfileTemplate,
+	}
+
+	for templateKey, getTemplate := range templates {
+		_, err := s.repo.FindByTemplateKey(ctx, templateKey)
+		if err != nil {
+			if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+				// Create the default template
+				defaultTemplate := getTemplate()
+				publicID, idErr := idgen.GenerateSecureID("pt", 24)
+				if idErr != nil {
+					return fmt.Errorf("failed to generate ID for %s template: %w", templateKey, idErr)
+				}
+				defaultTemplate.PublicID = publicID
+				if createErr := s.repo.Create(ctx, defaultTemplate); createErr != nil {
+					return fmt.Errorf("failed to create default %s template: %w", templateKey, createErr)
+				}
+			} else {
+				return fmt.Errorf("failed to check for %s template: %w", templateKey, err)
 			}
-			defaultTemplate.PublicID = publicID
-			if createErr := s.repo.Create(ctx, defaultTemplate); createErr != nil {
-				return fmt.Errorf("failed to create default Deep Research template: %w", createErr)
-			}
-		} else {
-			return fmt.Errorf("failed to check for Deep Research template: %w", err)
 		}
 	}
 	return nil
 }
+

@@ -115,3 +115,191 @@ Now Begin! If you solve the task correctly, you will receive a reward of $1,000,
     true,
     1
 ) ON CONFLICT (template_key) DO NOTHING;
+
+-- Seed Timing/Date Context prompt template
+INSERT INTO llm_api.prompt_templates (
+    public_id,
+    name,
+    description,
+    category,
+    template_key,
+    content,
+    variables,
+    metadata,
+    is_active,
+    is_system,
+    version
+) VALUES (
+    'pt_timing_001',
+    'Timing and Date Context',
+    'Provides current date context to the AI assistant',
+    'system',
+    'timing',
+    'You are Jan, a helpful AI assistant who helps the user with their requests.
+Today is: {{.CurrentDate}}.
+Always treat this as the current date.',
+    '["CurrentDate"]'::jsonb,
+    '{}'::jsonb,
+    true,
+    true,
+    1
+) ON CONFLICT (template_key) DO NOTHING;
+
+-- Seed Memory injection prompt template
+INSERT INTO llm_api.prompt_templates (
+    public_id,
+    name,
+    description,
+    category,
+    template_key,
+    content,
+    variables,
+    metadata,
+    is_active,
+    is_system,
+    version
+) VALUES (
+    'pt_memory_001',
+    'User Memory Injection',
+    'Injects user-specific memory and preferences into prompts',
+    'orchestration',
+    'memory',
+    'Use the following personal memory for this user when helpful, without overriding project or system instructions:
+{{range .MemoryItems}}- {{.}}
+{{end}}',
+    '["MemoryItems"]'::jsonb,
+    '{}'::jsonb,
+    true,
+    true,
+    1
+) ON CONFLICT (template_key) DO NOTHING;
+
+-- Seed Tool Instructions prompt template
+INSERT INTO llm_api.prompt_templates (
+    public_id,
+    name,
+    description,
+    category,
+    template_key,
+    content,
+    variables,
+    metadata,
+    is_active,
+    is_system,
+    version
+) VALUES (
+    'pt_tool_instructions_001',
+    'Tool Usage Instructions',
+    'Provides guidance for using available tools effectively',
+    'tool',
+    'tool_instructions',
+    'You have access to various tools. Always choose the best tool for the task.
+When you need to search for information, use web search. When you need to execute code, use the code execution tool.
+Tool usage must respect project instructions and system-level constraints at all times.',
+    '[]'::jsonb,
+    '{}'::jsonb,
+    true,
+    true,
+    1
+) ON CONFLICT (template_key) DO NOTHING;
+
+-- Seed Code Assistant prompt template
+INSERT INTO llm_api.prompt_templates (
+    public_id,
+    name,
+    description,
+    category,
+    template_key,
+    content,
+    variables,
+    metadata,
+    is_active,
+    is_system,
+    version
+) VALUES (
+    'pt_code_assistant_001',
+    'Code Assistant Instructions',
+    'Provides guidelines for code assistance and programming help',
+    'orchestration',
+    'code_assistant',
+    'When providing code assistance:
+1. Provide clear, well-commented code.
+2. Explain your approach and reasoning.
+3. Include error handling where appropriate.
+4. Follow best practices and conventions.
+5. Suggest testing approaches when relevant.
+6. Respect project instructions and user constraints; never violate them to simplify code.',
+    '[]'::jsonb,
+    '{}'::jsonb,
+    true,
+    true,
+    1
+) ON CONFLICT (template_key) DO NOTHING;
+
+-- Seed Chain of Thought prompt template
+INSERT INTO llm_api.prompt_templates (
+    public_id,
+    name,
+    description,
+    category,
+    template_key,
+    content,
+    variables,
+    metadata,
+    is_active,
+    is_system,
+    version
+) VALUES (
+    'pt_chain_of_thought_001',
+    'Chain of Thought Reasoning',
+    'Encourages step-by-step reasoning for complex questions',
+    'reasoning',
+    'chain_of_thought',
+    'For complex questions, think step-by-step:
+1. Break down the problem
+2. Analyze each component
+3. Consider different perspectives
+4. Synthesize your conclusion
+5. Provide a clear, structured answer',
+    '[]'::jsonb,
+    '{}'::jsonb,
+    true,
+    true,
+    1
+) ON CONFLICT (template_key) DO NOTHING;
+
+-- Seed User Profile prompt template
+INSERT INTO llm_api.prompt_templates (
+    public_id,
+    name,
+    description,
+    category,
+    template_key,
+    content,
+    variables,
+    metadata,
+    is_active,
+    is_system,
+    version
+) VALUES (
+    'pt_user_profile_001',
+    'User Profile Personalization',
+    'Injects user profile preferences and context for personalized responses',
+    'orchestration',
+    'user_profile',
+    'User-level settings are preferences for style and context. If they ever conflict with explicit project or system instructions, always follow the project or system instructions.
+
+{{if .BaseStyle}}{{.BaseStyleInstruction}}
+
+{{end}}{{if .CustomInstructions}}Custom instructions from the user:
+{{.CustomInstructions}}
+
+{{end}}{{if .UserContext}}User context:
+{{range .UserContext}}- {{.}}
+{{end}}{{end}}',
+    '["BaseStyle", "BaseStyleInstruction", "CustomInstructions", "UserContext"]'::jsonb,
+    '{}'::jsonb,
+    true,
+    true,
+    1
+) ON CONFLICT (template_key) DO NOTHING;
