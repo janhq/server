@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"jan-server/services/llm-api/internal/domain"
+	"jan-server/services/llm-api/internal/domain/apikey"
 	authvalidator "jan-server/services/llm-api/internal/infrastructure/auth"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
 )
@@ -16,8 +18,11 @@ import (
 const principalContextKey = "principal"
 
 // AuthMiddleware validates API key headers injected by Kong or JWT bearer tokens issued by Keycloak.
-func AuthMiddleware(validator *authvalidator.KeycloakValidator, logger zerolog.Logger, fallbackIssuer string) gin.HandlerFunc {
+func AuthMiddleware(validator *authvalidator.KeycloakValidator, apiKeyService *apikey.Service, logger zerolog.Logger, fallbackIssuer string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// First check if Bearer token contains an API key (sk_*)
+		bearerAPIKeyPrincipal, hasBearerAPIKey := principalFromBearerAPIKey(c, apiKeyService, fallbackIssuer, logger)
+		
 		apiPrincipal, hasAPIKey := principalFromAPIKey(c, fallbackIssuer)
 		jwtPrincipal, hasJWT, jwtErr := principalFromJWT(c, validator)
 
@@ -28,6 +33,9 @@ func AuthMiddleware(validator *authvalidator.KeycloakValidator, logger zerolog.L
 		}
 
 		switch {
+		case hasBearerAPIKey:
+			// Bearer API key takes precedence (user explicitly sent sk_* in Authorization header)
+			setPrincipal(c, bearerAPIKeyPrincipal)
 		case hasAPIKey && hasJWT:
 			merged, err := mergePrincipals(apiPrincipal, jwtPrincipal)
 			if err != nil {
@@ -155,6 +163,63 @@ func principalFromAPIKey(c *gin.Context, fallbackIssuer string) (domain.Principa
 	}, true
 }
 
+// principalFromBearerAPIKey checks if the Bearer token is actually an API key (starts with sk_)
+// and validates it using the API key service.
+func principalFromBearerAPIKey(c *gin.Context, apiKeyService *apikey.Service, fallbackIssuer string, logger zerolog.Logger) (domain.Principal, bool) {
+	if apiKeyService == nil {
+		return domain.Principal{}, false
+	}
+
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return domain.Principal{}, false
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return domain.Principal{}, false
+	}
+
+	token := strings.TrimSpace(parts[1])
+	if token == "" || !strings.HasPrefix(token, "sk_") {
+		return domain.Principal{}, false
+	}
+
+	// User sent an API key in the Authorization Bearer header
+	logger.Info().
+		Str("token_prefix", token[:5]+"...").
+		Msg("API key detected in Authorization header - validating directly")
+	
+	// Validate the API key using the service
+	userInfo, err := apiKeyService.ValidateAPIKey(context.Background(), token)
+	if err != nil {
+		logger.Warn().
+			Err(err).
+			Str("token_prefix", token[:5]+"...").
+			Msg("API key validation failed")
+		return domain.Principal{}, false
+	}
+
+	// Create principal from validated API key
+	logger.Info().
+		Str("user_id", userInfo.UserID).
+		Str("email", userInfo.Email).
+		Msg("API key validated successfully")
+
+	return domain.Principal{
+		ID:         userInfo.UserID,
+		AuthMethod: domain.AuthMethodAPIKey,
+		Subject:    userInfo.Subject,
+		Issuer:     fallbackIssuer,
+		Username:   userInfo.Username,
+		Email:      userInfo.Email,
+		Credentials: map[string]string{
+			"api_key_validation": "direct",
+			"user_id":            userInfo.UserID,
+		},
+	}, true
+}
+
 func principalFromJWT(c *gin.Context, validator *authvalidator.KeycloakValidator) (domain.Principal, bool, error) {
 	if validator == nil {
 		return domain.Principal{}, false, http.ErrNoCookie
@@ -172,6 +237,13 @@ func principalFromJWT(c *gin.Context, validator *authvalidator.KeycloakValidator
 	if token == "" {
 		return domain.Principal{}, false, http.ErrNoCookie
 	}
+
+	// Check if the token is an API key (starts with sk_)
+	// If so, don't treat it as JWT - return not found to let API key validation handle it
+	if strings.HasPrefix(token, "sk_") {
+		return domain.Principal{}, false, http.ErrNoCookie
+	}
+
 	claims, err := validator.Validate(c.Request.Context(), token)
 	if err != nil {
 		return domain.Principal{}, false, err
