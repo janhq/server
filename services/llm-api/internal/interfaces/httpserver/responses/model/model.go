@@ -1,6 +1,7 @@
 package modelresponses
 
 import (
+	"sort"
 	"strings"
 
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
@@ -114,6 +115,53 @@ func BuildModelResponseListWithProvider(
 		})
 	}
 
+	// Sort by category_order_number (ASC), then model_order_number (ASC)
+	// Treat 0 values as undefined and put them at the end
+	sort.Slice(items, func(i, j int) bool {
+		catI := items[i].CategoryOrderNumber
+		catJ := items[j].CategoryOrderNumber
+		modelI := items[i].ModelOrderNumber
+		modelJ := items[j].ModelOrderNumber
+		
+		// If both category order numbers are 0, treat as undefined - compare by model order
+		if catI == 0 && catJ == 0 {
+			// If both model orders are also 0, keep original order (stable)
+			if modelI == 0 && modelJ == 0 {
+				return false
+			}
+			// Put 0 model order at the end
+			if modelI == 0 {
+				return false
+			}
+			if modelJ == 0 {
+				return true
+			}
+			return modelI < modelJ
+		}
+		
+		// Put category order 0 at the end
+		if catI == 0 {
+			return false
+		}
+		if catJ == 0 {
+			return true
+		}
+		
+		// Normal comparison: category first, then model order
+		if catI != catJ {
+			return catI < catJ
+		}
+		
+		// Within same category, put model order 0 at the end
+		if modelI == 0 {
+			return false
+		}
+		if modelJ == 0 {
+			return true
+		}
+		return modelI < modelJ
+	})
+
 	return items
 }
 
@@ -142,6 +190,53 @@ func BuildModelResponseList(
 			ModelOrderNumber:    pm.ModelOrderNumber,
 		})
 	}
+
+	// Sort by category_order_number (ASC), then model_order_number (ASC)
+	// Treat 0 values as undefined and put them at the end
+	sort.Slice(items, func(i, j int) bool {
+		catI := items[i].CategoryOrderNumber
+		catJ := items[j].CategoryOrderNumber
+		modelI := items[i].ModelOrderNumber
+		modelJ := items[j].ModelOrderNumber
+		
+		// If both category order numbers are 0, treat as undefined - compare by model order
+		if catI == 0 && catJ == 0 {
+			// If both model orders are also 0, keep original order (stable)
+			if modelI == 0 && modelJ == 0 {
+				return false
+			}
+			// Put 0 model order at the end
+			if modelI == 0 {
+				return false
+			}
+			if modelJ == 0 {
+				return true
+			}
+			return modelI < modelJ
+		}
+		
+		// Put category order 0 at the end
+		if catI == 0 {
+			return false
+		}
+		if catJ == 0 {
+			return true
+		}
+		
+		// Normal comparison: category first, then model order
+		if catI != catJ {
+			return catI < catJ
+		}
+		
+		// Within same category, put model order 0 at the end
+		if modelI == 0 {
+			return false
+		}
+		if modelJ == 0 {
+			return true
+		}
+		return modelI < modelJ
+	})
 
 	return items
 }
