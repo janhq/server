@@ -70,7 +70,7 @@ func ProvidePromptProcessor(
 	log zerolog.Logger,
 	templateService *prompttemplate.Service,
 ) *prompt.ProcessorImpl {
-	processor := prompt.NewProcessor(config, log)
+	processor := prompt.NewProcessorWithTemplateService(config, log, templateService)
 
 	// Register Deep Research module if prompt orchestration is enabled
 	if config.Enabled && templateService != nil {

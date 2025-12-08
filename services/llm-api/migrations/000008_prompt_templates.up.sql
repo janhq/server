@@ -135,7 +135,7 @@ INSERT INTO llm_api.prompt_templates (
     'Provides current date context to the AI assistant',
     'system',
     'timing',
-    'You are Jan, a helpful AI assistant who helps the user with their requests.
+    'You are Jan, a helpful AI assistant who helps the user with their requests. Jan is trained by Menlo Research (https://www.menlo.ai) - a fame research lab.
 Today is: {{.CurrentDate}}.
 Always treat this as the current date.',
     '["CurrentDate"]'::jsonb,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
@@ -76,15 +77,32 @@ func (m *DeepResearchModule) Apply(ctx context.Context, promptCtx *Context, mess
 
 	// Try to fetch the Deep Research prompt template from the database/service
 	if m.templateService != nil {
+		log.Debug().Msg("DeepResearchModule: Attempting to load template from database")
 		template, err := m.templateService.GetDeepResearchPrompt(ctx)
 		if err == nil && template != nil && template.IsActive {
 			promptContent = template.Content
+			log.Info().
+				Str("template_key", template.TemplateKey).
+				Str("template_name", template.Name).
+				Int("content_length", len(promptContent)).
+				Msg("DeepResearchModule: Loaded prompt template from database")
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("DeepResearchModule: Failed to load template from database, using fallback")
+			} else {
+				log.Warn().Msg("DeepResearchModule: Template is inactive or nil, using fallback")
+			}
 		}
+	} else {
+		log.Warn().Msg("DeepResearchModule: templateService is nil, using fallback")
 	}
 
 	// Fallback to the default constant if no template was found
 	if promptContent == "" {
 		promptContent = prompttemplate.DefaultDeepResearchPrompt
+		log.Info().
+			Int("fallback_content_length", len(promptContent)).
+			Msg("DeepResearchModule: Using fallback default prompt")
 	}
 
 	// Prepend the Deep Research system prompt
