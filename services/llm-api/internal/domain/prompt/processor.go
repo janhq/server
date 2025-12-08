@@ -39,6 +39,8 @@ func modulePriority(module Module) int {
 		return 40
 	default:
 		return 100
+	case *DeepResearchModule:
+		return -20 // Deep research has highest priority, runs before all other modules
 	}
 }
 

@@ -224,6 +224,12 @@ func (h *ChatHandler) CreateChatCompletion(
 			preferences["persona"] = persona
 		}
 
+		// Pass deep_research flag to prompt orchestration
+		if request.DeepResearch != nil && *request.DeepResearch {
+			preferences["deep_research"] = true
+			observability.AddSpanAttributes(ctx, attribute.Bool("chat.deep_research", true))
+		}
+
 		var profileSettings *usersettings.ProfileSettings
 		if userSettings != nil {
 			profileSettings = &userSettings.ProfileSettings

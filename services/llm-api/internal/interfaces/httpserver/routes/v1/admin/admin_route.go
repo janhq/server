@@ -2,6 +2,7 @@ package admin
 
 import (
 	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	middleware "jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
 	adminmodel "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/model"
 	adminprovider "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/provider"
@@ -11,11 +12,12 @@ import (
 
 // AdminRoute aggregates all admin sub-routes
 type AdminRoute struct {
-	adminModelRoute    *adminmodel.AdminModelRoute
-	adminProviderRoute *adminprovider.AdminProviderRoute
-	userHandler        *adminhandler.AdminUserHandler
-	groupHandler       *adminhandler.AdminGroupHandler
-	featureFlagHandler *adminhandler.FeatureFlagHandler
+	adminModelRoute         *adminmodel.AdminModelRoute
+	adminProviderRoute      *adminprovider.AdminProviderRoute
+	userHandler             *adminhandler.AdminUserHandler
+	groupHandler            *adminhandler.AdminGroupHandler
+	featureFlagHandler      *adminhandler.FeatureFlagHandler
+	promptTemplateHandler   *prompttemplatehandler.PromptTemplateHandler
 }
 
 // NewAdminRoute creates a new AdminRoute
@@ -25,13 +27,15 @@ func NewAdminRoute(
 	userHandler *adminhandler.AdminUserHandler,
 	groupHandler *adminhandler.AdminGroupHandler,
 	featureFlagHandler *adminhandler.FeatureFlagHandler,
+	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler,
 ) *AdminRoute {
 	return &AdminRoute{
-		adminModelRoute:    adminModelRoute,
-		adminProviderRoute: adminProviderRoute,
-		userHandler:        userHandler,
-		groupHandler:       groupHandler,
-		featureFlagHandler: featureFlagHandler,
+		adminModelRoute:         adminModelRoute,
+		adminProviderRoute:      adminProviderRoute,
+		userHandler:             userHandler,
+		groupHandler:            groupHandler,
+		featureFlagHandler:      featureFlagHandler,
+		promptTemplateHandler:   promptTemplateHandler,
 	}
 }
 
@@ -73,5 +77,13 @@ func (r *AdminRoute) RegisterRouter(router gin.IRouter) {
 		adminGroup.POST("/feature-flags", r.featureFlagHandler.CreateFeatureFlag)
 		adminGroup.PATCH("/feature-flags/:id", r.featureFlagHandler.UpdateFeatureFlag)
 		adminGroup.DELETE("/feature-flags/:id", r.featureFlagHandler.DeleteFeatureFlag)
+
+		// Prompt template management
+		adminGroup.GET("/prompt-templates", r.promptTemplateHandler.List)
+		adminGroup.POST("/prompt-templates", r.promptTemplateHandler.Create)
+		adminGroup.GET("/prompt-templates/:id", r.promptTemplateHandler.Get)
+		adminGroup.PATCH("/prompt-templates/:id", r.promptTemplateHandler.Update)
+		adminGroup.DELETE("/prompt-templates/:id", r.promptTemplateHandler.Delete)
+		adminGroup.POST("/prompt-templates/:id/duplicate", r.promptTemplateHandler.Duplicate)
 	}
 }

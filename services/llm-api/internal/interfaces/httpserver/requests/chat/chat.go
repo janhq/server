@@ -20,6 +20,10 @@ type ChatCompletionRequest struct {
 	Store *bool `json:"store,omitempty"`
 	// StoreReasoning controls whether reasoning content (if present) should also be persisted
 	StoreReasoning *bool `json:"store_reasoning,omitempty"`
+	// DeepResearch enables the Deep Research mode which uses a specialized prompt
+	// for conducting in-depth investigations with tool usage.
+	// Requires a model with supports_reasoning: true capability.
+	DeepResearch *bool `json:"deep_research,omitempty"`
 }
 
 // ConversationReference can unmarshal from either a string (ID) or an object

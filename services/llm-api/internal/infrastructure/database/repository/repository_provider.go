@@ -5,6 +5,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/conversationrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/prompttemplaterepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/userrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/usersettingsrepo"
 
@@ -20,4 +21,5 @@ var RepositoryProvider = wire.NewSet(
 	userrepo.NewUserGormRepository,
 	apikeyrepo.NewAPIKeyRepository,
 	usersettingsrepo.NewUserSettingsGormRepository,
+	prompttemplaterepo.NewPromptTemplateGormRepository,
 )

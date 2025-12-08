@@ -131,7 +131,7 @@ func appendSystemContent(
 	var builder strings.Builder
 	baseText := strings.TrimSpace(baseContent)
 	if baseText == "" {
-		baseText = "You are a helpful assistant."
+		baseText = "You are Jan, a helpful AI assistant."
 	}
 	builder.WriteString(baseText)
 
@@ -277,7 +277,7 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 	currentDate := time.Now().Format("January 2, 2006")
 
 	timingText := fmt.Sprintf(
-		"You are an AI assistant that helps the user with their requests.\n"+
+		"You are Jan, a helpful AI assistant who helps the user with their requests.\n"+
 			"Today is: %s.\n"+
 			"Always treat this as the current date.",
 		currentDate,

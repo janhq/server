@@ -144,7 +144,7 @@ if err != nil {
   "messages": [
     {
       "role": "system",
-      "content": "You are a helpful assistant.\n\nUse the following personal memory for this user:\n- User prefers detailed code examples\n- User is learning Go\n\nWhen providing code assistance:\n1. Provide clear, well-commented code\n2. Explain your approach and reasoning\n3. Include error handling where appropriate\n4. Follow best practices and conventions\n5. Suggest testing approaches when relevant"
+      "content": "You are Jan, a helpful AI assistant.\n\nUse the following personal memory for this user:\n- User prefers detailed code examples\n- User is learning Go\n\nWhen providing code assistance:\n1. Provide clear, well-commented code\n2. Explain your approach and reasoning\n3. Include error handling where appropriate\n4. Follow best practices and conventions\n5. Suggest testing approaches when relevant"
     },
     {"role": "user", "content": "How do I implement binary search in Go?"}
   ]

@@ -6,19 +6,27 @@ import (
 
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/domain/prompttemplate"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
 
 type DataInitializer struct {
-	provider            *model.ProviderService
-	modelCatalogService *model.ModelCatalogService
-	inferenceProvider   *inference.InferenceProvider
+	provider              *model.ProviderService
+	modelCatalogService   *model.ModelCatalogService
+	inferenceProvider     *inference.InferenceProvider
+	promptTemplateService *prompttemplate.Service
 }
 
 func (d *DataInitializer) Install(ctx context.Context) error {
+	log := logger.GetLogger()
 	cfg := config.GetGlobal()
+
+	// Ensure default prompt templates exist
+	if err := d.promptTemplateService.EnsureDefaultTemplates(ctx); err != nil {
+		log.Warn().Err(err).Msg("failed to ensure default prompt templates, continuing with fallback")
+	}
 
 	if entries := cfg.ProviderBootstrapEntries(); len(entries) > 0 {
 		// If we already have active providers in the database, skip bootstrapping from providers.yml.
@@ -27,7 +35,6 @@ func (d *DataInitializer) Install(ctx context.Context) error {
 			return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to check existing providers before bootstrap")
 		}
 		if len(activeProviders) > 0 {
-			log := logger.GetLogger()
 			log.Info().
 				Int("active_providers", len(activeProviders)).
 				Msg("skipping providers.yml bootstrap because active providers already exist")

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"jan-server/services/llm-api/internal/config"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/chat"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/conversation"
@@ -15,12 +16,13 @@ import (
 )
 
 type V1Route struct {
-	model        *model.ModelRoute
-	chat         *chat.ChatRoute
-	conversation *conversation.ConversationRoute
-	project      *projects.ProjectRoute
-	adminRoute   *admin.AdminRoute
-	users        *users.UsersRoute
+	model                 *model.ModelRoute
+	chat                  *chat.ChatRoute
+	conversation          *conversation.ConversationRoute
+	project               *projects.ProjectRoute
+	adminRoute            *admin.AdminRoute
+	users                 *users.UsersRoute
+	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler
 }
 
 func NewV1Route(
@@ -29,7 +31,9 @@ func NewV1Route(
 	conversation *conversation.ConversationRoute,
 	project *projects.ProjectRoute,
 	adminRoute *admin.AdminRoute,
-	users *users.UsersRoute) *V1Route {
+	users *users.UsersRoute,
+	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler,
+) *V1Route {
 	return &V1Route{
 		model,
 		chat,
@@ -37,6 +41,7 @@ func NewV1Route(
 		project,
 		adminRoute,
 		users,
+		promptTemplateHandler,
 	}
 }
 
@@ -53,6 +58,8 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	v1Route.project.RegisterRoutes(v1Router)
 	v1Route.users.RegisterRouter(v1Router)
 
+	// Public prompt template endpoints
+	v1Router.GET("/prompt-templates/:key", v1Route.promptTemplateHandler.GetByKey)
 }
 
 // GetVersion godoc
