@@ -46,6 +46,9 @@ type SearchClient struct {
 	serperClient   *resty.Client
 	fallbackClient *resty.Client
 	searxClient    *resty.Client
+	retryConfig    RetryConfig
+	serperCB       *CircuitBreaker
+	searxCB        *CircuitBreaker
 }
 
 var _ domainsearch.SearchClient = (*SearchClient)(nil)
@@ -80,6 +83,9 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 		serperClient:   serperHTTP,
 		fallbackClient: fallbackHTTP,
 		searxClient:    searxHTTP,
+		retryConfig:    DefaultRetryConfig(),
+		serperCB:       NewCircuitBreaker(DefaultCircuitBreakerConfig()),
+		searxCB:        NewCircuitBreaker(DefaultCircuitBreakerConfig()),
 	}
 }
 
@@ -176,6 +182,12 @@ func (c *SearchClient) resolveOfflineMode(override *bool) bool {
 }
 
 func (c *SearchClient) searchViaSerper(ctx context.Context, query domainsearch.SearchRequest) (*domainsearch.SearchResponse, error) {
+	// Check circuit breaker
+	if c.serperCB.GetState() == StateOpen {
+		log.Warn().Msg("serper circuit breaker is open, skipping")
+		return nil, fmt.Errorf("serper circuit breaker is open")
+	}
+
 	body := map[string]any{
 		"q": query.Q,
 	}
@@ -203,21 +215,43 @@ func (c *SearchClient) searchViaSerper(ctx context.Context, query domainsearch.S
 		body["tbs"] = string(*query.TBS)
 	}
 
-	var result domainsearch.SearchResponse
-	resp, err := c.serperClient.R().
-		SetContext(ctx).
-		SetHeader("X-API-KEY", c.cfg.SerperAPIKey).
-		SetHeader("Content-Type", "application/json").
-		SetBody(body).
-		SetResult(&result).
-		Post(serperSearchEndpoint)
+	var result *domainsearch.SearchResponse
+	
+	// Retry with exponential backoff
+	resultPtr, err := WithRetry(ctx, c.retryConfig, "serper_search", func() (*domainsearch.SearchResponse, error) {
+		var res domainsearch.SearchResponse
+		resp, err := c.serperClient.R().
+			SetContext(ctx).
+			SetHeader("X-API-KEY", c.cfg.SerperAPIKey).
+			SetHeader("Content-Type", "application/json").
+			SetBody(body).
+			SetResult(&res).
+			Post(serperSearchEndpoint)
 
+		if err != nil {
+			return nil, fmt.Errorf("failed to query Serper search API: %w", err)
+		}
+
+		if resp.IsError() {
+			return nil, fmt.Errorf("Serper search API error (status %d): %s", resp.StatusCode(), resp.String())
+		}
+		
+		return &res, nil
+	})
+	
+	// Update circuit breaker
+	c.serperCB.recordResult("serper_search", err)
+	
 	if err != nil {
-		return nil, fmt.Errorf("failed to query Serper search API: %w", err)
+		return nil, err
 	}
-
-	if resp.IsError() {
-		return nil, fmt.Errorf("Serper search API error (status %d): %s", resp.StatusCode(), resp.String())
+	
+	result = resultPtr
+	
+	// Validate response
+	if validationErr := ValidateSearchResponse(result, 0); validationErr != nil {
+		log.Warn().Err(validationErr).Msg("serper search returned invalid response")
+		return EnrichEmptyResponse(result, query.Q, "validation_failed"), nil
 	}
 
 	if result.SearchParameters == nil {
@@ -230,7 +264,7 @@ func (c *SearchClient) searchViaSerper(ctx context.Context, query domainsearch.S
 		result.SearchParameters["location_hint"] = *query.LocationHint
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 func (c *SearchClient) searchViaSearxng(ctx context.Context, query domainsearch.SearchRequest) (*domainsearch.SearchResponse, error) {
@@ -238,35 +272,55 @@ func (c *SearchClient) searchViaSearxng(ctx context.Context, query domainsearch.
 		return nil, fmt.Errorf("searxng client not configured")
 	}
 
-	req := c.searxClient.R().
-		SetContext(ctx).
-		SetQueryParam("q", query.Q).
-		SetQueryParam("format", "json").
-		SetQueryParam("safesearch", "1")
+	// Check circuit breaker
+	if c.searxCB.GetState() == StateOpen {
+		log.Warn().Msg("searxng circuit breaker is open, skipping")
+		return nil, fmt.Errorf("searxng circuit breaker is open")
+	}
 
-	if query.HL != nil {
-		req.SetQueryParam("language", *query.HL)
-	}
-	if query.Page != nil && *query.Page > 1 {
-		req.SetQueryParam("p", strconv.Itoa(*query.Page))
-	}
-	if query.Num != nil && *query.Num > 0 {
-		req.SetQueryParam("num", strconv.Itoa(*query.Num))
-	}
-	if query.TBS != nil {
-		if mapped := mapTBSToSearxng(*query.TBS); mapped != "" {
-			req.SetQueryParam("time_range", mapped)
+	// Retry with exponential backoff
+	resultPtr, err := WithRetry(ctx, c.retryConfig, "searxng_search", func() (*searxngResponse, error) {
+		req := c.searxClient.R().
+			SetContext(ctx).
+			SetQueryParam("q", query.Q).
+			SetQueryParam("format", "json").
+			SetQueryParam("safesearch", "1")
+
+		if query.HL != nil {
+			req.SetQueryParam("language", *query.HL)
 		}
-	}
+		if query.Page != nil && *query.Page > 1 {
+			req.SetQueryParam("p", strconv.Itoa(*query.Page))
+		}
+		if query.Num != nil && *query.Num > 0 {
+			req.SetQueryParam("num", strconv.Itoa(*query.Num))
+		}
+		if query.TBS != nil {
+			if mapped := mapTBSToSearxng(*query.TBS); mapped != "" {
+				req.SetQueryParam("time_range", mapped)
+			}
+		}
 
-	var result searxngResponse
-	resp, err := req.SetResult(&result).Get(searxngSearchPath)
+		var result searxngResponse
+		resp, err := req.SetResult(&result).Get(searxngSearchPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query SearXNG API: %w", err)
+		}
+		if resp.IsError() {
+			return nil, fmt.Errorf("SearXNG API error (status %d): %s", resp.StatusCode(), resp.String())
+		}
+		
+		return &result, nil
+	})
+	
+	// Update circuit breaker
+	c.searxCB.recordResult("searxng_search", err)
+	
 	if err != nil {
-		return nil, fmt.Errorf("failed to query SearXNG API: %w", err)
+		return nil, err
 	}
-	if resp.IsError() {
-		return nil, fmt.Errorf("SearXNG API error (status %d): %s", resp.StatusCode(), resp.String())
-	}
+	
+	result := *resultPtr
 
 	limit := 10
 	if query.Num != nil && *query.Num > 0 {
@@ -297,10 +351,18 @@ func (c *SearchClient) searchViaSearxng(ctx context.Context, query domainsearch.
 		searchMetadata["location_hint"] = *query.LocationHint
 	}
 
-	return &domainsearch.SearchResponse{
+	searchResp := &domainsearch.SearchResponse{
 		SearchParameters: searchMetadata,
 		Organic:          results,
-	}, nil
+	}
+	
+	// Validate response
+	if validationErr := ValidateSearchResponse(searchResp, 0); validationErr != nil {
+		log.Warn().Err(validationErr).Msg("searxng search returned invalid response")
+		return EnrichEmptyResponse(searchResp, query.Q, "validation_failed"), nil
+	}
+	
+	return searchResp, nil
 }
 
 func mapTBSToSearxng(t domainsearch.TBSTimeRange) string {
@@ -321,6 +383,12 @@ func mapTBSToSearxng(t domainsearch.TBSTimeRange) string {
 }
 
 func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.FetchWebpageRequest) (*domainsearch.FetchWebpageResponse, error) {
+	// Check circuit breaker
+	if c.serperCB.GetState() == StateOpen {
+		log.Warn().Msg("serper circuit breaker is open for scraping, using fallback")
+		return nil, fmt.Errorf("serper circuit breaker is open")
+	}
+
 	body := map[string]any{
 		"url": query.Url,
 	}
@@ -328,54 +396,90 @@ func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.Fe
 		body["includeMarkdown"] = *query.IncludeMarkdown
 	}
 
-	var result domainsearch.FetchWebpageResponse
-	resp, err := c.serperClient.R().
-		SetContext(ctx).
-		SetHeader("X-API-KEY", c.cfg.SerperAPIKey).
-		SetHeader("Content-Type", "application/json").
-		SetBody(body).
-		SetResult(&result).
-		Post(serperScrapeEndpoint)
+	// Retry with exponential backoff
+	result, err := WithRetry(ctx, c.retryConfig, "serper_scrape", func() (*domainsearch.FetchWebpageResponse, error) {
+		var res domainsearch.FetchWebpageResponse
+		resp, err := c.serperClient.R().
+			SetContext(ctx).
+			SetHeader("X-API-KEY", c.cfg.SerperAPIKey).
+			SetHeader("Content-Type", "application/json").
+			SetBody(body).
+			SetResult(&res).
+			Post(serperScrapeEndpoint)
 
+		if err != nil {
+			return nil, fmt.Errorf("failed to query Serper scrape API: %w", err)
+		}
+
+		if resp.IsError() {
+			return nil, fmt.Errorf("Serper scrape API error (status %d): %s", resp.StatusCode(), resp.String())
+		}
+
+		return &res, nil
+	})
+	
+	// Update circuit breaker
+	c.serperCB.recordResult("serper_scrape", err)
+	
 	if err != nil {
-		return nil, fmt.Errorf("failed to query Serper scrape API: %w", err)
+		return nil, err
+	}
+	
+	// Validate response (minimum 50 chars for meaningful content)
+	if validationErr := ValidateFetchResponse(result, 50); validationErr != nil {
+		log.Warn().Err(validationErr).Msg("serper scrape returned invalid response")
+		return EnrichEmptyFetch(result, query.Url, "validation_failed"), nil
 	}
 
-	if resp.IsError() {
-		return nil, fmt.Errorf("Serper scrape API error (status %d): %s", resp.StatusCode(), resp.String())
-	}
-
-	return &result, nil
+	return result, nil
 }
 
 func (c *SearchClient) fetchFallback(ctx context.Context, query domainsearch.FetchWebpageRequest) (*domainsearch.FetchWebpageResponse, error) {
-	resp, err := c.fallbackClient.R().
-		SetContext(ctx).
-		SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
-		Get(query.Url)
+	// Retry fallback fetch with shorter retry config
+	shortRetry := c.retryConfig
+	shortRetry.MaxAttempts = 2
+	
+	result, err := WithRetry(ctx, shortRetry, "fallback_fetch", func() (*domainsearch.FetchWebpageResponse, error) {
+		resp, err := c.fallbackClient.R().
+			SetContext(ctx).
+			SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
+			Get(query.Url)
+		if err != nil {
+			return nil, fmt.Errorf("fallback fetch failed: %w", err)
+		}
+		if resp.IsError() {
+			return nil, fmt.Errorf("fallback fetch HTTP %d: %s", resp.StatusCode(), resp.Status())
+		}
+
+		bodyBytes := resp.Body()
+		text := extractVisibleText(bodyBytes)
+		if text == "" {
+			text = string(bodyBytes)
+		}
+
+		metadata := map[string]any{
+			"source":        query.Url,
+			"contentType":   resp.Header().Get("Content-Type"),
+			"fallback_mode": true,
+		}
+
+		return &domainsearch.FetchWebpageResponse{
+			Text:     text,
+			Metadata: metadata,
+		}, nil
+	})
+	
 	if err != nil {
-		return nil, fmt.Errorf("fallback fetch failed: %w", err)
+		return nil, err
 	}
-	if resp.IsError() {
-		return nil, fmt.Errorf("fallback fetch HTTP %d: %s", resp.StatusCode(), resp.Status())
+	
+	// Validate response
+	if validationErr := ValidateFetchResponse(result, 50); validationErr != nil {
+		log.Warn().Err(validationErr).Msg("fallback fetch returned invalid response")
+		return EnrichEmptyFetch(result, query.Url, "validation_failed"), nil
 	}
-
-	bodyBytes := resp.Body()
-	text := extractVisibleText(bodyBytes)
-	if text == "" {
-		text = string(bodyBytes)
-	}
-
-	metadata := map[string]any{
-		"source":        query.Url,
-		"contentType":   resp.Header().Get("Content-Type"),
-		"fallback_mode": true,
-	}
-
-	return &domainsearch.FetchWebpageResponse{
-		Text:     text,
-		Metadata: metadata,
-	}, nil
+	
+	return result, nil
 }
 
 func (c *SearchClient) searchViaDuckDuckGo(ctx context.Context, query domainsearch.SearchRequest, reason string) (*domainsearch.SearchResponse, error) {

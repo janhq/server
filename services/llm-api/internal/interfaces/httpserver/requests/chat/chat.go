@@ -12,6 +12,9 @@ import (
 type ChatCompletionRequest struct {
 	openai.ChatCompletionRequest
 
+	TopK              *int     `json:"top_k,omitempty"`
+	RepetitionPenalty *float32 `json:"repetition_penalty,omitempty"`
+
 	// Conversation can be either a string (conversation ID) or a conversation object
 	// Items from this conversation are prepended to Messages for this response request.
 	// Input items and output items from this response are automatically added to this conversation after completion.

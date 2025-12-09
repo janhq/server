@@ -257,6 +257,11 @@ func (h *ProviderHandler) UpdateProvider(
 	return &response, nil
 }
 
+// GetModelCatalogByID returns catalog details (used to apply default parameters).
+func (providerHandler *ProviderHandler) GetModelCatalogByID(ctx context.Context, id uint) (*domainmodel.ModelCatalog, error) {
+	return providerHandler.providerModelService.FindCatalogByID(ctx, id)
+}
+
 func (h *ProviderHandler) DeleteProvider(ctx context.Context, publicID string) error {
 	if strings.TrimSpace(publicID) == "" {
 		return platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "0c3f68da-0aa4-4a7c-9cec-c22d47c86f8b")

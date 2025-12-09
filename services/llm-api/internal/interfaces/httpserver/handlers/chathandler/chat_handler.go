@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
+	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/usersettings"
@@ -28,6 +29,8 @@ import (
 	"jan-server/services/llm-api/internal/utils/httpclients/chat"
 	"jan-server/services/llm-api/internal/utils/idgen"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
+
+	"github.com/shopspring/decimal"
 )
 
 const ConversationReferrerContextKey = "conversation_referrer"
@@ -201,6 +204,16 @@ func (h *ChatHandler) CreateChatCompletion(
 	// Override the request model with the provider's original model ID
 	request.Model = selectedProviderModel.ProviderOriginalModelID
 
+	// Optionally load model catalog (used later to apply default parameters)
+	var modelCatalog *domainmodel.ModelCatalog
+	if selectedProviderModel.ModelCatalogID != nil {
+		modelCatalog, err = h.providerHandler.GetModelCatalogByID(ctx, *selectedProviderModel.ModelCatalogID)
+		if err != nil {
+			log := logger.GetLogger()
+			log.Warn().Err(err).Uint("model_catalog_id", *selectedProviderModel.ModelCatalogID).Msg("failed to load model catalog defaults")
+		}
+	}
+
 	// Resolve jan_* media placeholders (best-effort)
 	request.Messages = h.resolveMediaPlaceholders(ctx, reqCtx, request.Messages)
 
@@ -283,12 +296,20 @@ func (h *ChatHandler) CreateChatCompletion(
 	}
 
 	// Handle streaming vs non-streaming
+	llmRequest := chat.CompletionRequest{
+		ChatCompletionRequest: request.ChatCompletionRequest,
+		TopK:                  request.TopK,
+		RepetitionPenalty:     request.RepetitionPenalty,
+	}
+	if modelCatalog != nil {
+		h.applyModelDefaultsFromCatalog(&llmRequest, modelCatalog)
+	}
 	observability.AddSpanEvent(ctx, "calling_llm")
 	llmStartTime := time.Now()
 	if request.Stream {
-		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, request.ChatCompletionRequest)
+		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, llmRequest)
 	} else {
-		response, err = h.callCompletion(ctx, chatClient, request.ChatCompletionRequest)
+		response, err = h.callCompletion(ctx, chatClient, llmRequest)
 	}
 	llmDuration := time.Since(llmStartTime)
 
@@ -419,7 +440,7 @@ func (h *ChatHandler) CreateChatCompletion(
 func (h *ChatHandler) callCompletion(
 	ctx context.Context,
 	chatClient *chat.ChatCompletionClient,
-	request openai.ChatCompletionRequest,
+	request chat.CompletionRequest,
 ) (*openai.ChatCompletionResponse, error) {
 	chatCompletion, err := chatClient.CreateChatCompletion(ctx, "", request)
 	if err != nil {
@@ -435,7 +456,7 @@ func (h *ChatHandler) streamCompletion(
 	reqCtx *gin.Context,
 	chatClient *chat.ChatCompletionClient,
 	conv *conversation.Conversation,
-	request openai.ChatCompletionRequest,
+	request chat.CompletionRequest,
 ) (*openai.ChatCompletionResponse, error) {
 	// Create callback to send conversation data before [DONE]
 	var beforeDoneCallback chat.BeforeDoneCallback
@@ -523,6 +544,69 @@ func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.
 	}
 
 	return messages
+}
+
+// applyModelDefaultsFromCatalog fills in missing request parameters using defaults from the model catalog.
+func (h *ChatHandler) applyModelDefaultsFromCatalog(req *chat.CompletionRequest, catalog *domainmodel.ModelCatalog) {
+	if req == nil || catalog == nil {
+		return
+	}
+
+	defaults := catalog.SupportedParameters.Default
+	if len(defaults) == 0 {
+		return
+	}
+
+	if req.Temperature == 0 {
+		if val, ok := decimalToFloat32(defaults["temperature"]); ok {
+			req.Temperature = val
+		}
+	}
+	if req.TopP == 0 {
+		if val, ok := decimalToFloat32(defaults["top_p"]); ok {
+			req.TopP = val
+		}
+	}
+	if req.PresencePenalty == 0 {
+		if val, ok := decimalToFloat32(defaults["presence_penalty"]); ok {
+			req.PresencePenalty = val
+		}
+	}
+	if req.FrequencyPenalty == 0 {
+		if val, ok := decimalToFloat32(defaults["frequency_penalty"]); ok {
+			req.FrequencyPenalty = val
+		}
+	}
+	if req.MaxTokens == 0 {
+		if val, ok := decimalToInt(defaults["max_tokens"]); ok {
+			req.MaxTokens = val
+		}
+	}
+	if req.TopK == nil || (req.TopK != nil && *req.TopK == 0) {
+		if val, ok := decimalToInt(defaults["top_k"]); ok {
+			req.TopK = &val
+		}
+	}
+	if req.RepetitionPenalty == nil || (req.RepetitionPenalty != nil && *req.RepetitionPenalty == 0) {
+		if val, ok := decimalToFloat32(defaults["repetition_penalty"]); ok {
+			req.RepetitionPenalty = &val
+		}
+	}
+}
+
+func decimalToFloat32(val *decimal.Decimal) (float32, bool) {
+	if val == nil {
+		return 0, false
+	}
+	f, _ := val.Float64()
+	return float32(f), true
+}
+
+func decimalToInt(val *decimal.Decimal) (int, bool) {
+	if val == nil {
+		return 0, false
+	}
+	return int(val.IntPart()), true
 }
 
 // getProjectInstruction loads the project instruction for the conversation, falling back to the stored snapshot.
