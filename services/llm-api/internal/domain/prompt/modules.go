@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 
+	"jan-server/services/llm-api/internal/domain/prompttemplate"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 )
 
@@ -131,7 +133,7 @@ func appendSystemContent(
 	var builder strings.Builder
 	baseText := strings.TrimSpace(baseContent)
 	if baseText == "" {
-		baseText = "You are a helpful assistant."
+		baseText = "You are Jan, a helpful AI assistant.  Jan is trained by Menlo Research (https://www.menlo.ai) - a fame research lab. "
 	}
 	builder.WriteString(baseText)
 
@@ -242,11 +244,20 @@ func (m *ProjectInstructionModule) Apply(ctx context.Context, promptCtx *Context
 }
 
 // TimingModule injects the AI assistant intro and current date into the system prompt.
-type TimingModule struct{}
+type TimingModule struct {
+	templateService *prompttemplate.Service
+}
 
-// NewTimingModule creates a new timing module.
+// NewTimingModule creates a new timing module without template service (uses fallback).
 func NewTimingModule() *TimingModule {
 	return &TimingModule{}
+}
+
+// NewTimingModuleWithService creates a new timing module with template service.
+func NewTimingModuleWithService(service *prompttemplate.Service) *TimingModule {
+	return &TimingModule{
+		templateService: service,
+	}
 }
 
 // Name returns the module identifier.
@@ -276,23 +287,62 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 	// Format current date as "Month Day, Year" (e.g., "November 28, 2025")
 	currentDate := time.Now().Format("January 2, 2006")
 
-	timingText := fmt.Sprintf(
-		"You are an AI assistant that helps the user with their requests.\n"+
-			"Today is: %s.\n"+
-			"Always treat this as the current date.",
-		currentDate,
-	)
+	var timingText string
+
+	// Try to fetch timing template from database and render with current date
+	if m.templateService != nil {
+		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyTiming)
+		if err == nil && template != nil && template.IsActive {
+			// Render template with current date variable
+			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyTiming, map[string]any{
+				"CurrentDate": currentDate,
+			})
+			if renderErr == nil {
+				timingText = rendered
+				log.Info().
+					Str("template_key", template.TemplateKey).
+					Str("current_date", currentDate).
+					Msg("TimingModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("TimingModule: Failed to render template, using fallback")
+			}
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("TimingModule: Failed to load template from database, using fallback")
+			}
+		}
+	}
+
+	// Fallback to hardcoded timing text if template not loaded
+	if timingText == "" {
+		timingText = fmt.Sprintf(
+			"You are Jan, a helpful AI assistant who helps the user with their requests. Jan is trained by Menlo Research (https://www.menlo.ai) - a fame research lab.\n"+
+				"Today is: %s.\n"+
+				"Always treat this as the current date.",
+			currentDate,
+		)
+		log.Info().Msg("TimingModule: Using fallback hardcoded prompt")
+	}
 
 	result := appendSystemContent(messages, "", m.Name(), timingText)
 	return result, nil
 }
 
 // UserProfileModule injects user profile personalization into the system prompt.
-type UserProfileModule struct{}
+type UserProfileModule struct{
+	templateService *prompttemplate.Service
+}
 
-// NewUserProfileModule creates a new user profile module.
+// NewUserProfileModule creates a new user profile module without template service (uses fallback).
 func NewUserProfileModule() *UserProfileModule {
 	return &UserProfileModule{}
+}
+
+// NewUserProfileModuleWithService creates a new user profile module with template service.
+func NewUserProfileModuleWithService(service *prompttemplate.Service) *UserProfileModule {
+	return &UserProfileModule{
+		templateService: service,
+	}
 }
 
 // Name returns the module identifier.
@@ -349,44 +399,81 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 		return messages, nil
 	}
 
-	profile := promptCtx.Profile
-	var sections []string
+	var instruction string
 
-	// General note about precedence vs project instructions.
-	sections = append(sections,
-		"User-level settings are preferences for style and context. "+
-			"If they ever conflict with explicit project or system instructions, always follow the project or system instructions.")
+	// Try to fetch user_profile template from database first
+	if m.templateService != nil {
+		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyUserProfile)
+		if err == nil && template != nil && template.IsActive {
+			// Build variables for template rendering
+			vars := map[string]any{
+				"BaseStyle":          string(promptCtx.Profile.BaseStyle),
+				"CustomInstructions": promptCtx.Profile.CustomInstructions,
+				"NickName":           promptCtx.Profile.NickName,
+				"Occupation":         promptCtx.Profile.Occupation,
+				"MoreAboutYou":       promptCtx.Profile.MoreAboutYou,
+			}
 
-	if styleText := baseStyleInstruction(profile.BaseStyle); styleText != "" {
-		sections = append(sections, styleText)
-	}
-
-	if custom := strings.TrimSpace(profile.CustomInstructions); custom != "" {
-		sections = append(sections, fmt.Sprintf("Custom instructions from the user:\n%s", custom))
-	}
-
-	var details []string
-	if nick := strings.TrimSpace(profile.NickName); nick != "" {
-		details = append(details, fmt.Sprintf("Address the user as \"%s\".", nick))
-	}
-	if occupation := strings.TrimSpace(profile.Occupation); occupation != "" {
-		details = append(details, fmt.Sprintf("Occupation: %s.", occupation))
-	}
-	if more := strings.TrimSpace(profile.MoreAboutYou); more != "" {
-		details = append(details, fmt.Sprintf("About the user: %s.", more))
-	}
-	if len(details) > 0 {
-		var builder strings.Builder
-		builder.WriteString("User context:\n")
-		for _, detail := range details {
-			builder.WriteString("- ")
-			builder.WriteString(detail)
-			builder.WriteString("\n")
+			// Render template with user profile variables
+			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyUserProfile, vars)
+			if renderErr == nil {
+				instruction = rendered
+				log.Info().
+					Str("template_key", template.TemplateKey).
+					Msg("UserProfileModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("UserProfileModule: Failed to render template, using fallback")
+			}
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("UserProfileModule: Failed to load template from database, using fallback")
+			}
 		}
-		sections = append(sections, strings.TrimSpace(builder.String()))
 	}
 
-	instruction := strings.TrimSpace(strings.Join(sections, "\n\n"))
+	// Fallback to hardcoded logic if template not loaded
+	if instruction == "" {
+		profile := promptCtx.Profile
+		var sections []string
+
+		// General note about precedence vs project instructions.
+		sections = append(sections,
+			"User-level settings are preferences for style and context. "+
+				"If they ever conflict with explicit project or system instructions, always follow the project or system instructions.")
+
+		if styleText := baseStyleInstruction(profile.BaseStyle); styleText != "" {
+			sections = append(sections, styleText)
+		}
+
+		if custom := strings.TrimSpace(profile.CustomInstructions); custom != "" {
+			sections = append(sections, fmt.Sprintf("Custom instructions from the user:\n%s", custom))
+		}
+
+		var details []string
+		if nick := strings.TrimSpace(profile.NickName); nick != "" {
+			details = append(details, fmt.Sprintf("Address the user as \"%s\".", nick))
+		}
+		if occupation := strings.TrimSpace(profile.Occupation); occupation != "" {
+			details = append(details, fmt.Sprintf("Occupation: %s.", occupation))
+		}
+		if more := strings.TrimSpace(profile.MoreAboutYou); more != "" {
+			details = append(details, fmt.Sprintf("About the user: %s.", more))
+		}
+		if len(details) > 0 {
+			var builder strings.Builder
+			builder.WriteString("User context:\n")
+			for _, detail := range details {
+				builder.WriteString("- ")
+				builder.WriteString(detail)
+				builder.WriteString("\n")
+			}
+			sections = append(sections, strings.TrimSpace(builder.String()))
+		}
+
+		instruction = strings.TrimSpace(strings.Join(sections, "\n\n"))
+		log.Info().Msg("UserProfileModule: Using fallback hardcoded prompt")
+	}
+
 	if instruction == "" {
 		return messages, nil
 	}
@@ -415,12 +502,21 @@ func WithDisabledModules(ctx *Context, disable []string) *Context {
 
 // MemoryModule adds user memory to system prompts.
 type MemoryModule struct {
-	enabled bool
+	enabled         bool
+	templateService *prompttemplate.Service
 }
 
-// NewMemoryModule creates a new memory module.
+// NewMemoryModule creates a new memory module without template service (uses fallback).
 func NewMemoryModule(enabled bool) *MemoryModule {
 	return &MemoryModule{enabled: enabled}
+}
+
+// NewMemoryModuleWithService creates a new memory module with template service.
+func NewMemoryModuleWithService(enabled bool, service *prompttemplate.Service) *MemoryModule {
+	return &MemoryModule{
+		enabled:         enabled,
+		templateService: service,
+	}
 }
 
 // Name returns the module identifier.
@@ -453,26 +549,69 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 		return messages, nil
 	}
 
-	var builder strings.Builder
-	builder.WriteString("Use the following personal memory for this user when helpful, without overriding project or system instructions:\n")
-	for _, item := range promptCtx.Memory {
-		builder.WriteString("- ")
-		builder.WriteString(item)
-		builder.WriteString("\n")
+	var memoryText string
+
+	// Try to fetch memory template from database first
+	if m.templateService != nil {
+		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyMemory)
+		if err == nil && template != nil && template.IsActive {
+			// Build memory items for template rendering
+			vars := map[string]any{
+				"MemoryItems": promptCtx.Memory,
+			}
+
+			// Render template with memory variables
+			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyMemory, vars)
+			if renderErr == nil {
+				memoryText = rendered
+				log.Info().
+					Str("template_key", template.TemplateKey).
+					Int("memory_count", len(promptCtx.Memory)).
+					Msg("MemoryModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("MemoryModule: Failed to render template, using fallback")
+			}
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("MemoryModule: Failed to load template from database, using fallback")
+			}
+		}
 	}
 
-	result := appendSystemContent(messages, strings.TrimSpace(builder.String()), m.Name(), "")
+	// Fallback to hardcoded memory text if template not loaded
+	if memoryText == "" {
+		var builder strings.Builder
+		builder.WriteString("Use the following personal memory for this user when helpful, without overriding project or system instructions:\n")
+		for _, item := range promptCtx.Memory {
+			builder.WriteString("- ")
+			builder.WriteString(item)
+			builder.WriteString("\n")
+		}
+		memoryText = strings.TrimSpace(builder.String())
+		log.Info().Msg("MemoryModule: Using fallback hardcoded prompt")
+	}
+
+	result := appendSystemContent(messages, memoryText, m.Name(), "")
 	return result, nil
 }
 
 // ToolInstructionsModule adds tool usage instructions.
 type ToolInstructionsModule struct {
-	enabled bool
+	enabled         bool
+	templateService *prompttemplate.Service
 }
 
-// NewToolInstructionsModule creates a new tool instructions module.
+// NewToolInstructionsModule creates a new tool instructions module without template service (uses fallback).
 func NewToolInstructionsModule(enabled bool) *ToolInstructionsModule {
 	return &ToolInstructionsModule{enabled: enabled}
+}
+
+// NewToolInstructionsModuleWithService creates a new tool instructions module with template service.
+func NewToolInstructionsModuleWithService(enabled bool, service *prompttemplate.Service) *ToolInstructionsModule {
+	return &ToolInstructionsModule{
+		enabled:         enabled,
+		templateService: service,
+	}
 }
 
 // Name returns the module identifier.
@@ -509,36 +648,78 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 		return messages, nil
 	}
 
-	var builder strings.Builder
-	builder.WriteString("You have access to various tools. Always choose the best tool for the task.\n")
-	builder.WriteString("When you need to search for information, use web search. When you need to execute code, use the code execution tool.\n")
-	builder.WriteString("Tool usage must respect project instructions and system-level constraints at all times.")
+	var toolText string
 
-	if promptCtx.Preferences != nil {
-		if desc, ok := promptCtx.Preferences["tool_descriptions"].(string); ok && strings.TrimSpace(desc) != "" {
-			builder.WriteString("\nAvailable tools: ")
-			builder.WriteString(strings.TrimSpace(desc))
-		}
-		if list, ok := promptCtx.Preferences["tool_descriptions"].([]string); ok && len(list) > 0 {
-			builder.WriteString("\nAvailable tools:\n")
-			for _, item := range list {
-				builder.WriteString("- ")
-				builder.WriteString(strings.TrimSpace(item))
-				builder.WriteString("\n")
+	// Try to fetch tool_instructions template from database first
+	if m.templateService != nil {
+		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyToolInstructions)
+		if err == nil && template != nil && template.IsActive {
+			// Build variables for template rendering
+			vars := map[string]any{
+				"ToolDescriptions": promptCtx.Preferences["tool_descriptions"],
+			}
+
+			// Render template with tool variables
+			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyToolInstructions, vars)
+			if renderErr == nil {
+				toolText = rendered
+				log.Info().
+					Str("template_key", template.TemplateKey).
+					Msg("ToolInstructionsModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("ToolInstructionsModule: Failed to render template, using fallback")
+			}
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("ToolInstructionsModule: Failed to load template from database, using fallback")
 			}
 		}
 	}
 
-	result := appendSystemContent(messages, strings.TrimSpace(builder.String()), m.Name(), "")
+	// Fallback to hardcoded tool text if template not loaded
+	if toolText == "" {
+		var builder strings.Builder
+		builder.WriteString("You have access to various tools. Always choose the best tool for the task.\n")
+		builder.WriteString("When you need to search for information, use web search. When you need to execute code, use the code execution tool.\n")
+		builder.WriteString("Tool usage must respect project instructions and system-level constraints at all times.")
+
+		if promptCtx.Preferences != nil {
+			if desc, ok := promptCtx.Preferences["tool_descriptions"].(string); ok && strings.TrimSpace(desc) != "" {
+				builder.WriteString("\nAvailable tools: ")
+				builder.WriteString(strings.TrimSpace(desc))
+			}
+			if list, ok := promptCtx.Preferences["tool_descriptions"].([]string); ok && len(list) > 0 {
+				builder.WriteString("\nAvailable tools:\n")
+				for _, item := range list {
+					builder.WriteString("- ")
+					builder.WriteString(strings.TrimSpace(item))
+					builder.WriteString("\n")
+				}
+			}
+		}
+		toolText = strings.TrimSpace(builder.String())
+		log.Info().Msg("ToolInstructionsModule: Using fallback hardcoded prompt")
+	}
+
+	result := appendSystemContent(messages, toolText, m.Name(), "")
 	return result, nil
 }
 
 // CodeAssistantModule adds code-specific instructions.
-type CodeAssistantModule struct{}
+type CodeAssistantModule struct{
+	templateService *prompttemplate.Service
+}
 
-// NewCodeAssistantModule creates a new code assistant module.
+// NewCodeAssistantModule creates a new code assistant module without template service (uses fallback).
 func NewCodeAssistantModule() *CodeAssistantModule {
 	return &CodeAssistantModule{}
+}
+
+// NewCodeAssistantModuleWithService creates a new code assistant module with template service.
+func NewCodeAssistantModuleWithService(service *prompttemplate.Service) *CodeAssistantModule {
+	return &CodeAssistantModule{
+		templateService: service,
+	}
 }
 
 // Name returns the module identifier.
@@ -575,25 +756,62 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 		}
 	}
 
-	var builder strings.Builder
-	builder.WriteString("When providing code assistance:\n")
-	builder.WriteString("1. Provide clear, well-commented code.\n")
-	builder.WriteString("2. Explain your approach and reasoning.\n")
-	builder.WriteString("3. Include error handling where appropriate.\n")
-	builder.WriteString("4. Follow best practices and conventions.\n")
-	builder.WriteString("5. Suggest testing approaches when relevant.\n")
-	builder.WriteString("6. Respect project instructions and user constraints; never violate them to simplify code.")
+	var codeText string
 
-	result := appendSystemContent(messages, builder.String(), m.Name(), "")
+	// Try to fetch code_assistant template from database first
+	if m.templateService != nil {
+		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyCodeAssistant)
+		if err == nil && template != nil && template.IsActive {
+			// Render template (no variables needed for code assistant)
+			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyCodeAssistant, map[string]any{})
+			if renderErr == nil {
+				codeText = rendered
+				log.Info().
+					Str("template_key", template.TemplateKey).
+					Msg("CodeAssistantModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("CodeAssistantModule: Failed to render template, using fallback")
+			}
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("CodeAssistantModule: Failed to load template from database, using fallback")
+			}
+		}
+	}
+
+	// Fallback to hardcoded code assistant text if template not loaded
+	if codeText == "" {
+		var builder strings.Builder
+		builder.WriteString("When providing code assistance:\n")
+		builder.WriteString("1. Provide clear, well-commented code.\n")
+		builder.WriteString("2. Explain your approach and reasoning.\n")
+		builder.WriteString("3. Include error handling where appropriate.\n")
+		builder.WriteString("4. Follow best practices and conventions.\n")
+		builder.WriteString("5. Suggest testing approaches when relevant.\n")
+		builder.WriteString("6. Respect project instructions and user constraints; never violate them to simplify code.")
+		codeText = builder.String()
+		log.Info().Msg("CodeAssistantModule: Using fallback hardcoded prompt")
+	}
+
+	result := appendSystemContent(messages, codeText, m.Name(), "")
 	return result, nil
 }
 
 // ChainOfThoughtModule adds chain-of-thought reasoning instructions.
-type ChainOfThoughtModule struct{}
+type ChainOfThoughtModule struct{
+	templateService *prompttemplate.Service
+}
 
-// NewChainOfThoughtModule creates a new chain-of-thought module.
+// NewChainOfThoughtModule creates a new chain-of-thought module without template service (uses fallback).
 func NewChainOfThoughtModule() *ChainOfThoughtModule {
 	return &ChainOfThoughtModule{}
+}
+
+// NewChainOfThoughtModuleWithService creates a new chain-of-thought module with template service.
+func NewChainOfThoughtModuleWithService(service *prompttemplate.Service) *ChainOfThoughtModule {
+	return &ChainOfThoughtModule{
+		templateService: service,
+	}
 }
 
 // Name returns the module identifier.
@@ -630,15 +848,43 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 		}
 	}
 
-	var builder strings.Builder
-	builder.WriteString("For complex questions, think step-by-step:\n")
-	builder.WriteString("1. Break down the problem\n")
-	builder.WriteString("2. Analyze each component\n")
-	builder.WriteString("3. Consider different perspectives\n")
-	builder.WriteString("4. Synthesize your conclusion\n")
-	builder.WriteString("5. Provide a clear, structured answer")
+	var cotText string
 
-	result := appendSystemContent(messages, builder.String(), m.Name(), "")
+	// Try to fetch chain_of_thought template from database first
+	if m.templateService != nil {
+		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyChainOfThought)
+		if err == nil && template != nil && template.IsActive {
+			// Render template (no variables needed for chain of thought)
+			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyChainOfThought, map[string]any{})
+			if renderErr == nil {
+				cotText = rendered
+				log.Info().
+					Str("template_key", template.TemplateKey).
+					Msg("ChainOfThoughtModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("ChainOfThoughtModule: Failed to render template, using fallback")
+			}
+		} else {
+			if err != nil {
+				log.Warn().Err(err).Msg("ChainOfThoughtModule: Failed to load template from database, using fallback")
+			}
+		}
+	}
+
+	// Fallback to hardcoded chain-of-thought text if template not loaded
+	if cotText == "" {
+		var builder strings.Builder
+		builder.WriteString("For complex questions, think step-by-step:\n")
+		builder.WriteString("1. Break down the problem\n")
+		builder.WriteString("2. Analyze each component\n")
+		builder.WriteString("3. Consider different perspectives\n")
+		builder.WriteString("4. Synthesize your conclusion\n")
+		builder.WriteString("5. Provide a clear, structured answer")
+		cotText = builder.String()
+		log.Info().Msg("ChainOfThoughtModule: Using fallback hardcoded prompt")
+	}
+
+	result := appendSystemContent(messages, cotText, m.Name(), "")
 	return result, nil
 }
 

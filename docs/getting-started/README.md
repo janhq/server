@@ -89,7 +89,7 @@ Once running, you can access:
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **API Gateway** | http://localhost:8000 | - |
-| **API Documentation** | http://localhost:8000/v1/swagger/ | - |
+| **API Documentation** | http://localhost:8000/api/swagger/index.html | - |
 | **LLM API** | http://localhost:8080 | `Authorization: Bearer <token>` |
 | **Response API** | http://localhost:8082 | `Authorization: Bearer <token>` |
 | **Media API** | http://localhost:8285 | `Authorization: Bearer <token>` |
@@ -287,7 +287,7 @@ Now that you have Jan Server running:
 1. **Explore the API**:
  - [API Reference](../api/README.md)
  - [API Examples](../api/llm-api/examples.md)
- - [Swagger UI](http://localhost:8000/v1/swagger/)
+ - [Swagger UI](http://localhost:8000/api/swagger/index.html)
 
 2. **Learn Development**:
  - [Development Guide](../guides/development.md)

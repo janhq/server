@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"jan-server/services/llm-api/internal/config"
+	"jan-server/services/llm-api/internal/domain/apikey"
 	"jan-server/services/llm-api/internal/infrastructure"
 	middleware "jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
@@ -18,11 +19,12 @@ import (
 )
 
 type HTTPServer struct {
-	engine    *gin.Engine
-	infra     *infrastructure.Infrastructure
-	v1Route   *v1.V1Route
-	authRoute *auth.AuthRoute
-	config    *config.Config
+	engine        *gin.Engine
+	infra         *infrastructure.Infrastructure
+	v1Route       *v1.V1Route
+	authRoute     *auth.AuthRoute
+	config        *config.Config
+	apiKeyService *apikey.Service
 }
 
 func (s *HTTPServer) bindSwagger() {
@@ -45,6 +47,7 @@ func NewHttpServer(
 	authRoute *auth.AuthRoute,
 	infra *infrastructure.Infrastructure,
 	cfg *config.Config,
+	apiKeyService *apikey.Service,
 ) *HTTPServer {
 	gin.SetMode(gin.ReleaseMode)
 	server := HTTPServer{
@@ -53,6 +56,7 @@ func NewHttpServer(
 		v1Route,
 		authRoute,
 		cfg,
+		apiKeyService,
 	}
 	server.engine.Use(middleware.RequestID())
 	server.engine.Use(middleware.TracingMiddleware(cfg.ServiceName))
@@ -83,7 +87,7 @@ func (httpServer *HTTPServer) Run() error {
 	// Protected routes (auth middleware applied)
 	protected := httpServer.engine.Group("/")
 	protected.Use(
-		middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.infra.Logger, httpServer.config.Issuer),
+		middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.apiKeyService, httpServer.infra.Logger, httpServer.config.Issuer),
 		middleware.CORSMiddleware(),
 	)
 
@@ -91,7 +95,7 @@ func (httpServer *HTTPServer) Run() error {
 	llmRoot := httpServer.engine.Group("/llm")
 	llmProtected := llmRoot.Group("/")
 	llmProtected.Use(
-		middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.infra.Logger, httpServer.config.Issuer),
+		middleware.AuthMiddleware(httpServer.infra.KeycloakValidator, httpServer.apiKeyService, httpServer.infra.Logger, httpServer.config.Issuer),
 		middleware.CORSMiddleware(),
 	)
 

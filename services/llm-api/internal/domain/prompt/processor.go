@@ -7,6 +7,8 @@ import (
 
 	"github.com/rs/zerolog"
 	openai "github.com/sashabaranov/go-openai"
+
+	"jan-server/services/llm-api/internal/domain/prompttemplate"
 )
 
 // ProcessorImpl implements the Processor interface
@@ -39,12 +41,19 @@ func modulePriority(module Module) int {
 		return 40
 	default:
 		return 100
+	case *DeepResearchModule:
+		return -20 // Deep research has highest priority, runs before all other modules
 	}
 }
 
 // NewProcessor creates a new prompt processor with the given configuration
 // If disabled, a no-op processor is returned.
 func NewProcessor(config ProcessorConfig, log zerolog.Logger) *ProcessorImpl {
+	return NewProcessorWithTemplateService(config, log, nil)
+}
+
+// NewProcessorWithTemplateService creates a new prompt processor with template service support
+func NewProcessorWithTemplateService(config ProcessorConfig, log zerolog.Logger, templateService *prompttemplate.Service) *ProcessorImpl {
 	processor := &ProcessorImpl{
 		config:  config,
 		modules: make([]moduleEntry, 0),
@@ -57,25 +66,54 @@ func NewProcessor(config ProcessorConfig, log zerolog.Logger) *ProcessorImpl {
 	}
 
 	// Always register timing module for AI assistant intro and current date
-	processor.RegisterModule(NewTimingModule())
+	// Use template service if available
+	if templateService != nil {
+		processor.log.Info().Msg("registering TimingModule with template service")
+		processor.RegisterModule(NewTimingModuleWithService(templateService))
+	} else {
+		processor.RegisterModule(NewTimingModule())
+	}
 
 	processor.RegisterModule(NewProjectInstructionModule())
 
-	processor.RegisterModule(NewUserProfileModule())
+	// Register UserProfileModule with template service if available
+	if templateService != nil {
+		processor.log.Info().Msg("registering UserProfileModule with template service")
+		processor.RegisterModule(NewUserProfileModuleWithService(templateService))
+	} else {
+		processor.RegisterModule(NewUserProfileModule())
+	}
 
 	// Register modules based on configuration
 	if config.EnableMemory {
-		processor.RegisterModule(NewMemoryModule(true))
+		if templateService != nil {
+			processor.log.Info().Msg("registering MemoryModule with template service")
+			processor.RegisterModule(NewMemoryModuleWithService(true, templateService))
+		} else {
+			processor.RegisterModule(NewMemoryModule(true))
+		}
 	}
 
 	if config.EnableTools {
-		processor.RegisterModule(NewToolInstructionsModule(true))
+		if templateService != nil {
+			processor.log.Info().Msg("registering ToolInstructionsModule with template service")
+			processor.RegisterModule(NewToolInstructionsModuleWithService(true, templateService))
+		} else {
+			processor.RegisterModule(NewToolInstructionsModule(true))
+		}
 	}
 
 	// Conditional template-based modules (CoT, code assistant)
 	if config.EnableTemplates {
-		processor.RegisterModule(NewCodeAssistantModule())
-		processor.RegisterModule(NewChainOfThoughtModule())
+		if templateService != nil {
+			processor.log.Info().Msg("registering CodeAssistantModule with template service")
+			processor.RegisterModule(NewCodeAssistantModuleWithService(templateService))
+			processor.log.Info().Msg("registering ChainOfThoughtModule with template service")
+			processor.RegisterModule(NewChainOfThoughtModuleWithService(templateService))
+		} else {
+			processor.RegisterModule(NewCodeAssistantModule())
+			processor.RegisterModule(NewChainOfThoughtModule())
+		}
 	}
 
 	return processor

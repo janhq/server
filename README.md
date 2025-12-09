@@ -49,7 +49,7 @@ make up-full # Starts every service defined in docker-compose.yml
 - **Response API**: http://localhost:8082 (Multi-step orchestration)
 - **Media API**: http://localhost:8285 (Media management)
 - **MCP Tools**: http://localhost:8091 (Tool integration)
-- **API Documentation**: http://localhost:8000/v1/swagger/
+- **API Documentation**: http://localhost:8000/api/swagger/index.html
 - **Keycloak Console**: http://localhost:8085 (admin/admin)
 
 > Keycloak now runs directly from the official `quay.io/keycloak/keycloak:24.0.5` image with our realm/import scripts bind-mounted at runtime - no bundled Keycloak source tree is required.
@@ -528,5 +528,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ---
 
-**Quick Start**: `make setup && make up-full` | **Documentation**: [docs/](docs/) | **API Docs**: http://localhost:8000/v1/swagger/
+**Quick Start**: `make setup && make up-full` | **Documentation**: [docs/](docs/) | **API Docs**: http://localhost:8000/api/swagger/index.html
 

@@ -10,6 +10,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
+	"jan-server/services/llm-api/internal/domain/prompttemplate"
 	"jan-server/services/llm-api/internal/domain/user"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 )
@@ -37,9 +38,12 @@ var ServiceProvider = wire.NewSet(
 	ProvideAPIKeyConfig,
 	apikey.NewService,
 
+	// Prompt templates
+	prompttemplate.NewService,
+
 	// Prompt orchestration
 	ProvidePromptProcessorConfig,
-	prompt.NewProcessor,
+	ProvidePromptProcessor,
 )
 
 func ProvideAPIKeyConfig(cfg *config.Config) apikey.Config {
@@ -58,4 +62,21 @@ func ProvidePromptProcessorConfig(cfg *config.Config, log zerolog.Logger) prompt
 		EnableTemplates: cfg.PromptOrchestrationEnableTemplates,
 		EnableTools:     cfg.PromptOrchestrationEnableTools,
 	}
+}
+
+// ProvidePromptProcessor creates the prompt processor with all modules including Deep Research
+func ProvidePromptProcessor(
+	config prompt.ProcessorConfig,
+	log zerolog.Logger,
+	templateService *prompttemplate.Service,
+) *prompt.ProcessorImpl {
+	processor := prompt.NewProcessorWithTemplateService(config, log, templateService)
+
+	// Register Deep Research module if prompt orchestration is enabled
+	if config.Enabled && templateService != nil {
+		processor.RegisterModule(prompt.NewDeepResearchModule(templateService))
+		log.Info().Msg("registered Deep Research prompt module")
+	}
+
+	return processor
 }

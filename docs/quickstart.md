@@ -286,7 +286,7 @@ nvidia-smi
 
 ## Next Steps
 
-- [API Documentation](http://localhost:8000/v1/swagger/)
+- [API Documentation](http://localhost:8000/api/swagger/index.html)
 - [Development Guide](guides/development.md)
 - [Deployment Guide](guides/deployment.md)
 - [Testing Guide](guides/testing.md)

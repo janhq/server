@@ -248,7 +248,7 @@ data: [DONE]
 
 Access the interactive Swagger UI:
 
-**Local**: http://localhost:8000/v1/swagger/index.html
+**Local**: http://localhost:8000/api/swagger/index.html
 
 Try API calls directly from your browser with built-in authentication.
 
@@ -325,4 +325,4 @@ Breaking changes will only occur in new major versions.
 
 ---
 
-**Explore APIs**: [LLM API ->](llm-api/) | [MCP Tools ->](mcp-tools/) | **Interactive Docs**: [Swagger UI ->](http://localhost:8000/v1/swagger/)
+**Explore APIs**: [LLM API ->](llm-api/) | [MCP Tools ->](mcp-tools/) | **Interactive Docs**: [Swagger UI ->](http://localhost:8000/api/swagger/index.html)

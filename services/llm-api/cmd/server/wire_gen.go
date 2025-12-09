@@ -12,7 +12,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
-	"jan-server/services/llm-api/internal/domain/prompt"
+	"jan-server/services/llm-api/internal/domain/prompttemplate"
 	"jan-server/services/llm-api/internal/domain/user"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure"
@@ -21,13 +21,14 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/conversationrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/prompttemplaterepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/userrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/usersettingsrepo"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/interfaces/httpserver"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers"
-	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
@@ -35,10 +36,11 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/usersettingshandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
-	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
+	admin2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	model3 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/model"
 	provider2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/provider"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/chat"
@@ -87,10 +89,11 @@ func CreateApplication() (*Application, error) {
 	projectService := project.NewProjectService(projectRepository)
 	conversationHandler := conversationhandler.NewConversationHandler(conversationService, projectService)
 	client := infrastructure.ProvideKeycloakClient(config, zerologLogger)
-	adminAuditLogger := infrastructure.ProvideAdminAuditLogger(db, zerologLogger)
 	resolver := infrastructure.ProvideMediaResolver(config, zerologLogger, client)
 	processorConfig := domain.ProvidePromptProcessorConfig(config, zerologLogger)
-	processorImpl := prompt.NewProcessor(processorConfig, zerologLogger)
+	promptTemplateRepository := prompttemplaterepo.NewPromptTemplateGormRepository(database)
+	prompttemplateService := prompttemplate.NewService(promptTemplateRepository)
+	processorImpl := domain.ProvidePromptProcessor(processorConfig, zerologLogger, prompttemplateService)
 	memoryClient := infrastructure.ProvideMemoryClient(config, zerologLogger)
 	usersettingsRepository := usersettingsrepo.NewUserSettingsGormRepository(db)
 	usersettingsService := usersettings.NewService(usersettingsRepository)
@@ -104,13 +107,15 @@ func CreateApplication() (*Application, error) {
 	providerModelHandler := modelhandler.NewProviderModelHandler(providerModelService, providerService, modelCatalogService)
 	adminModelRoute := model3.NewAdminModelRoute(modelHandler, modelCatalogHandler, providerModelHandler)
 	adminProviderRoute := provider2.NewAdminProviderRoute(providerHandler)
-	adminUserHandler := adminhandler.NewAdminUserHandler(client, adminAuditLogger)
-	adminGroupHandler := adminhandler.NewAdminGroupHandler(client, adminAuditLogger)
-	featureFlagHandler := adminhandler.NewFeatureFlagHandler(database, adminAuditLogger)
-	adminRoute := admin.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler)
+	adminAuditLogger := infrastructure.ProvideAdminAuditLogger(db, zerologLogger)
+	adminUserHandler := admin.NewAdminUserHandler(client, adminAuditLogger)
+	adminGroupHandler := admin.NewAdminGroupHandler(client, adminAuditLogger)
+	featureFlagHandler := admin.NewFeatureFlagHandler(database, adminAuditLogger)
+	promptTemplateHandler := prompttemplatehandler.NewPromptTemplateHandler(prompttemplateService, adminAuditLogger)
+	adminRoute := admin2.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler, promptTemplateHandler)
 	userSettingsHandler := usersettingshandler.NewUserSettingsHandler(usersettingsService, zerologLogger)
 	usersRoute := users.NewUsersRoute(userSettingsHandler, authHandler)
-	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute, usersRoute)
+	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute, usersRoute, promptTemplateHandler)
 	guestHandler := guestauth.NewGuestHandler(client, zerologLogger)
 	upgradeHandler := guestauth.NewUpgradeHandler(client, zerologLogger)
 	tokenHandler := authhandler.NewTokenHandler(client, zerologLogger)
@@ -125,7 +130,7 @@ func CreateApplication() (*Application, error) {
 		return nil, err
 	}
 	infrastructureInfrastructure := infrastructure.NewInfrastructure(db, keycloakValidator, zerologLogger)
-	httpServer := httpserver.NewHttpServer(v1Route, authRoute, infrastructureInfrastructure, config)
+	httpServer := httpserver.NewHttpServer(v1Route, authRoute, infrastructureInfrastructure, config, apikeyService)
 	crontabCrontab := crontab.NewCrontab(providerService, inferenceProvider)
 	application := &Application{
 		httpServer: httpServer,
@@ -152,10 +157,13 @@ func CreateDataInitializer() (*DataInitializer, error) {
 	modelCatalogService := model.NewModelCatalogService(modelCatalogRepository)
 	providerService := model.NewProviderService(providerRepository, providerModelService, modelCatalogService)
 	inferenceProvider := inference.NewInferenceProvider()
+	promptTemplateRepository := prompttemplaterepo.NewPromptTemplateGormRepository(database)
+	service := prompttemplate.NewService(promptTemplateRepository)
 	dataInitializer := &DataInitializer{
-		provider:            providerService,
-		modelCatalogService: modelCatalogService,
-		inferenceProvider:   inferenceProvider,
+		provider:              providerService,
+		modelCatalogService:   modelCatalogService,
+		inferenceProvider:     inferenceProvider,
+		promptTemplateService: service,
 	}
 	return dataInitializer, nil
 }

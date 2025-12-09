@@ -178,7 +178,7 @@ func (h *KeycloakOAuthHandler) InitiateLogin(c *gin.Context) {
 	redirectURL := c.Query("redirect_url")
 	if redirectURL == "" {
 		// Default redirect URL if not provided
-		redirectURL = "https://chat-dev.jan.ai/auth/keycloak/callback"
+		redirectURL = "https://chat.jan.ai/auth/keycloak/callback"
 	}
 
 	// Store state, code_verifier, and redirect_url for later validation in callback
@@ -243,7 +243,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 			Msg("Keycloak returned error in callback")
 
 		// Redirect to homepage with error in URL
-		homeURL := "https://chat-dev.jan.ai/"
+		homeURL := "https://chat.jan.ai/"
 		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
 			homeURL,
 			url.QueryEscape(keycloakError),
@@ -266,7 +266,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 		log.Error().Msg("Missing code or state parameter in callback")
 
 		// Redirect to homepage with error in URL
-		homeURL := "https://chat-dev.jan.ai/"
+		homeURL := "https://chat.jan.ai/"
 		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
 			homeURL,
 			url.QueryEscape("invalid_request"),
@@ -283,7 +283,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 			Msg("Invalid state parameter - not found or expired")
 
 		// Redirect to homepage with error in URL
-		homeURL := "https://chat-dev.jan.ai/"
+		homeURL := "https://chat.jan.ai/"
 		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
 			homeURL,
 			url.QueryEscape("invalid_state"),
@@ -297,7 +297,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 		log.Error().Msg("Invalid auth request data structure")
 
 		// Redirect to homepage with error in URL
-		homeURL := "https://chat-dev.jan.ai/"
+		homeURL := "https://chat.jan.ai/"
 		redirectURL := fmt.Sprintf("%s?error=%s&error_description=%s",
 			homeURL,
 			url.QueryEscape("server_error"),
@@ -325,7 +325,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 		// Use stored redirect URL or fallback to homepage
 		homeURL := authRequest.RedirectURL
 		if homeURL == "" {
-			homeURL = "https://chat-dev.jan.ai/"
+			homeURL = "https://chat.jan.ai/"
 		}
 		// Remove fragment from URL if exists
 		if parsedHome, parseErr := url.Parse(homeURL); parseErr == nil {
@@ -359,7 +359,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 	// Use the redirect URL that was stored during InitiateLogin
 	redirectURL := authRequest.RedirectURL
 	if redirectURL == "" {
-		redirectURL = "https://chat-dev.jan.ai/auth/keycloak/callback"
+		redirectURL = "https://chat.jan.ai/auth/keycloak/callback"
 	}
 
 	log.Debug().
@@ -375,7 +375,7 @@ func (h *KeycloakOAuthHandler) HandleCallback(c *gin.Context) {
 			Msg("Invalid redirect URL")
 
 		// Fallback to homepage with error
-		homeURL := "https://chat-dev.jan.ai/"
+		homeURL := "https://chat.jan.ai/"
 		fallbackURL := fmt.Sprintf("%s?error=%s&error_description=%s",
 			homeURL,
 			url.QueryEscape("invalid_redirect"),
