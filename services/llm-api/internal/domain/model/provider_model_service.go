@@ -209,6 +209,19 @@ func (s *ProviderModelService) BatchUpdateActive(ctx context.Context, filter Pro
 	return rowsAffected, nil
 }
 
+// FindCatalogByID returns a model catalog by ID (used for applying defaults).
+func (s *ProviderModelService) FindCatalogByID(ctx context.Context, id uint) (*ModelCatalog, error) {
+	if id == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "model catalog ID is required", nil, "c9bde6a4-6bd1-4f8e-97df-e7b03c3f6f73")
+	}
+
+	catalog, err := s.modelCatalogRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to find model catalog by ID")
+	}
+	return catalog, nil
+}
+
 func (s *ProviderModelService) BatchUpdateModelDisplayName(ctx context.Context, filter ProviderModelFilter, modelDisplayName string) (int64, error) {
 	rowsAffected, err := s.providerModelRepo.BatchUpdateModelDisplayName(ctx, filter, modelDisplayName)
 	if err != nil {

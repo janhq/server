@@ -3,7 +3,6 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -25,7 +24,6 @@ type SerperSearchArgs struct {
 	Tbs             *string  `json:"tbs,omitempty" jsonschema:"description=Time-based search filter ('qdr:h' for past hour, 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month, 'qdr:y' for past year)"`
 	Page            *int     `json:"page,omitempty" jsonschema:"description=Page number of results to return (default: 1)"`
 	Autocorrect     *bool    `json:"autocorrect,omitempty" jsonschema:"description=Whether to autocorrect spelling in query"`
-	DomainAllowList []string `json:"domain_allow_list,omitempty" jsonschema:"description=Restrict results to the provided domains, e.g., ['example.com','wikipedia.org']"`
 	LocationHint    *string  `json:"location_hint,omitempty" jsonschema:"description=Soft location hint (region or timezone) applied when the upstream engine supports it"`
 	OfflineMode     *bool    `json:"offline_mode,omitempty" jsonschema:"description=Force cached/offline search mode even when live engines are available"`
 }
@@ -134,9 +132,6 @@ func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
 			autocorrect := req.GetBool("autocorrect", true)
 			searchReq.Autocorrect = &autocorrect
 
-			if domains := req.GetStringSlice("domain_allow_list", nil); len(domains) > 0 {
-				searchReq.DomainAllowList = domains
-			}
 			if locationHint := req.GetString("location_hint", ""); locationHint != "" {
 				searchReq.LocationHint = &locationHint
 			}
@@ -199,104 +194,105 @@ func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
 		},
 	)
 
-	if s.vectorStore != nil {
-		server.AddTool(
-			mcpgo.NewTool("file_search_index",
-				mcp.ReflectToMCPOptions(
-					"Index arbitrary text into the lightweight vector store used for MCP automations.",
-					FileSearchIndexArgs{},
-				)...,
-			),
-			func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-				if s.vectorStore == nil {
-					return nil, fmt.Errorf("vector store client is not configured")
-				}
+	// Disabled: file_search_index and file_search_query tools
+	// if s.vectorStore != nil {
+	// 	server.AddTool(
+	// 		mcpgo.NewTool("file_search_index",
+	// 			mcp.ReflectToMCPOptions(
+	// 				"Index arbitrary text into the lightweight vector store used for MCP automations.",
+	// 				FileSearchIndexArgs{},
+	// 			)...,
+	// 		),
+	// 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+	// 			if s.vectorStore == nil {
+	// 				return nil, fmt.Errorf("vector store client is not configured")
+	// 			}
 
-				docID, err := req.RequireString("document_id")
-				if err != nil {
-					return nil, err
-				}
-				text, err := req.RequireString("text")
-				if err != nil {
-					return nil, err
-				}
+	// 			docID, err := req.RequireString("document_id")
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
+	// 			text, err := req.RequireString("text")
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				metadata := extractMapArgument(req.GetArguments(), "metadata")
-				tags := req.GetStringSlice("tags", nil)
+	// 			metadata := extractMapArgument(req.GetArguments(), "metadata")
+	// 			tags := req.GetStringSlice("tags", nil)
 
-				resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
-					DocumentID: docID,
-					Text:       text,
-					Metadata:   metadata,
-					Tags:       tags,
-				})
-				if err != nil {
-					return nil, err
-				}
+	// 			resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
+	// 				DocumentID: docID,
+	// 				Text:       text,
+	// 				Metadata:   metadata,
+	// 				Tags:       tags,
+	// 			})
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				payload := map[string]any{
-					"document_id": resp.DocumentID,
-					"status":      resp.Status,
-					"indexed_at":  resp.IndexedAt,
-					"token_count": resp.TokenCount,
-				}
-				jsonBytes, err := json.Marshal(payload)
-				if err != nil {
-					return nil, err
-				}
+	// 			payload := map[string]any{
+	// 				"document_id": resp.DocumentID,
+	// 				"status":      resp.Status,
+	// 				"indexed_at":  resp.IndexedAt,
+	// 				"token_count": resp.TokenCount,
+	// 			}
+	// 			jsonBytes, err := json.Marshal(payload)
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				return mcpgo.NewToolResultText(string(jsonBytes)), nil
-			},
-		)
+	// 			return mcpgo.NewToolResultText(string(jsonBytes)), nil
+	// 		},
+	// 	)
 
-		server.AddTool(
-			mcpgo.NewTool("file_search_query",
-				mcp.ReflectToMCPOptions(
-					"Run a semantic query against documents indexed via file_search_index.",
-					FileSearchQueryArgs{},
-				)...,
-			),
-			func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-				if s.vectorStore == nil {
-					return nil, fmt.Errorf("vector store client is not configured")
-				}
+	// 	server.AddTool(
+	// 		mcpgo.NewTool("file_search_query",
+	// 			mcp.ReflectToMCPOptions(
+	// 				"Run a semantic query against documents indexed via file_search_index.",
+	// 				FileSearchQueryArgs{},
+	// 			)...,
+	// 		),
+	// 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+	// 			if s.vectorStore == nil {
+	// 				return nil, fmt.Errorf("vector store client is not configured")
+	// 			}
 
-				query, err := req.RequireString("query")
-				if err != nil {
-					return nil, err
-				}
+	// 			query, err := req.RequireString("query")
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				topK := req.GetInt("top_k", 5)
-				if topK <= 0 {
-					topK = 5
-				}
-				if topK > 20 {
-					topK = 20
-				}
-				docIDs := req.GetStringSlice("document_ids", nil)
+	// 			topK := req.GetInt("top_k", 5)
+	// 			if topK <= 0 {
+	// 				topK = 5
+	// 			}
+	// 			if topK > 20 {
+	// 				topK = 20
+	// 			}
+	// 			docIDs := req.GetStringSlice("document_ids", nil)
 
-				resp, err := s.vectorStore.Query(ctx, vectorstore.QueryRequest{
-					Text:        query,
-					TopK:        topK,
-					DocumentIDs: docIDs,
-				})
-				if err != nil {
-					return nil, err
-				}
+	// 			resp, err := s.vectorStore.Query(ctx, vectorstore.QueryRequest{
+	// 				Text:        query,
+	// 				TopK:        topK,
+	// 				DocumentIDs: docIDs,
+	// 			})
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				if resp.TopK == 0 {
-					resp.TopK = topK
-				}
+	// 			if resp.TopK == 0 {
+	// 				resp.TopK = topK
+	// 			}
 
-				jsonBytes, err := json.Marshal(resp)
-				if err != nil {
-					return nil, err
-				}
+	// 			jsonBytes, err := json.Marshal(resp)
+	// 			if err != nil {
+	// 				return nil, err
+	// 			}
 
-				return mcpgo.NewToolResultText(string(jsonBytes)), nil
-			},
-		)
-	}
+	// 			return mcpgo.NewToolResultText(string(jsonBytes)), nil
+	// 		},
+	// 	)
+	// }
 }
 
 func buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {

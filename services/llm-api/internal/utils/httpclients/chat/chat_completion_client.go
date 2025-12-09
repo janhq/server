@@ -78,6 +78,13 @@ type ChatCompletionClient struct {
 	name    string
 }
 
+// CompletionRequest extends the OpenAI chat request with provider-specific fields.
+type CompletionRequest struct {
+	openai.ChatCompletionRequest
+	TopK              *int     `json:"top_k,omitempty"`
+	RepetitionPenalty *float32 `json:"repetition_penalty,omitempty"`
+}
+
 type functionCallAccumulator struct {
 	Name      string
 	Arguments string
@@ -103,7 +110,7 @@ func NewChatCompletionClient(client *resty.Client, name, baseURL string) *ChatCo
 	}
 }
 
-func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey string, request openai.ChatCompletionRequest) (*openai.ChatCompletionResponse, error) {
+func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey string, request CompletionRequest) (*openai.ChatCompletionResponse, error) {
 	// Start OpenTelemetry span for tracking
 	ctx, span := otel.Tracer("chat-completion-client").Start(ctx, "CreateChatCompletion",
 		trace.WithSpanKind(trace.SpanKindClient),
@@ -126,8 +133,40 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 	if request.TopP != 0 {
 		span.SetAttributes(attribute.Float64("llm.top_p", float64(request.TopP)))
 	}
+	if request.PresencePenalty != 0 {
+		span.SetAttributes(attribute.Float64("llm.presence_penalty", float64(request.PresencePenalty)))
+	}
+	if request.FrequencyPenalty != 0 {
+		span.SetAttributes(attribute.Float64("llm.frequency_penalty", float64(request.FrequencyPenalty)))
+	}
 
 	start := time.Now()
+
+	// Debug logging: Log request details before sending
+	log := logger.GetLogger()
+	topK := 0
+	if request.TopK != nil {
+		topK = *request.TopK
+	}
+	repetitionPenalty := float32(0)
+	if request.RepetitionPenalty != nil {
+		repetitionPenalty = *request.RepetitionPenalty
+	}
+	log.Info().
+		Str("provider", c.name).
+		Str("model", request.Model).
+		Int("messages", len(request.Messages)).
+		Bool("stream", request.Stream).
+		Float32("temperature", request.Temperature).
+		Int("max_tokens", request.MaxTokens).
+		Float32("top_p", request.TopP).
+		Int("top_k", topK).
+		Float32("presence_penalty", request.PresencePenalty).
+		Float32("frequency_penalty", request.FrequencyPenalty).
+		Float32("repetition_penalty", repetitionPenalty).
+		Msg("[ChatCompletion] Sending request to inference server")
+
+	log.Info().Interface("request", request).Msg("[ChatCompletion] Request body")
 
 	var respBody openai.ChatCompletionResponse
 	resp, err := c.prepareRequest(ctx, apiKey).
@@ -181,7 +220,7 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 	return &respBody, nil
 }
 
-func (c *ChatCompletionClient) CreateChatCompletionStream(ctx context.Context, apiKey string, request openai.ChatCompletionRequest, opts ...StreamOption) (io.ReadCloser, error) {
+func (c *ChatCompletionClient) CreateChatCompletionStream(ctx context.Context, apiKey string, request CompletionRequest, opts ...StreamOption) (io.ReadCloser, error) {
 	resp, err := c.doStreamingRequest(ctx, apiKey, request, opts...)
 	if err != nil {
 		return nil, err
@@ -208,10 +247,10 @@ func (c *ChatCompletionClient) CreateChatCompletionStream(ctx context.Context, a
 }
 
 func (c *ChatCompletionClient) StreamChatCompletionToContext(reqCtx *gin.Context, apiKey string, request openai.ChatCompletionRequest, opts ...StreamOption) (*openai.ChatCompletionResponse, error) {
-	return c.StreamChatCompletionToContextWithCallback(reqCtx, apiKey, request, nil, opts...)
+	return c.StreamChatCompletionToContextWithCallback(reqCtx, apiKey, CompletionRequest{ChatCompletionRequest: request}, nil, opts...)
 }
 
-func (c *ChatCompletionClient) StreamChatCompletionToContextWithCallback(reqCtx *gin.Context, apiKey string, request openai.ChatCompletionRequest, beforeDone BeforeDoneCallback, opts ...StreamOption) (*openai.ChatCompletionResponse, error) {
+func (c *ChatCompletionClient) StreamChatCompletionToContextWithCallback(reqCtx *gin.Context, apiKey string, request CompletionRequest, beforeDone BeforeDoneCallback, opts ...StreamOption) (*openai.ChatCompletionResponse, error) {
 	// Start OpenTelemetry span for tracking streaming completion
 	ctx := reqCtx.Request.Context()
 	ctx, span := otel.Tracer("chat-completion-client").Start(ctx, "StreamChatCompletion",
@@ -235,8 +274,28 @@ func (c *ChatCompletionClient) StreamChatCompletionToContextWithCallback(reqCtx 
 	if request.TopP != 0 {
 		span.SetAttributes(attribute.Float64("llm.top_p", float64(request.TopP)))
 	}
+	if request.PresencePenalty != 0 {
+		span.SetAttributes(attribute.Float64("llm.presence_penalty", float64(request.PresencePenalty)))
+	}
+	if request.FrequencyPenalty != 0 {
+		span.SetAttributes(attribute.Float64("llm.frequency_penalty", float64(request.FrequencyPenalty)))
+	}
 
 	start := time.Now()
+
+	// Debug logging: Log request details before sending
+	log := logger.GetLogger()
+	log.Debug().
+		Str("provider", c.name).
+		Str("model", request.Model).
+		Int("messages", len(request.Messages)).
+		Bool("stream", request.Stream).
+		Float32("temperature", request.Temperature).
+		Int("max_tokens", request.MaxTokens).
+		Float32("top_p", request.TopP).
+		Float32("presence_penalty", request.PresencePenalty).
+		Float32("frequency_penalty", request.FrequencyPenalty).
+		Msg("[StreamChatCompletion] Sending request to inference server")
 
 	// force to true to collect tokens
 	request.StreamOptions = &openai.StreamOptions{
@@ -470,7 +529,33 @@ func (c *ChatCompletionClient) errorFromResponse(ctx context.Context, resp *rest
 	return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeExternal, fmt.Sprintf("%s: %s", message, trimmed), nil, "a1f46e0d-4017-4411-ac05-987946c3066d")
 }
 
-func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey string, request openai.ChatCompletionRequest, opts ...StreamOption) (*resty.Response, error) {
+func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey string, request CompletionRequest, opts ...StreamOption) (*resty.Response, error) {
+	// Debug logging: Log request details for streaming calls
+	log := logger.GetLogger()
+	topK := 0
+	if request.TopK != nil {
+		topK = *request.TopK
+	}
+	repetitionPenalty := float32(0)
+	if request.RepetitionPenalty != nil {
+		repetitionPenalty = *request.RepetitionPenalty
+	}
+	log.Info().
+		Str("provider", c.name).
+		Str("model", request.Model).
+		Int("messages", len(request.Messages)).
+		Bool("stream", request.Stream).
+		Float32("temperature", request.Temperature).
+		Int("max_tokens", request.MaxTokens).
+		Float32("top_p", request.TopP).
+		Int("top_k", topK).
+		Float32("presence_penalty", request.PresencePenalty).
+		Float32("frequency_penalty", request.FrequencyPenalty).
+		Float32("repetition_penalty", repetitionPenalty).
+		Msg("[ChatCompletion][Stream] Sending request to inference server")
+
+	log.Info().Interface("request", request).Msg("[ChatCompletion][Stream] Request body")
+
 	req := c.prepareRequest(ctx, apiKey).
 		SetBody(request).
 		SetDoNotParseResponse(true)
@@ -500,7 +585,7 @@ func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey st
 	return resp, nil
 }
 
-func (c *ChatCompletionClient) streamResponseToChannel(ctx context.Context, apiKey string, request openai.ChatCompletionRequest, dataChan chan<- string, errChan chan<- error, wg *sync.WaitGroup, opts []StreamOption) {
+func (c *ChatCompletionClient) streamResponseToChannel(ctx context.Context, apiKey string, request CompletionRequest, dataChan chan<- string, errChan chan<- error, wg *sync.WaitGroup, opts []StreamOption) {
 	defer wg.Done()
 
 	resp, err := c.doStreamingRequest(ctx, apiKey, request, opts...)
@@ -640,7 +725,7 @@ func (c *ChatCompletionClient) handleStreamingToolCall(toolCall *openai.ToolCall
 	}
 }
 
-func (c *ChatCompletionClient) buildCompleteResponse(content string, reasoning string, functionCallAccumulator map[int]*functionCallAccumulator, toolCallAccumulator map[int]*toolCallAccumulator, model string, request openai.ChatCompletionRequest) openai.ChatCompletionResponse {
+func (c *ChatCompletionClient) buildCompleteResponse(content string, reasoning string, functionCallAccumulator map[int]*functionCallAccumulator, toolCallAccumulator map[int]*toolCallAccumulator, model string, request CompletionRequest) openai.ChatCompletionResponse {
 	message := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleAssistant,
 		Content: content,
