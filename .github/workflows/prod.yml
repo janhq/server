@@ -3,16 +3,6 @@ on:
   push:
     branches:
       - release
-    paths:
-      - "services/llm-api/**"
-      - "services/mcp-tools/**"
-      - "services/media-api/**"
-      - "services/response-api/**"
-      - "services/memory-tools/**"
-      - "pkg/**"
-      - .github/workflows/prod.yml
-      - .github/workflows/template-docker.yml
-
 jobs:
   changes:
     runs-on: ubuntu-latest
