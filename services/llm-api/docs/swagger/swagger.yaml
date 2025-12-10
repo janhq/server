@@ -17,6 +17,12 @@ definitions:
           Conversation can be either a string (conversation ID) or a conversation object
           Items from this conversation are prepended to Messages for this response request.
           Input items and output items from this response are automatically added to this conversation after completion.
+      deep_research:
+        description: |-
+          DeepResearch enables the Deep Research mode which uses a specialized prompt
+          for conducting in-depth investigations with tool usage.
+          Requires a model with supports_reasoning: true capability.
+        type: boolean
       frequency_penalty:
         type: number
       function_call:
@@ -88,6 +94,8 @@ definitions:
         description: Controls effort on reasoning for reasoning models. It can be
           set to "low", "medium", or "high".
         type: string
+      repetition_penalty:
+        type: number
       response_format:
         $ref: '#/definitions/openai.ChatCompletionResponseFormat'
       safety_identifier:
@@ -130,6 +138,8 @@ definitions:
         items:
           $ref: '#/definitions/openai.Tool'
         type: array
+      top_k:
+        type: integer
       top_logprobs:
         description: |-
           TopLogProbs is an integer between 0 and 5 specifying the number of most likely tokens to return at each
@@ -2548,6 +2558,32 @@ paths:
       tags:
       - Admin Provider API
   /v1/admin/providers/{provider_public_id}:
+    delete:
+      description: Deletes a provider by its public ID along with its provider models
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Provider deleted
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to delete provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a provider
+      tags:
+      - Admin Provider API
     get:
       description: Retrieves a provider by its public ID
       parameters:
@@ -2574,32 +2610,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Get a provider
-      tags:
-      - Admin Provider API
-    delete:
-      description: Deletes a provider by its public ID along with its provider models
-      parameters:
-      - description: Provider public ID
-        in: path
-        name: provider_public_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: Provider deleted
-        "404":
-          description: Provider not found
-          schema:
-            $ref: '#/definitions/responses.ErrorResponse'
-        "500":
-          description: Failed to delete provider
-          schema:
-            $ref: '#/definitions/responses.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete a provider
       tags:
       - Admin Provider API
     patch:

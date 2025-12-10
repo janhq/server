@@ -119,6 +119,7 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 			// Extract required parameters
 			query, err := req.RequireString("query")
 			if err != nil {
+				log.Error().Err(err).Str("tool", "memory_retrieve").Msg("missing required parameter 'query'")
 				return nil, fmt.Errorf("query is required: %w", err)
 			}
 

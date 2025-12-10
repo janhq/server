@@ -12,6 +12,7 @@ import (
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/rs/zerolog/log"
 )
 
 // SerperSearchArgs defines the arguments for the google_search tool
@@ -103,6 +104,7 @@ func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			q, err := req.RequireString("q")
 			if err != nil {
+				log.Error().Err(err).Str("tool", "google_search").Msg("missing required parameter 'q'")
 				return nil, err
 			}
 
@@ -144,12 +146,14 @@ func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
 
 			searchResp, err := s.searchService.Search(ctx, searchReq)
 			if err != nil {
+				log.Error().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed")
 				return nil, err
 			}
 
 			payload := buildSearchPayload(searchReq.Q, searchReq, searchResp)
 			jsonBytes, err := json.Marshal(payload)
 			if err != nil {
+				log.Error().Err(err).Str("tool", "google_search").Msg("failed to marshal search response")
 				return nil, err
 			}
 
@@ -168,6 +172,7 @@ func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 			url, err := req.RequireString("url")
 			if err != nil {
+				log.Error().Err(err).Str("tool", "scrape").Msg("missing required parameter 'url'")
 				return nil, err
 			}
 
@@ -181,12 +186,14 @@ func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
 
 			scrapeResp, err := s.searchService.FetchWebpage(ctx, scrapeReq)
 			if err != nil {
+				log.Error().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("fetch webpage service failed")
 				return nil, err
 			}
 
 			payload := buildScrapePayload(scrapeReq.Url, scrapeResp)
 			jsonBytes, err := json.Marshal(payload)
 			if err != nil {
+				log.Error().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("failed to marshal scrape response")
 				return nil, err
 			}
 

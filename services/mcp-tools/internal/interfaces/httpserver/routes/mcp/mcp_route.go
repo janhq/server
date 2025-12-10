@@ -98,7 +98,7 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Description Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.
 // @Description
 // @Description **Available Tools:**
-// @Description - `google_search`: Web search via pluggable engines (Serper/SearXNG/duckduckgo) with params: q, gl, hl, location, num, tbs, page, autocorrect, domain_allow_list, location_hint, offline_mode. Returns structured citations.
+// @Description - `google_search`: Web search via pluggable engines (Serper/SearXNG) with params: q, gl, hl, location, num, tbs, page, autocorrect, domain_allow_list, location_hint, offline_mode. Returns structured citations.
 // @Description - `scrape`: Web page scraping (params: url, includeMarkdown) returning text, preview, cache_status, and metadata.
 // @Description - `file_search_index` / `file_search_query`: Index arbitrary text and run similarity queries against the lightweight vector store.
 // @Description - `python_exec`: Execute trusted code through SandboxFusion (params: code, language, session_id, approved) to retrieve stdout/stderr/artifacts.

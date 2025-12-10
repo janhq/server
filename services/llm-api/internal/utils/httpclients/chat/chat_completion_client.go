@@ -142,32 +142,6 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 
 	start := time.Now()
 
-	// Debug logging: Log request details before sending
-	log := logger.GetLogger()
-	topK := 0
-	if request.TopK != nil {
-		topK = *request.TopK
-	}
-	repetitionPenalty := float32(0)
-	if request.RepetitionPenalty != nil {
-		repetitionPenalty = *request.RepetitionPenalty
-	}
-	log.Info().
-		Str("provider", c.name).
-		Str("model", request.Model).
-		Int("messages", len(request.Messages)).
-		Bool("stream", request.Stream).
-		Float32("temperature", request.Temperature).
-		Int("max_tokens", request.MaxTokens).
-		Float32("top_p", request.TopP).
-		Int("top_k", topK).
-		Float32("presence_penalty", request.PresencePenalty).
-		Float32("frequency_penalty", request.FrequencyPenalty).
-		Float32("repetition_penalty", repetitionPenalty).
-		Msg("[ChatCompletion] Sending request to inference server")
-
-	log.Info().Interface("request", request).Msg("[ChatCompletion] Request body")
-
 	var respBody openai.ChatCompletionResponse
 	resp, err := c.prepareRequest(ctx, apiKey).
 		SetBody(request).
@@ -282,20 +256,6 @@ func (c *ChatCompletionClient) StreamChatCompletionToContextWithCallback(reqCtx 
 	}
 
 	start := time.Now()
-
-	// Debug logging: Log request details before sending
-	log := logger.GetLogger()
-	log.Debug().
-		Str("provider", c.name).
-		Str("model", request.Model).
-		Int("messages", len(request.Messages)).
-		Bool("stream", request.Stream).
-		Float32("temperature", request.Temperature).
-		Int("max_tokens", request.MaxTokens).
-		Float32("top_p", request.TopP).
-		Float32("presence_penalty", request.PresencePenalty).
-		Float32("frequency_penalty", request.FrequencyPenalty).
-		Msg("[StreamChatCompletion] Sending request to inference server")
 
 	// force to true to collect tokens
 	request.StreamOptions = &openai.StreamOptions{
@@ -530,32 +490,6 @@ func (c *ChatCompletionClient) errorFromResponse(ctx context.Context, resp *rest
 }
 
 func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey string, request CompletionRequest, opts ...StreamOption) (*resty.Response, error) {
-	// Debug logging: Log request details for streaming calls
-	log := logger.GetLogger()
-	topK := 0
-	if request.TopK != nil {
-		topK = *request.TopK
-	}
-	repetitionPenalty := float32(0)
-	if request.RepetitionPenalty != nil {
-		repetitionPenalty = *request.RepetitionPenalty
-	}
-	log.Info().
-		Str("provider", c.name).
-		Str("model", request.Model).
-		Int("messages", len(request.Messages)).
-		Bool("stream", request.Stream).
-		Float32("temperature", request.Temperature).
-		Int("max_tokens", request.MaxTokens).
-		Float32("top_p", request.TopP).
-		Int("top_k", topK).
-		Float32("presence_penalty", request.PresencePenalty).
-		Float32("frequency_penalty", request.FrequencyPenalty).
-		Float32("repetition_penalty", repetitionPenalty).
-		Msg("[ChatCompletion][Stream] Sending request to inference server")
-
-	log.Info().Interface("request", request).Msg("[ChatCompletion][Stream] Request body")
-
 	req := c.prepareRequest(ctx, apiKey).
 		SetBody(request).
 		SetDoNotParseResponse(true)
