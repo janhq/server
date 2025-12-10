@@ -41,10 +41,10 @@ type CircuitBreakerConfig struct {
 // DefaultCircuitBreakerConfig returns sensible defaults
 func DefaultCircuitBreakerConfig() CircuitBreakerConfig {
 	return CircuitBreakerConfig{
-		FailureThreshold: 5,
-		SuccessThreshold: 2,
-		Timeout:          30 * time.Second,
-		MaxHalfOpenCalls: 1,
+		FailureThreshold: 15,
+		SuccessThreshold: 5,
+		Timeout:          45 * time.Second,
+		MaxHalfOpenCalls: 10,
 	}
 }
 

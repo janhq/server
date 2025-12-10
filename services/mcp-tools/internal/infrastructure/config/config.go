@@ -22,6 +22,24 @@ type Config struct {
 	SerperLocationHint string   `env:"SERPER_LOCATION_HINT"`
 	SerperOfflineMode  bool     `env:"SERPER_OFFLINE_MODE" envDefault:"false"`
 
+	// Circuit Breaker Configuration
+	SerperCBFailureThreshold int `env:"SERPER_CB_FAILURE_THRESHOLD" envDefault:"15"`
+	SerperCBSuccessThreshold int `env:"SERPER_CB_SUCCESS_THRESHOLD" envDefault:"5"`
+	SerperCBTimeout          int `env:"SERPER_CB_TIMEOUT" envDefault:"45"`
+	SerperCBMaxHalfOpen      int `env:"SERPER_CB_MAX_HALF_OPEN" envDefault:"10"`
+
+	// HTTP Client Performance
+	SerperHTTPTimeout      int `env:"SERPER_HTTP_TIMEOUT" envDefault:"15"`
+	SerperMaxConnsPerHost  int `env:"SERPER_MAX_CONNS_PER_HOST" envDefault:"50"`
+	SerperMaxIdleConns     int `env:"SERPER_MAX_IDLE_CONNS" envDefault:"100"`
+	SerperIdleConnTimeout  int `env:"SERPER_IDLE_CONN_TIMEOUT" envDefault:"90"`
+
+	// Retry Configuration
+	SerperRetryMaxAttempts int    `env:"SERPER_RETRY_MAX_ATTEMPTS" envDefault:"5"`
+	SerperRetryInitialDelay int   `env:"SERPER_RETRY_INITIAL_DELAY" envDefault:"250"`
+	SerperRetryMaxDelay     int   `env:"SERPER_RETRY_MAX_DELAY" envDefault:"5000"`
+	SerperRetryBackoffFactor float64 `env:"SERPER_RETRY_BACKOFF_FACTOR" envDefault:"1.5"`
+
 	// External Services
 	VectorStoreURL   string `env:"VECTOR_STORE_URL" envDefault:"http://vector-store-mcp:3015"`
 	SandboxFusionURL string `env:"SANDBOXFUSION_URL" envDefault:"http://sandbox-fusion:8080"`

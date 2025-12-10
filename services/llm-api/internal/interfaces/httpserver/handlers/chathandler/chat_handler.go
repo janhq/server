@@ -18,7 +18,6 @@ import (
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
-	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
 	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 	"jan-server/services/llm-api/internal/infrastructure/observability"
@@ -158,8 +157,6 @@ func (h *ChatHandler) CreateChatCompletion(
 	if h.userSettingsService != nil {
 		userSettings, err = h.userSettingsService.GetOrCreateSettings(ctx, userID)
 		if err != nil {
-			log := logger.GetLogger()
-			log.Warn().Err(err).Uint("user_id", userID).Msg("failed to load user settings for prompt orchestration")
 			userSettings = nil
 		}
 	}
@@ -209,8 +206,7 @@ func (h *ChatHandler) CreateChatCompletion(
 	if selectedProviderModel.ModelCatalogID != nil {
 		modelCatalog, err = h.providerHandler.GetModelCatalogByID(ctx, *selectedProviderModel.ModelCatalogID)
 		if err != nil {
-			log := logger.GetLogger()
-			log.Warn().Err(err).Uint("model_catalog_id", *selectedProviderModel.ModelCatalogID).Msg("failed to load model catalog defaults")
+			// Ignore error, model catalog is optional
 		}
 	}
 
@@ -260,12 +256,7 @@ func (h *ChatHandler) CreateChatCompletion(
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
 		if processErr != nil {
-			// Log error but continue with original messages
-			log := logger.GetLogger()
-			log.Warn().
-				Err(processErr).
-				Str("conversation_id", conversationID).
-				Msg("failed to process prompts, using original messages")
+			// Continue with original messages
 		} else {
 			request.Messages = processedMessages
 			if len(promptCtx.AppliedModules) > 0 {
@@ -284,17 +275,6 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	var response *openai.ChatCompletionResponse
 
-	// Debug: Log final messages sent to LLM
-	logInstance := logger.GetLogger()
-	if logInstance.Debug().Enabled() {
-		finalMessagesJSON, _ := json.Marshal(request.Messages)
-		logInstance.Debug().
-			RawJSON("final_messages_to_llm", finalMessagesJSON).
-			Str("model", request.Model).
-			Bool("stream", request.Stream).
-			Msg("sending request to LLM")
-	}
-
 	// Handle streaming vs non-streaming
 	llmRequest := chat.CompletionRequest{
 		ChatCompletionRequest: request.ChatCompletionRequest,
@@ -312,25 +292,6 @@ func (h *ChatHandler) CreateChatCompletion(
 		response, err = h.callCompletion(ctx, chatClient, llmRequest)
 	}
 	llmDuration := time.Since(llmStartTime)
-
-	// Debug: Log LLM response
-	if logInstance.Debug().Enabled() {
-		if err != nil {
-			logInstance.Debug().
-				Err(err).
-				Dur("llm_duration_ms", llmDuration).
-				Msg("LLM call failed")
-		} else if response != nil {
-			responseJSON, _ := json.Marshal(response)
-			logInstance.Debug().
-				RawJSON("llm_response", responseJSON).
-				Dur("llm_duration_ms", llmDuration).
-				Int("prompt_tokens", response.Usage.PromptTokens).
-				Int("completion_tokens", response.Usage.CompletionTokens).
-				Int("total_tokens", response.Usage.TotalTokens).
-				Msg("LLM call completed")
-		}
-	}
 
 	if err != nil {
 		observability.RecordError(ctx, err)
@@ -367,21 +328,9 @@ func (h *ChatHandler) CreateChatCompletion(
 		var askItemID, completionItemID string
 		if id, genErr := idgen.GenerateSecureID("msg", 16); genErr == nil {
 			askItemID = id
-		} else {
-			log := logger.GetLogger()
-			log.Warn().
-				Err(genErr).
-				Str("conversation_id", conv.PublicID).
-				Msg("failed to generate ask item id")
 		}
 		if id, genErr := idgen.GenerateSecureID("msg", 16); genErr == nil {
 			completionItemID = id
-		} else {
-			log := logger.GetLogger()
-			log.Warn().
-				Err(genErr).
-				Str("conversation_id", conv.PublicID).
-				Msg("failed to generate completion item id")
 		}
 		storeReasoning := false
 		if request.StoreReasoning != nil {
@@ -389,12 +338,7 @@ func (h *ChatHandler) CreateChatCompletion(
 		}
 
 		if err := h.addCompletionToConversation(ctx, conv, newMessages, response, askItemID, completionItemID, storeReasoning); err != nil {
-			// Log error but don't fail the request
-			log := logger.GetLogger()
-			log.Warn().
-				Err(err).
-				Str("conversation_id", conv.PublicID).
-				Msg("failed to store completion in conversation")
+			// Don't fail the request
 			observability.AddSpanEvent(ctx, "conversation_storage_failed",
 				attribute.String("error", err.Error()),
 			)
@@ -500,16 +444,8 @@ func (h *ChatHandler) streamCompletion(
 }
 
 func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.Context, messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
-	log := logger.GetLogger()
-
 	if h.mediaResolver == nil || len(messages) == 0 {
 		return messages
-	}
-
-	// Debug: Log input messages
-	if log.Debug().Enabled() {
-		messagesJSON, _ := json.Marshal(messages)
-		log.Debug().RawJSON("input_messages", messagesJSON).Msg("resolveMediaPlaceholders: input")
 	}
 
 	if reqCtx != nil {
@@ -523,24 +459,12 @@ func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.
 
 	resolved, changed, err := h.mediaResolver.ResolveMessages(ctx, messages)
 	if err != nil {
-		log.Warn().Err(err).Msg("media placeholder resolution failed")
 		return messages
 	}
 	if changed {
 		observability.AddSpanEvent(ctx, "media_placeholders_resolved")
 
-		// Debug: Log resolved messages
-		if log.Debug().Enabled() {
-			resolvedJSON, _ := json.Marshal(resolved)
-			log.Debug().RawJSON("resolved_messages", resolvedJSON).Msg("resolveMediaPlaceholders: output (changed)")
-		}
-
 		return resolved
-	}
-
-	// Debug: Log unchanged messages
-	if log.Debug().Enabled() {
-		log.Debug().Msg("resolveMediaPlaceholders: output (no change)")
 	}
 
 	return messages
@@ -635,12 +559,6 @@ func (h *ChatHandler) getProjectInstruction(ctx context.Context, userID uint, co
 
 	proj, err := h.projectService.GetProjectByPublicIDAndUserID(ctx, projectID, userID)
 	if err != nil {
-		log := logger.GetLogger()
-		log.Warn().
-			Err(err).
-			Str("conversation_id", conv.PublicID).
-			Str("project_id", projectID).
-			Msg("failed to load project instruction")
 		return ""
 	}
 
@@ -865,12 +783,7 @@ func (h *ChatHandler) updateConversationTitleFromMessages(ctx context.Context, u
 			}
 			updatedConv, err := h.conversationService.UpdateConversationWithInput(ctx, userID, conv.PublicID, updateInput)
 			if err != nil {
-				// Log but don't fail the request
-				log := logger.GetLogger()
-				log.Warn().
-					Err(err).
-					Str("conversation_id", conv.PublicID).
-					Msg("failed to update conversation title")
+				// Don't fail the request
 				return conv
 			}
 			return updatedConv

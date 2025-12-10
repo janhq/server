@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -43,12 +44,24 @@ func main() {
 
 	// Initialize infrastructure
 	searchClient := searchclient.NewSearchClient(searchclient.ClientConfig{
-		Engine:        searchclient.Engine(cfg.SearchEngine),
-		SerperAPIKey:  cfg.SerperAPIKey,
-		SearxngURL:    cfg.SearxngURL,
-		DomainFilters: cfg.SerperDomainFilter,
-		LocationHint:  cfg.SerperLocationHint,
-		OfflineMode:   cfg.SerperOfflineMode,
+		Engine:             searchclient.Engine(cfg.SearchEngine),
+		SerperAPIKey:       cfg.SerperAPIKey,
+		SearxngURL:         cfg.SearxngURL,
+		DomainFilters:      cfg.SerperDomainFilter,
+		LocationHint:       cfg.SerperLocationHint,
+		OfflineMode:        cfg.SerperOfflineMode,
+		CBFailureThreshold: cfg.SerperCBFailureThreshold,
+		CBSuccessThreshold: cfg.SerperCBSuccessThreshold,
+		CBTimeout:          time.Duration(cfg.SerperCBTimeout) * time.Second,
+		CBMaxHalfOpen:      cfg.SerperCBMaxHalfOpen,
+		HTTPTimeout:        time.Duration(cfg.SerperHTTPTimeout) * time.Second,
+		MaxConnsPerHost:    cfg.SerperMaxConnsPerHost,
+		MaxIdleConns:       cfg.SerperMaxIdleConns,
+		IdleConnTimeout:    time.Duration(cfg.SerperIdleConnTimeout) * time.Second,
+		RetryMaxAttempts:   cfg.SerperRetryMaxAttempts,
+		RetryInitialDelay:  time.Duration(cfg.SerperRetryInitialDelay) * time.Millisecond,
+		RetryMaxDelay:      time.Duration(cfg.SerperRetryMaxDelay) * time.Millisecond,
+		RetryBackoffFactor: cfg.SerperRetryBackoffFactor,
 	})
 	searchService := domainsearch.NewSearchService(searchClient)
 
