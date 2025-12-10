@@ -87,11 +87,23 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 	}
 
 	// Configure HTTP transport with connection pooling
+	maxIdleConns := cfg.MaxIdleConns
+	if maxIdleConns == 0 {
+		maxIdleConns = 100 // match Go default
+	}
+	maxConnsPerHost := cfg.MaxConnsPerHost
+	if maxConnsPerHost == 0 {
+		maxConnsPerHost = 50 // match Go default
+	}
+	idleConnTimeout := cfg.IdleConnTimeout
+	if idleConnTimeout == 0 {
+		idleConnTimeout = 90 * time.Second // match Go default
+	}
 	transport := &http.Transport{
-		MaxIdleConns:        cfg.MaxIdleConns,
+		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: 20,
-		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		IdleConnTimeout:     cfg.IdleConnTimeout,
+		MaxConnsPerHost:     maxConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
 		DisableKeepAlives:   false,
 		ForceAttemptHTTP2:   true,
 	}
