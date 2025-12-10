@@ -22,10 +22,10 @@ type RetryConfig struct {
 // DefaultRetryConfig returns sensible defaults for retry behavior
 func DefaultRetryConfig() RetryConfig {
 	return RetryConfig{
-		MaxAttempts:   3,
-		InitialDelay:  500 * time.Millisecond,
-		MaxDelay:      10 * time.Second,
-		BackoffFactor: 2.0,
+		MaxAttempts:   5,
+		InitialDelay:  250 * time.Millisecond,
+		MaxDelay:      5 * time.Second,
+		BackoffFactor: 1.5,
 		RetryableErrors: []string{
 			"timeout",
 			"connection refused",

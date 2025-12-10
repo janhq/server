@@ -1261,6 +1261,47 @@ const docTemplate = `{
                     }
                 }
             },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a provider by its public ID along with its provider models",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Provider API"
+                ],
+                "summary": "Delete a provider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider public ID",
+                        "name": "provider_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Provider deleted"
+                    },
+                    "404": {
+                        "description": "Provider not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete provider",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {
@@ -2511,6 +2552,10 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "deep_research": {
+                    "description": "DeepResearch enables the Deep Research mode which uses a specialized prompt\nfor conducting in-depth investigations with tool usage.\nRequires a model with supports_reasoning: true capability.",
+                    "type": "boolean"
+                },
                 "frequency_penalty": {
                     "type": "number"
                 },
@@ -2587,6 +2632,9 @@ const docTemplate = `{
                     "description": "Controls effort on reasoning for reasoning models. It can be set to \"low\", \"medium\", or \"high\".",
                     "type": "string"
                 },
+                "repetition_penalty": {
+                    "type": "number"
+                },
                 "response_format": {
                     "$ref": "#/definitions/openai.ChatCompletionResponseFormat"
                 },
@@ -2641,6 +2689,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/openai.Tool"
                     }
+                },
+                "top_k": {
+                    "type": "integer"
                 },
                 "top_logprobs": {
                     "description": "TopLogProbs is an integer between 0 and 5 specifying the number of most likely tokens to return at each\ntoken position, each with an associated log probability.\nlogprobs must be set to true if this parameter is used.",

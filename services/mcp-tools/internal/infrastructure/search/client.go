@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,24 @@ type ClientConfig struct {
 	DomainFilters []string
 	LocationHint  string
 	OfflineMode   bool
+
+	// Circuit Breaker Settings
+	CBFailureThreshold int
+	CBSuccessThreshold int
+	CBTimeout          time.Duration
+	CBMaxHalfOpen      int
+
+	// HTTP Client Settings
+	HTTPTimeout       time.Duration
+	MaxConnsPerHost   int
+	MaxIdleConns      int
+	IdleConnTimeout   time.Duration
+
+	// Retry Settings
+	RetryMaxAttempts   int
+	RetryInitialDelay  time.Duration
+	RetryMaxDelay      time.Duration
+	RetryBackoffFactor float64
 }
 
 // SearchClient implements domainsearch.SearchClient with pluggable backends.
@@ -61,21 +80,72 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 	}
 	cfg.Engine = engine
 
+	// Set default HTTP timeout if not configured
+	httpTimeout := 15 * time.Second
+	if cfg.HTTPTimeout > 0 {
+		httpTimeout = cfg.HTTPTimeout
+	}
+
+	// Configure HTTP transport with connection pooling
+	transport := &http.Transport{
+		MaxIdleConns:        cfg.MaxIdleConns,
+		MaxIdleConnsPerHost: 20,
+		MaxConnsPerHost:     cfg.MaxConnsPerHost,
+		IdleConnTimeout:     cfg.IdleConnTimeout,
+		DisableKeepAlives:   false,
+		ForceAttemptHTTP2:   true,
+	}
+
 	serperHTTP := resty.New().
 		SetHeader("User-Agent", "Jan-MCP-Tools/1.0").
-		SetTimeout(30 * time.Second)
+		SetTimeout(httpTimeout).
+		SetRetryCount(0).
+		SetTransport(transport)
 
 	fallbackHTTP := resty.New().
 		SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
-		SetTimeout(15 * time.Second)
+		SetTimeout(10 * time.Second).
+		SetRetryCount(0)
 
 	searxHTTP := resty.New().
 		SetHeader("User-Agent", "Jan-MCP-Tools/1.0").
-		SetTimeout(30 * time.Second)
+		SetTimeout(httpTimeout).
+		SetRetryCount(0).
+		SetTransport(transport)
 
 	baseURL := strings.TrimSuffix(cfg.SearxngURL, "/")
 	if baseURL != "" {
 		searxHTTP.SetBaseURL(baseURL)
+	}
+
+	// Build retry config from ClientConfig
+	retryConfig := DefaultRetryConfig()
+	if cfg.RetryMaxAttempts > 0 {
+		retryConfig.MaxAttempts = cfg.RetryMaxAttempts
+	}
+	if cfg.RetryInitialDelay > 0 {
+		retryConfig.InitialDelay = cfg.RetryInitialDelay
+	}
+	if cfg.RetryMaxDelay > 0 {
+		retryConfig.MaxDelay = cfg.RetryMaxDelay
+	}
+	if cfg.RetryBackoffFactor > 0 {
+		retryConfig.BackoffFactor = cfg.RetryBackoffFactor
+	}
+
+	// Build circuit breaker config from ClientConfig
+	cbConfig := DefaultCircuitBreakerConfig()
+	if cfg.CBFailureThreshold > 0 {
+		cbConfig.FailureThreshold = cfg.CBFailureThreshold
+	}
+	if cfg.CBSuccessThreshold > 0 {
+		cbConfig.SuccessThreshold = cfg.CBSuccessThreshold
+	}
+	if cfg.CBTimeout > 0 {
+		cbConfig.Timeout = cfg.CBTimeout
+	}
+	if cfg.CBMaxHalfOpen > 0 {
+		cbConfig.MaxHalfOpenCalls = cfg.CBMaxHalfOpen
 	}
 
 	return &SearchClient{
@@ -84,8 +154,8 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 		fallbackClient: fallbackHTTP,
 		searxClient:    searxHTTP,
 		retryConfig:    DefaultRetryConfig(),
-		serperCB:       NewCircuitBreaker(DefaultCircuitBreakerConfig()),
-		searxCB:        NewCircuitBreaker(DefaultCircuitBreakerConfig()),
+		serperCB:       NewCircuitBreaker(cbConfig),
+		searxCB:        NewCircuitBreaker(cbConfig),
 	}
 }
 
@@ -95,33 +165,34 @@ func (c *SearchClient) Search(ctx context.Context, query domainsearch.SearchRequ
 	offline := c.resolveOfflineMode(query.OfflineMode)
 
 	if offline {
-		log.Info().Msg("search running in offline mode, returning cached duckduckgo results")
-		return c.searchViaDuckDuckGo(ctx, query, "offline_mode")
+		return nil, fmt.Errorf("search unavailable: offline mode is enabled")
 	}
 
 	switch c.cfg.Engine {
 	case EngineSearxng:
 		if c.searxClient == nil || strings.TrimSpace(c.cfg.SearxngURL) == "" {
-			log.Warn().Msg("searxng search requested but SEARXNG_URL not configured; falling back to DuckDuckGo")
-			return c.searchViaDuckDuckGo(ctx, query, "searxng_unconfigured")
+			return nil, fmt.Errorf("search unavailable: SearXNG not configured (SEARXNG_URL missing)")
 		}
 		res, err := c.searchViaSearxng(ctx, query)
 		if err != nil {
-			log.Warn().Err(err).Msg("searxng search failed, falling back to DuckDuckGo")
-			return c.searchViaDuckDuckGo(ctx, query, "searxng_error")
+			if c.searxCB.GetState() == StateOpen {
+				return nil, fmt.Errorf("search temporarily unavailable: SearXNG service is recovering from errors (retry in 1 minute)")
+			}
+			return nil, fmt.Errorf("searxng search failed: %w", err)
 		}
 		return res, nil
 	default:
-		if c.hasAPIKey() {
-			res, err := c.searchViaSerper(ctx, query)
-			if err == nil {
-				return res, nil
-			}
-			log.Warn().Err(err).Msg("serper search failed, falling back to DuckDuckGo")
-			return c.searchViaDuckDuckGo(ctx, query, "serper_error")
+		if !c.hasAPIKey() {
+			return nil, fmt.Errorf("search unavailable: SERPER_API_KEY not configured")
 		}
-		log.Info().Msg("serper api key missing, falling back to DuckDuckGo")
-		return c.searchViaDuckDuckGo(ctx, query, "serper_unavailable")
+		res, err := c.searchViaSerper(ctx, query)
+		if err != nil {
+			if c.serperCB.GetState() == StateOpen {
+				return nil, fmt.Errorf("search temporarily unavailable: Serper API service is recovering from errors (retry in 1 minute)")
+			}
+			return nil, fmt.Errorf("serper search failed: %w", err)
+		}
+		return res, nil
 	}
 }
 
@@ -184,7 +255,7 @@ func (c *SearchClient) resolveOfflineMode(override *bool) bool {
 func (c *SearchClient) searchViaSerper(ctx context.Context, query domainsearch.SearchRequest) (*domainsearch.SearchResponse, error) {
 	// Check circuit breaker
 	if c.serperCB.GetState() == StateOpen {
-		log.Warn().Msg("serper circuit breaker is open, skipping")
+		log.Error().Str("service", "serper").Msg("serper circuit breaker is open, skipping")
 		return nil, fmt.Errorf("serper circuit breaker is open")
 	}
 
@@ -229,10 +300,12 @@ func (c *SearchClient) searchViaSerper(ctx context.Context, query domainsearch.S
 			Post(serperSearchEndpoint)
 
 		if err != nil {
+			log.Error().Err(err).Str("service", "serper").Str("endpoint", serperSearchEndpoint).Msg("failed to query Serper search API")
 			return nil, fmt.Errorf("failed to query Serper search API: %w", err)
 		}
 
 		if resp.IsError() {
+			log.Error().Int("status", resp.StatusCode()).Str("service", "serper").Str("response", resp.String()).Msg("Serper search API error")
 			return nil, fmt.Errorf("Serper search API error (status %d): %s", resp.StatusCode(), resp.String())
 		}
 		
@@ -243,6 +316,7 @@ func (c *SearchClient) searchViaSerper(ctx context.Context, query domainsearch.S
 	c.serperCB.recordResult("serper_search", err)
 	
 	if err != nil {
+		log.Error().Err(err).Str("service", "serper").Str("operation", "search").Msg("serper search failed after retries")
 		return nil, err
 	}
 	
@@ -274,7 +348,7 @@ func (c *SearchClient) searchViaSearxng(ctx context.Context, query domainsearch.
 
 	// Check circuit breaker
 	if c.searxCB.GetState() == StateOpen {
-		log.Warn().Msg("searxng circuit breaker is open, skipping")
+		log.Error().Str("service", "searxng").Msg("searxng circuit breaker is open, skipping")
 		return nil, fmt.Errorf("searxng circuit breaker is open")
 	}
 
@@ -304,9 +378,11 @@ func (c *SearchClient) searchViaSearxng(ctx context.Context, query domainsearch.
 		var result searxngResponse
 		resp, err := req.SetResult(&result).Get(searxngSearchPath)
 		if err != nil {
+			log.Error().Err(err).Str("service", "searxng").Str("url", c.cfg.SearxngURL).Msg("failed to query SearXNG API")
 			return nil, fmt.Errorf("failed to query SearXNG API: %w", err)
 		}
 		if resp.IsError() {
+			log.Error().Int("status", resp.StatusCode()).Str("service", "searxng").Str("response", resp.String()).Msg("SearXNG API error")
 			return nil, fmt.Errorf("SearXNG API error (status %d): %s", resp.StatusCode(), resp.String())
 		}
 		
@@ -317,6 +393,7 @@ func (c *SearchClient) searchViaSearxng(ctx context.Context, query domainsearch.
 	c.searxCB.recordResult("searxng_search", err)
 	
 	if err != nil {
+		log.Error().Err(err).Str("service", "searxng").Str("operation", "search").Msg("searxng search failed after retries")
 		return nil, err
 	}
 	
@@ -385,7 +462,7 @@ func mapTBSToSearxng(t domainsearch.TBSTimeRange) string {
 func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.FetchWebpageRequest) (*domainsearch.FetchWebpageResponse, error) {
 	// Check circuit breaker
 	if c.serperCB.GetState() == StateOpen {
-		log.Warn().Msg("serper circuit breaker is open for scraping, using fallback")
+		log.Error().Str("service", "serper").Str("operation", "scrape").Msg("serper circuit breaker is open for scraping, using fallback")
 		return nil, fmt.Errorf("serper circuit breaker is open")
 	}
 
@@ -408,10 +485,12 @@ func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.Fe
 			Post(serperScrapeEndpoint)
 
 		if err != nil {
+			log.Error().Err(err).Str("service", "serper").Str("endpoint", serperScrapeEndpoint).Str("url", query.Url).Msg("failed to query Serper scrape API")
 			return nil, fmt.Errorf("failed to query Serper scrape API: %w", err)
 		}
 
 		if resp.IsError() {
+			log.Error().Int("status", resp.StatusCode()).Str("service", "serper").Str("url", query.Url).Str("response", resp.String()).Msg("Serper scrape API error")
 			return nil, fmt.Errorf("Serper scrape API error (status %d): %s", resp.StatusCode(), resp.String())
 		}
 
@@ -422,6 +501,7 @@ func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.Fe
 	c.serperCB.recordResult("serper_scrape", err)
 	
 	if err != nil {
+		log.Error().Err(err).Str("service", "serper").Str("operation", "scrape").Str("url", query.Url).Msg("serper scrape failed after retries")
 		return nil, err
 	}
 	
@@ -445,9 +525,11 @@ func (c *SearchClient) fetchFallback(ctx context.Context, query domainsearch.Fet
 			SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
 			Get(query.Url)
 		if err != nil {
+			log.Error().Err(err).Str("service", "fallback").Str("url", query.Url).Msg("fallback fetch failed")
 			return nil, fmt.Errorf("fallback fetch failed: %w", err)
 		}
 		if resp.IsError() {
+			log.Error().Int("status", resp.StatusCode()).Str("service", "fallback").Str("url", query.Url).Msg("fallback fetch HTTP error")
 			return nil, fmt.Errorf("fallback fetch HTTP %d: %s", resp.StatusCode(), resp.Status())
 		}
 
@@ -470,6 +552,7 @@ func (c *SearchClient) fetchFallback(ctx context.Context, query domainsearch.Fet
 	})
 	
 	if err != nil {
+		log.Error().Err(err).Str("service", "fallback").Str("operation", "fetch").Str("url", query.Url).Msg("fallback fetch failed after retries")
 		return nil, err
 	}
 	
@@ -482,99 +565,11 @@ func (c *SearchClient) fetchFallback(ctx context.Context, query domainsearch.Fet
 	return result, nil
 }
 
-func (c *SearchClient) searchViaDuckDuckGo(ctx context.Context, query domainsearch.SearchRequest, reason string) (*domainsearch.SearchResponse, error) {
-	req := c.fallbackClient.R().
-		SetContext(ctx).
-		SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
-		SetQueryParam("q", query.Q).
-		SetQueryParam("format", "json").
-		SetQueryParam("no_redirect", "1").
-		SetQueryParam("no_html", "1")
-
-	var ddg duckDuckResponse
-	resp, err := req.SetResult(&ddg).Get("https://api.duckduckgo.com/")
-	if err != nil {
-		return nil, fmt.Errorf("duckduckgo fallback search failed: %w", err)
-	}
-	if resp.IsError() {
-		return nil, fmt.Errorf("duckduckgo fallback search HTTP %d: %s", resp.StatusCode(), resp.Status())
-	}
-
-	results := make([]map[string]any, 0, len(ddg.Results)+len(ddg.RelatedTopics))
-	for _, r := range ddg.Results {
-		results = append(results, map[string]any{
-			"title":       fallbackTitle(r.Text, query.Q),
-			"link":        orSelect(r.FirstURL, r.Result),
-			"description": r.Text,
-			"source":      "duckduckgo",
-		})
-	}
-	for _, topic := range flattenDuckTopics(ddg.RelatedTopics) {
-		if topic.FirstURL == "" && topic.Result == "" {
-			continue
-		}
-		results = append(results, map[string]any{
-			"title":       fallbackTitle(topic.Text, query.Q),
-			"link":        orSelect(topic.FirstURL, topic.Result),
-			"description": topic.Text,
-			"source":      "duckduckgo_related",
-		})
-		if len(results) >= 10 {
-			break
-		}
-	}
-	if len(results) == 0 {
-		results = append(results, map[string]any{
-			"title":       fmt.Sprintf("No live results for \"%s\"", query.Q),
-			"link":        fmt.Sprintf("https://duckduckgo.com/?q=%s", query.Q),
-			"description": "Configure SERPER_API_KEY or switch SEARCH_ENGINE to searxng for live results.",
-			"source":      "fallback",
-		})
-	}
-
-	return &domainsearch.SearchResponse{
-		SearchParameters: map[string]any{
-			"engine":            "duckduckgo",
-			"q":                 query.Q,
-			"live":              false,
-			"reason":            reason,
-			"domain_allow_list": query.DomainAllowList,
-		},
-		Organic: results,
-	}, nil
-}
-
 func (c *SearchClient) hasAPIKey() bool {
 	return strings.TrimSpace(c.cfg.SerperAPIKey) != ""
 }
 
-// --- Helper types + functions reused from the legacy client ---
-
-type duckDuckResponse struct {
-	Heading       string            `json:"Heading"`
-	Results       []duckDuckResult  `json:"Results"`
-	RelatedTopics []duckDuckTopics  `json:"RelatedTopics"`
-	AbstractURL   string            `json:"AbstractURL"`
-	AbstractText  string            `json:"AbstractText"`
-	Type          string            `json:"Type"`
-	Redirect      string            `json:"Redirect"`
-	Meta          map[string]string `json:"meta"`
-}
-
-type duckDuckResult struct {
-	FirstURL string `json:"FirstURL"`
-	Result   string `json:"Result"`
-	Text     string `json:"Text"`
-}
-
-type duckDuckTopics struct {
-	Name     string           `json:"Name"`
-	FirstURL string           `json:"FirstURL"`
-	Result   string           `json:"Result"`
-	Text     string           `json:"Text"`
-	Topics   []duckDuckTopics `json:"Topics"`
-	Children []duckDuckTopics `json:"children"`
-}
+// --- Helper types + functions ---
 
 type searxngResponse struct {
 	Query            string           `json:"query"`
@@ -591,39 +586,6 @@ type searxngResult struct {
 	URL     string `json:"url"`
 	Content string `json:"content"`
 	Engine  string `json:"engine"`
-}
-
-func flattenDuckTopics(topics []duckDuckTopics) []duckDuckTopics {
-	var out []duckDuckTopics
-	for _, topic := range topics {
-		if len(topic.Topics) > 0 {
-			out = append(out, flattenDuckTopics(topic.Topics)...)
-			continue
-		}
-		if len(topic.Children) > 0 {
-			out = append(out, flattenDuckTopics(topic.Children)...)
-			continue
-		}
-		out = append(out, topic)
-	}
-	return out
-}
-
-func fallbackTitle(title, query string) string {
-	title = strings.TrimSpace(title)
-	if title != "" {
-		return title
-	}
-	return fmt.Sprintf("Result for \"%s\"", query)
-}
-
-func orSelect(values ...string) string {
-	for _, v := range values {
-		if strings.TrimSpace(v) != "" {
-			return v
-		}
-	}
-	return ""
 }
 
 func sanitizeDomain(value string) string {
