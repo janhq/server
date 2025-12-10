@@ -305,10 +305,10 @@ Supported MCP methods:
 - Backoff factor: 2.0 → 1.5 (gentler backoff curve)
 
 **✅ Circuit Breaker Tuning**
-- Failure threshold: 10 → 15 (more tolerant of bursts)
-- Success threshold: 3 → 5 (require more proof of recovery)
-- Timeout: 60s → 45s (faster recovery attempts)
-- Max half-open calls: 3 → 10 (parallel recovery testing)
+- Failure threshold: 5 → 15 (more tolerant of bursts)
+- Success threshold: 2 → 5 (require more proof of recovery)
+- Timeout: 30s → 45s (faster recovery attempts)
+- Max half-open calls: 1 → 10 (parallel recovery testing)
 - **99%+ uptime** with better tuning
 
 **✅ Configurable Circuit Breaker**
