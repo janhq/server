@@ -165,7 +165,7 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 		serperClient:   serperHTTP,
 		fallbackClient: fallbackHTTP,
 		searxClient:    searxHTTP,
-		retryConfig:    DefaultRetryConfig(),
+		retryConfig:    retryConfig,
 		serperCB:       NewCircuitBreaker(cbConfig),
 		searxCB:        NewCircuitBreaker(cbConfig),
 	}
