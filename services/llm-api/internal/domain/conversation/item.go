@@ -1001,8 +1001,6 @@ func NewComputerActionContent(action string, coords *Coordinates, text *string) 
 
 // MarshalJSON implements custom JSON marshaling for Content
 // This handles the text field which can be either a string or an object with annotations
-// MarshalJSON implements custom JSON marshaling for Content
-// This handles the text field which can be either a string or an object with annotations
 func (c Content) MarshalJSON() ([]byte, error) {
 	type Alias Content
 	aux := &struct {
