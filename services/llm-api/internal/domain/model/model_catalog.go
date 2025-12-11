@@ -53,7 +53,7 @@ type ModelCatalog struct {
 	SupportsReasoning  bool   `json:"supports_reasoning"`
 	SupportsAudio      bool   `json:"supports_audio"`
 	SupportsVideo      bool   `json:"supports_video"`
-	SupportedTools     bool   `json:"supported_tools"`
+	SupportsTools      bool   `json:"supports_tools"`
 	Family             string `json:"family,omitempty"` // e.g., "gpt-4o", "llama-3.1"
 	LastSyncedAt       *time.Time
 	CreatedAt          time.Time `json:"created_at"`
@@ -75,7 +75,7 @@ type ModelCatalogFilter struct {
 	SupportsReasoning   *bool
 	SupportsAudio       *bool
 	SupportsVideo       *bool
-	SupportedTools      *bool
+	SupportsTools       *bool
 	Family              *string
 }
 

@@ -99,8 +99,8 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	if req.SupportsVideo != nil {
 		catalog.SupportsVideo = *req.SupportsVideo
 	}
-	if req.SupportedTools != nil {
-		catalog.SupportedTools = *req.SupportedTools
+	if req.SupportsTools != nil {
+		catalog.SupportsTools = *req.SupportsTools
 	}
 	if req.Family != nil {
 		catalog.Family = *req.Family
@@ -183,8 +183,8 @@ func (h *ModelCatalogHandler) ListCatalogs(
 		filter.SupportsVideo = filterParams.SupportsVideo
 	}
 
-	if filterParams.SupportedTools != nil {
-		filter.SupportedTools = filterParams.SupportedTools
+	if filterParams.SupportsTools != nil {
+		filter.SupportsTools = filterParams.SupportsTools
 	}
 
 	if filterParams.Family != nil {

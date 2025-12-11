@@ -1,16 +1,16 @@
--- Migration 000009: Add supported_tools and OpenAI-compatible conversation item fields
--- Part 1: Add supported_tools column to model_catalogs table
+-- Migration 000009: Add supports_tools and OpenAI-compatible conversation item fields
+-- Part 1: Add supports_tools column to model_catalogs table
 -- This field indicates whether a model supports tool/function calling
 -- Default is true for all models
 ALTER TABLE llm_api.model_catalogs 
-    ADD COLUMN IF NOT EXISTS supported_tools BOOLEAN NOT NULL DEFAULT true;
+    ADD COLUMN IF NOT EXISTS supports_tools BOOLEAN NOT NULL DEFAULT true;
 
 -- Create index for filtering models by tool support
-CREATE INDEX IF NOT EXISTS idx_model_catalogs_supported_tools 
-    ON llm_api.model_catalogs(supported_tools) WHERE supported_tools = true;
+CREATE INDEX IF NOT EXISTS idx_model_catalogs_supports_tools 
+    ON llm_api.model_catalogs(supports_tools) WHERE supports_tools = true;
 
 -- Add comment for documentation
-COMMENT ON COLUMN llm_api.model_catalogs.supported_tools IS 'Model supports tool/function calling capabilities';
+COMMENT ON COLUMN llm_api.model_catalogs.supports_tools IS 'Model supports tool/function calling capabilities';
 
 -- Part 2: Add OpenAI-compatible fields to conversation_items table
 -- Purpose: Add fields for OpenAI-compatible conversation item types (MCP, shell, computer use, etc.)

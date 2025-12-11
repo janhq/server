@@ -11,7 +11,7 @@ type ModelCatalogFilterParams struct {
 	SupportsReasoning   *bool   `form:"supports_reasoning"`
 	SupportsAudio       *bool   `form:"supports_audio"`
 	SupportsVideo       *bool   `form:"supports_video"`
-	SupportedTools      *bool   `form:"supported_tools"`
+	SupportsTools       *bool   `form:"supports_tools"`
 	Family              *string `form:"family"`
 }
 

@@ -1,4 +1,4 @@
--- Rollback Migration 000009: Remove supported_tools and OpenAI-compatible fields
+-- Rollback Migration 000009: Remove supports_tools and OpenAI-compatible fields
 
 -- Part 1: Remove OpenAI-compatible fields from conversation_items table
 -- Drop indexes first
@@ -25,9 +25,9 @@ DROP COLUMN IF EXISTS approval_request_id,
 DROP COLUMN IF EXISTS server_label,
 DROP COLUMN IF EXISTS call_id;
 
--- Part 2: Remove supported_tools from model_catalogs
--- Drop the supported_tools index
-DROP INDEX IF EXISTS llm_api.idx_model_catalogs_supported_tools;
+-- Part 2: Remove supports_tools from model_catalogs
+-- Drop the supports_tools index
+DROP INDEX IF EXISTS llm_api.idx_model_catalogs_supports_tools;
 
--- Drop the supported_tools column
-ALTER TABLE llm_api.model_catalogs DROP COLUMN IF EXISTS supported_tools;
+-- Drop the supports_tools column
+ALTER TABLE llm_api.model_catalogs DROP COLUMN IF EXISTS supports_tools;
