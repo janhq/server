@@ -62,6 +62,9 @@ func (repo *ModelCatalogGormRepository) applyFilter(query *gormgen.Query, sql go
 	if filter.SupportsVideo != nil {
 		sql = sql.Where(query.ModelCatalog.SupportsVideo.Is(*filter.SupportsVideo))
 	}
+	if filter.SupportedTools != nil {
+		sql = sql.Where(query.ModelCatalog.SupportedTools.Is(*filter.SupportedTools))
+	}
 	if filter.Family != nil && *filter.Family != "" {
 		sql = sql.Where(query.ModelCatalog.Family.Eq(*filter.Family))
 	}

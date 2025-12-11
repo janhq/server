@@ -75,6 +75,24 @@ type ConversationItem struct {
 	Rating        *string    `gorm:"type:varchar(10)"` // 'like' or 'unlike'
 	RatedAt       *time.Time `gorm:"type:timestamp"`
 	RatingComment *string    `gorm:"type:text"`
+
+	// OpenAI-compatible fields (added in migration 000010)
+	CallID                   *string      `gorm:"type:varchar(50);index:idx_conversation_items_call_id"`
+	ServerLabel              *string      `gorm:"type:varchar(255);index:idx_conversation_items_server_label"`
+	ApprovalRequestID        *string      `gorm:"type:varchar(50);index:idx_conversation_items_approval_request_id"`
+	Arguments                *string      `gorm:"type:text"`
+	Output                   *string      `gorm:"type:text"`
+	Error                    *string      `gorm:"type:text"`
+	Action                   JSONAction   `gorm:"type:jsonb"`
+	Tools                    JSONMcpTools `gorm:"type:jsonb"`
+	PendingSafetyChecks      JSONSafetyChecks `gorm:"type:jsonb"`
+	AcknowledgedSafetyChecks JSONSafetyChecks `gorm:"type:jsonb"`
+	Approve                  *bool        `gorm:"type:boolean"`
+	Reason                   *string      `gorm:"type:text"`
+	Commands                 JSONCommands `gorm:"type:jsonb"`
+	MaxOutputLength          *int64       `gorm:"type:bigint"`
+	ShellOutputs             JSONShellOutputs `gorm:"type:jsonb"`
+	Operation                JSONOperation `gorm:"type:jsonb"`
 }
 
 // JSONMap is a custom type for map[string]string stored as JSON
@@ -135,6 +153,138 @@ func (j *JSONIncompleteDetails) Scan(value any) error {
 	bytes, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("expected []byte, got %T", value)
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// JSONAction is a custom type for action map stored as JSON
+type JSONAction map[string]interface{}
+
+func (j JSONAction) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONAction) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// JSONMcpTools is a custom type for MCP tools array stored as JSON
+type JSONMcpTools []conversation.McpTool
+
+func (j JSONMcpTools) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONMcpTools) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// JSONSafetyChecks is a custom type for safety checks array stored as JSON
+type JSONSafetyChecks []conversation.SafetyCheck
+
+func (j JSONSafetyChecks) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONSafetyChecks) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// JSONCommands is a custom type for commands array stored as JSON
+type JSONCommands []string
+
+func (j JSONCommands) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONCommands) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// JSONShellOutputs is a custom type for shell outputs array stored as JSON
+type JSONShellOutputs []conversation.ShellOutput
+
+func (j JSONShellOutputs) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONShellOutputs) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// JSONOperation is a custom type for operation map stored as JSON
+type JSONOperation map[string]interface{}
+
+func (j JSONOperation) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONOperation) Scan(value any) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
 	}
 	return json.Unmarshal(bytes, j)
 }
@@ -301,6 +451,40 @@ func NewSchemaConversationItem(item *conversation.Item) *ConversationItem {
 	schemaItem.RatedAt = item.RatedAt
 	schemaItem.RatingComment = item.RatingComment
 
+	// Convert OpenAI-compatible fields
+	schemaItem.CallID = item.CallID
+	schemaItem.ServerLabel = item.ServerLabel
+	schemaItem.ApprovalRequestID = item.ApprovalRequestID
+	schemaItem.Arguments = item.Arguments
+	schemaItem.Output = item.Output
+	schemaItem.Error = item.Error
+	schemaItem.Approve = item.Approve
+	schemaItem.Reason = item.Reason
+	schemaItem.MaxOutputLength = item.MaxOutputLength
+
+	// Convert complex OpenAI fields
+	if item.Action != nil {
+		schemaItem.Action = JSONAction(item.Action)
+	}
+	if item.Tools != nil {
+		schemaItem.Tools = JSONMcpTools(item.Tools)
+	}
+	if item.PendingSafetyChecks != nil {
+		schemaItem.PendingSafetyChecks = JSONSafetyChecks(item.PendingSafetyChecks)
+	}
+	if item.AcknowledgedSafetyChecks != nil {
+		schemaItem.AcknowledgedSafetyChecks = JSONSafetyChecks(item.AcknowledgedSafetyChecks)
+	}
+	if item.Commands != nil {
+		schemaItem.Commands = JSONCommands(item.Commands)
+	}
+	if item.ShellOutputs != nil {
+		schemaItem.ShellOutputs = JSONShellOutputs(item.ShellOutputs)
+	}
+	if item.Operation != nil {
+		schemaItem.Operation = JSONOperation(item.Operation)
+	}
+
 	return schemaItem
 }
 
@@ -346,6 +530,40 @@ func (i *ConversationItem) EtoD() *conversation.Item {
 	}
 	item.RatedAt = i.RatedAt
 	item.RatingComment = i.RatingComment
+
+	// Convert OpenAI-compatible fields
+	item.CallID = i.CallID
+	item.ServerLabel = i.ServerLabel
+	item.ApprovalRequestID = i.ApprovalRequestID
+	item.Arguments = i.Arguments
+	item.Output = i.Output
+	item.Error = i.Error
+	item.Approve = i.Approve
+	item.Reason = i.Reason
+	item.MaxOutputLength = i.MaxOutputLength
+
+	// Convert complex OpenAI fields
+	if i.Action != nil {
+		item.Action = map[string]interface{}(i.Action)
+	}
+	if i.Tools != nil {
+		item.Tools = []conversation.McpTool(i.Tools)
+	}
+	if i.PendingSafetyChecks != nil {
+		item.PendingSafetyChecks = []conversation.SafetyCheck(i.PendingSafetyChecks)
+	}
+	if i.AcknowledgedSafetyChecks != nil {
+		item.AcknowledgedSafetyChecks = []conversation.SafetyCheck(i.AcknowledgedSafetyChecks)
+	}
+	if i.Commands != nil {
+		item.Commands = []string(i.Commands)
+	}
+	if i.ShellOutputs != nil {
+		item.ShellOutputs = []conversation.ShellOutput(i.ShellOutputs)
+	}
+	if i.Operation != nil {
+		item.Operation = map[string]interface{}(i.Operation)
+	}
 
 	return item
 }

@@ -227,16 +227,16 @@ func (v *ItemValidator) ValidateContent(content Content) error {
 	// Validate based on content type
 	switch content.Type {
 	case "text":
-		if content.Text != nil {
-			return v.validateTextContent(content.Text)
+		if content.TextString != nil {
+			return v.validateSimpleText(*content.TextString, "text")
 		}
 		return fmt.Errorf("text content type requires text field")
 
 	case "input_text":
-		if content.InputText != nil {
-			return v.validateSimpleText(*content.InputText, "input_text")
+		if content.TextString != nil {
+			return v.validateSimpleText(*content.TextString, "input_text")
 		}
-		return fmt.Errorf("input_text content type requires input_text field")
+		return fmt.Errorf("input_text content type requires text field")
 
 	case "output_text":
 		if content.OutputText != nil {
@@ -297,6 +297,39 @@ func (v *ItemValidator) ValidateContent(content Content) error {
 			return v.validateComputerAction(content.ComputerAction)
 		}
 		return fmt.Errorf("computer_action content type requires computer_action field")
+
+	case "reasoning_text":
+		if content.TextString != nil {
+			return v.validateSimpleText(*content.TextString, "reasoning_text")
+		}
+		return fmt.Errorf("reasoning_text content type requires text field")
+
+	case "tool_result":
+		if content.TextString != nil {
+			return v.validateSimpleText(*content.TextString, "tool_result")
+		}
+		return fmt.Errorf("tool_result content type requires text field")
+
+	case "tool_calls":
+		if len(content.ToolCalls) == 0 {
+			return fmt.Errorf("tool_calls content type requires tool_calls array")
+		}
+		// Tool calls validation is done elsewhere
+		return nil
+
+	case "function_call":
+		if content.FunctionCall != nil {
+			// Function call validation is done elsewhere
+			return nil
+		}
+		return fmt.Errorf("function_call content type requires function_call field")
+
+	case "function_call_output":
+		if content.FunctionCallOut != nil {
+			// Function call output validation is done elsewhere
+			return nil
+		}
+		return fmt.Errorf("function_call_output content type requires function_call_output field")
 
 	default:
 		return fmt.Errorf("unsupported content type: %s", content.Type)
