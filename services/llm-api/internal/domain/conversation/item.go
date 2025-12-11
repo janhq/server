@@ -2,6 +2,7 @@ package conversation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -12,29 +13,63 @@ import (
 // Item Types and Enums
 // ===============================================
 
-// @Enum(message, function_call, function_call_output, reasoning, file_search, web_search, code_interpreter, computer_use, custom_tool_call, mcp_item, image_generation)
+// @Enum(message, function_call, function_call_output, reasoning, file_search_call, web_search_call, image_generation_call, computer_call, computer_call_output, code_interpreter_call, local_shell_call, local_shell_call_output, shell_call, shell_call_output, apply_patch_call, apply_patch_call_output, mcp_list_tools, mcp_approval_request, mcp_approval_response, mcp_call, custom_tool_call, custom_tool_call_output)
 type ItemType string
 
 const (
+	// Core message types
 	ItemTypeMessage         ItemType = "message"
 	ItemTypeFunctionCall    ItemType = "function_call"
 	ItemTypeFunctionCallOut ItemType = "function_call_output"
-	ItemTypeReasoning       ItemType = "reasoning"        // For o1/reasoning models
-	ItemTypeFileSearch      ItemType = "file_search"      // RAG/retrieval operations
-	ItemTypeWebSearch       ItemType = "web_search"       // Web browsing operations
-	ItemTypeCodeInterpreter ItemType = "code_interpreter" // Code execution
-	ItemTypeComputerUse     ItemType = "computer_use"     // Computer interaction
-	ItemTypeCustomToolCall  ItemType = "custom_tool_call" // Custom tool invocations
-	ItemTypeMCPItem         ItemType = "mcp_item"         // Model Context Protocol items
-	ItemTypeImageGeneration ItemType = "image_generation" // DALL-E image generation
+	ItemTypeReasoning       ItemType = "reasoning" // For o1/reasoning models
+
+	// OpenAI-compatible specific tool call types
+	ItemTypeFileSearchCall       ItemType = "file_search_call"
+	ItemTypeWebSearchCall        ItemType = "web_search_call"
+	ItemTypeImageGenerationCall  ItemType = "image_generation_call"
+	ItemTypeComputerCall         ItemType = "computer_call"
+	ItemTypeComputerCallOutput   ItemType = "computer_call_output"
+	ItemTypeCodeInterpreterCall  ItemType = "code_interpreter_call"
+	ItemTypeLocalShellCall       ItemType = "local_shell_call"
+	ItemTypeLocalShellCallOutput ItemType = "local_shell_call_output"
+	ItemTypeShellCall            ItemType = "shell_call"
+	ItemTypeShellCallOutput      ItemType = "shell_call_output"
+	ItemTypeApplyPatchCall       ItemType = "apply_patch_call"
+	ItemTypeApplyPatchCallOutput ItemType = "apply_patch_call_output"
+
+	// MCP-specific types
+	ItemTypeMcpListTools        ItemType = "mcp_list_tools"
+	ItemTypeMcpApprovalRequest  ItemType = "mcp_approval_request"
+	ItemTypeMcpApprovalResponse ItemType = "mcp_approval_response"
+	ItemTypeMcpCall             ItemType = "mcp_call"
+
+	// Custom tool types
+	ItemTypeCustomToolCall       ItemType = "custom_tool_call"
+	ItemTypeCustomToolCallOutput ItemType = "custom_tool_call_output"
+
+	// Legacy types (for backward compatibility)
+	ItemTypeFileSearch      ItemType = "file_search"      // Legacy: maps to file_search_call
+	ItemTypeWebSearch       ItemType = "web_search"       // Legacy: maps to web_search_call
+	ItemTypeCodeInterpreter ItemType = "code_interpreter" // Legacy: maps to code_interpreter_call
+	ItemTypeComputerUse     ItemType = "computer_use"     // Legacy: maps to computer_call
+	ItemTypeMCPItem         ItemType = "mcp_item"         // Legacy: maps to mcp_call
+	ItemTypeImageGeneration ItemType = "image_generation" // Legacy: maps to image_generation_call
 )
 
 func ValidateItemType(input string) bool {
 	switch ItemType(input) {
-	case ItemTypeMessage, ItemTypeFunctionCall, ItemTypeFunctionCallOut,
-		ItemTypeReasoning, ItemTypeFileSearch, ItemTypeWebSearch,
-		ItemTypeCodeInterpreter, ItemTypeComputerUse, ItemTypeCustomToolCall,
-		ItemTypeMCPItem, ItemTypeImageGeneration:
+	case ItemTypeMessage, ItemTypeFunctionCall, ItemTypeFunctionCallOut, ItemTypeReasoning,
+		ItemTypeFileSearchCall, ItemTypeWebSearchCall, ItemTypeImageGenerationCall,
+		ItemTypeComputerCall, ItemTypeComputerCallOutput,
+		ItemTypeCodeInterpreterCall,
+		ItemTypeLocalShellCall, ItemTypeLocalShellCallOutput,
+		ItemTypeShellCall, ItemTypeShellCallOutput,
+		ItemTypeApplyPatchCall, ItemTypeApplyPatchCallOutput,
+		ItemTypeMcpListTools, ItemTypeMcpApprovalRequest, ItemTypeMcpApprovalResponse, ItemTypeMcpCall,
+		ItemTypeCustomToolCall, ItemTypeCustomToolCallOutput,
+		// Legacy types
+		ItemTypeFileSearch, ItemTypeWebSearch, ItemTypeCodeInterpreter,
+		ItemTypeComputerUse, ItemTypeMCPItem, ItemTypeImageGeneration:
 		return true
 	default:
 		return false
@@ -239,6 +274,150 @@ type ImageGenerationItem struct {
 	RevisedPrompt *string  `json:"revised_prompt,omitempty"`
 }
 
+// ===============================================
+// OpenAI-Compatible Item Structures
+// ===============================================
+
+// LocalShellCallAction represents the action for local shell execution
+type LocalShellCallAction struct {
+	Type             string            `json:"type"` // Always "exec"
+	Command          []string          `json:"command"`
+	Env              map[string]string `json:"env"`
+	TimeoutMs        *int64            `json:"timeout_ms,omitempty"`
+	User             *string           `json:"user,omitempty"`
+	WorkingDirectory *string           `json:"working_directory,omitempty"`
+}
+
+// LocalShellCallItem represents a local shell command execution call
+type LocalShellCallItem struct {
+	BaseItem
+	CallID string               `json:"call_id"`
+	Action LocalShellCallAction `json:"action"`
+	Status string               `json:"status"` // in_progress, completed, incomplete
+}
+
+// LocalShellCallOutputItem represents the output of a local shell call
+type LocalShellCallOutputItem struct {
+	BaseItem
+	CallID string  `json:"call_id"`
+	Output string  `json:"output"`
+	Status *string `json:"status,omitempty"` // in_progress, completed, incomplete
+}
+
+// McpTool represents a tool available on an MCP server
+type McpTool struct {
+	Name        string  `json:"name"`
+	InputSchema any     `json:"input_schema"`
+	Description *string `json:"description,omitempty"`
+	Annotations any     `json:"annotations,omitempty"`
+}
+
+// McpListToolsItem represents a list of tools available on an MCP server
+type McpListToolsItem struct {
+	BaseItem
+	ServerLabel string    `json:"server_label"`
+	Tools       []McpTool `json:"tools"`
+	Error       *string   `json:"error,omitempty"`
+}
+
+// McpApprovalRequestItem represents a request for human approval of a tool invocation
+type McpApprovalRequestItem struct {
+	BaseItem
+	Name        string `json:"name"`
+	Arguments   string `json:"arguments"`
+	ServerLabel string `json:"server_label"`
+}
+
+// McpApprovalResponseItem represents a response to an MCP approval request
+type McpApprovalResponseItem struct {
+	BaseItem
+	ApprovalRequestID string  `json:"approval_request_id"`
+	Approve           bool    `json:"approve"`
+	Reason            *string `json:"reason,omitempty"`
+}
+
+// McpCallItem represents an invocation of a tool on an MCP server
+type McpCallItem struct {
+	BaseItem
+	Name              string  `json:"name"`
+	Arguments         string  `json:"arguments"`
+	ServerLabel       string  `json:"server_label"`
+	ApprovalRequestID *string `json:"approval_request_id,omitempty"`
+	Output            *string `json:"output,omitempty"`
+	Error             *string `json:"error,omitempty"`
+	Status            string  `json:"status"` // in_progress, completed, incomplete, calling, failed
+}
+
+// SafetyCheck represents a safety check for computer use
+type SafetyCheck struct {
+	Type   string `json:"type"`
+	Reason string `json:"reason"`
+}
+
+// ComputerCallItem represents a computer use tool call
+type ComputerCallItem struct {
+	BaseItem
+	CallID              string        `json:"call_id"`
+	Action              ComputerAction `json:"action"`
+	Status              string        `json:"status"`
+	PendingSafetyChecks []SafetyCheck `json:"pending_safety_checks,omitempty"`
+}
+
+// ComputerCallOutputItem represents the output of a computer use call
+type ComputerCallOutputItem struct {
+	BaseItem
+	CallID                   string        `json:"call_id"`
+	Output                   any           `json:"output"` // Can be screenshot or other output
+	Status                   string        `json:"status"`
+	AcknowledgedSafetyChecks []SafetyCheck `json:"acknowledged_safety_checks,omitempty"`
+}
+
+// PatchOperation represents a file patching operation
+type PatchOperation struct {
+	Type      string `json:"type"` // Type of patch operation
+	FilePath  string `json:"file_path"`
+	PatchData string `json:"patch_data"`
+}
+
+// ApplyPatchCallItem represents a patch application call
+type ApplyPatchCallItem struct {
+	BaseItem
+	CallID    string         `json:"call_id"`
+	Operation PatchOperation `json:"operation"`
+	Status    string         `json:"status"`
+}
+
+// ApplyPatchCallOutputItem represents the output of a patch call
+type ApplyPatchCallOutputItem struct {
+	BaseItem
+	CallID string `json:"call_id"`
+	Output string `json:"output"`
+	Status string `json:"status"`
+}
+
+// ShellOutput represents output from a shell command
+type ShellOutput struct {
+	Type  string `json:"type"` // stdout, stderr, exit_code
+	Value string `json:"value"`
+}
+
+// ShellCallItem represents a server-side shell execution call
+type ShellCallItem struct {
+	BaseItem
+	CallID          string  `json:"call_id"`
+	Commands        []string `json:"commands"`
+	MaxOutputLength *int64  `json:"max_output_length,omitempty"`
+	Status          string  `json:"status"`
+}
+
+// ShellCallOutputItem represents the output of a shell call
+type ShellCallOutputItem struct {
+	BaseItem
+	CallID string        `json:"call_id"`
+	Output []ShellOutput `json:"output"`
+	Status string        `json:"status"`
+}
+
 // Item is the legacy/generic item structure for backward compatibility
 // New code should use the type-specific item structs above
 type Item struct {
@@ -261,6 +440,24 @@ type Item struct {
 	Rating        *ItemRating `json:"rating,omitempty"`         // Like/unlike rating
 	RatedAt       *time.Time  `json:"rated_at,omitempty"`       // When rating was given
 	RatingComment *string     `json:"rating_comment,omitempty"` // Optional comment with rating
+
+	// OpenAI-compatible fields for specific item types
+	CallID                   *string                `json:"call_id,omitempty"`                      // For function/tool calls
+	ServerLabel              *string                `json:"server_label,omitempty"`                 // For MCP calls
+	ApprovalRequestID        *string                `json:"approval_request_id,omitempty"`          // For MCP approval
+	Arguments                *string                `json:"arguments,omitempty"`                    // For tool calls (JSON string)
+	Output                   *string                `json:"output,omitempty"`                       // For tool call outputs
+	Error                    *string                `json:"error,omitempty"`                        // For failed calls
+	Action                   map[string]interface{} `json:"action,omitempty"`                       // For computer/shell actions
+	Tools                    []McpTool              `json:"tools,omitempty"`                        // For mcp_list_tools
+	PendingSafetyChecks      []SafetyCheck          `json:"pending_safety_checks,omitempty"`        // For computer calls
+	AcknowledgedSafetyChecks []SafetyCheck          `json:"acknowledged_safety_checks,omitempty"`   // For computer call outputs
+	Approve                  *bool                  `json:"approve,omitempty"`                      // For MCP approval response
+	Reason                   *string                `json:"reason,omitempty"`                       // For MCP approval reason
+	Commands                 []string               `json:"commands,omitempty"`                     // For shell calls
+	MaxOutputLength          *int64                 `json:"max_output_length,omitempty"`            // For shell calls
+	ShellOutputs             []ShellOutput          `json:"shell_outputs,omitempty"`                // For shell call outputs
+	Operation                map[string]interface{} `json:"operation,omitempty"`                    // For patch operations
 
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -308,10 +505,9 @@ func ParseItemRating(s string) (*ItemRating, error) {
 type Content struct {
 	Type               string             `json:"type"`
 	FinishReason       *string            `json:"finish_reason,omitempty"`        // Finish reason
-	Text               *Text              `json:"text,omitempty"`                 // Generic text content
-	InputText          *string            `json:"input_text,omitempty"`           // User input text (simple)
+	Text               *Text              `json:"-"`                              // Complex text content with annotations (for "text" type)
+	TextString         *string            `json:"-"`                              // Simple text string (for input_text, reasoning_text, tool_result)
 	OutputText         *OutputText        `json:"output_text,omitempty"`          // AI output text (with annotations)
-	ReasoningContent   *string            `json:"reasoning_content,omitempty"`    // AI reasoning content
 	Refusal            *string            `json:"refusal,omitempty"`              // Model refusal message
 	SummaryText        *string            `json:"summary_text,omitempty"`         // Summary content
 	Thinking           *string            `json:"thinking,omitempty"`             // Internal reasoning (o1 models)
@@ -700,18 +896,16 @@ func NewImageGenerationItem(publicID string, prompt string, conversationID uint)
 // NewTextContent creates a new text content item
 func NewTextContent(text string) Content {
 	return Content{
-		Type: "text",
-		Text: &Text{
-			Text: text,
-		},
+		Type:       "text",
+		TextString: &text,
 	}
 }
 
 // NewInputTextContent creates a new input text content (for user messages)
 func NewInputTextContent(text string) Content {
 	return Content{
-		Type:      "input_text",
-		InputText: &text,
+		Type:       "input_text",
+		TextString: &text,
 	}
 }
 
@@ -803,4 +997,64 @@ func NewComputerActionContent(action string, coords *Coordinates, text *string) 
 		Type:           "computer_action",
 		ComputerAction: &compAction,
 	}
+}
+
+// MarshalJSON implements custom JSON marshaling for Content
+// This handles the text field which can be either a string or an object with annotations
+func (c Content) MarshalJSON() ([]byte, error) {
+	type Alias Content
+	aux := &struct {
+		Text any `json:"text,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(&c),
+	}
+
+	// Determine what to use for the text field based on content type
+	switch c.Type {
+	case "input_text", "reasoning_text", "tool_result", "text":
+		// Use simple string for these types
+		if c.TextString != nil {
+			aux.Text = *c.TextString
+		}
+	}
+
+	return json.Marshal(aux)
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for Content
+func (c *Content) UnmarshalJSON(data []byte) error {
+	type Alias Content
+	aux := &struct {
+		Text json.RawMessage `json:"text,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse the text field based on content type
+	if len(aux.Text) > 0 {
+		switch c.Type {
+		case "input_text", "reasoning_text", "tool_result", "text":
+			// Try to unmarshal as string
+			var textStr string
+			if err := json.Unmarshal(aux.Text, &textStr); err == nil {
+				c.TextString = &textStr
+			} else {
+				// Fallback: try as object with text field
+				var textObj struct {
+					Text string `json:"text"`
+				}
+				if err := json.Unmarshal(aux.Text, &textObj); err == nil {
+					c.TextString = &textObj.Text
+				}
+			}
+		}
+	}
+
+	return nil
 }

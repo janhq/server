@@ -37,6 +37,7 @@ type UpdateModelCatalogRequest struct {
 	SupportsReasoning   *bool                            `json:"supports_reasoning"`
 	SupportsAudio       *bool                            `json:"supports_audio"`
 	SupportsVideo       *bool                            `json:"supports_video"`
+	SupportsTools       *bool                            `json:"supports_tools"`
 	Family              *string                          `json:"family"`
 	ModelDisplayName    *string                          `json:"model_display_name"`
 	ContextLength       *float64                         `json:"context_length"`

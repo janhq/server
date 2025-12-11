@@ -267,6 +267,11 @@ func (route *AdminModelRoute) buildModelCatalogFilter(reqCtx *gin.Context) reque
 		filter.SupportsVideo = &value
 	}
 
+	if supportsToolsStr := reqCtx.Query("supports_tools"); supportsToolsStr != "" {
+		value := supportsToolsStr == "true"
+		filter.SupportsTools = &value
+	}
+
 	if family := strings.TrimSpace(reqCtx.Query("family")); family != "" {
 		filter.Family = &family
 	}

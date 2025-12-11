@@ -701,23 +701,18 @@ func (h *ChatHandler) formatAndFilterMemory(resp *memclient.LoadResponse, settin
 
 func firstTextFromItem(item conversation.Item) string {
 	for _, content := range item.Content {
+		if content.TextString != nil {
+			if trimmed := strings.TrimSpace(*content.TextString); trimmed != "" {
+				return trimmed
+			}
+		}
 		if content.Text != nil {
 			if trimmed := strings.TrimSpace(content.Text.Text); trimmed != "" {
 				return trimmed
 			}
 		}
-		if content.InputText != nil {
-			if trimmed := strings.TrimSpace(*content.InputText); trimmed != "" {
-				return trimmed
-			}
-		}
 		if content.OutputText != nil {
 			if trimmed := strings.TrimSpace(content.OutputText.Text); trimmed != "" {
-				return trimmed
-			}
-		}
-		if content.ReasoningContent != nil {
-			if trimmed := strings.TrimSpace(*content.ReasoningContent); trimmed != "" {
 				return trimmed
 			}
 		}
@@ -885,17 +880,17 @@ func (h *ChatHandler) itemToMessage(item conversation.Item) *openai.ChatCompleti
 
 		for _, content := range item.Content {
 			// Handle text content
-			if content.Text != nil && content.Text.Text != "" {
+			if content.TextString != nil && *content.TextString != "" {
+				textParts = append(textParts, *content.TextString)
+				multiContent = append(multiContent, openai.ChatMessagePart{
+					Type: openai.ChatMessagePartTypeText,
+					Text: *content.TextString,
+				})
+			} else if content.Text != nil && content.Text.Text != "" {
 				textParts = append(textParts, content.Text.Text)
 				multiContent = append(multiContent, openai.ChatMessagePart{
 					Type: openai.ChatMessagePartTypeText,
 					Text: content.Text.Text,
-				})
-			} else if content.InputText != nil {
-				textParts = append(textParts, *content.InputText)
-				multiContent = append(multiContent, openai.ChatMessagePart{
-					Type: openai.ChatMessagePartTypeText,
-					Text: *content.InputText,
 				})
 			} else if content.OutputText != nil {
 				textParts = append(textParts, content.OutputText.Text)
@@ -1046,7 +1041,7 @@ func (h *ChatHandler) filterReasoningContent(contents []conversation.Content, st
 
 	filtered := make([]conversation.Content, 0, len(contents))
 	for _, content := range contents {
-		if strings.EqualFold(content.Type, "reasoning_content") {
+		if strings.EqualFold(content.Type, "reasoning_text") {
 			continue
 		}
 		filtered = append(filtered, content)
@@ -1074,10 +1069,8 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 			contents = append(contents, conversation.NewInputTextContent(msg.Content))
 		case conversation.ItemRoleTool:
 			toolContent := conversation.Content{
-				Type: "tool_result",
-				Text: &conversation.Text{
-					Text: msg.Content,
-				},
+				Type:       "tool_result",
+				TextString: &msg.Content,
 			}
 			contents = append(contents, toolContent)
 		default:
@@ -1096,10 +1089,8 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 						contents = append(contents, conversation.NewInputTextContent(part.Text))
 					case conversation.ItemRoleTool:
 						toolContent := conversation.Content{
-							Type: "tool_result",
-							Text: &conversation.Text{
-								Text: part.Text,
-							},
+							Type:       "tool_result",
+							TextString: &part.Text,
 						}
 						contents = append(contents, toolContent)
 					default:
@@ -1120,10 +1111,9 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 	}
 
 	if msg.ReasoningContent != "" {
-		reasoning := msg.ReasoningContent
 		contents = append(contents, conversation.Content{
-			Type:             "reasoning_content",
-			ReasoningContent: &reasoning,
+			Type:       "reasoning_text",
+			TextString: &msg.ReasoningContent,
 		})
 	}
 
