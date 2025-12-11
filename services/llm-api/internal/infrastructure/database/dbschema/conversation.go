@@ -76,7 +76,7 @@ type ConversationItem struct {
 	RatedAt       *time.Time `gorm:"type:timestamp"`
 	RatingComment *string    `gorm:"type:text"`
 
-	// OpenAI-compatible fields (added in migration 000010)
+	// OpenAI-compatible fields (added in migration 000009)
 	CallID                   *string      `gorm:"type:varchar(50);index:idx_conversation_items_call_id"`
 	ServerLabel              *string      `gorm:"type:varchar(255);index:idx_conversation_items_server_label"`
 	ApprovalRequestID        *string      `gorm:"type:varchar(50);index:idx_conversation_items_approval_request_id"`
