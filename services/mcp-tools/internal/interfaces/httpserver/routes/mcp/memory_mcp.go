@@ -7,26 +7,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
-	"jan-server/services/mcp-tools/utils/mcp"
-
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
-	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog/log"
 )
 
 // MemoryRetrieveArgs defines the arguments for the memory_retrieve tool
 type MemoryRetrieveArgs struct {
-	Query            string   `json:"query" jsonschema:"required,description=What to search for in memory (e.g., 'user programming preferences', 'project tech stack decisions')"`
-	UserID           *string  `json:"user_id,omitempty" jsonschema:"description=Optional user ID to retrieve memories for. If not provided, will be extracted from JWT authentication."`
-	ProjectID        *string  `json:"project_id,omitempty" jsonschema:"description=Optional project ID to filter project-specific memories"`
-	ConversationID   *string  `json:"conversation_id,omitempty" jsonschema:"description=Optional conversation ID for episodic memory context"`
-	Scopes           []string `json:"scopes,omitempty" jsonschema:"description=Memory scopes to search (e.g., ['preference', 'decision', 'fact'])"`
-	MaxUserItems     *int     `json:"max_user_items,omitempty" jsonschema:"description=Maximum number of user memory items to return (default: 3, max: 10)"`
-	MaxProjectItems  *int     `json:"max_project_items,omitempty" jsonschema:"description=Maximum number of project memory items to return (default: 5, max: 10)"`
-	MaxEpisodicItems *int     `json:"max_episodic_items,omitempty" jsonschema:"description=Maximum number of episodic memory items to return (default: 3, max: 10)"`
-	MinSimilarity    *float32 `json:"min_similarity,omitempty" jsonschema:"description=Minimum similarity score threshold (0.0-1.0, default: 0.75)"`
+	Query            string   `json:"query"`
+	UserID           *string  `json:"user_id,omitempty"`
+	ProjectID        *string  `json:"project_id,omitempty"`
+	ConversationID   *string  `json:"conversation_id,omitempty"`
+	Scopes           []string `json:"scopes,omitempty"`
+	MaxUserItems     *int     `json:"max_user_items,omitempty"`
+	MaxProjectItems  *int     `json:"max_project_items,omitempty"`
+	MaxEpisodicItems *int     `json:"max_episodic_items,omitempty"`
+	MinSimilarity    *float32 `json:"min_similarity,omitempty"`
 }
 
 // memoryLoadRequest matches the memory-tools API structure
@@ -95,7 +93,7 @@ func NewMemoryMCP(memoryToolsURL string, enabled bool) *MemoryMCP {
 }
 
 // RegisterTools registers memory tools with the MCP server
-func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
+func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 	if !m.enabled {
 		log.Warn().Msg("memory_retrieve MCP tool disabled via config")
 		return
@@ -106,160 +104,127 @@ func (m *MemoryMCP) RegisterTools(server *mcpserver.MCPServer) {
 	}
 
 	// Register memory_retrieve tool
-	server.AddTool(
-		mcpgo.NewTool("memory_retrieve",
-			mcp.ReflectToMCPOptions(
-				"READ-ONLY: Search and retrieve relevant user preferences, project facts, or conversation history from memory storage. This tool ONLY reads existing memories - it does NOT create, update, or sync memories. Use this to recall what you already know about the user or project context.",
-				MemoryRetrieveArgs{},
-			)...,
-		),
-		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			startTime := time.Now()
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "memory_retrieve",
+		Description: "READ-ONLY: Search and retrieve relevant user preferences, project facts, or conversation history from memory storage. This tool ONLY reads existing memories - it does NOT create, update, or sync memories. Use this to recall what you already know about the user or project context.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input MemoryRetrieveArgs) (*mcp.CallToolResult, memoryToolResult, error) {
+		startTime := time.Now()
 
-			// Extract required parameters
-			query, err := req.RequireString("query")
-			if err != nil {
-				log.Error().Err(err).Str("tool", "memory_retrieve").Msg("missing required parameter 'query'")
-				return nil, fmt.Errorf("query is required: %w", err)
-			}
+		query := input.Query
+		if strings.TrimSpace(query) == "" {
+			log.Error().Str("tool", "memory_retrieve").Msg("missing required parameter 'query'")
+			return nil, memoryToolResult{}, fmt.Errorf("query is required")
+		}
 
-			// Get user_id - prioritize JWT context over parameter
-			var userID string
+		var userID string
+		if ctxUserID, ok := ctx.Value("user_id").(string); ok && ctxUserID != "" {
+			userID = ctxUserID
+			log.Info().Str("user_id", userID).Str("query", query).Msg("[Memory MCP] Using user_id from JWT authentication")
+		} else if input.UserID != nil && *input.UserID != "" {
+			userID = *input.UserID
+			log.Info().Str("user_id", userID).Str("query", query).Msg("[Memory MCP] Using user_id from parameter (no JWT)")
+		} else {
+			log.Error().Str("query", query).Msg("[Memory MCP] user_id is required but not provided")
+			return nil, memoryToolResult{}, fmt.Errorf("user_id is required: provide it as a parameter or authenticate with JWT")
+		}
 
-			// First, try to get user_id from JWT context (most secure)
-			if ctxUserID, ok := ctx.Value("user_id").(string); ok && ctxUserID != "" {
-				userID = ctxUserID
-				log.Info().Str("user_id", userID).Str("query", query).Msg("[Memory MCP] Using user_id from JWT authentication")
-			} else {
-				// Fallback to parameter if no JWT context
-				userID = req.GetString("user_id", "")
-				if userID == "" {
-					log.Error().Str("query", query).Msg("[Memory MCP] user_id is required but not provided")
-					return nil, fmt.Errorf("user_id is required: provide it as a parameter or authenticate with JWT")
-				}
-				log.Info().Str("user_id", userID).Str("query", query).Msg("[Memory MCP] Using user_id from parameter (no JWT)")
-			}
+		memReq := memoryLoadRequest{
+			UserID: userID,
+			Query:  query,
+			Options: memoryLoadOptions{
+				AugmentWithMemory: true,
+				MaxUserItems:      3,
+				MaxProjectItems:   5,
+				MaxEpisodicItems:  3,
+				MinSimilarity:     0.75,
+			},
+		}
 
-			// Build memory load request with defaults
-			memReq := memoryLoadRequest{
-				UserID: userID,
-				Query:  query,
-				Options: memoryLoadOptions{
-					AugmentWithMemory: true,
-					MaxUserItems:      3,
-					MaxProjectItems:   5,
-					MaxEpisodicItems:  3,
-					MinSimilarity:     0.75,
-				},
-			}
+		if input.ProjectID != nil && *input.ProjectID != "" {
+			memReq.ProjectID = *input.ProjectID
+			log.Info().Str("user_id", userID).Str("project_id", memReq.ProjectID).Msg("[Memory MCP] Including project_id filter")
+		}
+		if input.ConversationID != nil && *input.ConversationID != "" {
+			memReq.ConversationID = *input.ConversationID
+			log.Info().Str("user_id", userID).Str("conversation_id", memReq.ConversationID).Msg("[Memory MCP] Including conversation_id filter")
+		}
 
-			// Apply optional parameters
-			if projectID := req.GetString("project_id", ""); projectID != "" {
-				memReq.ProjectID = projectID
-				log.Info().Str("user_id", userID).Str("project_id", projectID).Msg("[Memory MCP] Including project_id filter")
+		if input.MaxUserItems != nil && *input.MaxUserItems > 0 {
+			maxUser := *input.MaxUserItems
+			if maxUser > 10 {
+				maxUser = 10
 			}
-			if conversationID := req.GetString("conversation_id", ""); conversationID != "" {
-				memReq.ConversationID = conversationID
-				log.Info().Str("user_id", userID).Str("conversation_id", conversationID).Msg("[Memory MCP] Including conversation_id filter")
+			memReq.Options.MaxUserItems = maxUser
+		}
+		if input.MaxProjectItems != nil && *input.MaxProjectItems > 0 {
+			maxProject := *input.MaxProjectItems
+			if maxProject > 10 {
+				maxProject = 10
 			}
+			memReq.Options.MaxProjectItems = maxProject
+		}
+		if input.MaxEpisodicItems != nil && *input.MaxEpisodicItems > 0 {
+			maxEpisodic := *input.MaxEpisodicItems
+			if maxEpisodic > 10 {
+				maxEpisodic = 10
+			}
+			memReq.Options.MaxEpisodicItems = maxEpisodic
+		}
 
-			// Apply limits with guardrails (max 10 per type)
-			if maxUser := req.GetInt("max_user_items", 0); maxUser > 0 {
-				if maxUser > 10 {
-					maxUser = 10
-				}
-				memReq.Options.MaxUserItems = maxUser
-			}
-			if maxProject := req.GetInt("max_project_items", 0); maxProject > 0 {
-				if maxProject > 10 {
-					maxProject = 10
-				}
-				memReq.Options.MaxProjectItems = maxProject
-			}
-			if maxEpisodic := req.GetInt("max_episodic_items", 0); maxEpisodic > 0 {
-				if maxEpisodic > 10 {
-					maxEpisodic = 10
-				}
-				memReq.Options.MaxEpisodicItems = maxEpisodic
-			}
+		if input.MinSimilarity != nil && *input.MinSimilarity >= 0 && *input.MinSimilarity <= 1 {
+			memReq.Options.MinSimilarity = *input.MinSimilarity
+		}
 
-			// Apply similarity threshold
-			if args := req.GetArguments(); args != nil {
-				if minSimRaw, ok := args["min_similarity"]; ok {
-					switch v := minSimRaw.(type) {
-					case float64:
-						if v >= 0.0 && v <= 1.0 {
-							memReq.Options.MinSimilarity = float32(v)
-						}
-					case float32:
-						if v >= 0.0 && v <= 1.0 {
-							memReq.Options.MinSimilarity = v
-						}
-					}
-				}
-			}
+		log.Info().
+			Str("user_id", userID).
+			Str("query", query).
+			Str("project_id", memReq.ProjectID).
+			Str("conversation_id", memReq.ConversationID).
+			Int("max_user_items", memReq.Options.MaxUserItems).
+			Int("max_project_items", memReq.Options.MaxProjectItems).
+			Int("max_episodic_items", memReq.Options.MaxEpisodicItems).
+			Float32("min_similarity", memReq.Options.MinSimilarity).
+			Str("memory_url", m.memoryToolsURL).
+			Msg("[Memory MCP] Calling memory-tools service")
 
-			// Log the full request being sent to memory service
-			log.Info().
+		response, err := m.callMemoryLoad(ctx, memReq)
+		if err != nil {
+			log.Error().
+				Err(err).
 				Str("user_id", userID).
 				Str("query", query).
-				Str("project_id", memReq.ProjectID).
-				Str("conversation_id", memReq.ConversationID).
-				Int("max_user_items", memReq.Options.MaxUserItems).
-				Int("max_project_items", memReq.Options.MaxProjectItems).
-				Int("max_episodic_items", memReq.Options.MaxEpisodicItems).
-				Float32("min_similarity", memReq.Options.MinSimilarity).
 				Str("memory_url", m.memoryToolsURL).
-				Msg("[Memory MCP] Calling memory-tools service")
+				Msg("[Memory MCP] Failed to retrieve memories")
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(`{"query":"%s","total_items":0,"user_memories":[],"project_memories":[],"episodic_memories":[],"error":"memory service unavailable"}`, query)}},
+			}, memoryToolResult{}, nil
+		}
 
-			// Call memory-tools API
-			response, err := m.callMemoryLoad(ctx, memReq)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Str("user_id", userID).
-					Str("query", query).
-					Str("memory_url", m.memoryToolsURL).
-					Msg("[Memory MCP] Failed to retrieve memories")
-				// Return empty result instead of error to not break agent flow
-				return mcpgo.NewToolResultText(fmt.Sprintf(`{"query":"%s","total_items":0,"user_memories":[],"project_memories":[],"episodic_memories":[],"error":"memory service unavailable"}`, query)), nil
-			}
+		elapsed := time.Since(startTime).Milliseconds()
 
-			// Calculate elapsed time
-			elapsed := time.Since(startTime).Milliseconds()
+		result := memoryToolResult{
+			Query:            query,
+			UserMemories:     response.CoreMemory,
+			ProjectMemories:  response.SemanticMemory,
+			EpisodicMemories: response.EpisodicMemory,
+			TotalItems:       len(response.CoreMemory) + len(response.SemanticMemory) + len(response.EpisodicMemory),
+			QueryTimeMS:      elapsed,
+			EstimatedTokens:  m.estimateTokens(response),
+		}
 
-			// Format result
-			result := memoryToolResult{
-				Query:            query,
-				UserMemories:     response.CoreMemory,
-				ProjectMemories:  response.SemanticMemory,
-				EpisodicMemories: response.EpisodicMemory,
-				TotalItems:       len(response.CoreMemory) + len(response.SemanticMemory) + len(response.EpisodicMemory),
-				QueryTimeMS:      elapsed,
-				EstimatedTokens:  m.estimateTokens(response),
-			}
+		log.Info().
+			Str("user_id", userID).
+			Str("query", query).
+			Int("user_memories", len(response.CoreMemory)).
+			Int("project_memories", len(response.SemanticMemory)).
+			Int("episodic_memories", len(response.EpisodicMemory)).
+			Int("total_items", result.TotalItems).
+			Int64("query_time_ms", elapsed).
+			Int("estimated_tokens", result.EstimatedTokens).
+			Msg("[Memory MCP] Successfully retrieved memories")
 
-			// Log successful retrieval with result summary
-			log.Info().
-				Str("user_id", userID).
-				Str("query", query).
-				Int("user_memories", len(response.CoreMemory)).
-				Int("project_memories", len(response.SemanticMemory)).
-				Int("episodic_memories", len(response.EpisodicMemory)).
-				Int("total_items", result.TotalItems).
-				Int64("query_time_ms", elapsed).
-				Int("estimated_tokens", result.EstimatedTokens).
-				Msg("[Memory MCP] Successfully retrieved memories")
-
-			// Marshal to JSON
-			resultJSON, err := json.Marshal(result)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal result: %w", err)
-			}
-
-			return mcpgo.NewToolResultText(string(resultJSON)), nil
-		},
-	)
+		return nil, result, nil
+	})
 
 	log.Info().Str("url", m.memoryToolsURL).Msg("Registered memory_retrieve MCP tool")
 }
