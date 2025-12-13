@@ -47,6 +47,15 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 		Name:        "python_exec",
 		Description: "Execute trusted code inside SandboxFusion and return stdout/stderr/artifacts.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SandboxFusionArgs) (*mcp.CallToolResult, map[string]any, error) {
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "python_exec").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
+
 		if s.requireApproval {
 			if input.Approved == nil || !*input.Approved {
 				log.Warn().Str("tool", "python_exec").Msg("execution requires approval but not granted")

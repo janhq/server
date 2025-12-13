@@ -109,6 +109,14 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 		Description: "READ-ONLY: Search and retrieve relevant user preferences, project facts, or conversation history from memory storage. This tool ONLY reads existing memories - it does NOT create, update, or sync memories. Use this to recall what you already know about the user or project context.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input MemoryRetrieveArgs) (*mcp.CallToolResult, memoryToolResult, error) {
 		startTime := time.Now()
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "memory_retrieve").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
 
 		query := input.Query
 		if strings.TrimSpace(query) == "" {

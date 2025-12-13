@@ -121,6 +121,16 @@ func (p *ProviderMCP) RegisterTools(server *mcp.Server) error {
 				Description: toolDesc,
 				InputSchema: tool.InputSchema, // best-effort pass-through from provider
 			}, func(ctx context.Context, req *mcp.CallToolRequest, input map[string]any) (*mcp.CallToolResult, any, error) {
+				callCtx := extractAllContext(req)
+				log.Info().
+					Str("tool", currentToolName).
+					Str("tool_call_id", callCtx["tool_call_id"]).
+					Str("request_id", callCtx["request_id"]).
+					Str("conversation_id", callCtx["conversation_id"]).
+					Str("user_id", callCtx["user_id"]).
+					Str("provider", providerName).
+					Msg("MCP tool call received")
+
 				arguments := input
 				if arguments == nil {
 					arguments = make(map[string]any)

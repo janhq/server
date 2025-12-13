@@ -141,6 +141,7 @@ func (s *ServiceImpl) createAsync(ctx context.Context, params CreateParams) (*Re
 func (s *ServiceImpl) createSync(ctx context.Context, params CreateParams) (*Response, error) {
 	var conv *conversation.Conversation
 	var err error
+	conversationID := ""
 
 	// If PreviousResponseID is provided, load that response's conversation for context
 	if params.PreviousResponseID != nil && strings.TrimSpace(*params.PreviousResponseID) != "" {
@@ -154,6 +155,10 @@ func (s *ServiceImpl) createSync(ctx context.Context, params CreateParams) (*Res
 				s.log.Warn().Err(err).Str("conversation_id", *prevResp.ConversationPublicID).Msg("failed to load conversation, creating new one")
 			}
 		}
+	}
+
+	if conv != nil {
+		conversationID = conv.PublicID
 	}
 
 	// If we still don't have a conversation, check for explicit conversation_id or create new
@@ -230,6 +235,9 @@ func (s *ServiceImpl) createSync(ctx context.Context, params CreateParams) (*Res
 			Ctx:             ctx,
 			Model:           params.Model,
 			Messages:        messages,
+			RequestID:       params.RequestID,
+			ConversationID:  conversationID,
+			UserID:          params.UserID,
 			Temperature:     params.Temperature,
 			MaxTokens:       params.MaxTokens,
 			ToolChoice:      toolChoice,
@@ -511,6 +519,7 @@ func (s *ServiceImpl) ExecuteBackground(ctx context.Context, publicID string) er
 	if err != nil {
 		return fmt.Errorf("failed to load response: %w", err)
 	}
+	requestID := publicID // reuse response identifier for traceability
 
 	// Verify it's in a processable state
 	if resp.Status != StatusInProgress {
@@ -530,6 +539,7 @@ func (s *ServiceImpl) ExecuteBackground(ctx context.Context, publicID string) er
 	if err != nil {
 		return fmt.Errorf("failed to load conversation: %w", err)
 	}
+	conversationID := conv.PublicID
 
 	// Load conversation items (history)
 	existingItems, err := s.conversationItems.ListByConversationID(ctx, conv.ID)
@@ -562,6 +572,9 @@ func (s *ServiceImpl) ExecuteBackground(ctx context.Context, publicID string) er
 		Ctx:             ctx,
 		Model:           resp.Model,
 		Messages:        messages,
+		RequestID:       requestID,
+		ConversationID:  conversationID,
+		UserID:          resp.UserID,
 		Temperature:     nil, // Use model defaults for background tasks
 		MaxTokens:       nil,
 		ToolDefinitions: toolDefs,

@@ -59,7 +59,7 @@ type Execution struct {
 // MCPClient abstracts calls to mcp-tools /v1/mcp endpoint.
 type MCPClient interface {
 	ListTools(ctx context.Context) ([]MCPTool, error)
-	CallTool(ctx context.Context, name string, args map[string]interface{}) (*Result, error)
+	CallTool(ctx context.Context, req CallRequest) (*Result, error)
 }
 
 // StreamObserver receives live updates during orchestration.
@@ -67,6 +67,16 @@ type StreamObserver interface {
 	OnDelta(delta llm.ChatCompletionDelta)
 	OnToolCall(call Call)
 	OnToolResult(callID string, result *Result)
+}
+
+// CallRequest carries tool execution parameters and tracking identifiers.
+type CallRequest struct {
+	Name           string
+	Arguments      map[string]interface{}
+	ToolCallID     string
+	RequestID      string
+	ConversationID string
+	UserID         string
 }
 
 // MCPTool describes the tool metadata returned by mcp-tools.

@@ -49,6 +49,8 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 		return
 	}
 
+	requestID := strings.TrimSpace(c.GetHeader("X-Request-Id"))
+
 	userID := req.User
 	if userID == "" {
 		userID = extractSubject(c)
@@ -81,6 +83,7 @@ func (h *ResponseHandler) Create(c *gin.Context) {
 		UserID:             userID,
 		Model:              req.Model,
 		Input:              req.Input,
+		RequestID:          requestID,
 		SystemPrompt:       req.SystemPrompt,
 		Temperature:        req.Temperature,
 		MaxTokens:          req.MaxTokens,

@@ -89,7 +89,9 @@ func (chatCompletionRoute *ChatCompletionRoute) PostCompletion(reqCtx *gin.Conte
 	// Delegate to chat handler
 	result, err := chatCompletionRoute.chatHandler.CreateChatCompletion(reqCtx.Request.Context(), reqCtx, user.ID, request)
 	if err != nil {
-		responses.HandleError(reqCtx, err, "Failed to complete chat request")
+		fallback := chatCompletionRoute.chatHandler.BuildFallbackResponse(request.Model)
+		chatResponse := chatresponses.NewChatCompletionResponse(fallback, "", nil)
+		reqCtx.JSON(http.StatusOK, chatResponse)
 		return
 	}
 

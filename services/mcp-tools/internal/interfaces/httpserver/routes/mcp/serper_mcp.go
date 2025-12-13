@@ -100,6 +100,15 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "google_search",
 		Description: "Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperSearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "google_search").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
+
 		searchReq := domainsearch.SearchRequest{
 			Q: input.Q,
 		}
@@ -152,6 +161,15 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "scrape",
 		Description: "Scrape a webpage and retrieve the text with optional markdown formatting.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "scrape").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
+
 		scrapeReq := domainsearch.FetchWebpageRequest{
 			Url: input.Url,
 		}
@@ -183,6 +201,15 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "file_search_index",
 		Description: "Index arbitrary text into the lightweight vector store used for MCP automations.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchIndexArgs) (*mcp.CallToolResult, map[string]any, error) {
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "file_search_index").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
+
 		if s.vectorStore != nil && s.vectorStore.IsEnabled() {
 			resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
 				DocumentID: input.DocumentID,
@@ -217,6 +244,15 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "file_search_query",
 		Description: "Run a semantic query against documents indexed via file_search_index.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchQueryArgs) (*mcp.CallToolResult, map[string]any, error) {
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "file_search_query").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
+
 		topK := 5
 		if input.TopK != nil && *input.TopK > 0 {
 			topK = *input.TopK
