@@ -2,11 +2,13 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
 
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -26,12 +28,22 @@ type SerperSearchArgs struct {
 	Autocorrect     *bool    `json:"autocorrect,omitempty"`
 	LocationHint    *string  `json:"location_hint,omitempty"`
 	OfflineMode     *bool    `json:"offline_mode,omitempty"`
+	// Context passthrough (ignored by handler but allowed for validation)
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 // SerperScrapeArgs defines the arguments for the scrape tool
 type SerperScrapeArgs struct {
 	Url             string `json:"url"`
 	IncludeMarkdown *bool  `json:"includeMarkdown,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type FileSearchIndexArgs struct {
@@ -39,12 +51,22 @@ type FileSearchIndexArgs struct {
 	Text       string         `json:"text"`
 	Metadata   map[string]any `json:"metadata,omitempty"`
 	Tags       []string       `json:"tags,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type FileSearchQueryArgs struct {
 	Query       string   `json:"query"`
 	TopK        *int     `json:"top_k,omitempty"`
 	DocumentIDs []string `json:"document_ids,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type searchToolResult struct {
@@ -80,6 +102,7 @@ type scrapeToolPayload struct {
 type SerperMCP struct {
 	searchService *domainsearch.SearchService
 	vectorStore   *vectorstore.Client
+	llmClient     *llmapi.Client // LLM-API client for tool tracking
 	fileIndexMu   sync.Mutex
 	fileIndex     map[string]FileSearchIndexArgs
 }
@@ -93,6 +116,11 @@ func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vector
 	}
 }
 
+// SetLLMClient sets the LLM-API client for tool call tracking
+func (s *SerperMCP) SetLLMClient(client *llmapi.Client) {
+	s.llmClient = client
+}
+
 // RegisterTools registers Serper tools with the MCP server
 func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	// Register google_search tool
@@ -100,13 +128,19 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "google_search",
 		Description: "Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperSearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
+		startTime := time.Now()
 		callCtx := extractAllContext(req)
+		
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
+		
 		log.Info().
 			Str("tool", "google_search").
 			Str("tool_call_id", callCtx["tool_call_id"]).
 			Str("request_id", callCtx["request_id"]).
 			Str("conversation_id", callCtx["conversation_id"]).
 			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
 			Msg("MCP tool call received")
 
 		searchReq := domainsearch.SearchRequest{
@@ -145,14 +179,56 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			searchReq.OfflineMode = input.OfflineMode
 		}
 
+		var payload searchToolPayload
+		var toolErr error
+		
 		searchResp, err := s.searchService.Search(ctx, searchReq)
 		if err != nil {
 			log.Warn().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed; using fallback stub")
-			payload := s.buildFallbackSearchPayload(searchReq.Q, searchReq)
-			return nil, payload, nil
+			payload = s.buildFallbackSearchPayload(searchReq.Q, searchReq)
+			toolErr = err // Keep track of error for tracking
+		} else {
+			payload = buildSearchPayload(searchReq.Q, searchReq, searchResp)
 		}
 
-		payload := buildSearchPayload(searchReq.Q, searchReq, searchResp)
+		// If tracking is enabled, save result to LLM-API (single PATCH call)
+		if trackingEnabled && s.llmClient != nil {
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				// Serialize the result
+				outputBytes, _ := json.Marshal(payload)
+				outputStr := string(outputBytes)
+
+				var errStr *string
+				if toolErr != nil {
+					e := toolErr.Error()
+					errStr = &e
+				}
+
+				// Update the pending item to completed
+				result := s.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"google_search",
+					outputStr,
+					errStr,
+				)
+
+				if !result.Success && result.Error != nil {
+					log.Error().
+						Err(result.Error).
+						Str("call_id", tracking.ToolCallID).
+						Str("conv_id", tracking.ConversationID).
+						Int64("duration_ms", time.Since(startTime).Milliseconds()).
+						Msg("Failed to update tool result in LLM-API")
+				}
+			}()
+		}
+
 		return nil, payload, nil
 	})
 
@@ -161,13 +237,19 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "scrape",
 		Description: "Scrape a webpage and retrieve the text with optional markdown formatting.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
+		startTime := time.Now()
 		callCtx := extractAllContext(req)
+		
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
+		
 		log.Info().
 			Str("tool", "scrape").
 			Str("tool_call_id", callCtx["tool_call_id"]).
 			Str("request_id", callCtx["request_id"]).
 			Str("conversation_id", callCtx["conversation_id"]).
 			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
 			Msg("MCP tool call received")
 
 		scrapeReq := domainsearch.FetchWebpageRequest{
@@ -178,10 +260,13 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			scrapeReq.IncludeMarkdown = input.IncludeMarkdown
 		}
 
+		var payload scrapeToolPayload
+		var toolErr error
+
 		scrapeResp, err := s.searchService.FetchWebpage(ctx, scrapeReq)
 		if err != nil {
 			log.Warn().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("scrape service failed; using fallback stub")
-			payload := scrapeToolPayload{
+			payload = scrapeToolPayload{
 				SourceURL:   scrapeReq.Url,
 				Text:        "Example Domain\nThis domain is for use in illustrative examples in documents.",
 				TextPreview: "Example Domain",
@@ -189,10 +274,47 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 				CacheStatus: "offline_stub",
 				FetchedAt:   time.Now().UTC().Format(time.RFC3339),
 			}
-			return nil, payload, nil
+			toolErr = err
+		} else {
+			payload = buildScrapePayload(scrapeReq.Url, scrapeResp)
 		}
 
-		payload := buildScrapePayload(scrapeReq.Url, scrapeResp)
+		// If tracking is enabled, save result to LLM-API
+		if trackingEnabled && s.llmClient != nil {
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				outputBytes, _ := json.Marshal(payload)
+				outputStr := string(outputBytes)
+
+				var errStr *string
+				if toolErr != nil {
+					e := toolErr.Error()
+					errStr = &e
+				}
+
+				result := s.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"scrape",
+					outputStr,
+					errStr,
+				)
+
+				if !result.Success && result.Error != nil {
+					log.Error().
+						Err(result.Error).
+						Str("call_id", tracking.ToolCallID).
+						Str("conv_id", tracking.ConversationID).
+						Int64("duration_ms", time.Since(startTime).Milliseconds()).
+						Msg("Failed to update tool result in LLM-API")
+				}
+			}()
+		}
+
 		return nil, payload, nil
 	})
 

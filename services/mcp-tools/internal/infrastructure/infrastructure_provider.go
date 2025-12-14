@@ -9,6 +9,7 @@ import (
 	"jan-server/services/mcp-tools/internal/domain/search"
 	"jan-server/services/mcp-tools/internal/infrastructure/auth"
 	"jan-server/services/mcp-tools/internal/infrastructure/config"
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
 	sandboxfusionclient "jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
 	searchclient "jan-server/services/mcp-tools/internal/infrastructure/search"
@@ -34,6 +35,9 @@ var InfrastructureProvider = wire.NewSet(
 
 	// Auth validator
 	ProvideAuthValidator,
+
+	// LLM-API client for tool tracking
+	ProvideLLMAPIClient,
 )
 
 // ProvideConfig loads and provides the application configuration
@@ -84,4 +88,19 @@ func ProvideAuthValidator(ctx context.Context, cfg *config.Config) (*auth.Valida
 	// Get global logger from zerolog
 	logger := log.Logger
 	return auth.NewValidator(ctx, cfg, logger)
+}
+
+// ProvideLLMAPIClient provides the LLM-API client for tool call tracking
+func ProvideLLMAPIClient(cfg *config.Config) *llmapi.Client {
+	if !cfg.MCPTrackingEnabled || cfg.LLMAPIBaseURL == "" {
+		log.Info().
+			Bool("tracking_enabled", cfg.MCPTrackingEnabled).
+			Str("llm_api_url", cfg.LLMAPIBaseURL).
+			Msg("LLM-API client disabled or not configured")
+		return nil
+	}
+	log.Info().
+		Str("llm_api_url", cfg.LLMAPIBaseURL).
+		Msg("LLM-API client initialized for tool tracking")
+	return llmapi.NewClient(cfg.LLMAPIBaseURL)
 }

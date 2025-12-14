@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/responses"
 	"jan-server/services/mcp-tools/utils/platformerrors"
 )
@@ -41,6 +42,7 @@ type MCPRoute struct {
 	providerMCP *ProviderMCP
 	sandboxMCP  *SandboxFusionMCP
 	memoryMCP   *MemoryMCP
+	llmClient   *llmapi.Client // LLM-API client for tool call tracking
 	mcpServer   *mcp.Server
 	httpHandler http.Handler
 }
@@ -50,12 +52,25 @@ func NewMCPRoute(
 	providerMCP *ProviderMCP,
 	sandboxMCP *SandboxFusionMCP,
 	memoryMCP *MemoryMCP,
+	llmClient *llmapi.Client,
 ) *MCPRoute {
 	impl := &mcp.Implementation{
 		Name:    "menlo-platform",
 		Version: "1.0.0",
 	}
 	server := mcp.NewServer(impl, nil)
+
+	// Pass LLM client to tool handlers for tracking
+	serperMCP.SetLLMClient(llmClient)
+
+	if sandboxMCP != nil {
+		sandboxMCP.SetLLMClient(llmClient)
+	}
+
+	// Register memory tools
+	if memoryMCP != nil {
+		memoryMCP.SetLLMClient(llmClient)
+	}
 
 	serperMCP.RegisterTools(server)
 
@@ -81,6 +96,7 @@ func NewMCPRoute(
 		providerMCP: providerMCP,
 		sandboxMCP:  sandboxMCP,
 		memoryMCP:   memoryMCP,
+		llmClient:   llmClient,
 		mcpServer:   server,
 		httpHandler: mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 			return server
@@ -92,6 +108,7 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 	router.POST("/mcp",
 		MCPMethodGuard(allowedMCPMethods),
 		InjectUserContext(),
+		ExtractToolTracking(), // Extract tracking headers for tool call tracking
 		route.serveMCP,
 	)
 }

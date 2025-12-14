@@ -45,6 +45,10 @@ type Config struct {
 	SandboxFusionURL string `env:"SANDBOXFUSION_URL" envDefault:"http://sandbox-fusion:8080"`
 	MemoryToolsURL   string `env:"MEMORY_TOOLS_URL" envDefault:"http://memory-tools:8090"`
 
+	// LLM-API configuration for tool call tracking
+	LLMAPIBaseURL        string `env:"LLM_API_BASE_URL" envDefault:"http://llm-api:8080"`
+	MCPTrackingEnabled   bool   `env:"MCP_TRACKING_ENABLED" envDefault:"true"`
+
 	// Sandbox Configuration
 	SandboxFusionRequireApproval bool `env:"MCP_SANDBOX_REQUIRE_APPROVAL" envDefault:"false"`
 	EnablePythonExec             bool `env:"MCP_ENABLE_PYTHON_EXEC" envDefault:"true"`

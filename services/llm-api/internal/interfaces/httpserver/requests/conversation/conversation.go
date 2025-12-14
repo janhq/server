@@ -44,3 +44,11 @@ type ListItemsQueryParams struct {
 type GetItemQueryParams struct {
 	Include []string `form:"include"`
 }
+
+// UpdateItemByCallIDRequest represents the request to update an item's status and output by call_id
+// Used by MCP tools to report tool execution results
+type UpdateItemByCallIDRequest struct {
+	Status *string `json:"status" binding:"required"` // "completed", "failed", "cancelled"
+	Output *string `json:"output,omitempty"`          // Result of the tool execution
+	Error  *string `json:"error,omitempty"`           // Error message if status is "failed"
+}

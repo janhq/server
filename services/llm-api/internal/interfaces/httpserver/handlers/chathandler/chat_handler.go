@@ -152,7 +152,7 @@ func (h *ChatHandler) CreateChatCompletion(
 	// Load memory context (best-effort) when a conversation is present
 	loadedMemory := h.collectPromptMemory(conv, reqCtx)
 
-	// Load user settings once for prompt orchestration and memory (best-effort)
+	// Load user settings once for prompt orchestration and m	emory (best-effort)
 	var userSettings *usersettings.UserSettings
 	if h.userSettingsService != nil {
 		userSettings, err = h.userSettingsService.GetOrCreateSettings(ctx, userID)
@@ -988,6 +988,15 @@ func (h *ChatHandler) addCompletionToConversation(
 		items = append(items, *item)
 	}
 
+	// Create mcp_call (completed) and mcp_call_output (pending) items for each tool_call
+	// mcp_call_output items will be updated by mcp-tools service via PATCH when execution completes
+	if len(response.Choices) > 0 && len(response.Choices[0].Message.ToolCalls) > 0 {
+		for _, toolCall := range response.Choices[0].Message.ToolCalls {
+			mcpItems := h.buildMCPCallItems(toolCall)
+			items = append(items, mcpItems...)
+		}
+	}
+
 	if len(items) == 0 {
 		return nil
 	}
@@ -1055,6 +1064,67 @@ func (h *ChatHandler) buildAssistantConversationItem(
 	return &item
 }
 
+// buildMCPCallItems creates both mcp_call (completed) and mcp_call_output (pending) items from a tool call
+// This maintains proper ordering - both items are created together, mcp_call_output will be updated when mcp-tools reports back
+func (h *ChatHandler) buildMCPCallItems(toolCall openai.ToolCall) []conversation.Item {
+	if toolCall.ID == "" {
+		return nil
+	}
+
+	callID := toolCall.ID
+	args := toolCall.Function.Arguments
+	toolName := toolCall.Function.Name
+	now := time.Now().UTC()
+
+	// mcp_call item - role is tool (it's a tool call), status completed (the call request itself is complete)
+	callStatus := conversation.ItemStatusCompleted
+	toolRole := conversation.ItemRoleTool
+	mcpCallItem := conversation.Item{
+		Object:      "conversation.item",
+		Type:        conversation.ItemTypeMcpCall,
+		Role:        &toolRole,
+		Status:      &callStatus,
+		CallID:      &callID,
+		Arguments:   &args,
+		CompletedAt: &now,
+		Content: []conversation.Content{
+			{
+				Type: "mcp_call",
+				ToolCalls: []conversation.ToolCall{
+					{
+						ID:   toolCall.ID,
+						Type: string(toolCall.Type),
+						Function: conversation.FunctionCall{
+							Name:      toolName,
+							Arguments: args,
+						},
+					},
+				},
+			},
+		},
+		CreatedAt: now,
+	}
+
+	// mcp_call_output item - role is tool, status in_progress (waiting for tool execution result)
+	outputStatus := conversation.ItemStatusInProgress
+	mcpCallOutputItem := conversation.Item{
+		Object:    "conversation.item",
+		Type:      conversation.ItemTypeMcpCallOutput,
+		Role:      &toolRole,
+		Status:    &outputStatus,
+		CallID:    &callID, // Same call_id to link request and response
+		Content: []conversation.Content{
+			{
+				Type:       "mcp_call_output",
+				ToolCallID: &callID,
+			},
+		},
+		CreatedAt: now,
+	}
+
+	return []conversation.Item{mcpCallItem, mcpCallOutputItem}
+}
+
 func (h *ChatHandler) filterReasoningContent(contents []conversation.Content, storeReasoning bool) []conversation.Content {
 	if storeReasoning || len(contents) == 0 {
 		return contents
@@ -1088,12 +1158,6 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 		switch role {
 		case conversation.ItemRoleUser:
 			contents = append(contents, conversation.NewInputTextContent(msg.Content))
-		case conversation.ItemRoleTool:
-			toolContent := conversation.Content{
-				Type:       "tool_result",
-				TextString: &msg.Content,
-			}
-			contents = append(contents, toolContent)
 		default:
 			contents = append(contents, conversation.NewTextContent(msg.Content))
 		}
@@ -1108,12 +1172,6 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 					switch role {
 					case conversation.ItemRoleUser:
 						contents = append(contents, conversation.NewInputTextContent(part.Text))
-					case conversation.ItemRoleTool:
-						toolContent := conversation.Content{
-							Type:       "tool_result",
-							TextString: &part.Text,
-						}
-						contents = append(contents, toolContent)
 					default:
 						contents = append(contents, conversation.NewTextContent(part.Text))
 					}
@@ -1168,26 +1226,6 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 			Type:      "tool_calls",
 			ToolCalls: toolCalls,
 		})
-	}
-
-	if msg.ToolCallID != "" {
-		toolCallID := msg.ToolCallID
-		attached := false
-		for i := range contents {
-			if contents[i].ToolCallID == nil {
-				content := contents[i]
-				content.ToolCallID = &toolCallID
-				contents[i] = content
-				attached = true
-				break
-			}
-		}
-		if !attached {
-			contents = append(contents, conversation.Content{
-				Type:       "tool_reference",
-				ToolCallID: &toolCallID,
-			})
-		}
 	}
 
 	if len(contents) > 0 {

@@ -2,8 +2,11 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -15,10 +18,16 @@ type SandboxFusionArgs struct {
 	Language  *string `json:"language,omitempty"`
 	SessionID *string `json:"session_id,omitempty"`
 	Approved  *bool   `json:"approved,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type SandboxFusionMCP struct {
 	client          *sandboxfusion.Client
+	llmClient       *llmapi.Client // LLM-API client for tool tracking
 	requireApproval bool
 	enabled         bool
 }
@@ -34,6 +43,11 @@ func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool, ena
 	}
 }
 
+// SetLLMClient sets the LLM-API client for tool call tracking
+func (s *SandboxFusionMCP) SetLLMClient(client *llmapi.Client) {
+	s.llmClient = client
+}
+
 func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 	if s == nil {
 		return
@@ -47,13 +61,19 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 		Name:        "python_exec",
 		Description: "Execute trusted code inside SandboxFusion and return stdout/stderr/artifacts.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SandboxFusionArgs) (*mcp.CallToolResult, map[string]any, error) {
+		startTime := time.Now()
 		callCtx := extractAllContext(req)
+		
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
+		
 		log.Info().
 			Str("tool", "python_exec").
 			Str("tool_call_id", callCtx["tool_call_id"]).
 			Str("request_id", callCtx["request_id"]).
 			Str("conversation_id", callCtx["conversation_id"]).
 			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
 			Msg("MCP tool call received")
 
 		if s.requireApproval {
@@ -74,10 +94,13 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 			runReq.SessionID = *input.SessionID
 		}
 
+		var payload map[string]any
+		var toolErr error
+
 		if s.client != nil {
 			resp, err := s.client.RunCode(ctx, runReq)
 			if err == nil {
-				payload := map[string]any{
+				payload = map[string]any{
 					"stdout":      resp.Stdout,
 					"stderr":      resp.Stderr,
 					"duration_ms": resp.Duration,
@@ -85,18 +108,63 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 					"artifacts":   resp.Artifacts,
 					"error":       resp.Error,
 				}
-				return nil, payload, nil
+			} else {
+				log.Warn().Err(err).Str("tool", "python_exec").Str("language", runReq.Language).Msg("sandboxfusion execution failed; using fallback stub")
+				toolErr = err
+				payload = map[string]any{
+					"stdout":      "hello from sandbox (stub)",
+					"stderr":      "",
+					"duration_ms": 0,
+					"session_id":  runReq.SessionID,
+					"artifacts":   []string{},
+					"error":       "",
+				}
 			}
-			log.Warn().Err(err).Str("tool", "python_exec").Str("language", runReq.Language).Msg("sandboxfusion execution failed; using fallback stub")
+		} else {
+			payload = map[string]any{
+				"stdout":      "hello from sandbox (stub)",
+				"stderr":      "",
+				"duration_ms": 0,
+				"session_id":  runReq.SessionID,
+				"artifacts":   []string{},
+				"error":       "",
+			}
 		}
 
-		payload := map[string]any{
-			"stdout":      "hello from sandbox (stub)",
-			"stderr":      "",
-			"duration_ms": 0,
-			"session_id":  runReq.SessionID,
-			"artifacts":   []string{},
-			"error":       "",
+		// If tracking is enabled, save result to LLM-API
+		if trackingEnabled && s.llmClient != nil {
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				outputBytes, _ := json.Marshal(payload)
+				outputStr := string(outputBytes)
+
+				var errStr *string
+				if toolErr != nil {
+					e := toolErr.Error()
+					errStr = &e
+				}
+
+				result := s.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"python_exec",
+					outputStr,
+					errStr,
+				)
+
+				if !result.Success && result.Error != nil {
+					log.Error().
+						Err(result.Error).
+						Str("call_id", tracking.ToolCallID).
+						Str("conv_id", tracking.ConversationID).
+						Int64("duration_ms", time.Since(startTime).Milliseconds()).
+						Msg("Failed to update tool result in LLM-API")
+				}
+			}()
 		}
 
 		return nil, payload, nil

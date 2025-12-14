@@ -242,6 +242,49 @@ func (repo *ConversationGormRepository) GetItemByPublicID(ctx context.Context, c
 	return result.EtoD(), nil
 }
 
+// GetItemByCallID implements conversation.ConversationRepository.
+func (repo *ConversationGormRepository) GetItemByCallID(ctx context.Context, conversationID uint, callID string) (*conversation.Item, error) {
+	q := repo.db.GetQuery(ctx)
+	// Use raw SQL since gormgen may not have the call_id field
+	var result dbschema.ConversationItem
+	err := q.ConversationItem.WithContext(ctx).UnderlyingDB().
+		Where("conversation_id = ? AND call_id = ?", conversationID, callID).
+		First(&result).Error
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to find item by call ID")
+	}
+	return result.EtoD(), nil
+}
+
+// GetItemByCallIDAndType implements conversation.ConversationRepository.
+func (repo *ConversationGormRepository) GetItemByCallIDAndType(ctx context.Context, conversationID uint, callID string, itemType conversation.ItemType) (*conversation.Item, error) {
+	q := repo.db.GetQuery(ctx)
+	// Use raw SQL since gormgen may not have the call_id field
+	var result dbschema.ConversationItem
+	err := q.ConversationItem.WithContext(ctx).UnderlyingDB().
+		Where("conversation_id = ? AND call_id = ? AND type = ?", conversationID, callID, string(itemType)).
+		First(&result).Error
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to find item by call ID and type")
+	}
+	return result.EtoD(), nil
+}
+
+// UpdateItem implements conversation.ConversationRepository.
+func (repo *ConversationGormRepository) UpdateItem(ctx context.Context, conversationID uint, item *conversation.Item) error {
+	q := repo.db.GetQuery(ctx)
+	entity := dbschema.NewSchemaConversationItem(item)
+	
+	_, err := q.ConversationItem.WithContext(ctx).
+		Where(q.ConversationItem.ID.Eq(item.ID)).
+		Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+		Updates(entity)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to update item")
+	}
+	return nil
+}
+
 // DeleteItem implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) DeleteItem(ctx context.Context, conversationID uint, itemID uint) error {
 	q := repo.db.GetQuery(ctx)
@@ -431,6 +474,7 @@ func (repo *ConversationGormRepository) applyItemFilter(q *gormgen.Query, sql go
 	if filter.PublicID != nil {
 		sql = sql.Where(q.ConversationItem.PublicID.Eq(*filter.PublicID))
 	}
+	// Note: CallID filtering is done via raw SQL in GetItemByCallID since gormgen may not have the field
 	if filter.ConversationID != nil {
 		sql = sql.Where(q.ConversationItem.ConversationID.Eq(*filter.ConversationID))
 	}

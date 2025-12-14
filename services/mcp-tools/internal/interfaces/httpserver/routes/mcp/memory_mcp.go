@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog/log"
 )
@@ -25,6 +27,9 @@ type MemoryRetrieveArgs struct {
 	MaxProjectItems  *int     `json:"max_project_items,omitempty"`
 	MaxEpisodicItems *int     `json:"max_episodic_items,omitempty"`
 	MinSimilarity    *float32 `json:"min_similarity,omitempty"`
+	// Context passthrough
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	RequestID  string `json:"request_id,omitempty"`
 }
 
 // memoryLoadRequest matches the memory-tools API structure
@@ -78,6 +83,7 @@ type memoryToolResult struct {
 type MemoryMCP struct {
 	memoryToolsURL string
 	httpClient     *http.Client
+	llmClient      *llmapi.Client // LLM-API client for tool tracking
 	enabled        bool
 }
 
@@ -90,6 +96,11 @@ func NewMemoryMCP(memoryToolsURL string, enabled bool) *MemoryMCP {
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+// SetLLMClient sets the LLM-API client for tool call tracking
+func (m *MemoryMCP) SetLLMClient(client *llmapi.Client) {
+	m.llmClient = client
 }
 
 // RegisterTools registers memory tools with the MCP server
@@ -110,12 +121,17 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input MemoryRetrieveArgs) (*mcp.CallToolResult, memoryToolResult, error) {
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
+		
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
+		
 		log.Info().
 			Str("tool", "memory_retrieve").
 			Str("tool_call_id", callCtx["tool_call_id"]).
 			Str("request_id", callCtx["request_id"]).
 			Str("conversation_id", callCtx["conversation_id"]).
 			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
 			Msg("MCP tool call received")
 
 		query := input.Query
@@ -230,6 +246,38 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 			Int64("query_time_ms", elapsed).
 			Int("estimated_tokens", result.EstimatedTokens).
 			Msg("[Memory MCP] Successfully retrieved memories")
+
+		// Update tool call result in LLM-API (async)
+		if trackingEnabled && m.llmClient != nil {
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				// Marshal result for storage
+				resultJSON, _ := json.Marshal(result)
+				saveResult := m.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"memory_retrieve",
+					string(resultJSON),
+					nil, // no error
+				)
+				if saveResult.Error != nil {
+					log.Warn().
+						Err(saveResult.Error).
+						Str("conversation_id", tracking.ConversationID).
+						Str("tool_call_id", tracking.ToolCallID).
+						Msg("[Memory MCP] Failed to update tool call result")
+				} else {
+					log.Debug().
+						Str("conversation_id", tracking.ConversationID).
+						Str("tool_call_id", tracking.ToolCallID).
+						Msg("[Memory MCP] Updated tool call result")
+				}
+			}()
+		}
 
 		return nil, result, nil
 	})

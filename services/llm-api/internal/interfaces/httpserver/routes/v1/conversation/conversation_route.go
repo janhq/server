@@ -41,6 +41,8 @@ func (route *ConversationRoute) RegisterRouter(router gin.IRouter) {
 	conversations.POST("/:conv_public_id/items", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.createItems)...)
 	conversations.GET("/:conv_public_id/items/:item_id", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.getItem)...)
 	conversations.DELETE("/:conv_public_id/items/:item_id", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.deleteItem)...)
+	// MCP tool tracking: update item by call_id
+	conversations.PATCH("/:conv_public_id/items/by-call-id/:call_id", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.updateItemByCallID)...)
 }
 
 // listConversations godoc
@@ -601,6 +603,70 @@ func (route *ConversationRoute) deleteItem(reqCtx *gin.Context) {
 	response, err := route.handler.DeleteItem(ctx, user.ID, conv.PublicID, itemID)
 	if err != nil {
 		responses.HandleError(reqCtx, err, "Failed to delete item")
+		return
+	}
+	reqCtx.JSON(http.StatusOK, response)
+}
+
+// updateItemByCallID godoc
+// @Summary Update item by call ID
+// @Description Update a conversation item's status and output using its call_id.
+// @Description This endpoint is primarily used by MCP tools to report tool execution results.
+// @Description
+// @Description **Features:**
+// @Description - Find item by call_id (e.g., call_xxx) instead of item_id
+// @Description - Update status to completed, failed, or cancelled
+// @Description - Store tool output or error message
+// @Description - Automatic timestamp for completion
+// @Description
+// @Description **Use Cases:**
+// @Description - MCP tool reports successful execution with output
+// @Description - MCP tool reports failure with error message
+// @Description - Tool call status tracking and observability
+// @Tags Conversations API
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
+// @Param call_id path string true "Call ID of the tool call item (format: call_xxxxx)"
+// @Param request body conversationrequests.UpdateItemByCallIDRequest true "Update request with status and optional output/error"
+// @Success 200 {object} conversationresponses.ItemResponse "Successfully updated item"
+// @Failure 400 {object} responses.ErrorResponse "Invalid request - validation failed"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
+// @Failure 404 {object} responses.ErrorResponse "Conversation or item not found"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /v1/conversations/{conv_public_id}/items/by-call-id/{call_id} [patch]
+func (route *ConversationRoute) updateItemByCallID(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+
+	// Get conversation from context (set by middleware)
+	conv, ok := conversationhandler.GetConversationFromContext(reqCtx)
+	if !ok {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeInternal, "conversation not found in context", "a1b2c3d4-e5f6-4789-abcd-ef0123456789")
+		return
+	}
+
+	user, ok := authhandler.GetUserFromContext(reqCtx)
+	if !ok {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeUnauthorized, "authentication required", "b2c3d4e5-f6a7-4890-bcde-f01234567890")
+		return
+	}
+
+	callID := reqCtx.Param("call_id")
+	if callID == "" {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, "call_id is required", "c3d4e5f6-a7b8-4901-cdef-012345678901")
+		return
+	}
+
+	var req conversationrequests.UpdateItemByCallIDRequest
+	if err := reqCtx.ShouldBindJSON(&req); err != nil {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, "invalid request body", "d4e5f6a7-b8c9-4012-def0-123456789012")
+		return
+	}
+
+	response, err := route.handler.UpdateItemByCallID(ctx, user.ID, conv.PublicID, callID, req)
+	if err != nil {
+		responses.HandleError(reqCtx, err, "Failed to update item by call_id")
 		return
 	}
 	reqCtx.JSON(http.StatusOK, response)
