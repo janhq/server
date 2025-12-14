@@ -13,9 +13,10 @@ type CreateConversationRequest struct {
 
 // UpdateConversationRequest represents the request to update a conversation
 type UpdateConversationRequest struct {
-	Title    *string           `json:"title,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
-	Referrer *string           `json:"referrer,omitempty"`
+	Title     *string           `json:"title,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Referrer  *string           `json:"referrer,omitempty"`
+	ProjectID *string           `json:"project_id,omitempty"`
 }
 
 // CreateItemsRequest represents the request to create items in a conversation

@@ -3,6 +3,7 @@ package conversationhandler
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -143,6 +144,27 @@ func (h *ConversationHandler) UpdateConversation(
 		Title:    req.Title,
 		Metadata: req.Metadata,
 		Referrer: req.Referrer,
+	}
+
+	// Resolve and update project when provided
+	if req.ProjectID != nil {
+		projectID := strings.TrimSpace(*req.ProjectID)
+		if projectID == "" {
+			// Explicitly clear project association
+			input.ProjectID = nil
+			input.ProjectPublicID = nil
+		} else {
+			// Verify project exists and user has access
+			if h.projectService == nil {
+				return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeInternal, "project service unavailable", nil, "")
+			}
+			proj, err := h.projectService.GetProjectByPublicIDAndUserID(ctx, projectID, userID)
+			if err != nil {
+				return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "invalid or inaccessible project_id")
+			}
+			input.ProjectID = &proj.ID
+			input.ProjectPublicID = &proj.PublicID
+		}
 	}
 
 	conv, err := h.conversationService.UpdateConversationWithInput(ctx, userID, conversationID, input)

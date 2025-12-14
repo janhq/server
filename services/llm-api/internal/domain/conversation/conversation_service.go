@@ -120,9 +120,11 @@ type CreateConversationInput struct {
 
 // UpdateConversationInput represents the input for updating a conversation
 type UpdateConversationInput struct {
-	Title    *string
-	Metadata map[string]string
-	Referrer *string
+	Title           *string
+	Metadata        map[string]string
+	Referrer        *string
+	ProjectID       *uint
+	ProjectPublicID *string
 }
 
 // CreateConversationWithInput creates a new conversation with input validation
@@ -163,6 +165,13 @@ func (s *ConversationService) UpdateConversationWithInput(ctx context.Context, u
 
 	if input.Referrer != nil {
 		conversation.Referrer = input.Referrer
+	}
+
+	if input.ProjectID != nil {
+		conversation.ProjectID = input.ProjectID
+		conversation.ProjectPublicID = input.ProjectPublicID
+		// Clear cached instruction snapshot so the next request pulls the new project's instruction
+		conversation.EffectiveInstructionSnapshot = nil
 	}
 
 	// Use core function to update conversation
