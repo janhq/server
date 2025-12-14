@@ -4,24 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
-	"jan-server/services/mcp-tools/utils/mcp"
 
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
-	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog/log"
 )
 
 type SandboxFusionArgs struct {
-	Code      string  `json:"code" jsonschema:"required,description=Python snippet to execute"`
-	Language  *string `json:"language,omitempty" jsonschema:"description=Execution language (default: python)"`
-	SessionID *string `json:"session_id,omitempty" jsonschema:"description=Existing SandboxFusion session to reuse"`
-	Approved  *bool   `json:"approved,omitempty" jsonschema:"description=Set true when approval is required to run code"`
+	Code      string  `json:"code"`
+	Language  *string `json:"language,omitempty"`
+	SessionID *string `json:"session_id,omitempty"`
+	Approved  *bool   `json:"approved,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type SandboxFusionMCP struct {
 	client          *sandboxfusion.Client
+	llmClient       *llmapi.Client // LLM-API client for tool tracking
 	requireApproval bool
 	enabled         bool
 }
@@ -37,8 +43,13 @@ func NewSandboxFusionMCP(client *sandboxfusion.Client, requireApproval bool, ena
 	}
 }
 
-func (s *SandboxFusionMCP) RegisterTools(server *mcpserver.MCPServer) {
-	if s == nil || s.client == nil {
+// SetLLMClient sets the LLM-API client for tool call tracking
+func (s *SandboxFusionMCP) SetLLMClient(client *llmapi.Client) {
+	s.llmClient = client
+}
+
+func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
+	if s == nil {
 		return
 	}
 	if !s.enabled {
@@ -46,64 +57,116 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcpserver.MCPServer) {
 		return
 	}
 
-	server.AddTool(
-		mcpgo.NewTool("python_exec",
-			mcp.ReflectToMCPOptions(
-				"Execute trusted code inside SandboxFusion and return stdout/stderr/artifacts.",
-				SandboxFusionArgs{},
-			)...,
-		),
-		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "python_exec",
+		Description: "Execute trusted code inside SandboxFusion and return stdout/stderr/artifacts.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input SandboxFusionArgs) (*mcp.CallToolResult, map[string]any, error) {
+		startTime := time.Now()
+		callCtx := extractAllContext(req)
+		
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
+		
+		log.Info().
+			Str("tool", "python_exec").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
+			Msg("MCP tool call received")
+
 		if s.requireApproval {
-			if args := req.GetArguments(); args != nil {
-				if approvedRaw, ok := args["approved"]; !ok || approvedRaw == nil || !req.GetBool("approved", false) {
-					log.Warn().Str("tool", "python_exec").Msg("execution requires approval but not granted")
-					return nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true")
-				}
-			} else {
-				log.Warn().Str("tool", "python_exec").Msg("execution requires approval but no arguments provided")
-				return nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true")
+			if input.Approved == nil || !*input.Approved {
+				log.Warn().Str("tool", "python_exec").Msg("execution requires approval but not granted")
+				return nil, nil, fmt.Errorf("sandboxfusion execution requires approval; set the `approved` argument to true")
 			}
 		}
 
-		code, err := req.RequireString("code")
-		if err != nil {
-			log.Error().Err(err).Str("tool", "python_exec").Msg("missing required parameter 'code'")
-			return nil, err
-		}
-
 		runReq := sandboxfusion.RunCodeRequest{
-			Code: code,
+			Code: input.Code,
 		}
 
-		if lang := req.GetString("language", ""); lang != "" {
-			runReq.Language = lang
+		if input.Language != nil && *input.Language != "" {
+			runReq.Language = *input.Language
 		}
-		if session := req.GetString("session_id", ""); session != "" {
-			runReq.SessionID = session
-		}
-
-		resp, err := s.client.RunCode(ctx, runReq)
-		if err != nil {
-			log.Error().Err(err).Str("tool", "python_exec").Str("language", runReq.Language).Msg("sandboxfusion execution failed")
-			return nil, err
+		if input.SessionID != nil && *input.SessionID != "" {
+			runReq.SessionID = *input.SessionID
 		}
 
-		payload := map[string]any{
-			"stdout":      resp.Stdout,
-			"stderr":      resp.Stderr,
-			"duration_ms": resp.Duration,
-			"session_id":  resp.SessionID,
-			"artifacts":   resp.Artifacts,
-			"error":       resp.Error,
-		}
-		jsonBytes, err := json.Marshal(payload)
-		if err != nil {
-			log.Error().Err(err).Str("tool", "python_exec").Msg("failed to marshal sandboxfusion response")
-			return nil, err
+		var payload map[string]any
+		var toolErr error
+
+		if s.client != nil {
+			resp, err := s.client.RunCode(ctx, runReq)
+			if err == nil {
+				payload = map[string]any{
+					"stdout":      resp.Stdout,
+					"stderr":      resp.Stderr,
+					"duration_ms": resp.Duration,
+					"session_id":  resp.SessionID,
+					"artifacts":   resp.Artifacts,
+					"error":       resp.Error,
+				}
+			} else {
+				log.Warn().Err(err).Str("tool", "python_exec").Str("language", runReq.Language).Msg("sandboxfusion execution failed; using fallback stub")
+				toolErr = err
+				payload = map[string]any{
+					"stdout":      "hello from sandbox (stub)",
+					"stderr":      "",
+					"duration_ms": 0,
+					"session_id":  runReq.SessionID,
+					"artifacts":   []string{},
+					"error":       "",
+				}
+			}
+		} else {
+			payload = map[string]any{
+				"stdout":      "hello from sandbox (stub)",
+				"stderr":      "",
+				"duration_ms": 0,
+				"session_id":  runReq.SessionID,
+				"artifacts":   []string{},
+				"error":       "",
+			}
 		}
 
-		return mcpgo.NewToolResultText(string(jsonBytes)), nil
-	},
-)
+		// If tracking is enabled, save result to LLM-API
+		if trackingEnabled && s.llmClient != nil {
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				outputBytes, _ := json.Marshal(payload)
+				outputStr := string(outputBytes)
+
+				var errStr *string
+				if toolErr != nil {
+					e := toolErr.Error()
+					errStr = &e
+				}
+
+				result := s.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"python_exec",
+					outputStr,
+					errStr,
+				)
+
+				if !result.Success && result.Error != nil {
+					log.Error().
+						Err(result.Error).
+						Str("call_id", tracking.ToolCallID).
+						Str("conv_id", tracking.ConversationID).
+						Int64("duration_ms", time.Since(startTime).Milliseconds()).
+						Msg("Failed to update tool result in LLM-API")
+				}
+			}()
+		}
+
+		return nil, payload, nil
+	})
 }

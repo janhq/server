@@ -15,10 +15,10 @@ providers:
         file_attachment: '{"supported":false,"url":false,"base64":false,"file_upload":false}'
         
     - name: Remote LLM Provider Server
-      enable: true
+      enable: ${REMOTE_LLM_ENABLED:-true}
       type: custom
-      url: http://10.200.108.153:9000/v1
-      api_key: default
+      url: ${REMOTE_LLM_PROVIDER_URL}
+      api_key: ${REMOTE_API_KEY}
       description: "Remote LLM Provider"
       auto_enable_new_models: true
       sync_models: true

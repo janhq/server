@@ -7,8 +7,7 @@ import (
 
 	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
 
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
-	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog/log"
 )
 
@@ -67,7 +66,7 @@ func (p *ProviderMCP) Initialize(ctx context.Context) error {
 }
 
 // RegisterTools registers all tools from external MCP providers
-func (p *ProviderMCP) RegisterTools(server *mcpserver.MCPServer) error {
+func (p *ProviderMCP) RegisterTools(server *mcp.Server) error {
 	ctx := context.Background()
 
 	for providerName, bridge := range p.bridges {
@@ -117,75 +116,79 @@ func (p *ProviderMCP) RegisterTools(server *mcpserver.MCPServer) error {
 			currentToolName := tool.Name
 
 			// Register the tool with the MCP server
-			server.AddTool(
-				mcpgo.NewTool(toolName,
-					mcpgo.WithDescription(toolDesc),
-					// TODO: Parse inputSchema and convert to mcp-go options
-					// For now, we'll accept any arguments and forward them
-				),
-				func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-					// Extract all arguments from the request
-					arguments := make(map[string]interface{})
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        toolName,
+				Description: toolDesc,
+				InputSchema: tool.InputSchema, // best-effort pass-through from provider
+			}, func(ctx context.Context, req *mcp.CallToolRequest, input map[string]any) (*mcp.CallToolResult, any, error) {
+				callCtx := extractAllContext(req)
+				log.Info().
+					Str("tool", currentToolName).
+					Str("tool_call_id", callCtx["tool_call_id"]).
+					Str("request_id", callCtx["request_id"]).
+					Str("conversation_id", callCtx["conversation_id"]).
+					Str("user_id", callCtx["user_id"]).
+					Str("provider", providerName).
+					Msg("MCP tool call received")
 
-					// The request.Params contains the arguments
-					// We need to forward them to the external MCP provider
-					if req.Params.Arguments != nil {
-						// Convert arguments to map
-						if argsMap, ok := req.Params.Arguments.(map[string]interface{}); ok {
-							arguments = argsMap
-						}
-					}
+				arguments := input
+				if arguments == nil {
+					arguments = make(map[string]any)
+				}
 
-					log.Debug().
+				log.Debug().
+					Str("tool", currentToolName).
+					Str("provider", providerName).
+					Interface("arguments", arguments).
+					Msg("Forwarding tool call to MCP provider")
+
+				result, err := currentBridge.CallTool(ctx, currentToolName, arguments)
+				if err != nil {
+					log.Error().
+						Err(err).
 						Str("tool", currentToolName).
 						Str("provider", providerName).
-						Interface("arguments", arguments).
-						Msg("Forwarding tool call to MCP provider")
+						Msg("Failed to call tool on MCP provider")
+					return nil, nil, fmt.Errorf("provider %s tool call failed: %w", providerName, err)
+				}
 
-					// Call the external MCP provider
-					result, err := currentBridge.CallTool(ctx, currentToolName, arguments)
-					if err != nil {
-						log.Error().
-							Err(err).
-							Str("tool", currentToolName).
-							Str("provider", providerName).
-							Msg("Failed to call tool on MCP provider")
-						return nil, fmt.Errorf("provider %s tool call failed: %w", providerName, err)
+				// Parse the result from the external provider
+				var toolResult struct {
+					Content []struct {
+						Type string `json:"type"`
+						Text string `json:"text"`
+					} `json:"content"`
+				}
+
+				if err := json.Unmarshal(result, &toolResult); err != nil {
+					log.Error().
+						Err(err).
+						Str("tool", currentToolName).
+						Msg("Failed to parse tool result")
+					return &mcp.CallToolResult{
+						Content: []mcp.Content{&mcp.TextContent{Text: string(result)}},
+					}, nil, nil
+				}
+
+				// Combine all text content
+				var combinedText string
+				for _, content := range toolResult.Content {
+					if content.Type == "text" {
+						combinedText += content.Text + "\n"
 					}
+				}
 
-					// Parse the result from the external provider
-					var toolResult struct {
-						Content []struct {
-							Type string `json:"type"`
-							Text string `json:"text"`
-						} `json:"content"`
-					}
+				if combinedText != "" {
+					return &mcp.CallToolResult{
+						Content: []mcp.Content{&mcp.TextContent{Text: combinedText}},
+					}, nil, nil
+				}
 
-					if err := json.Unmarshal(result, &toolResult); err != nil {
-						log.Error().
-							Err(err).
-							Str("tool", currentToolName).
-							Msg("Failed to parse tool result")
-						// Return raw result as text
-						return mcpgo.NewToolResultText(string(result)), nil
-					}
-
-					// Combine all text content
-					var combinedText string
-					for _, content := range toolResult.Content {
-						if content.Type == "text" {
-							combinedText += content.Text + "\n"
-						}
-					}
-
-					if combinedText != "" {
-						return mcpgo.NewToolResultText(combinedText), nil
-					}
-
-					// Fallback: return raw JSON
-					return mcpgo.NewToolResultText(string(result)), nil
-				},
-			)
+				// Fallback: return raw JSON
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{&mcp.TextContent{Text: string(result)}},
+				}, nil, nil
+			})
 		}
 
 		log.Info().

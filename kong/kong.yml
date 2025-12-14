@@ -328,7 +328,7 @@ services:
             config:
               origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
               methods: ["POST", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version", "X-Tool-Call-ID", "X-Conversation-ID"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
@@ -373,5 +373,4 @@ services:
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
-
 

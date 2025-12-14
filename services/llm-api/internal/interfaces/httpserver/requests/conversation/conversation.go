@@ -13,9 +13,10 @@ type CreateConversationRequest struct {
 
 // UpdateConversationRequest represents the request to update a conversation
 type UpdateConversationRequest struct {
-	Title    *string           `json:"title,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
-	Referrer *string           `json:"referrer,omitempty"`
+	Title     *string           `json:"title,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Referrer  *string           `json:"referrer,omitempty"`
+	ProjectID *string           `json:"project_id,omitempty"`
 }
 
 // CreateItemsRequest represents the request to create items in a conversation
@@ -43,4 +44,12 @@ type ListItemsQueryParams struct {
 // GetItemQueryParams represents query parameters for getting a single item
 type GetItemQueryParams struct {
 	Include []string `form:"include"`
+}
+
+// UpdateItemByCallIDRequest represents the request to update an item's status and output by call_id
+// Used by MCP tools to report tool execution results
+type UpdateItemByCallIDRequest struct {
+	Status *string `json:"status" binding:"required"` // "completed", "failed", "cancelled"
+	Output *string `json:"output,omitempty"`          // Result of the tool execution
+	Error  *string `json:"error,omitempty"`           // Error message if status is "failed"
 }
