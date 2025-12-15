@@ -1005,30 +1005,40 @@ func NewComputerActionContent(action string, coords *Coordinates, text *string) 
 // This handles the text field which can be either a string or an object with annotations
 func (c Content) MarshalJSON() ([]byte, error) {
 	type Alias Content
-	aux := &struct {
-		Text any `json:"text,omitempty"`
-		*Alias
-	}{
-		Alias: (*Alias)(&c),
+	
+	// Marshal the base struct without text field
+	baseJSON, err := json.Marshal((*Alias)(&c))
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal to a map so we can add dynamic fields
+	var result map[string]interface{}
+	if err := json.Unmarshal(baseJSON, &result); err != nil {
+		return nil, err
 	}
 
 	// Determine what to use for the text field based on content type
 	switch c.Type {
-	case "input_text", "reasoning_text", "tool_result", "text", "mcp_call":
-		// Use simple string for these types
+	case "input_text", "reasoning_text", "tool_result", "mcp_call":
+		// Use type-specific field name (e.g., "input_text": "...")
 		if c.TextString != nil {
-			aux.Text = *c.TextString
+			result[c.Type] = *c.TextString
+		}
+	case "text":
+		// Use "text" field for generic text type
+		if c.TextString != nil {
+			result["text"] = *c.TextString
 		}
 	}
 
-	return json.Marshal(aux)
+	return json.Marshal(result)
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for Content
 func (c *Content) UnmarshalJSON(data []byte) error {
 	type Alias Content
 	aux := &struct {
-		Text json.RawMessage `json:"text,omitempty"`
 		*Alias
 	}{
 		Alias: (*Alias)(c),
@@ -1038,20 +1048,50 @@ func (c *Content) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Parse the text field based on content type
-	if len(aux.Text) > 0 {
-		switch c.Type {
-		case "input_text", "reasoning_text", "tool_result", "text", "mcp_call":
-			// Try to unmarshal as string
+	// Parse text field based on content type
+	// Unmarshal into a map to check for dynamic field names
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMap); err != nil {
+		return err
+	}
+
+	switch c.Type {
+	case "input_text", "reasoning_text", "tool_result", "mcp_call":
+		// Try type-specific field first (e.g., "input_text")
+		if textRaw, ok := rawMap[c.Type]; ok {
 			var textStr string
-			if err := json.Unmarshal(aux.Text, &textStr); err == nil {
+			if err := json.Unmarshal(textRaw, &textStr); err == nil {
+				c.TextString = &textStr
+				return nil
+			}
+		}
+		// Fall back to "text" field for backward compatibility
+		if textRaw, ok := rawMap["text"]; ok {
+			var textStr string
+			if err := json.Unmarshal(textRaw, &textStr); err == nil {
 				c.TextString = &textStr
 			} else {
 				// Fallback: try as object with text field
 				var textObj struct {
 					Text string `json:"text"`
 				}
-				if err := json.Unmarshal(aux.Text, &textObj); err == nil {
+				if err := json.Unmarshal(textRaw, &textObj); err == nil {
+					c.TextString = &textObj.Text
+				}
+			}
+		}
+	case "text":
+		// For "text" type, use "text" field
+		if textRaw, ok := rawMap["text"]; ok {
+			var textStr string
+			if err := json.Unmarshal(textRaw, &textStr); err == nil {
+				c.TextString = &textStr
+			} else {
+				// Fallback: try as object with text field
+				var textObj struct {
+					Text string `json:"text"`
+				}
+				if err := json.Unmarshal(textRaw, &textObj); err == nil {
 					c.TextString = &textObj.Text
 				}
 			}
