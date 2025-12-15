@@ -46,10 +46,18 @@ type GetItemQueryParams struct {
 	Include []string `form:"include"`
 }
 
-// UpdateItemByCallIDRequest represents the request to update an item's status and output by call_id
+// UpdateItemByCallIDRequest represents the request to update an mcp_call item by call_id
 // Used by MCP tools to report tool execution results
 type UpdateItemByCallIDRequest struct {
+	// Required fields
 	Status *string `json:"status" binding:"required"` // "completed", "failed", "cancelled"
-	Output *string `json:"output,omitempty"`          // Result of the tool execution
-	Error  *string `json:"error,omitempty"`           // Error message if status is "failed"
+
+	// Result fields
+	Output *string `json:"output,omitempty"` // Result of the tool execution (JSON string)
+	Error  *string `json:"error,omitempty"`  // Error message if status is "failed"
+
+	// Tool info fields (optional - already set on creation, but can be updated)
+	Name        *string `json:"name,omitempty"`         // Tool name
+	Arguments   *string `json:"arguments,omitempty"`    // JSON string of arguments
+	ServerLabel *string `json:"server_label,omitempty"` // MCP server label
 }

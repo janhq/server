@@ -355,8 +355,8 @@ func (h *ConversationHandler) DeleteItem(
 	return conversationresponses.NewConversationResponse(conv), nil
 }
 
-// UpdateItemByCallID updates an existing mcp_call_output item with tool execution results
-// The mcp_call_output item was already created (with pending status) when the LLM returned tool_calls
+// UpdateItemByCallID updates an existing mcp_call item with tool execution results
+// The mcp_call item was already created (with in_progress status) when the LLM returned tool_calls
 // This is used by MCP tools to report tool execution results
 func (h *ConversationHandler) UpdateItemByCallID(
 	ctx context.Context,
@@ -371,10 +371,10 @@ func (h *ConversationHandler) UpdateItemByCallID(
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
 	}
 
-	// Get the mcp_call_output item by call_id (it was created when LLM returned tool_calls)
-	outputItem, err := h.conversationService.GetConversationItemByCallIDAndType(ctx, conv, callID, conversation.ItemTypeMcpCallOutput)
+	// Get the mcp_call item by call_id (it was created when LLM returned tool_calls)
+	mcpItem, err := h.conversationService.GetConversationItemByCallIDAndType(ctx, conv, callID, conversation.ItemTypeMcpCall)
 	if err != nil {
-		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "mcp_call_output item not found by call_id")
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "mcp_call item not found by call_id")
 	}
 
 	// Determine status
@@ -383,38 +383,49 @@ func (h *ConversationHandler) UpdateItemByCallID(
 		status = conversation.ItemStatus(*req.Status)
 	}
 
-	// Update the mcp_call_output item with the execution result
-	outputItem.Status = &status
-	outputItem.Output = req.Output
-	outputItem.Error = req.Error
+	// Update the mcp_call item with the execution result
+	mcpItem.Status = &status
+	mcpItem.Output = req.Output
+	mcpItem.Error = req.Error
 	now := time.Now()
-	outputItem.CompletedAt = &now
+	mcpItem.CompletedAt = &now
+
+	// Update additional fields if provided
+	if req.Name != nil {
+		mcpItem.Name = req.Name
+	}
+	if req.Arguments != nil {
+		mcpItem.Arguments = req.Arguments
+	}
+	if req.ServerLabel != nil {
+		mcpItem.ServerLabel = req.ServerLabel
+	}
 
 	// Update Content field with the output text so it's returned in the API response
 	if req.Output != nil {
-		outputItem.Content = []conversation.Content{
+		mcpItem.Content = []conversation.Content{
 			{
-				Type:       "mcp_call_output",
+				Type:       "mcp_call",
 				ToolCallID: &callID,
 				TextString: req.Output,
 			},
 		}
 	} else if req.Error != nil {
 		// If there's an error, include it in the content
-		outputItem.Content = []conversation.Content{
+		mcpItem.Content = []conversation.Content{
 			{
-				Type:       "mcp_call_output",
+				Type:       "mcp_call",
 				ToolCallID: &callID,
 				TextString: req.Error,
 			},
 		}
 	}
 
-	if err := h.conversationService.UpdateConversationItem(ctx, conv, outputItem); err != nil {
-		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update mcp_call_output item")
+	if err := h.conversationService.UpdateConversationItem(ctx, conv, mcpItem); err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update mcp_call item")
 	}
 
-	return outputItem, nil
+	return mcpItem, nil
 }
 
 // Helper functions

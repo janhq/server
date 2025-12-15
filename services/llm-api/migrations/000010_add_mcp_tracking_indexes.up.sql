@@ -4,12 +4,12 @@
 
 -- Add composite index on (conversation_id, call_id) for efficient lookup
 -- This is used by the PATCH endpoint to update MCP tool call results
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_conversation_items_conv_call_id 
+CREATE INDEX IF NOT EXISTS idx_conversation_items_conv_call_id 
 ON llm_api.conversation_items(conversation_id, call_id) 
 WHERE call_id IS NOT NULL;
 
 -- Add index on status for filtering pending/in_progress tool calls
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_conversation_items_status 
+CREATE INDEX IF NOT EXISTS idx_conversation_items_status 
 ON llm_api.conversation_items(status) 
 WHERE status IN ('in_progress', 'incomplete');
 
