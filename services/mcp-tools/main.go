@@ -12,6 +12,7 @@ import (
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
 	"jan-server/services/mcp-tools/internal/infrastructure/auth"
 	"jan-server/services/mcp-tools/internal/infrastructure/config"
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/logger"
 	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
 	sandboxfusionclient "jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
@@ -113,7 +114,21 @@ func main() {
 		log.Error().Err(err).Msg("Failed to initialize MCP providers")
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP)
+	// Initialize LLM-API client for tool tracking
+	var llmClient *llmapi.Client
+	if cfg.MCPTrackingEnabled && cfg.LLMAPIBaseURL != "" {
+		llmClient = llmapi.NewClient(cfg.LLMAPIBaseURL)
+		log.Info().
+			Str("llm_api_url", cfg.LLMAPIBaseURL).
+			Msg("LLM-API client initialized for tool tracking")
+	} else {
+		log.Info().
+			Bool("tracking_enabled", cfg.MCPTrackingEnabled).
+			Str("llm_api_url", cfg.LLMAPIBaseURL).
+			Msg("LLM-API tool tracking disabled or not configured")
+	}
+
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

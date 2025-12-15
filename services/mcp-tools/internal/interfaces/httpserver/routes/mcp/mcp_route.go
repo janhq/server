@@ -9,8 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/responses"
 	"jan-server/services/mcp-tools/utils/platformerrors"
 )
@@ -41,7 +42,8 @@ type MCPRoute struct {
 	providerMCP *ProviderMCP
 	sandboxMCP  *SandboxFusionMCP
 	memoryMCP   *MemoryMCP
-	mcpServer   *mcpserver.MCPServer
+	llmClient   *llmapi.Client // LLM-API client for tool call tracking
+	mcpServer   *mcp.Server
 	httpHandler http.Handler
 }
 
@@ -50,11 +52,25 @@ func NewMCPRoute(
 	providerMCP *ProviderMCP,
 	sandboxMCP *SandboxFusionMCP,
 	memoryMCP *MemoryMCP,
+	llmClient *llmapi.Client,
 ) *MCPRoute {
-	server := mcpserver.NewMCPServer("menlo-platform", "1.0.0",
-		mcpserver.WithToolCapabilities(true),
-		mcpserver.WithRecovery(),
-	)
+	impl := &mcp.Implementation{
+		Name:    "menlo-platform",
+		Version: "1.0.0",
+	}
+	server := mcp.NewServer(impl, nil)
+
+	// Pass LLM client to tool handlers for tracking
+	serperMCP.SetLLMClient(llmClient)
+
+	if sandboxMCP != nil {
+		sandboxMCP.SetLLMClient(llmClient)
+	}
+
+	// Register memory tools
+	if memoryMCP != nil {
+		memoryMCP.SetLLMClient(llmClient)
+	}
 
 	serperMCP.RegisterTools(server)
 
@@ -80,8 +96,11 @@ func NewMCPRoute(
 		providerMCP: providerMCP,
 		sandboxMCP:  sandboxMCP,
 		memoryMCP:   memoryMCP,
+		llmClient:   llmClient,
 		mcpServer:   server,
-		httpHandler: mcpserver.NewStreamableHTTPServer(server, mcpserver.WithStateLess(true)),
+		httpHandler: mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
+			return server
+		}, &mcp.StreamableHTTPOptions{Stateless: true}),
 	}
 }
 
@@ -89,6 +108,7 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 	router.POST("/mcp",
 		MCPMethodGuard(allowedMCPMethods),
 		InjectUserContext(),
+		ExtractToolTracking(), // Extract tracking headers for tool call tracking
 		route.serveMCP,
 	)
 }
@@ -117,6 +137,8 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /v1/mcp [post]
 func (route *MCPRoute) serveMCP(reqCtx *gin.Context) {
+	// Force acceptable content types for go-sdk streamable handler even if client omits Accept.
+	reqCtx.Request.Header.Set("Accept", "application/json, text/event-stream")
 	route.httpHandler.ServeHTTP(reqCtx.Writer, reqCtx.Request)
 }
 

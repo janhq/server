@@ -120,9 +120,11 @@ type CreateConversationInput struct {
 
 // UpdateConversationInput represents the input for updating a conversation
 type UpdateConversationInput struct {
-	Title    *string
-	Metadata map[string]string
-	Referrer *string
+	Title           *string
+	Metadata        map[string]string
+	Referrer        *string
+	ProjectID       *uint
+	ProjectPublicID *string
 }
 
 // CreateConversationWithInput creates a new conversation with input validation
@@ -163,6 +165,13 @@ func (s *ConversationService) UpdateConversationWithInput(ctx context.Context, u
 
 	if input.Referrer != nil {
 		conversation.Referrer = input.Referrer
+	}
+
+	if input.ProjectID != nil {
+		conversation.ProjectID = input.ProjectID
+		conversation.ProjectPublicID = input.ProjectPublicID
+		// Clear cached instruction snapshot so the next request pulls the new project's instruction
+		conversation.EffectiveInstructionSnapshot = nil
 	}
 
 	// Use core function to update conversation
@@ -263,6 +272,45 @@ func (s *ConversationService) GetConversationItem(ctx context.Context, conv *Con
 	}
 
 	return item, nil
+}
+
+// GetConversationItemByCallID retrieves a single item from a conversation by call_id
+func (s *ConversationService) GetConversationItemByCallID(ctx context.Context, conv *Conversation, callID string) (*Item, error) {
+	// Get the item directly by call ID from repository
+	item, err := s.repo.GetItemByCallID(ctx, conv.ID, callID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "item not found by call_id")
+	}
+
+	return item, nil
+}
+
+// GetConversationItemByCallIDAndType retrieves a single item from a conversation by call_id and item type
+func (s *ConversationService) GetConversationItemByCallIDAndType(ctx context.Context, conv *Conversation, callID string, itemType ItemType) (*Item, error) {
+	// Get the item by call ID and type from repository
+	item, err := s.repo.GetItemByCallIDAndType(ctx, conv.ID, callID, itemType)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "item not found by call_id and type")
+	}
+
+	return item, nil
+}
+
+// UpdateConversationItem updates an existing item in a conversation
+func (s *ConversationService) UpdateConversationItem(ctx context.Context, conv *Conversation, item *Item) error {
+	// Update the item in the repository
+	if err := s.repo.UpdateItem(ctx, conv.ID, item); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to update item")
+	}
+
+	// Update conversation timestamp
+	conv.UpdatedAt = time.Now()
+	if err := s.repo.Update(ctx, conv); err != nil {
+		// Log error but don't fail the update
+		_ = err
+	}
+
+	return nil
 }
 
 // DeleteConversationItem deletes an item from a conversation

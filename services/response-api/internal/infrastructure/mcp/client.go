@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/rs/zerolog/log"
 
 	"jan-server/services/response-api/internal/domain/tool"
 )
@@ -59,15 +61,29 @@ func (c *Client) ListTools(ctx context.Context) ([]tool.MCPTool, error) {
 }
 
 // CallTool triggers a tool execution via JSON-RPC tools/call.
-func (c *Client) CallTool(ctx context.Context, name string, args map[string]interface{}) (*tool.Result, error) {
+func (c *Client) CallTool(ctx context.Context, req tool.CallRequest) (*tool.Result, error) {
+	mergedArgs := mergeContextIntoArguments(req.Arguments, req.RequestID, req.ConversationID, req.UserID, req.ToolCallID)
+	rpcID := req.ToolCallID
+	if strings.TrimSpace(rpcID) == "" {
+		rpcID = req.Name
+	}
+
+	log.Info().
+		Str("tool", req.Name).
+		Str("tool_call_id", req.ToolCallID).
+		Str("request_id", req.RequestID).
+		Str("conversation_id", req.ConversationID).
+		Str("user_id", req.UserID).
+		Msg("Calling MCP tool")
+
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "tools/call",
 		"params": map[string]interface{}{
-			"name":      name,
-			"arguments": args,
+			"name":      req.Name,
+			"arguments": mergedArgs,
 		},
-		"id": name,
+		"id": rpcID,
 	}
 
 	var rpcResp rpcResponse
@@ -96,7 +112,7 @@ func (c *Client) CallTool(ctx context.Context, name string, args map[string]inte
 	}
 
 	return &tool.Result{
-		ToolName: name,
+		ToolName: req.Name,
 		Content:  result.Content,
 		IsError:  result.IsError,
 		Error:    result.Error,
@@ -117,4 +133,27 @@ type rpcError struct {
 
 func (r *rpcError) Error() string {
 	return fmt.Sprintf("mcp error (%d): %s", r.Code, r.Message)
+}
+
+func mergeContextIntoArguments(args map[string]interface{}, requestID, conversationID, userID, toolCallID string) map[string]interface{} {
+	merged := make(map[string]interface{})
+	for k, v := range args {
+		merged[k] = v
+	}
+
+	setIfAbsent := func(key, val string) {
+		if strings.TrimSpace(val) == "" {
+			return
+		}
+		if _, exists := merged[key]; !exists {
+			merged[key] = val
+		}
+	}
+
+	setIfAbsent("request_id", requestID)
+	setIfAbsent("conversation_id", conversationID)
+	setIfAbsent("user_id", userID)
+	setIfAbsent("tool_call_id", toolCallID)
+
+	return merged
 }

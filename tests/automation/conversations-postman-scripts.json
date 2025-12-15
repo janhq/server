@@ -1232,6 +1232,344 @@
       ]
     },
     {
+      "name": "MCP Tool Integration",
+      "description": "Full-stack MCP test: chat with tool calls, MCP execution, tool result tracking, and conversation reload verification",
+      "item": [
+        {
+          "name": "Step 14: Create MCP Test Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"MCP Tool Test Conversation\"\n}"
+            },
+            "url": "{{kong_url}}/v1/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Step 14] MCP test conversation created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('[Step 14] Response contains conversation ID', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.exist;",
+                  "    pm.expect(response.id).to.include('conv_');",
+                  "    pm.collectionVariables.set('mcp_conversation_id', response.id);",
+                  "    console.log('Created MCP test conversation:', response.id);",
+                  "});",
+                  "",
+                  "console.log('Step 14 Complete: MCP Test Conversation Created');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 15: Send Chat with Tool Use",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Search for information about Model Context Protocol\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{mcp_conversation_id}}\"\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"function\": {\n        \"name\": \"google_search\",\n        \"description\": \"Search the web using Google\",\n        \"parameters\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"q\": {\n              \"type\": \"string\",\n              \"description\": \"Search query\"\n            }\n          },\n          \"required\": [\"q\"]\n        }\n      }\n    }\n  ],\n  \"tool_choice\": \"auto\",\n  \"stream\": false,\n  \"max_tokens\": 500\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('[Step 15] Chat request with tools succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 15] Response contains tool_calls', function () {",
+                  "    pm.expect(data.choices).to.be.an('array').that.is.not.empty;",
+                  "    const message = data.choices[0].message;",
+                  "    pm.expect(message).to.have.property('tool_calls');",
+                  "    pm.expect(message.tool_calls).to.be.an('array').that.is.not.empty;",
+                  "    ",
+                  "    // Save tool call ID for tracking",
+                  "    const toolCall = message.tool_calls[0];",
+                  "    pm.expect(toolCall).to.have.property('id');",
+                  "    pm.collectionVariables.set('tool_call_id', toolCall.id);",
+                  "    pm.collectionVariables.set('tool_name', toolCall.function.name);",
+                  "    pm.collectionVariables.set('tool_arguments', toolCall.function.arguments);",
+                  "    console.log('Tool call ID:', toolCall.id);",
+                  "    console.log('Tool name:', toolCall.function.name);",
+                  "});",
+                  "",
+                  "console.log('Step 15 Complete: Received Tool Call from LLM');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 16: Execute MCP Tool",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Tool-Call-ID",
+                "value": "{{tool_call_id}}"
+              },
+              {
+                "key": "X-Conversation-ID",
+                "value": "{{mcp_conversation_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"google_search\",\n    \"arguments\": {\n      \"q\": \"Model Context Protocol\"\n    }\n  },\n  \"id\": 1\n}"
+            },
+            "url": "{{kong_url}}/mcp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rawBody = pm.response.text();",
+                  "let payload = null;",
+                  "",
+                  "// Handle SSE or JSON response",
+                  "try {",
+                  "  payload = JSON.parse(rawBody);",
+                  "} catch (err) {",
+                  "  const lines = rawBody.split('\\n');",
+                  "  for (const line of lines) {",
+                  "    if (line.startsWith('data: ')) {",
+                  "      try {",
+                  "        payload = JSON.parse(line.substring(6));",
+                  "        break;",
+                  "      } catch (e) {",
+                  "        console.error('Failed to parse SSE payload', e);",
+                  "      }",
+                  "    }",
+                  "  }",
+                  "}",
+                  "",
+                  "pm.test('[Step 16] MCP tool execution succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 16] Tool result contains content', function () {",
+                  "    pm.expect(payload).to.be.an('object');",
+                  "    pm.expect(payload).to.have.property('result');",
+                  "    pm.expect(payload.result).to.have.property('content');",
+                  "    pm.expect(payload.result.content).to.be.an('array').that.is.not.empty;",
+                  "    ",
+                  "    // Save result for submission",
+                  "    pm.collectionVariables.set('tool_result', JSON.stringify(payload.result.content));",
+                  "    console.log('Tool execution result received');",
+                  "});",
+                  "",
+                  "console.log('Step 16 Complete: MCP Tool Executed');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 17: Submit Tool Result to LLM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"tool\",\n      \"content\": \"Search completed successfully\",\n      \"tool_call_id\": \"{{tool_call_id}}\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{mcp_conversation_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 500\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('[Step 17] Tool result submitted successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 17] LLM generated final response', function () {",
+                  "    pm.expect(data.choices).to.be.an('array').that.is.not.empty;",
+                  "    const message = data.choices[0].message;",
+                  "    pm.expect(message.role).to.equal('assistant');",
+                  "    pm.expect(message.content).to.be.a('string').and.not.empty;",
+                  "    console.log('Final assistant response received');",
+                  "});",
+                  "",
+                  "console.log('Step 17 Complete: Tool Result Processed by LLM');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 18: Reload Conversation and Verify Tool Sequence",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}/items",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{mcp_conversation_id}}", "items"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('[Step 18] Conversation messages retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(data).to.have.property('data');",
+                  "    pm.expect(data.data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('[Step 18] Tool call sequence preserved', function () {",
+                  "    const messages = data.data;",
+                  "    ",
+                  "    // Find assistant message with tool_calls",
+                  "    const assistantWithToolCall = messages.find(msg => ",
+                  "        msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0",
+                  "    );",
+                  "    pm.expect(assistantWithToolCall).to.exist;",
+                  "    pm.expect(assistantWithToolCall.tool_calls[0].id).to.equal(pm.collectionVariables.get('tool_call_id'));",
+                  "    console.log('✓ Found assistant message with tool_calls');",
+                  "    console.log('  Tool Call ID:', assistantWithToolCall.tool_calls[0].id);",
+                  "});",
+                  "",
+                  "pm.test('[Step 18] Tool result message preserved', function () {",
+                  "    const messages = data.data;",
+                  "    ",
+                  "    // Find tool result message",
+                  "    const toolResultMsg = messages.find(msg => ",
+                  "        msg.role === 'tool' && msg.tool_call_id === pm.collectionVariables.get('tool_call_id')",
+                  "    );",
+                  "    pm.expect(toolResultMsg).to.exist;",
+                  "    pm.expect(toolResultMsg.tool_call_id).to.equal(pm.collectionVariables.get('tool_call_id'));",
+                  "    pm.expect(toolResultMsg.content).to.exist;",
+                  "    console.log('✓ Found tool result message with matching tool_call_id');",
+                  "    console.log('  Tool Call ID:', toolResultMsg.tool_call_id);",
+                  "});",
+                  "",
+                  "pm.test('[Step 18] Message ordering is correct', function () {",
+                  "    const messages = data.data;",
+                  "    ",
+                  "    // Expected sequence: user -> assistant(with tool_calls) -> tool -> assistant(final)",
+                  "    const userMsgIndex = messages.findIndex(msg => msg.role === 'user');",
+                  "    const assistantToolCallIndex = messages.findIndex(msg => ",
+                  "        msg.role === 'assistant' && msg.tool_calls",
+                  "    );",
+                  "    const toolResultIndex = messages.findIndex(msg => msg.role === 'tool');",
+                  "    const finalAssistantIndex = messages.findIndex((msg, idx) => ",
+                  "        msg.role === 'assistant' && !msg.tool_calls && idx > toolResultIndex",
+                  "    );",
+                  "    ",
+                  "    pm.expect(userMsgIndex).to.be.at.least(0);",
+                  "    pm.expect(assistantToolCallIndex).to.be.greaterThan(userMsgIndex);",
+                  "    pm.expect(toolResultIndex).to.be.greaterThan(assistantToolCallIndex);",
+                  "    pm.expect(finalAssistantIndex).to.be.greaterThan(toolResultIndex);",
+                  "    ",
+                  "    console.log('✓ Message sequence is correct:');",
+                  "    console.log('  User -> Assistant(tool_calls) -> Tool(result) -> Assistant(final)');",
+                  "});",
+                  "",
+                  "console.log('Step 18 Complete: Tool Call Sequence Verified After Reload');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 19: Delete MCP Test Conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Step 19] MCP test conversation deleted', function () {",
+                  "    pm.expect([200, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "console.log('Step 19 Complete: MCP Test Conversation Cleaned Up');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Cleanup",
       "item": [
         {
@@ -1403,6 +1741,36 @@
       "key": "next_cursor",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "mcp_conversation_id",
+      "value": "",
+      "type": "string",
+      "description": "Conversation ID for MCP tool integration test"
+    },
+    {
+      "key": "tool_call_id",
+      "value": "",
+      "type": "string",
+      "description": "Tool call ID for tracking MCP tool execution"
+    },
+    {
+      "key": "tool_name",
+      "value": "",
+      "type": "string",
+      "description": "Name of the tool being called"
+    },
+    {
+      "key": "tool_arguments",
+      "value": "",
+      "type": "string",
+      "description": "Arguments for the tool call"
+    },
+    {
+      "key": "tool_result",
+      "value": "",
+      "type": "string",
+      "description": "Result returned from MCP tool execution"
     }
   ]
 }

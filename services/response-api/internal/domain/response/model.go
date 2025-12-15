@@ -61,6 +61,7 @@ type CreateParams struct {
 	UserID             string
 	Model              string
 	Input              interface{}
+	RequestID          string
 	SystemPrompt       *string
 	Temperature        *float64
 	MaxTokens          *int

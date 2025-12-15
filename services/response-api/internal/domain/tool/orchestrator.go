@@ -40,6 +40,9 @@ type ExecuteParams struct {
 	Ctx             context.Context
 	Model           string
 	Messages        []llm.ChatMessage
+	RequestID       string
+	ConversationID  string
+	UserID          string
 	Temperature     *float64
 	MaxTokens       *int
 	ContextLength   *int // Model's context length limit for message trimming
@@ -141,7 +144,16 @@ func (o *Orchestrator) Execute(params ExecuteParams) (*ExecuteResult, error) {
 				callCtx, cancel = context.WithTimeout(callCtx, o.toolCallTimeout)
 			}
 
-			result, err := o.mcpClient.CallTool(callCtx, parsedCall.Name, parsedCall.Arguments)
+			callRequest := CallRequest{
+				Name:           parsedCall.Name,
+				Arguments:      parsedCall.Arguments,
+				ToolCallID:     parsedCall.ID,
+				RequestID:      params.RequestID,
+				ConversationID: params.ConversationID,
+				UserID:         params.UserID,
+			}
+
+			result, err := o.mcpClient.CallTool(callCtx, callRequest)
 			if cancel != nil {
 				cancel()
 			}
