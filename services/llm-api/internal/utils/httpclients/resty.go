@@ -38,7 +38,7 @@ func NewClient(clientName string) *resty.Client {
 			requestIDStr = reqID
 		}
 
-		log.Info().
+		log.Debug().
 			Str("request_id", requestIDStr).
 			Str("client", clientName).
 			Int("status", r.StatusCode()).

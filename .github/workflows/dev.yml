@@ -4,28 +4,10 @@ on:
     branches:
       - main
       - dev-test
-    paths:
-      - "services/llm-api/**"
-      - "services/mcp-tools/**"
-      - "services/media-api/**"
-      - "services/response-api/**"
-      - "services/memory-tools/**"
-      - "pkg/**"
-      - .github/workflows/dev.yml
-      - .github/workflows/template-docker.yml
   pull_request:
     branches:
       - main
       - dev-test
-    paths:
-      - "services/llm-api/**"
-      - "services/mcp-tools/**"
-      - "services/media-api/**"
-      - "services/response-api/**"
-      - "services/memory-tools/**"
-      - "pkg/**"
-      - .github/workflows/dev.yml
-      - .github/workflows/template-docker.yml
 
 jobs:
   changes:

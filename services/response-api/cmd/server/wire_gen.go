@@ -49,7 +49,7 @@ func BuildApplication(ctx context.Context) (*Application, error) {
 	mcpClient := newMCPClient(configConfig)
 	orchestrator := newOrchestrator(configConfig, client, mcpClient)
 	httpService := newWebhookService(zerologLogger)
-	service := newResponseService(postgresRepository, repository, itemRepository, postgresRepository, orchestrator, mcpClient, httpService, zerologLogger)
+	service := newResponseService(postgresRepository, repository, itemRepository, postgresRepository, orchestrator, mcpClient, client, httpService, zerologLogger)
 	validator, err := newAuthValidator(ctx, configConfig, zerologLogger)
 	if err != nil {
 		return nil, err
@@ -113,8 +113,9 @@ func newResponseService(
 	toolRepo response2.ToolExecutionRepository,
 	orchestrator *tool.Orchestrator,
 	mcpClient tool.MCPClient,
+	modelInfoProvider llm.ModelInfoProvider,
 	webhookService webhook.Service,
 	log zerolog.Logger,
 ) response2.Service {
-	return response2.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, webhookService, log)
+	return response2.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, modelInfoProvider, webhookService, log)
 }

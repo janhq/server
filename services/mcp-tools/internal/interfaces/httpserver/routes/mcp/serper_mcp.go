@@ -100,19 +100,46 @@ type scrapeToolPayload struct {
 
 // SerperMCP handles MCP tool registration for search tooling.
 type SerperMCP struct {
-	searchService *domainsearch.SearchService
-	vectorStore   *vectorstore.Client
-	llmClient     *llmapi.Client // LLM-API client for tool tracking
-	fileIndexMu   sync.Mutex
-	fileIndex     map[string]FileSearchIndexArgs
+	searchService         *domainsearch.SearchService
+	vectorStore           *vectorstore.Client
+	llmClient             *llmapi.Client // LLM-API client for tool tracking
+	fileIndexMu           sync.Mutex
+	fileIndex             map[string]FileSearchIndexArgs
+	maxSnippetChars       int
+	maxScrapePreviewChars int
+	maxScrapeTextChars    int
+}
+
+// SerperMCPConfig contains configuration for SerperMCP.
+type SerperMCPConfig struct {
+	MaxSnippetChars       int
+	MaxScrapePreviewChars int
+	MaxScrapeTextChars    int
 }
 
 // NewSerperMCP creates a new search MCP handler.
-func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vectorstore.Client) *SerperMCP {
+func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vectorstore.Client, cfg SerperMCPConfig) *SerperMCP {
+	// Apply defaults if not set
+	maxSnippet := cfg.MaxSnippetChars
+	if maxSnippet <= 0 {
+		maxSnippet = 5000
+	}
+	maxPreview := cfg.MaxScrapePreviewChars
+	if maxPreview <= 0 {
+		maxPreview = 600
+	}
+	maxText := cfg.MaxScrapeTextChars
+	if maxText <= 0 {
+		maxText = 50000
+	}
+
 	return &SerperMCP{
-		searchService: searchService,
-		vectorStore:   vectorStore,
-		fileIndex:     make(map[string]FileSearchIndexArgs),
+		searchService:         searchService,
+		vectorStore:           vectorStore,
+		fileIndex:             make(map[string]FileSearchIndexArgs),
+		maxSnippetChars:       maxSnippet,
+		maxScrapePreviewChars: maxPreview,
+		maxScrapeTextChars:    maxText,
 	}
 }
 
@@ -188,7 +215,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			payload = s.buildFallbackSearchPayload(searchReq.Q, searchReq)
 			toolErr = err // Keep track of error for tracking
 		} else {
-			payload = buildSearchPayload(searchReq.Q, searchReq, searchResp)
+			payload = s.buildSearchPayload(searchReq.Q, searchReq, searchResp)
 		}
 
 		// If tracking is enabled, save result to LLM-API (single PATCH call)
@@ -284,7 +311,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			}
 			toolErr = err
 		} else {
-			payload = buildScrapePayload(scrapeReq.Url, scrapeResp)
+			payload = s.buildScrapePayload(scrapeReq.Url, scrapeResp)
 		}
 
 		// If tracking is enabled, save result to LLM-API
@@ -454,7 +481,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	})
 }
 
-func buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {
+func (s *SerperMCP) buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	metadata := map[string]any{}
@@ -501,7 +528,7 @@ func buildSearchPayload(query string, req domainsearch.SearchRequest, resp *doma
 				Position:    idx + 1,
 				Title:       stringFromMap(item, "title"),
 				SourceURL:   sourceURL,
-				Snippet:     truncateSnippet(snippet, 420),
+				Snippet:     truncateSnippet(snippet, s.maxSnippetChars),
 				CacheStatus: cacheStatus,
 				FetchedAt:   now,
 			})
@@ -526,7 +553,7 @@ func buildSearchPayload(query string, req domainsearch.SearchRequest, resp *doma
 	return payload
 }
 
-func buildScrapePayload(url string, resp *domainsearch.FetchWebpageResponse) scrapeToolPayload {
+func (s *SerperMCP) buildScrapePayload(url string, resp *domainsearch.FetchWebpageResponse) scrapeToolPayload {
 	metadata := map[string]any{}
 	if resp != nil && resp.Metadata != nil {
 		metadata = resp.Metadata
@@ -542,12 +569,16 @@ func buildScrapePayload(url string, resp *domainsearch.FetchWebpageResponse) scr
 	text := ""
 	if resp != nil {
 		text = resp.Text
+		// Truncate full text if it exceeds the max limit
+		if len([]rune(text)) > s.maxScrapeTextChars {
+			text = truncateSnippet(text, s.maxScrapeTextChars)
+		}
 	}
 
 	return scrapeToolPayload{
 		SourceURL:   url,
 		Text:        text,
-		TextPreview: truncateSnippet(text, 600),
+		TextPreview: truncateSnippet(text, s.maxScrapePreviewChars),
 		Metadata:    metadata,
 		CacheStatus: cacheStatus,
 		FetchedAt:   time.Now().UTC().Format(time.RFC3339),

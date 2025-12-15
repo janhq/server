@@ -4,7 +4,6 @@ ARG GO_VERSION=1.25
 FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /app
-
 # Install build dependencies
 RUN apk add --no-cache git
 

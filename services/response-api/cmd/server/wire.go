@@ -107,8 +107,9 @@ func newResponseService(
 	toolRepo responseDomain.ToolExecutionRepository,
 	orchestrator *tool.Orchestrator,
 	mcpClient tool.MCPClient,
+	modelInfoProvider llm.ModelInfoProvider,
 	webhookService webhook.Service,
 	log zerolog.Logger,
 ) responseDomain.Service {
-	return responseDomain.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, webhookService, log)
+	return responseDomain.NewService(repo, conversations, conversationItems, toolRepo, orchestrator, mcpClient, modelInfoProvider, webhookService, log)
 }

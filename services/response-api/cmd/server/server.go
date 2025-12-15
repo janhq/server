@@ -116,6 +116,7 @@ func main() {
 		responseRepository,
 		orchestrator,
 		mcpClient,
+		llmClient, // Also implements ModelInfoProvider
 		webhookService,
 		log,
 	)

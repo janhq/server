@@ -273,6 +273,21 @@ func (h *ChatHandler) CreateChatCompletion(
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create chat client")
 	}
 
+	// Trim messages to fit within model's context length
+	contextLength := DefaultContextLength
+	if modelCatalog != nil && modelCatalog.ContextLength != nil && *modelCatalog.ContextLength > 0 {
+		contextLength = *modelCatalog.ContextLength
+	}
+	trimResult := TrimMessagesToFitContext(request.Messages, contextLength)
+	if trimResult.TrimmedCount > 0 {
+		observability.AddSpanEvent(ctx, "messages_trimmed",
+			attribute.Int("trimmed_count", trimResult.TrimmedCount),
+			attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
+			attribute.Int("context_length", contextLength),
+		)
+		request.Messages = trimResult.Messages
+	}
+
 	var response *openai.ChatCompletionResponse
 
 	// Handle streaming vs non-streaming
