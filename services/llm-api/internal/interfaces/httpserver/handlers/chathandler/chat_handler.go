@@ -988,8 +988,8 @@ func (h *ChatHandler) addCompletionToConversation(
 		items = append(items, *item)
 	}
 
-	// Create mcp_call (completed) and mcp_call_output (pending) items for each tool_call
-	// mcp_call_output items will be updated by mcp-tools service via PATCH when execution completes
+	// Create mcp_call items (with status in_progress) for each tool_call
+	// These items will be updated by mcp-tools service via PATCH when execution completes
 	if len(response.Choices) > 0 && len(response.Choices[0].Message.ToolCalls) > 0 {
 		for _, toolCall := range response.Choices[0].Message.ToolCalls {
 			mcpItems := h.buildMCPCallItems(toolCall)
@@ -1064,8 +1064,8 @@ func (h *ChatHandler) buildAssistantConversationItem(
 	return &item
 }
 
-// buildMCPCallItems creates both mcp_call (completed) and mcp_call_output (pending) items from a tool call
-// This maintains proper ordering - both items are created together, mcp_call_output will be updated when mcp-tools reports back
+// buildMCPCallItems creates a single mcp_call item with status in_progress
+// The item will be updated by mcp-tools service via PATCH when execution completes
 func (h *ChatHandler) buildMCPCallItems(toolCall openai.ToolCall) []conversation.Item {
 	if toolCall.ID == "" {
 		return nil
@@ -1074,19 +1074,21 @@ func (h *ChatHandler) buildMCPCallItems(toolCall openai.ToolCall) []conversation
 	callID := toolCall.ID
 	args := toolCall.Function.Arguments
 	toolName := toolCall.Function.Name
+	serverLabel := "Jan MCP Server"
 	now := time.Now().UTC()
 
-	// mcp_call item - role is tool (it's a tool call), status completed (the call request itself is complete)
-	callStatus := conversation.ItemStatusCompleted
+	// Single mcp_call item with status in_progress (waiting for tool execution)
+	inProgressStatus := conversation.ItemStatusInProgress
 	toolRole := conversation.ItemRoleTool
 	mcpCallItem := conversation.Item{
 		Object:      "conversation.item",
 		Type:        conversation.ItemTypeMcpCall,
 		Role:        &toolRole,
-		Status:      &callStatus,
+		Status:      &inProgressStatus,
 		CallID:      &callID,
+		Name:        &toolName,
 		Arguments:   &args,
-		CompletedAt: &now,
+		ServerLabel: &serverLabel,
 		Content: []conversation.Content{
 			{
 				Type: "mcp_call",
@@ -1105,24 +1107,8 @@ func (h *ChatHandler) buildMCPCallItems(toolCall openai.ToolCall) []conversation
 		CreatedAt: now,
 	}
 
-	// mcp_call_output item - role is tool, status in_progress (waiting for tool execution result)
-	outputStatus := conversation.ItemStatusInProgress
-	mcpCallOutputItem := conversation.Item{
-		Object:    "conversation.item",
-		Type:      conversation.ItemTypeMcpCallOutput,
-		Role:      &toolRole,
-		Status:    &outputStatus,
-		CallID:    &callID, // Same call_id to link request and response
-		Content: []conversation.Content{
-			{
-				Type:       "mcp_call_output",
-				ToolCallID: &callID,
-			},
-		},
-		CreatedAt: now,
-	}
-
-	return []conversation.Item{mcpCallItem, mcpCallOutputItem}
+	// Return only ONE item (not two)
+	return []conversation.Item{mcpCallItem}
 }
 
 func (h *ChatHandler) filterReasoningContent(contents []conversation.Content, storeReasoning bool) []conversation.Content {

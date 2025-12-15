@@ -13,7 +13,7 @@ import (
 // Item Types and Enums
 // ===============================================
 
-// @Enum(message, function_call, function_call_output, reasoning, file_search_call, web_search_call, image_generation_call, computer_call, computer_call_output, code_interpreter_call, local_shell_call, local_shell_call_output, shell_call, shell_call_output, apply_patch_call, apply_patch_call_output, mcp_list_tools, mcp_approval_request, mcp_approval_response, mcp_call, mcp_call_output, custom_tool_call, custom_tool_call_output)
+// @Enum(message, function_call, function_call_output, reasoning, file_search_call, web_search_call, image_generation_call, computer_call, computer_call_output, code_interpreter_call, local_shell_call, local_shell_call_output, shell_call, shell_call_output, apply_patch_call, apply_patch_call_output, mcp_list_tools, mcp_approval_request, mcp_approval_response, mcp_call, custom_tool_call, custom_tool_call_output)
 type ItemType string
 
 const (
@@ -42,7 +42,6 @@ const (
 	ItemTypeMcpApprovalRequest  ItemType = "mcp_approval_request"
 	ItemTypeMcpApprovalResponse ItemType = "mcp_approval_response"
 	ItemTypeMcpCall             ItemType = "mcp_call"
-	ItemTypeMcpCallOutput       ItemType = "mcp_call_output"
 
 	// Custom tool types
 	ItemTypeCustomToolCall       ItemType = "custom_tool_call"
@@ -66,7 +65,7 @@ func ValidateItemType(input string) bool {
 		ItemTypeLocalShellCall, ItemTypeLocalShellCallOutput,
 		ItemTypeShellCall, ItemTypeShellCallOutput,
 		ItemTypeApplyPatchCall, ItemTypeApplyPatchCallOutput,
-		ItemTypeMcpListTools, ItemTypeMcpApprovalRequest, ItemTypeMcpApprovalResponse, ItemTypeMcpCall, ItemTypeMcpCallOutput,
+		ItemTypeMcpListTools, ItemTypeMcpApprovalRequest, ItemTypeMcpApprovalResponse, ItemTypeMcpCall,
 		ItemTypeCustomToolCall, ItemTypeCustomToolCallOutput,
 		// Legacy types
 		ItemTypeFileSearch, ItemTypeWebSearch, ItemTypeCodeInterpreter,
@@ -444,6 +443,7 @@ type Item struct {
 
 	// OpenAI-compatible fields for specific item types
 	CallID                   *string                `json:"call_id,omitempty"`                      // For function/tool calls
+	Name                     *string                `json:"name,omitempty"`                         // For MCP tool calls - tool name
 	ServerLabel              *string                `json:"server_label,omitempty"`                 // For MCP calls
 	ApprovalRequestID        *string                `json:"approval_request_id,omitempty"`          // For MCP approval
 	Arguments                *string                `json:"arguments,omitempty"`                    // For tool calls (JSON string)
@@ -1014,7 +1014,7 @@ func (c Content) MarshalJSON() ([]byte, error) {
 
 	// Determine what to use for the text field based on content type
 	switch c.Type {
-	case "input_text", "reasoning_text", "tool_result", "text", "mcp_call_output":
+	case "input_text", "reasoning_text", "tool_result", "text", "mcp_call":
 		// Use simple string for these types
 		if c.TextString != nil {
 			aux.Text = *c.TextString
@@ -1041,7 +1041,7 @@ func (c *Content) UnmarshalJSON(data []byte) error {
 	// Parse the text field based on content type
 	if len(aux.Text) > 0 {
 		switch c.Type {
-		case "input_text", "reasoning_text", "tool_result", "text", "mcp_call_output":
+		case "input_text", "reasoning_text", "tool_result", "text", "mcp_call":
 			// Try to unmarshal as string
 			var textStr string
 			if err := json.Unmarshal(aux.Text, &textStr); err == nil {

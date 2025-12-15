@@ -249,18 +249,27 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 
 		// Update tool call result in LLM-API (async)
 		if trackingEnabled && m.llmClient != nil {
+			// Capture input for async goroutine
+			inputCopy := input
 			go func() {
 				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
 				// Marshal result for storage
 				resultJSON, _ := json.Marshal(result)
+
+				// Serialize arguments
+				argsBytes, _ := json.Marshal(inputCopy)
+				argsStr := string(argsBytes)
+
 				saveResult := m.llmClient.UpdateToolCallResult(
 					saveCtx,
 					tracking.AuthToken,
 					tracking.ConversationID,
 					tracking.ToolCallID,
 					"memory_retrieve",
+					argsStr,
+					"Jan MCP Server",
 					string(resultJSON),
 					nil, // no error
 				)

@@ -30,9 +30,17 @@ func NewClient(baseURL string) *Client {
 
 // UpdateItemRequest represents the PATCH request body for updating mcp_call items
 type UpdateItemRequest struct {
+	// Required
+	Status string `json:"status"`
+
+	// Result fields
 	Output *string `json:"output,omitempty"`
 	Error  *string `json:"error,omitempty"`
-	Status string  `json:"status"`
+
+	// Tool info fields (for updating mcp_call item)
+	Name        *string `json:"name,omitempty"`
+	Arguments   *string `json:"arguments,omitempty"`
+	ServerLabel *string `json:"server_label,omitempty"`
 }
 
 // ItemResponse represents the response from the PATCH endpoint
@@ -53,23 +61,25 @@ type PatchResult struct {
 	Error      error
 }
 
-// UpdateToolCallResult updates an existing pending mcp_call item to completed/failed
+// UpdateToolCallResult updates an existing in_progress mcp_call item to completed/failed
 // This is the main method called by MCP tool handlers after tool execution
 //
 // Security: LLM-API will validate:
 // 1. The call_id exists in the specified conversation_id
 // 2. The conversation belongs to the authenticated user (from JWT)
-// 3. The item status is "pending" (not already completed)
+// 3. The item status is "in_progress" (not already completed)
 func (c *Client) UpdateToolCallResult(
 	ctx context.Context,
 	authToken string,
 	conversationID string,
 	toolCallID string,
 	toolName string,
+	arguments string,
+	serverLabel string,
 	output string,
 	toolError *string,
 ) *PatchResult {
-	// Use call_id to find and update the pending item
+	// Use call_id to find and update the in_progress item
 	endpoint := fmt.Sprintf("%s/v1/conversations/%s/items/by-call-id/%s", c.baseURL, conversationID, toolCallID)
 
 	status := "completed"
@@ -78,9 +88,12 @@ func (c *Client) UpdateToolCallResult(
 	}
 
 	reqBody := UpdateItemRequest{
-		Output: &output,
-		Error:  toolError,
-		Status: status,
+		Status:      status,
+		Output:      &output,
+		Error:       toolError,
+		Name:        &toolName,
+		Arguments:   &arguments,
+		ServerLabel: &serverLabel,
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)

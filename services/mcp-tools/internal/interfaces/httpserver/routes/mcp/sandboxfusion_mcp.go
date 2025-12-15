@@ -133,12 +133,18 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 
 		// If tracking is enabled, save result to LLM-API
 		if trackingEnabled && s.llmClient != nil {
+			// Capture input for async goroutine
+			inputCopy := input
 			go func() {
 				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
 				outputBytes, _ := json.Marshal(payload)
 				outputStr := string(outputBytes)
+
+				// Serialize arguments
+				argsBytes, _ := json.Marshal(inputCopy)
+				argsStr := string(argsBytes)
 
 				var errStr *string
 				if toolErr != nil {
@@ -152,6 +158,8 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 					tracking.ConversationID,
 					tracking.ToolCallID,
 					"python_exec",
+					argsStr,
+					"Jan MCP Server",
 					outputStr,
 					errStr,
 				)
