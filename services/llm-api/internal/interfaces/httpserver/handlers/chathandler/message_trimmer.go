@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"unicode/utf8"
 
+	"jan-server/services/llm-api/internal/infrastructure/logger"
+
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -94,10 +96,41 @@ func TrimMessagesToFitContext(messages []openai.ChatCompletionMessage, contextLe
 		}
 	}
 
+	log := logger.GetLogger()
+	log.Info().
+		Int("initial_messages", len(messages)).
+		Int("initial_tokens", currentTokens).
+		Int("max_tokens", maxTokens).
+		Int("context_length", contextLength).
+		Msg("starting message trimming")
+
 	// Create a working copy
 	result := make([]openai.ChatCompletionMessage, len(messages))
 	copy(result, messages)
 	trimmedCount := 0
+
+	// Build a token count cache for efficient removal
+	// This avoids O(n²) complexity from recalculating all tokens on each removal
+	messageTokens := make([]int, len(result))
+	for i := range result {
+		tokens := 10 // Overhead for role and structure
+		tokens += estimateTokenCount(result[i].Content)
+		
+		if len(result[i].MultiContent) > 0 {
+			for _, part := range result[i].MultiContent {
+				tokens += estimateTokenCount(part.Text)
+			}
+		}
+		
+		if result[i].ToolCalls != nil {
+			for _, tc := range result[i].ToolCalls {
+				tokens += 20
+				tokens += estimateTokenCount(tc.Function.Name)
+				tokens += estimateTokenCount(tc.Function.Arguments)
+			}
+		}
+		messageTokens[i] = tokens
+	}
 
 	// Find indices of messages that can be removed (in order of priority)
 	// We iterate from oldest to newest (excluding system prompt at index 0)
@@ -137,11 +170,30 @@ func TrimMessagesToFitContext(messages []openai.ChatCompletionMessage, contextLe
 			break
 		}
 
-		// Remove the message
+		// Decrement token count by the removed message's tokens
+		removedTokens := messageTokens[removedIdx]
+		currentTokens -= removedTokens
+		
+		log.Debug().
+			Str("role", result[removedIdx].Role).
+			Int("index", removedIdx).
+			Int("message_tokens", removedTokens).
+			Int("remaining_tokens", currentTokens).
+			Int("remaining_messages", len(result)-1).
+			Msg("trimmed message")
+		
+		// Remove the message and its token count from caches
 		result = append(result[:removedIdx], result[removedIdx+1:]...)
+		messageTokens = append(messageTokens[:removedIdx], messageTokens[removedIdx+1:]...)
 		trimmedCount++
-		currentTokens = estimateMessagesTokenCount(result)
 	}
+
+	log.Info().
+		Int("trimmed_count", trimmedCount).
+		Int("final_messages", len(result)).
+		Int("final_tokens", currentTokens).
+		Int("tokens_freed", estimateMessagesTokenCount(messages)-currentTokens).
+		Msg("message trimming completed")
 
 	return TrimMessagesResult{
 		Messages:        result,
