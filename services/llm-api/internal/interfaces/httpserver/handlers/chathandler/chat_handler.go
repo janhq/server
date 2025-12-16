@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	openai "github.com/sashabaranov/go-openai"
@@ -785,8 +787,12 @@ func (h *ChatHandler) generateTitleFromMessage(messages []openai.ChatCompletionM
 	// Find the first user message
 	for _, msg := range messages {
 		if msg.Role == "user" && msg.Content != "" {
+			content := sanitizeTitleContent(msg.Content)
+			if content == "" {
+				continue
+			}
+
 			// Extract first 60 characters for title
-			content := strings.TrimSpace(msg.Content)
 			if len(content) > 60 {
 				// Find a good breaking point (end of word)
 				truncated := content[:60]
@@ -800,6 +806,41 @@ func (h *ChatHandler) generateTitleFromMessage(messages []openai.ChatCompletionM
 		}
 	}
 	return "New Conversation"
+}
+
+// sanitizeTitleContent removes URLs, special characters, and cleans up the content for use as a title
+func sanitizeTitleContent(content string) string {
+	// Remove URLs (http, https, ftp, and www patterns)
+	urlPattern := regexp.MustCompile(`(?i)(https?://|ftp://|www\.)[^\s]+`)
+	content = urlPattern.ReplaceAllString(content, "")
+
+	// Remove markdown links [text](url)
+	markdownLinkPattern := regexp.MustCompile(`\[([^\]]*)\]\([^)]+\)`)
+	content = markdownLinkPattern.ReplaceAllString(content, "$1")
+
+	// Remove email addresses
+	emailPattern := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	content = emailPattern.ReplaceAllString(content, "")
+
+	// Remove special characters but keep basic punctuation (.,!?-') and unicode letters/numbers
+	var result strings.Builder
+	for _, r := range content {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsSpace(r) ||
+			r == '.' || r == ',' || r == '!' || r == '?' || r == '-' || r == '\'' {
+			result.WriteRune(r)
+		}
+	}
+	content = result.String()
+
+	// Replace multiple spaces with single space (after special char removal)
+	multiSpacePattern := regexp.MustCompile(`\s+`)
+	content = multiSpacePattern.ReplaceAllString(content, " ")
+
+	// Trim whitespace and trailing punctuation for cleaner titles
+	content = strings.TrimSpace(content)
+	content = strings.TrimRight(content, " .,!?-'")
+
+	return content
 }
 
 // updateConversationTitleFromMessages updates conversation title if it's still default and returns the updated conversation
