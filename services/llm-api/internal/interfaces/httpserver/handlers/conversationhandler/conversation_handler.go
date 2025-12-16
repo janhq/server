@@ -18,6 +18,7 @@ import (
 	conversationresponses "jan-server/services/llm-api/internal/interfaces/httpserver/responses/conversation"
 	"jan-server/services/llm-api/internal/utils/idgen"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
+	"jan-server/services/llm-api/internal/utils/stringutils"
 )
 
 // Context keys for conversation data
@@ -83,10 +84,19 @@ func (h *ConversationHandler) CreateConversation(
 		projectPublicID = &proj.PublicID
 	}
 
+	// Sanitize title if provided
+	var sanitizedTitle *string
+	if req.Title != nil && *req.Title != "" {
+		title := stringutils.GenerateTitle(*req.Title, 256)
+		if title != "" {
+			sanitizedTitle = &title
+		}
+	}
+
 	// Create conversation
 	input := conversation.CreateConversationInput{
 		UserID:          userID,
-		Title:           req.Title, // Use title from request
+		Title:           sanitizedTitle,
 		Metadata:        req.Metadata,
 		Referrer:        req.Referrer,
 		ProjectID:       projectID,
@@ -144,8 +154,17 @@ func (h *ConversationHandler) UpdateConversation(
 	conversationID string,
 	req conversationrequests.UpdateConversationRequest,
 ) (*conversationresponses.ConversationResponse, error) {
+	// Sanitize title if provided
+	var sanitizedTitle *string
+	if req.Title != nil && *req.Title != "" {
+		title := stringutils.GenerateTitle(*req.Title, 256)
+		if title != "" {
+			sanitizedTitle = &title
+		}
+	}
+
 	input := conversation.UpdateConversationInput{
-		Title:    req.Title,
+		Title:    sanitizedTitle,
 		Metadata: req.Metadata,
 		Referrer: req.Referrer,
 	}
