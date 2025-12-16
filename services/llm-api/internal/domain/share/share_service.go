@@ -106,7 +106,7 @@ func (s *ShareService) CreateShare(ctx context.Context, input CreateShareInput) 
 
 	// For single-message share, validate item
 	if input.Scope == ShareScopeItem && input.ItemPublicID != nil {
-		if err := s.validateItemForShare(items, *input.ItemPublicID); err != nil {
+		if err := s.validateItemForShare(ctx, items, *input.ItemPublicID); err != nil {
 			return nil, err
 		}
 	}
@@ -260,23 +260,23 @@ func (s *ShareService) getActiveItems(conv *conversation.Conversation) []convers
 	return conv.Items
 }
 
-func (s *ShareService) validateItemForShare(items []conversation.Item, itemPublicID string) error {
+func (s *ShareService) validateItemForShare(ctx context.Context, items []conversation.Item, itemPublicID string) error {
 	for _, item := range items {
 		if item.PublicID == itemPublicID {
 			// Must be an assistant message
 			if item.Role == nil || *item.Role != conversation.ItemRoleAssistant {
-				return platformerrors.NewError(context.Background(), platformerrors.LayerDomain, platformerrors.ErrorTypeValidation,
+				return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation,
 					"only assistant messages can be shared individually", nil, "0d1e2f3a-4b5c-4d6e-7f8a-9b0c1d2e3f4a")
 			}
 			// Must be completed
 			if item.Status == nil || *item.Status != conversation.ItemStatusCompleted {
-				return platformerrors.NewError(context.Background(), platformerrors.LayerDomain, platformerrors.ErrorTypeValidation,
+				return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation,
 					"only completed messages can be shared", nil, "1e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b")
 			}
 			return nil
 		}
 	}
-	return platformerrors.NewError(context.Background(), platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound,
+	return platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound,
 		"item not found in conversation", nil, "2f3a4b5c-6d7e-4f8a-9b0c-1d2e3f4a5b6c")
 }
 

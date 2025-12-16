@@ -1138,9 +1138,8 @@ func (h *ChatHandler) filterReasoningContent(contents []conversation.Content, st
 		}
 		filtered = append(filtered, content)
 	}
-	// If the only content was reasoning, keep one entry so the assistant
-	// message is still persisted (otherwise the message would be dropped).
-	if len(filtered) == 0 {
+	// If everything was reasoning, keep one entry so the assistant turn still gets persisted.
+	if len(filtered) == 0 && len(contents) > 0 {
 		filtered = append(filtered, contents[0])
 	}
 	return filtered
