@@ -8,6 +8,7 @@ import (
 
 	"jan-server/services/mcp-tools/internal/infrastructure/config"
 	"jan-server/services/mcp-tools/internal/infrastructure/logger"
+	_ "jan-server/services/mcp-tools/internal/infrastructure/metrics" // Register Prometheus metrics
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes/mcp"
 )

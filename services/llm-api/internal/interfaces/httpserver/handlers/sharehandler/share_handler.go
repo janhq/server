@@ -7,6 +7,7 @@ import (
 
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/share"
+	"jan-server/services/llm-api/internal/infrastructure/metrics"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	sharerequests "jan-server/services/llm-api/internal/interfaces/httpserver/requests/share"
@@ -102,10 +103,12 @@ func (h *ShareHandler) CreateShare(reqCtx *gin.Context) {
 
 	output, err := h.shareService.CreateShare(ctx, input)
 	if err != nil {
+		metrics.RecordShare(req.Scope, "error")
 		responses.HandleError(reqCtx, err, "failed to create share")
 		return
 	}
 
+	metrics.RecordShare(req.Scope, "success")
 	resp := shareresponses.NewShareResponse(output.Share, h.getBaseURL(reqCtx))
 	reqCtx.JSON(http.StatusCreated, resp)
 }
@@ -188,6 +191,7 @@ func (h *ShareHandler) RevokeShare(reqCtx *gin.Context) {
 
 	shareID := reqCtx.Param("share_id")
 	if shareID == "" {
+		metrics.RecordShare("unknown", "error")
 		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation,
 			"share_id is required", "share-id-001")
 		return
@@ -195,10 +199,12 @@ func (h *ShareHandler) RevokeShare(reqCtx *gin.Context) {
 
 	err := h.shareService.RevokeShare(ctx, shareID, user.ID)
 	if err != nil {
+		metrics.RecordShare("unknown", "error")
 		responses.HandleError(reqCtx, err, "failed to revoke share")
 		return
 	}
 
+	metrics.RecordShare("unknown", "success")
 	resp := shareresponses.NewShareDeletedResponse(shareID)
 	reqCtx.JSON(http.StatusOK, resp)
 }
@@ -221,6 +227,7 @@ func (h *ShareHandler) GetPublicShare(reqCtx *gin.Context) {
 
 	slug := reqCtx.Param("slug")
 	if slug == "" {
+		metrics.RecordPublicShareRequest(reqCtx.Request.Method, "400")
 		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation,
 			"slug is required", "public-share-slug-001")
 		return
@@ -230,16 +237,19 @@ func (h *ShareHandler) GetPublicShare(reqCtx *gin.Context) {
 	if err != nil {
 		// Check if this is a "revoked" error
 		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+			metrics.RecordPublicShareRequest(reqCtx.Request.Method, "410")
 			reqCtx.AbortWithStatusJSON(http.StatusGone, gin.H{
 				"error":   "share_revoked",
 				"message": "This share has been revoked",
 			})
 			return
 		}
+		metrics.RecordPublicShareRequest(reqCtx.Request.Method, "404")
 		responses.HandleError(reqCtx, err, "share not found")
 		return
 	}
 
+	metrics.RecordPublicShareRequest(reqCtx.Request.Method, "200")
 	resp := shareresponses.NewPublicShareResponse(sh)
 
 	// Set cache headers (5 minute TTL)
@@ -262,6 +272,7 @@ func (h *ShareHandler) HeadPublicShare(reqCtx *gin.Context) {
 
 	slug := reqCtx.Param("slug")
 	if slug == "" {
+		metrics.RecordPublicShareRequest(reqCtx.Request.Method, "400")
 		reqCtx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -269,18 +280,22 @@ func (h *ShareHandler) HeadPublicShare(reqCtx *gin.Context) {
 	sh, err := h.shareService.GetShareBySlug(ctx, slug)
 	if err != nil {
 		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+			metrics.RecordPublicShareRequest(reqCtx.Request.Method, "410")
 			reqCtx.AbortWithStatus(http.StatusGone)
 			return
 		}
+		metrics.RecordPublicShareRequest(reqCtx.Request.Method, "404")
 		reqCtx.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
 	if sh.IsRevoked() {
+		metrics.RecordPublicShareRequest(reqCtx.Request.Method, "410")
 		reqCtx.AbortWithStatus(http.StatusGone)
 		return
 	}
 
+	metrics.RecordPublicShareRequest(reqCtx.Request.Method, "200")
 	reqCtx.Status(http.StatusOK)
 }
 

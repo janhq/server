@@ -20,6 +20,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
 	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
+	"jan-server/services/llm-api/internal/infrastructure/metrics"
 	"jan-server/services/llm-api/internal/infrastructure/observability"
 	conversationHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
@@ -330,6 +331,10 @@ func (h *ChatHandler) CreateChatCompletion(
 				attribute.String("completion.finish_reason", string(response.Choices[0].FinishReason)),
 			)
 		}
+
+		// Record Prometheus metrics for token usage and LLM duration
+		metrics.RecordTokens(request.Model, selectedProvider.DisplayName, response.Usage.PromptTokens, response.Usage.CompletionTokens)
+		metrics.RecordLLMDuration(request.Model, selectedProvider.DisplayName, request.Stream, llmDuration.Seconds())
 	}
 
 	// Add request and response to conversation if conversation context was provided

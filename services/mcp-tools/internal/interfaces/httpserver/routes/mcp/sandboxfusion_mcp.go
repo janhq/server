@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 	"jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -63,10 +64,10 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SandboxFusionArgs) (*mcp.CallToolResult, map[string]any, error) {
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
-		
+
 		// Check for tracking context from headers
 		tracking, trackingEnabled := GetToolTracking(ctx)
-		
+
 		log.Info().
 			Str("tool", "python_exec").
 			Str("tool_call_id", callCtx["tool_call_id"]).
@@ -96,6 +97,7 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 
 		var payload map[string]any
 		var toolErr error
+		var estimatedTokens float64
 
 		if s.client != nil {
 			resp, err := s.client.RunCode(ctx, runReq)
@@ -108,6 +110,7 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 					"artifacts":   resp.Artifacts,
 					"error":       resp.Error,
 				}
+				estimatedTokens = estimateTokensFromStrings(resp.Stdout, resp.Stderr)
 			} else {
 				log.Warn().Err(err).Str("tool", "python_exec").Str("language", runReq.Language).Msg("sandboxfusion execution failed; using fallback stub")
 				toolErr = err
@@ -119,6 +122,10 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 					"artifacts":   []string{},
 					"error":       "",
 				}
+				estimatedTokens = estimateTokensFromStrings(
+					"hello from sandbox (stub)",
+					"",
+				)
 			}
 		} else {
 			payload = map[string]any{
@@ -129,6 +136,7 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 				"artifacts":   []string{},
 				"error":       "",
 			}
+			estimatedTokens = estimateTokensFromStrings("hello from sandbox (stub)", "")
 		}
 
 		// If tracking is enabled, save result to LLM-API
@@ -175,6 +183,24 @@ func (s *SandboxFusionMCP) RegisterTools(server *mcp.Server) {
 			}()
 		}
 
+		// Record metrics
+		status := "success"
+		if toolErr != nil {
+			status = "error"
+		}
+		metrics.RecordToolCall("python_exec", "sandboxfusion", status, time.Since(startTime).Seconds())
+		if estimatedTokens > 0 {
+			metrics.RecordToolTokens("python_exec", "sandboxfusion", estimatedTokens)
+		}
+
 		return nil, payload, nil
 	})
+}
+
+func estimateTokensFromStrings(parts ...string) float64 {
+	total := 0
+	for _, p := range parts {
+		total += len(p)
+	}
+	return float64(total) / 4
 }

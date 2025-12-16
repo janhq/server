@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog/log"
@@ -121,10 +122,10 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input MemoryRetrieveArgs) (*mcp.CallToolResult, memoryToolResult, error) {
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
-		
+
 		// Check for tracking context from headers
 		tracking, trackingEnabled := GetToolTracking(ctx)
-		
+
 		log.Info().
 			Str("tool", "memory_retrieve").
 			Str("tool_call_id", callCtx["tool_call_id"]).
@@ -219,6 +220,8 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 				Str("query", query).
 				Str("memory_url", m.memoryToolsURL).
 				Msg("[Memory MCP] Failed to retrieve memories")
+			// Record error metrics
+			metrics.RecordToolCall("memory_retrieve", "memory-tools", "error", time.Since(startTime).Seconds())
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(`{"query":"%s","total_items":0,"user_memories":[],"project_memories":[],"episodic_memories":[],"error":"memory service unavailable"}`, query)}},
 			}, memoryToolResult{}, nil
@@ -287,6 +290,10 @@ func (m *MemoryMCP) RegisterTools(server *mcp.Server) {
 				}
 			}()
 		}
+
+		// Record metrics
+		metrics.RecordToolCall("memory_retrieve", "memory-tools", "success", time.Since(startTime).Seconds())
+		metrics.RecordToolTokens("memory_retrieve", "memory-tools", float64(result.EstimatedTokens))
 
 		return nil, result, nil
 	})

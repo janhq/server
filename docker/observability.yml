@@ -1,10 +1,6 @@
 # Observability Stack
 # Prometheus, Grafana, Jaeger, OpenTelemetry Collector
 
-volumes:
-  prometheus-data:
-  grafana-data:
-
 services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.90.1
@@ -24,6 +20,8 @@ services:
       - "1777:1777"    # pprof endpoint
     depends_on:
       - jaeger
+    networks:
+      - jan-server
 
   prometheus:
     image: prom/prometheus:v2.48.0
@@ -41,6 +39,8 @@ services:
       - '--web.enable-lifecycle'
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - jan-server
 
   jaeger:
     image: jaegertracing/all-in-one:1.51
@@ -53,6 +53,8 @@ services:
       - "${JAEGER_UI_PORT:-16686}:16686"
       - "${JAEGER_COLLECTOR_PORT:-14250}:14250"
       - "${JAEGER_UDP_PORT:-6831}:6831/udp"
+    networks:
+      - jan-server
 
   grafana:
     image: grafana/grafana:10.2.2
@@ -71,3 +73,14 @@ services:
     depends_on:
       - prometheus
       - jaeger
+    networks:
+      - jan-server
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  jan-server:
+    external: true
+    name: jan-server_default
