@@ -13,8 +13,10 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/sharehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/usersettingshandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/public"
 	v1 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	adminModel "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/model"
@@ -24,6 +26,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	modelProvider "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/share"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/users"
 )
 
@@ -48,6 +51,7 @@ var RouteProvider = wire.NewSet(
 	projecthandler.NewProjectHandler,
 	usersettingshandler.NewUserSettingsHandler,
 	prompttemplatehandler.NewPromptTemplateHandler,
+	sharehandler.NewShareHandler,
 
 	// Routes
 	auth.NewAuthRoute,
@@ -62,4 +66,6 @@ var RouteProvider = wire.NewSet(
 	model.NewModelRoute,
 	modelProvider.NewModelProviderRoute,
 	users.NewUsersRoute,
+	share.NewShareRoute,
+	public.NewPublicShareRoute,
 )

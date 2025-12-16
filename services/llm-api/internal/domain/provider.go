@@ -11,6 +11,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
+	"jan-server/services/llm-api/internal/domain/share"
 	"jan-server/services/llm-api/internal/domain/user"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 )
@@ -44,6 +45,9 @@ var ServiceProvider = wire.NewSet(
 	// Prompt orchestration
 	ProvidePromptProcessorConfig,
 	ProvidePromptProcessor,
+
+	// Share domain
+	share.NewShareService,
 )
 
 func ProvideAPIKeyConfig(cfg *config.Config) apikey.Config {

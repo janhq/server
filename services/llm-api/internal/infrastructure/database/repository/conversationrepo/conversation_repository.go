@@ -329,27 +329,27 @@ func (repo *ConversationGormRepository) CreateBranch(ctx context.Context, conver
 
 	// TODO: Implement branch storage in database
 	// For now, return not implemented error
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "b4c5d6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8e")
 }
 
 // GetBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) GetBranch(ctx context.Context, conversationID uint, branchName string) (*conversation.BranchMetadata, error) {
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f")
 }
 
 // ListBranches implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) ListBranches(ctx context.Context, conversationID uint) ([]*conversation.BranchMetadata, error) {
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "d6e7f8a9-b0c1-4d2e-3f4a-5b6c7d8e9f0a")
 }
 
 // DeleteBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) DeleteBranch(ctx context.Context, conversationID uint, branchName string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1b")
 }
 
 // SetActiveBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) SetActiveBranch(ctx context.Context, conversationID uint, branchName string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "f8a9b0c1-d2e3-4f4a-5b6c-7d8e9f0a1b2c")
 }
 
 // Branch item operations
@@ -360,7 +360,7 @@ func (repo *ConversationGormRepository) AddItemToBranch(ctx context.Context, con
 	if branchName == "MAIN" || branchName == "" {
 		return repo.AddItem(ctx, conversationID, item)
 	}
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "a9b0c1d2-e3f4-4a5b-6c7d-8e9f0a1b2c3d")
 }
 
 // GetBranchItems implements conversation.ConversationRepository.
@@ -383,7 +383,7 @@ func (repo *ConversationGormRepository) GetBranchItems(ctx context.Context, conv
 			return item.EtoD()
 		}), nil
 	}
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "b0c1d2e3-f4a5-4b6c-7d8e-9f0a1b2c3d4e")
 }
 
 // applyItemPagination applies pagination to item queries
@@ -423,12 +423,12 @@ func (repo *ConversationGormRepository) BulkAddItemsToBranch(ctx context.Context
 	if branchName == "MAIN" || branchName == "" {
 		return repo.BulkAddItems(ctx, conversationID, items)
 	}
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f")
 }
 
 // ForkBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) ForkBranch(ctx context.Context, conversationID uint, sourceBranch, newBranch string, fromItemID string, description *string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a")
 }
 
 // Item rating operations
@@ -436,17 +436,17 @@ func (repo *ConversationGormRepository) ForkBranch(ctx context.Context, conversa
 func (repo *ConversationGormRepository) RateItem(ctx context.Context, conversationID uint, itemID string, rating conversation.ItemRating, comment *string) error {
 	// TODO: Implement rating storage in database
 	// For now, return not implemented error
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "e3f4a5b6-c7d8-4e9f-0a1b-2c3d4e5f6a7b")
 }
 
 // GetItemRating implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) GetItemRating(ctx context.Context, conversationID uint, itemID string) (*conversation.ItemRating, error) {
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "")
+	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "f4a5b6c7-d8e9-4f0a-1b2c-3d4e5f6a7b8c")
 }
 
 // RemoveItemRating implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) RemoveItemRating(ctx context.Context, conversationID uint, itemID string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "")
+	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "a5b6c7d8-e9f0-4a1b-2c3d-4e5f6a7b8c9d")
 }
 
 // applyFilter applies filter conditions to the query

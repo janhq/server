@@ -144,7 +144,7 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	// Validate messages (after prepending conversation items)
 	if len(request.Messages) == 0 {
-		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "messages cannot be empty", nil, "")
+		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "messages cannot be empty", nil, "c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f")
 		observability.RecordError(ctx, err)
 		return nil, err
 	}
@@ -179,13 +179,13 @@ func (h *ChatHandler) CreateChatCompletion(
 	}
 
 	if selectedProviderModel == nil {
-		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, fmt.Sprintf("model not found: %s", request.Model), nil, "")
+		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, fmt.Sprintf("model not found: %s", request.Model), nil, "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a")
 		observability.RecordError(ctx, err)
 		return nil, err
 	}
 
 	if selectedProvider == nil {
-		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "")
+		err := platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b")
 		observability.RecordError(ctx, err)
 		return nil, err
 	}
@@ -759,7 +759,7 @@ func firstTextFromItem(item conversation.Item) string {
 func (h *ChatHandler) createConversationWithReferrer(ctx context.Context, userID uint, referrer string) (*conversation.Conversation, error) {
 	cleaned := strings.TrimSpace(referrer)
 	if cleaned == "" {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "referrer cannot be empty", nil, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "referrer cannot be empty", nil, "f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c")
 	}
 
 	referrerCopy := cleaned
@@ -1137,6 +1137,10 @@ func (h *ChatHandler) filterReasoningContent(contents []conversation.Content, st
 			continue
 		}
 		filtered = append(filtered, content)
+	}
+	// If everything was reasoning, keep one entry so the assistant turn still gets persisted.
+	if len(filtered) == 0 && len(contents) > 0 {
+		filtered = append(filtered, contents[0])
 	}
 	return filtered
 }

@@ -106,6 +106,7 @@ func (httpServer *HTTPServer) Run() error {
 	// Register v1 routes (with auth middleware)
 	httpServer.v1Route.RegisterRouter(protected)
 	httpServer.v1Route.RegisterRouter(llmProtected)
+	httpServer.v1Route.RegisterPublicRouter(root)
 
 	if err := httpServer.engine.Run(fmt.Sprintf(":%d", httpServer.config.HTTPPort)); err != nil {
 		return err

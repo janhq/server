@@ -140,6 +140,30 @@ func AsError(ctx context.Context, layer Layer, err error, message string) *Platf
 	return NewError(ctx, layer, errorType, message, err, "")
 }
 
+// AsErrorWithUUID wraps an error with layer context and a specific UUID for traceability
+func AsErrorWithUUID(ctx context.Context, layer Layer, err error, message string, uuid string) *PlatformError {
+	if err == nil {
+		return nil
+	}
+
+	var platformErr *PlatformError
+	if errors.As(err, &platformErr) {
+		// If the wrapped error already has a UUID, use it; otherwise use the provided one
+		existingUUID := platformErr.UUID
+		if existingUUID == "" || existingUUID == "auto-generated-uuid" {
+			existingUUID = uuid
+		}
+		return NewError(ctx, layer, platformErr.Type, fmt.Sprintf("%s: %s", message, platformErr.Message), platformErr, existingUUID)
+	}
+
+	errorType := ErrorTypeInternal
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		errorType = ErrorTypeNotFound
+	}
+
+	return NewError(ctx, layer, errorType, message, err, uuid)
+}
+
 // ErrorTypeToHTTPStatus maps error types to HTTP status codes
 func ErrorTypeToHTTPStatus(errorType ErrorType) int {
 	switch errorType {

@@ -32,7 +32,7 @@ func NewConversationService(repo ConversationRepository) *ConversationService {
 func (s *ConversationService) CreateConversation(ctx context.Context, conv *Conversation) (*Conversation, error) {
 	// Validate conversation
 	if err := s.validator.ValidateConversation(conv); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "conversation validation failed", err, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "conversation validation failed", err, "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d")
 	}
 
 	// Persist conversation
@@ -47,7 +47,7 @@ func (s *ConversationService) CreateConversation(ctx context.Context, conv *Conv
 func (s *ConversationService) GetConversationByPublicIDAndUserID(ctx context.Context, publicID string, userID uint) (*Conversation, error) {
 	// Validate conversation ID format
 	if err := s.validator.ValidateConversationID(publicID); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "invalid conversation ID", err, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "invalid conversation ID", err, "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e")
 	}
 
 	// Retrieve conversation
@@ -58,7 +58,7 @@ func (s *ConversationService) GetConversationByPublicIDAndUserID(ctx context.Con
 
 	// Verify ownership
 	if conversation.UserID != userID {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, "conversation not found", nil, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, "conversation not found", nil, "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f")
 	}
 
 	return conversation, nil
@@ -68,7 +68,7 @@ func (s *ConversationService) GetConversationByPublicIDAndUserID(ctx context.Con
 func (s *ConversationService) UpdateConversation(ctx context.Context, conv *Conversation) (*Conversation, error) {
 	// Validate updated conversation
 	if err := s.validator.ValidateConversation(conv); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "conversation validation failed", err, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "conversation validation failed", err, "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a")
 	}
 
 	// Persist changes
@@ -202,7 +202,7 @@ func (s *ConversationService) AddItemsToConversation(ctx context.Context, conv *
 
 	// Validate branch exists (for now, only MAIN is supported)
 	if branchName != BranchMain {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, fmt.Sprintf("branch not found: %s", branchName), nil, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, fmt.Sprintf("branch not found: %s", branchName), nil, "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b")
 	}
 
 	// Get current item count to determine starting sequence number
