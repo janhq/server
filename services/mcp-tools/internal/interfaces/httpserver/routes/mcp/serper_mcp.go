@@ -9,6 +9,7 @@ import (
 
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
 	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 	"jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -157,10 +158,10 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperSearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
-		
+
 		// Check for tracking context from headers
 		tracking, trackingEnabled := GetToolTracking(ctx)
-		
+
 		log.Info().
 			Str("tool", "google_search").
 			Str("tool_call_id", callCtx["tool_call_id"]).
@@ -208,7 +209,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 
 		var payload searchToolPayload
 		var toolErr error
-		
+
 		searchResp, err := s.searchService.Search(ctx, searchReq)
 		if err != nil {
 			log.Warn().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed; using fallback stub")
@@ -264,6 +265,19 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			}()
 		}
 
+		// Estimate payload tokens for observability
+		estimatedTokens := estimateTokensFromSearchPayload(payload)
+
+		// Record metrics
+		status := "success"
+		if toolErr != nil {
+			status = "error"
+		}
+		metrics.RecordToolCall("google_search", "serper", status, time.Since(startTime).Seconds())
+		if estimatedTokens > 0 {
+			metrics.RecordToolTokens("google_search", "serper", estimatedTokens)
+		}
+
 		return nil, payload, nil
 	})
 
@@ -274,10 +288,10 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
-		
+
 		// Check for tracking context from headers
 		tracking, trackingEnabled := GetToolTracking(ctx)
-		
+
 		log.Info().
 			Str("tool", "scrape").
 			Str("tool_call_id", callCtx["tool_call_id"]).
@@ -358,6 +372,19 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			}()
 		}
 
+		// Estimate payload tokens for observability
+		scrapeTokens := estimateTokensFromScrapePayload(payload)
+
+		// Record metrics
+		status := "success"
+		if toolErr != nil {
+			status = "error"
+		}
+		metrics.RecordToolCall("scrape", "serper", status, time.Since(startTime).Seconds())
+		if scrapeTokens > 0 {
+			metrics.RecordToolTokens("scrape", "serper", scrapeTokens)
+		}
+
 		return nil, payload, nil
 	})
 
@@ -366,6 +393,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "file_search_index",
 		Description: "Index arbitrary text into the lightweight vector store used for MCP automations.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchIndexArgs) (*mcp.CallToolResult, map[string]any, error) {
+		startTime := time.Now()
 		callCtx := extractAllContext(req)
 		log.Info().
 			Str("tool", "file_search_index").
@@ -375,6 +403,9 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			Str("user_id", callCtx["user_id"]).
 			Msg("MCP tool call received")
 
+		status := "success"
+		var tokens float64
+
 		if s.vectorStore != nil && s.vectorStore.IsEnabled() {
 			resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
 				DocumentID: input.DocumentID,
@@ -383,6 +414,11 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 				Tags:       input.Tags,
 			})
 			if err == nil {
+				tokens = float64(resp.TokenCount)
+				metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
+				if tokens > 0 {
+					metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
+				}
 				return nil, map[string]any{
 					"document_id": resp.DocumentID,
 					"status":      resp.Status,
@@ -391,11 +427,18 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 				}, nil
 			}
 			log.Warn().Err(err).Str("tool", "file_search_index").Msg("vector store index failed; falling back to stub")
+			status = "error"
 		}
 
 		s.fileIndexMu.Lock()
 		s.fileIndex[input.DocumentID] = input
 		s.fileIndexMu.Unlock()
+
+		tokens = float64(len(input.Text)) / 4
+		metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
+		if tokens > 0 {
+			metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
+		}
 
 		return nil, map[string]any{
 			"document_id": input.DocumentID,
@@ -409,6 +452,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		Name:        "file_search_query",
 		Description: "Run a semantic query against documents indexed via file_search_index.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchQueryArgs) (*mcp.CallToolResult, map[string]any, error) {
+		startTime := time.Now()
 		callCtx := extractAllContext(req)
 		log.Info().
 			Str("tool", "file_search_query").
@@ -417,6 +461,9 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			Str("conversation_id", callCtx["conversation_id"]).
 			Str("user_id", callCtx["user_id"]).
 			Msg("MCP tool call received")
+
+		status := "success"
+		var tokens float64
 
 		topK := 5
 		if input.TopK != nil && *input.TopK > 0 {
@@ -433,6 +480,13 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 				DocumentIDs: input.DocumentIDs,
 			})
 			if err == nil {
+				for _, r := range resp.Results {
+					tokens += float64(len(r.TextPreview)) / 4
+				}
+				metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
+				if tokens > 0 {
+					metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
+				}
 				return nil, map[string]any{
 					"query":   resp.Query,
 					"top_k":   resp.TopK,
@@ -441,6 +495,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 				}, nil
 			}
 			log.Warn().Err(err).Str("tool", "file_search_query").Msg("vector store query failed; falling back to stub")
+			status = "error"
 		}
 
 		s.fileIndexMu.Lock()
@@ -470,6 +525,16 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			if len(results) >= topK {
 				break
 			}
+		}
+
+		for _, r := range results {
+			if preview, ok := r["text_preview"].(string); ok {
+				tokens += float64(len(preview)) / 4
+			}
+		}
+		metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
+		if tokens > 0 {
+			metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
 		}
 
 		return nil, map[string]any{
@@ -583,6 +648,23 @@ func (s *SerperMCP) buildScrapePayload(url string, resp *domainsearch.FetchWebpa
 		CacheStatus: cacheStatus,
 		FetchedAt:   time.Now().UTC().Format(time.RFC3339),
 	}
+}
+
+func estimateTokensFromSearchPayload(payload searchToolPayload) float64 {
+	charCount := len(payload.Query)
+	for _, result := range payload.Results {
+		charCount += len(result.Title)
+		charCount += len(result.Snippet)
+		charCount += len(result.SourceURL)
+	}
+	for _, cite := range payload.Citations {
+		charCount += len(cite)
+	}
+	return float64(charCount) / 4
+}
+
+func estimateTokensFromScrapePayload(payload scrapeToolPayload) float64 {
+	return float64(len(payload.Text)+len(payload.TextPreview)) / 4
 }
 
 func stringFromMap(data map[string]any, key string) string {

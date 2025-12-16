@@ -1,6 +1,10 @@
 package middlewares
 
 import (
+	"strconv"
+
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
@@ -60,5 +64,22 @@ func CORS() gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+// MetricsRecorder records HTTP request metrics for Prometheus
+func MetricsRecorder() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		// Skip metrics for health/readiness/metrics endpoints
+		path := c.Request.URL.Path
+		if path == "/healthz" || path == "/readyz" || path == "/metrics" {
+			return
+		}
+
+		// Record the request metric
+		status := strconv.Itoa(c.Writer.Status())
+		metrics.RecordRequest(c.Request.Method, status)
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/janhq/jan-server/services/memory-tools/internal/interfaces/httpserver/handlers"
 	"github.com/janhq/jan-server/services/memory-tools/internal/interfaces/httpserver/middleware"
 	"github.com/janhq/jan-server/services/memory-tools/internal/interfaces/httpserver/responses"
+	"github.com/janhq/jan-server/services/memory-tools/internal/metrics"
 	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -89,6 +90,9 @@ func newApplication(cfg *configs.Config) (*Application, error) {
 	mux.HandleFunc("/v1/memory/user/upsert", memoryHandler.HandleUserUpsert)
 	mux.HandleFunc("/v1/memory/project/upsert", memoryHandler.HandleProjectUpsert)
 	mux.HandleFunc("/v1/memory/delete", memoryHandler.HandleDelete)
+
+	// Prometheus metrics endpoint
+	mux.Handle("/metrics", metrics.Handler())
 
 	mux.HandleFunc("/v1/embed/test", func(w http.ResponseWriter, r *http.Request) {
 		logger := log.Ctx(r.Context())

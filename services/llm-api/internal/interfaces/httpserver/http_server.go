@@ -12,6 +12,7 @@ import (
 	v1 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -62,6 +63,7 @@ func NewHttpServer(
 	server.engine.Use(middleware.TracingMiddleware(cfg.ServiceName))
 	server.engine.Use(middleware.LoggingMiddleware(infra.Logger))
 	server.engine.Use(middleware.CORSMiddleware())
+	server.engine.Use(middleware.MetricsMiddleware())
 
 	// Root health check (for backwards compatibility)
 	server.engine.GET("/healthz", func(c *gin.Context) {
@@ -75,6 +77,9 @@ func NewHttpServer(
 	server.engine.GET("/healthcheck", func(c *gin.Context) {
 		c.JSON(200, "ok")
 	})
+
+	// Prometheus metrics endpoint
+	server.engine.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	server.bindSwagger()
 	return &server

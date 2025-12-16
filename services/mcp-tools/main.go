@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
@@ -15,12 +16,21 @@ import (
 	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/logger"
 	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 	sandboxfusionclient "jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
 	searchclient "jan-server/services/mcp-tools/internal/infrastructure/search"
 	vectorstoreclient "jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/middlewares"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes/mcp"
 )
+
+func init() {
+	// Initialize MCP metrics with a startup marker
+	// This ensures metrics appear in Prometheus immediately
+	metrics.SetCircuitBreakerState("serper", "closed")
+	metrics.SetCircuitBreakerState("sandboxfusion", "closed")
+	metrics.SetCircuitBreakerState("memory-tools", "closed")
+}
 
 // @title Jan Server MCP Tools Service
 // @version 1.0
@@ -140,6 +150,7 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(middlewares.RequestLogger())
 	router.Use(middlewares.CORS())
+	router.Use(middlewares.MetricsRecorder())
 
 	// Apply auth middleware (will skip health checks internally)
 	if authValidator != nil {
@@ -162,6 +173,9 @@ func main() {
 		}
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "initializing"})
 	})
+
+	// Prometheus metrics endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Register MCP routes
 	v1 := router.Group("/v1")

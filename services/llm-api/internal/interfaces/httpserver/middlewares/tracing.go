@@ -19,6 +19,13 @@ func TracingMiddleware(serviceName string) gin.HandlerFunc {
 		// Extract trace context from incoming request headers
 		ctx := propagator.Extract(c.Request.Context(), propagation.HeaderCarrier(c.Request.Header))
 
+		// Skip tracing for health endpoints to avoid noisy telemetry
+		if shouldSkipTrace(c.Request.URL.Path) {
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+			return
+		}
+
 		// Start a new span
 		spanName := c.Request.Method + " " + c.FullPath()
 		if spanName == "" || c.FullPath() == "" {
@@ -66,5 +73,14 @@ func TracingMiddleware(serviceName string) gin.HandlerFunc {
 		} else {
 			span.SetStatus(codes.Ok, "")
 		}
+	}
+}
+
+func shouldSkipTrace(path string) bool {
+	switch path {
+	case "/healthz", "/readyz", "/healthcheck":
+		return true
+	default:
+		return false
 	}
 }
