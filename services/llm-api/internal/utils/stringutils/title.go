@@ -51,13 +51,22 @@ func TruncateTitle(title string, maxLen int) string {
 		return title
 	}
 
-	// Find a good breaking point (end of word)
-	truncated := title[:maxLen]
-	minLen := maxLen / 2 // At least half the max length
-	if lastSpace := strings.LastIndex(truncated, " "); lastSpace > minLen {
-		return title[:lastSpace] + "..."
+	// Reserve space for ellipsis so the final string never exceeds maxLen
+	ellipsis := "..."
+	contentLimit := maxLen - len(ellipsis)
+	if contentLimit < 0 {
+		contentLimit = 0
 	}
-	return truncated + "..."
+
+	truncated := title[:contentLimit]
+	minLen := contentLimit / 2 // At least half the max content length
+
+	// Prefer to cut on a word boundary when possible
+	if lastSpace := strings.LastIndex(truncated, " "); lastSpace > minLen {
+		truncated = strings.TrimRight(truncated[:lastSpace], " ")
+	}
+
+	return truncated + ellipsis
 }
 
 // GenerateTitle creates a clean, truncated title from content
