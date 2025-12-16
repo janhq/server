@@ -262,6 +262,25 @@ func (providerHandler *ProviderHandler) GetModelCatalogByID(ctx context.Context,
 	return providerHandler.providerModelService.FindCatalogByID(ctx, id)
 }
 
+// GetProviderModelByID returns a provider model and its provider by internal ID.
+// This is used for instruct model fallback when enable_thinking=false.
+func (providerHandler *ProviderHandler) GetProviderModelByID(ctx context.Context, id uint) (*domainmodel.ProviderModel, *domainmodel.Provider, error) {
+	providerModel, err := providerHandler.providerModelService.FindByID(ctx, id)
+	if err != nil {
+		return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to find provider model")
+	}
+	if providerModel == nil {
+		return nil, nil, nil
+	}
+
+	provider, err := providerHandler.providerService.GetByID(ctx, providerModel.ProviderID)
+	if err != nil {
+		return nil, nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get provider")
+	}
+
+	return providerModel, provider, nil
+}
+
 func (h *ProviderHandler) DeleteProvider(ctx context.Context, publicID string) error {
 	if strings.TrimSpace(publicID) == "" {
 		return platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, "provider public ID is required", nil, "0c3f68da-0aa4-4a7c-9cec-c22d47c86f8b")

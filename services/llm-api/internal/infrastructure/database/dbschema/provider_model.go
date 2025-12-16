@@ -33,6 +33,7 @@ type ProviderModel struct {
 	ReasoningConfig         datatypes.JSON `gorm:"type:jsonb"`
 	ProviderFlags           datatypes.JSON `gorm:"type:jsonb"`
 	Active                  *bool          `gorm:"not null;default:true;index;index:idx_provider_model_active,priority:2;index:idx_provider_model_catalog_active,priority:3"`
+	InstructModelID         *uint          `gorm:"index"` // Self-referencing FK to the instruct model variant (used when enable_thinking=false)
 }
 
 func NewSchemaProviderModel(m *domainmodel.ProviderModel) (*ProviderModel, error) {
@@ -98,6 +99,7 @@ func NewSchemaProviderModel(m *domainmodel.ProviderModel) (*ProviderModel, error
 		ReasoningConfig:         reasoningConfig,
 		ProviderFlags:           providerFlags,
 		Active:                  &active,
+		InstructModelID:         m.InstructModelID,
 	}, nil
 }
 
@@ -168,6 +170,7 @@ func (m *ProviderModel) EtoD() (*domainmodel.ProviderModel, error) {
 		ReasoningConfig:         reasoningConfig,
 		ProviderFlags:           providerFlags,
 		Active:                  active,
+		InstructModelID:         m.InstructModelID,
 		CreatedAt:               m.CreatedAt,
 		UpdatedAt:               m.UpdatedAt,
 	}, nil

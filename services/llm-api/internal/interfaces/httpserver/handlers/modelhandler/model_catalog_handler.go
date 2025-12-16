@@ -93,6 +93,9 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	if req.SupportsReasoning != nil {
 		catalog.SupportsReasoning = *req.SupportsReasoning
 	}
+	if req.SupportsInstruct != nil {
+		catalog.SupportsInstruct = *req.SupportsInstruct
+	}
 	if req.SupportsAudio != nil {
 		catalog.SupportsAudio = *req.SupportsAudio
 	}
