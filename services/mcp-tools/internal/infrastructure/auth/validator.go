@@ -51,9 +51,9 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		// Skip auth for health check endpoints
+		// Skip auth for health check and metrics endpoints
 		path := c.Request.URL.Path
-		if path == "/healthz" || path == "/readyz" || path == "/health/auth" {
+		if path == "/healthz" || path == "/readyz" || path == "/health/auth" || path == "/metrics" {
 			c.Next()
 			return
 		}

@@ -5,11 +5,13 @@ import (
 
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/public"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/chat"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/conversation"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/share"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/users"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +25,8 @@ type V1Route struct {
 	adminRoute            *admin.AdminRoute
 	users                 *users.UsersRoute
 	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler
+	share                 *share.ShareRoute
+	publicShare           *public.PublicShareRoute
 }
 
 func NewV1Route(
@@ -33,6 +37,8 @@ func NewV1Route(
 	adminRoute *admin.AdminRoute,
 	users *users.UsersRoute,
 	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler,
+	share *share.ShareRoute,
+	publicShare *public.PublicShareRoute,
 ) *V1Route {
 	return &V1Route{
 		model,
@@ -42,6 +48,8 @@ func NewV1Route(
 		adminRoute,
 		users,
 		promptTemplateHandler,
+		share,
+		publicShare,
 	}
 }
 
@@ -58,8 +66,20 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	v1Route.project.RegisterRoutes(v1Router)
 	v1Route.users.RegisterRouter(v1Router)
 
+	// Share routes (authenticated, under /conversations)
+	conversations := v1Router.Group("/conversations")
+	v1Route.share.RegisterConversationShareRoutes(conversations)
+}
+
+// RegisterPublicRouter registers endpoints that do not require authentication
+func (v1Route *V1Route) RegisterPublicRouter(router gin.IRouter) {
+	v1Router := router.Group("/v1")
+
 	// Public prompt template endpoints
 	v1Router.GET("/prompt-templates/:key", v1Route.promptTemplateHandler.GetByKey)
+
+	// Public share routes (no auth required)
+	v1Route.publicShare.RegisterRouter(v1Router)
 }
 
 // GetVersion godoc

@@ -631,8 +631,8 @@ test-media:
 test-mcp-integration:
 	@echo "Running MCP integration tests..."
 	@$(API_TEST) $(API_TEST_MCP_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
+		--env-var "kong_url=http://localhost:8080" \
+		--env-var "mcp_tools_url=http://localhost:8091/v1/mcp" \
 		--env-var "searxng_url=http://localhost:8086" \
 		$(API_TEST_FLAGS) \
 		--reporters cli
@@ -851,5 +851,3 @@ endif
 # ============================================================================================================
 # END OF MAKEFILE
 # ============================================================================================================
-
-

@@ -3,12 +3,15 @@ package conversationhandler
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/query"
+	"jan-server/services/llm-api/internal/domain/share"
 	authhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	conversationrequests "jan-server/services/llm-api/internal/interfaces/httpserver/requests/conversation"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
@@ -30,17 +33,20 @@ type ConversationHandler struct {
 	conversationService *conversation.ConversationService
 	projectService      *project.ProjectService
 	itemValidator       *conversation.ItemValidator
+	shareRepo           share.ShareRepository
 }
 
 // NewConversationHandler creates a new conversation handler
 func NewConversationHandler(
 	conversationService *conversation.ConversationService,
 	projectService *project.ProjectService,
+	shareRepo share.ShareRepository,
 ) *ConversationHandler {
 	return &ConversationHandler{
 		conversationService: conversationService,
 		projectService:      projectService,
 		itemValidator:       conversation.NewItemValidator(conversation.DefaultItemValidationConfig()),
+		shareRepo:           shareRepo,
 	}
 }
 
@@ -144,6 +150,27 @@ func (h *ConversationHandler) UpdateConversation(
 		Referrer: req.Referrer,
 	}
 
+	// Resolve and update project when provided
+	if req.ProjectID != nil {
+		projectID := strings.TrimSpace(*req.ProjectID)
+		if projectID == "" {
+			// Explicitly clear project association
+			input.ProjectID = nil
+			input.ProjectPublicID = nil
+		} else {
+			// Verify project exists and user has access
+			if h.projectService == nil {
+				return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeInternal, "project service unavailable", nil, "a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d")
+			}
+			proj, err := h.projectService.GetProjectByPublicIDAndUserID(ctx, projectID, userID)
+			if err != nil {
+				return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "invalid or inaccessible project_id")
+			}
+			input.ProjectID = &proj.ID
+			input.ProjectPublicID = &proj.PublicID
+		}
+	}
+
 	conv, err := h.conversationService.UpdateConversationWithInput(ctx, userID, conversationID, input)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update conversation")
@@ -203,6 +230,21 @@ func (h *ConversationHandler) DeleteConversation(
 	userID uint,
 	conversationID string,
 ) (*conversationresponses.ConversationDeletedResponse, error) {
+	// Get the conversation first to get its numeric ID for share revocation
+	conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, conversationID, userID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+	}
+
+	// Revoke all shares for this conversation before deleting
+	if h.shareRepo != nil {
+		if err := h.shareRepo.RevokeAllByConversationID(ctx, conv.ID); err != nil {
+			// Log but don't fail the delete - shares should still be revoked
+			// The share lookup will fail anyway since the conversation is deleted
+			_ = err // Ignore error, conversation delete takes priority
+		}
+	}
+
 	if err := h.conversationService.DeleteConversationByID(ctx, userID, conversationID); err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to delete conversation")
 	}
@@ -330,6 +372,79 @@ func (h *ConversationHandler) DeleteItem(
 
 	// Return the conversation (per OpenAI spec)
 	return conversationresponses.NewConversationResponse(conv), nil
+}
+
+// UpdateItemByCallID updates an existing mcp_call item with tool execution results
+// The mcp_call item was already created (with in_progress status) when the LLM returned tool_calls
+// This is used by MCP tools to report tool execution results
+func (h *ConversationHandler) UpdateItemByCallID(
+	ctx context.Context,
+	userID uint,
+	conversationID string,
+	callID string,
+	req conversationrequests.UpdateItemByCallIDRequest,
+) (*conversationresponses.ItemResponse, error) {
+	// Verify conversation ownership
+	conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, conversationID, userID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+	}
+
+	// Get the mcp_call item by call_id (it was created when LLM returned tool_calls)
+	mcpItem, err := h.conversationService.GetConversationItemByCallIDAndType(ctx, conv, callID, conversation.ItemTypeMcpCall)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "mcp_call item not found by call_id")
+	}
+
+	// Determine status
+	status := conversation.ItemStatusCompleted
+	if req.Status != nil {
+		status = conversation.ItemStatus(*req.Status)
+	}
+
+	// Update the mcp_call item with the execution result
+	mcpItem.Status = &status
+	mcpItem.Output = req.Output
+	mcpItem.Error = req.Error
+	now := time.Now()
+	mcpItem.CompletedAt = &now
+
+	// Update additional fields if provided
+	if req.Name != nil {
+		mcpItem.Name = req.Name
+	}
+	if req.Arguments != nil {
+		mcpItem.Arguments = req.Arguments
+	}
+	if req.ServerLabel != nil {
+		mcpItem.ServerLabel = req.ServerLabel
+	}
+
+	// Update Content field with the output text so it's returned in the API response
+	if req.Output != nil {
+		mcpItem.Content = []conversation.Content{
+			{
+				Type:       "mcp_call",
+				ToolCallID: &callID,
+				TextString: req.Output,
+			},
+		}
+	} else if req.Error != nil {
+		// If there's an error, include it in the content
+		mcpItem.Content = []conversation.Content{
+			{
+				Type:       "mcp_call",
+				ToolCallID: &callID,
+				TextString: req.Error,
+			},
+		}
+	}
+
+	if err := h.conversationService.UpdateConversationItem(ctx, conv, mcpItem); err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update mcp_call item")
+	}
+
+	return mcpItem, nil
 }
 
 // Helper functions

@@ -3,7 +3,7 @@ groups:
     interval: 30s
     rules:
       - alert: HighLLMLatency
-        expr: histogram_quantile(0.95, rate(jan_llm_api_request_duration_seconds_bucket[5m])) > 2
+        expr: histogram_quantile(0.95, rate(llm_api_request_duration_seconds_bucket[5m])) > 2
         for: 5m
         labels:
           severity: warning
@@ -14,8 +14,29 @@ groups:
           runbook: "docs/runbooks/monitoring.md#high-llm-latency"
           dashboard: "https://grafana/d/llm-overview"
 
+      - alert: LLMProviderUnhealthy
+        expr: llm_api_provider_health == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: llm-api
+        annotations:
+          summary: "LLM Provider {{ $labels.provider }} is unhealthy"
+          description: "Provider {{ $labels.provider }} has been unhealthy for 2+ minutes"
+          runbook: "docs/runbooks/monitoring.md#provider-unhealthy"
+
+      - alert: HighTokenUsage
+        expr: increase(llm_api_tokens_total[1h]) > 1000000
+        for: 5m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "High token consumption {{ $value }} tokens/hour"
+          description: "Token usage exceeds 1M tokens per hour"
+
       - alert: ResponseAPIQueueBacklog
-        expr: jan_response_api_queue_depth > 100
+        expr: response_api_queue_depth > 100
         for: 10m
         labels:
           severity: critical
@@ -26,7 +47,7 @@ groups:
           runbook: "docs/runbooks/monitoring.md#queue-backlog"
 
       - alert: MediaAPIStorageFailure
-        expr: rate(jan_media_api_s3_errors_total[5m]) > 0.1
+        expr: rate(media_api_s3_errors_total[5m]) > 0.1
         for: 2m
         labels:
           severity: critical
@@ -35,6 +56,37 @@ groups:
           summary: "Media API S3 error rate {{ $value | humanizePercentage }}"
           description: "S3 operations failing at {{ $value | humanizePercentage }} for 2+ minutes"
           runbook: "docs/runbooks/monitoring.md#storage-failure"
+
+      - alert: MCPToolsCircuitOpen
+        expr: mcp_tools_circuit_state == 1
+        for: 1m
+        labels:
+          severity: critical
+          service: mcp-tools
+        annotations:
+          summary: "MCP Tools circuit breaker OPEN for {{ $labels.tool }}"
+          description: "Circuit breaker for tool {{ $labels.tool }} is open, preventing calls"
+          runbook: "docs/runbooks/monitoring.md#circuit-breaker"
+
+      - alert: MCPToolsHighErrorRate
+        expr: rate(mcp_tools_calls_total{status="error"}[5m]) / rate(mcp_tools_calls_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: mcp-tools
+        annotations:
+          summary: "MCP Tools error rate {{ $value | humanizePercentage }}"
+          description: "Tool calls failing at {{ $value | humanizePercentage }} for 5+ minutes"
+
+      - alert: MemoryToolsVectorStoreError
+        expr: rate(memory_tools_vector_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: memory-tools
+        annotations:
+          summary: "Memory tools vector store error rate {{ $value }}"
+          description: "Vector store operations failing at {{ $value }} errors/sec"
 
       - alert: OTELCollectorDown
         expr: up{job="otel-collector"} == 0
@@ -59,7 +111,7 @@ groups:
           runbook: "docs/runbooks/monitoring.md#trace-export-failure"
 
       - alert: ConversationInsightFailure
-        expr: rate(jan_response_api_classifier_errors_total[5m]) > 0.05
+        expr: rate(response_api_classifier_errors_total[5m]) > 0.05
         for: 5m
         labels:
           severity: warning
@@ -73,7 +125,7 @@ groups:
     interval: 1m
     rules:
       - alert: HighErrorRate
-        expr: rate(jan_llm_api_requests_total{status=~"5.."}[5m]) / rate(jan_llm_api_requests_total[5m]) > 0.05
+        expr: rate(llm_api_requests_total{status=~"5.."}[5m]) / rate(llm_api_requests_total[5m]) > 0.05
         for: 5m
         labels:
           severity: warning
@@ -82,8 +134,28 @@ groups:
           summary: "High error rate {{ $value | humanizePercentage }}"
           description: "LLM API error rate above 5% for 5 minutes"
 
+      - alert: ResponseAPIHighErrorRate
+        expr: rate(response_api_requests_total{status=~"5.."}[5m]) / rate(response_api_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: response-api
+        annotations:
+          summary: "Response API error rate {{ $value | humanizePercentage }}"
+          description: "Response API error rate above 5% for 5 minutes"
+
+      - alert: MediaAPIHighErrorRate
+        expr: rate(media_api_requests_total{status=~"5.."}[5m]) / rate(media_api_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: media-api
+        annotations:
+          summary: "Media API error rate {{ $value | humanizePercentage }}"
+          description: "Media API error rate above 5% for 5 minutes"
+
       - alert: SlowDatabaseQueries
-        expr: histogram_quantile(0.95, rate(jan_response_api_db_query_duration_seconds_bucket[5m])) > 1
+        expr: histogram_quantile(0.95, rate(response_api_db_query_duration_seconds_bucket[5m])) > 1
         for: 10m
         labels:
           severity: warning
@@ -92,8 +164,18 @@ groups:
           summary: "Database P95 latency {{ $value }}s exceeds 1s"
           description: "Database queries are slow, may impact response times"
 
+      - alert: SlowLLMTimeToFirstToken
+        expr: histogram_quantile(0.95, rate(llm_api_time_to_first_token_seconds_bucket[5m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "LLM TTFT P95 {{ $value }}s exceeds 3s"
+          description: "Time to first token for LLM responses is slow"
+
       - alert: HighMemoryUsage
-        expr: container_memory_usage_bytes{container=~"llm-api|response-api|media-api"} / container_spec_memory_limit_bytes > 0.9
+        expr: container_memory_usage_bytes{container=~"llm-api|response-api|media-api|mcp-tools|memory-tools"} / container_spec_memory_limit_bytes > 0.9
         for: 5m
         labels:
           severity: warning
@@ -105,7 +187,7 @@ groups:
     interval: 2m
     rules:
       - alert: WorkerPoolExhaustion
-        expr: jan_response_api_workers_active / (jan_response_api_workers_active + jan_response_api_workers_idle) > 0.9
+        expr: response_api_workers_active / (response_api_workers_active + response_api_workers_idle) > 0.9
         for: 15m
         labels:
           severity: warning
@@ -115,7 +197,7 @@ groups:
           description: "Background worker pool near capacity for 15+ minutes"
 
       - alert: HighRequestRate
-        expr: rate(jan_llm_api_requests_total[5m]) > 1000
+        expr: rate(llm_api_requests_total[5m]) > 1000
         for: 10m
         labels:
           severity: info
@@ -123,3 +205,66 @@ groups:
         annotations:
           summary: "LLM API receiving {{ $value }} requests/second"
           description: "Unusually high request rate detected. Monitor for capacity issues."
+
+      - alert: ServiceDown
+        expr: up{job=~"llm-api|response-api|media-api|mcp-tools|memory-tools"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for 1+ minute"
+          runbook: "docs/runbooks/monitoring.md#service-down"
+
+      - alert: HighActiveConnections
+        expr: llm_api_active_connections > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "LLM API has {{ $value }} active connections"
+          description: "High number of active connections may indicate connection leak or traffic spike"
+
+      - alert: HighStreamingErrors
+        expr: rate(llm_api_streaming_errors_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "Streaming errors at {{ $value }}/sec"
+          description: "LLM streaming responses experiencing errors"
+
+  - name: jan_server_business
+    interval: 5m
+    rules:
+      - alert: NoLLMRequests
+        expr: rate(llm_api_requests_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "No LLM requests in last 30 minutes"
+          description: "LLM API has received no requests. Check if service is reachable."
+
+      - alert: LowConversationCreation
+        expr: rate(llm_api_conversations_created_total[1h]) < 1
+        for: 1h
+        labels:
+          severity: info
+          service: llm-api
+        annotations:
+          summary: "Low conversation creation rate"
+          description: "Less than 1 new conversation per hour. May indicate user engagement issues."
+
+      - alert: HighCostPerHour
+        expr: sum(rate(llm_api_cost_total[1h])) > 100
+        for: 15m
+        labels:
+          severity: warning
+          service: llm-api
+        annotations:
+          summary: "LLM cost exceeding ${{ $value }}/hour"
+          description: "Token costs are high. Review model usage and potential abuse."

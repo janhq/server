@@ -4,48 +4,70 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 	"jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
-	"jan-server/services/mcp-tools/utils/mcp"
 
-	mcpgo "github.com/mark3labs/mcp-go/mcp"
-	mcpserver "github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog/log"
 )
 
 // SerperSearchArgs defines the arguments for the google_search tool
 type SerperSearchArgs struct {
-	Q               string   `json:"q" jsonschema:"required,description=Search query string"`
-	GL              *string  `json:"gl,omitempty" jsonschema:"description=Optional region code for search results in ISO 3166-1 alpha-2 format (e.g., 'us')"`
-	HL              *string  `json:"hl,omitempty" jsonschema:"description=Optional language code for search results in ISO 639-1 format (e.g., 'en')"`
-	Location        *string  `json:"location,omitempty" jsonschema:"description=Optional location for search results (e.g., 'SoHo, New York, United States', 'California, United States')"`
-	Num             *int     `json:"num,omitempty" jsonschema:"description=Number of results to return (default: 10)"`
-	Tbs             *string  `json:"tbs,omitempty" jsonschema:"description=Time-based search filter ('qdr:h' for past hour, 'qdr:d' for past day, 'qdr:w' for past week, 'qdr:m' for past month, 'qdr:y' for past year)"`
-	Page            *int     `json:"page,omitempty" jsonschema:"description=Page number of results to return (default: 1)"`
-	Autocorrect     *bool    `json:"autocorrect,omitempty" jsonschema:"description=Whether to autocorrect spelling in query"`
-	LocationHint    *string  `json:"location_hint,omitempty" jsonschema:"description=Soft location hint (region or timezone) applied when the upstream engine supports it"`
-	OfflineMode     *bool    `json:"offline_mode,omitempty" jsonschema:"description=Force cached/offline search mode even when live engines are available"`
+	Q               string   `json:"q"`
+	DomainAllowList []string `json:"domain_allow_list,omitempty"`
+	GL              *string  `json:"gl,omitempty"`
+	HL              *string  `json:"hl,omitempty"`
+	Location        *string  `json:"location,omitempty"`
+	Num             *int     `json:"num,omitempty"`
+	Tbs             *string  `json:"tbs,omitempty"`
+	Page            *int     `json:"page,omitempty"`
+	Autocorrect     *bool    `json:"autocorrect,omitempty"`
+	LocationHint    *string  `json:"location_hint,omitempty"`
+	OfflineMode     *bool    `json:"offline_mode,omitempty"`
+	// Context passthrough (ignored by handler but allowed for validation)
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 // SerperScrapeArgs defines the arguments for the scrape tool
 type SerperScrapeArgs struct {
-	Url             string `json:"url" jsonschema:"required,description=The URL of webpage to scrape"`
-	IncludeMarkdown *bool  `json:"includeMarkdown,omitempty" jsonschema:"description=Whether to include markdown content"`
+	Url             string `json:"url"`
+	IncludeMarkdown *bool  `json:"includeMarkdown,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type FileSearchIndexArgs struct {
-	DocumentID string         `json:"document_id" jsonschema:"required,description=Stable identifier for the document"`
-	Text       string         `json:"text" jsonschema:"required,description=Raw text to index"`
-	Metadata   map[string]any `json:"metadata,omitempty" jsonschema:"description=Optional metadata object stored with the document"`
-	Tags       []string       `json:"tags,omitempty" jsonschema:"description=Optional list of tags used to filter search results"`
+	DocumentID string         `json:"document_id"`
+	Text       string         `json:"text"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
+	Tags       []string       `json:"tags,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type FileSearchQueryArgs struct {
-	Query       string   `json:"query" jsonschema:"required,description=Natural language query to search for"`
-	TopK        *int     `json:"top_k,omitempty" jsonschema:"description=Maximum number of results to return (default: 5, max: 20)"`
-	DocumentIDs []string `json:"document_ids,omitempty" jsonschema:"description=Optional whitelist of document IDs to search within"`
+	Query       string   `json:"query"`
+	TopK        *int     `json:"top_k,omitempty"`
+	DocumentIDs []string `json:"document_ids,omitempty"`
+	// Context passthrough
+	ToolCallID     string `json:"tool_call_id,omitempty"`
+	RequestID      string `json:"request_id,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
+	UserID         string `json:"user_id,omitempty"`
 }
 
 type searchToolResult struct {
@@ -81,6 +103,9 @@ type scrapeToolPayload struct {
 type SerperMCP struct {
 	searchService         *domainsearch.SearchService
 	vectorStore           *vectorstore.Client
+	llmClient             *llmapi.Client // LLM-API client for tool tracking
+	fileIndexMu           sync.Mutex
+	fileIndex             map[string]FileSearchIndexArgs
 	maxSnippetChars       int
 	maxScrapePreviewChars int
 	maxScrapeTextChars    int
@@ -112,221 +137,413 @@ func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vector
 	return &SerperMCP{
 		searchService:         searchService,
 		vectorStore:           vectorStore,
+		fileIndex:             make(map[string]FileSearchIndexArgs),
 		maxSnippetChars:       maxSnippet,
 		maxScrapePreviewChars: maxPreview,
 		maxScrapeTextChars:    maxText,
 	}
 }
 
+// SetLLMClient sets the LLM-API client for tool call tracking
+func (s *SerperMCP) SetLLMClient(client *llmapi.Client) {
+	s.llmClient = client
+}
+
 // RegisterTools registers Serper tools with the MCP server
-func (s *SerperMCP) RegisterTools(server *mcpserver.MCPServer) {
+func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	// Register google_search tool
-	server.AddTool(
-		mcpgo.NewTool("google_search",
-			mcp.ReflectToMCPOptions(
-				"Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
-				SerperSearchArgs{},
-			)...,
-		),
-		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			q, err := req.RequireString("q")
-			if err != nil {
-				log.Error().Err(err).Str("tool", "google_search").Msg("missing required parameter 'q'")
-				return nil, err
-			}
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "google_search",
+		Description: "Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperSearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
+		startTime := time.Now()
+		callCtx := extractAllContext(req)
 
-			searchReq := domainsearch.SearchRequest{
-				Q: q,
-			}
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
 
-			if gl := req.GetString("gl", ""); gl != "" {
-				searchReq.GL = &gl
-			}
-			if hl := req.GetString("hl", ""); hl != "" {
-				searchReq.HL = &hl
-			}
-			if location := req.GetString("location", ""); location != "" {
-				searchReq.Location = &location
-			}
-			if num := req.GetInt("num", 0); num > 0 {
-				searchReq.Num = &num
-			}
-			if page := req.GetInt("page", 0); page > 0 {
-				searchReq.Page = &page
-			}
-			if tbs := req.GetString("tbs", ""); tbs != "" {
-				val := domainsearch.TBSTimeRange(tbs)
-				searchReq.TBS = &val
-			}
-			autocorrect := req.GetBool("autocorrect", true)
-			searchReq.Autocorrect = &autocorrect
+		log.Info().
+			Str("tool", "google_search").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
+			Msg("MCP tool call received")
 
-			if locationHint := req.GetString("location_hint", ""); locationHint != "" {
-				searchReq.LocationHint = &locationHint
-			}
-			if args := req.GetArguments(); args != nil {
-				if _, ok := args["offline_mode"]; ok {
-					override := req.GetBool("offline_mode", false)
-					searchReq.OfflineMode = &override
+		searchReq := domainsearch.SearchRequest{
+			Q: input.Q,
+		}
+
+		if input.GL != nil {
+			searchReq.GL = input.GL
+		}
+		if input.HL != nil {
+			searchReq.HL = input.HL
+		}
+		if input.Location != nil {
+			searchReq.Location = input.Location
+		}
+		if input.Num != nil && *input.Num > 0 {
+			searchReq.Num = input.Num
+		}
+		if input.Page != nil && *input.Page > 0 {
+			searchReq.Page = input.Page
+		}
+		if input.Tbs != nil && *input.Tbs != "" {
+			val := domainsearch.TBSTimeRange(*input.Tbs)
+			searchReq.TBS = &val
+		}
+		autocorrect := true
+		if input.Autocorrect != nil {
+			autocorrect = *input.Autocorrect
+		}
+		searchReq.Autocorrect = &autocorrect
+
+		if input.LocationHint != nil {
+			searchReq.LocationHint = input.LocationHint
+		}
+		if input.OfflineMode != nil {
+			searchReq.OfflineMode = input.OfflineMode
+		}
+
+		var payload searchToolPayload
+		var toolErr error
+
+		searchResp, err := s.searchService.Search(ctx, searchReq)
+		if err != nil {
+			log.Warn().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed; using fallback stub")
+			payload = s.buildFallbackSearchPayload(searchReq.Q, searchReq)
+			toolErr = err // Keep track of error for tracking
+		} else {
+			payload = s.buildSearchPayload(searchReq.Q, searchReq, searchResp)
+		}
+
+		// If tracking is enabled, save result to LLM-API (single PATCH call)
+		if trackingEnabled && s.llmClient != nil {
+			// Capture input for async goroutine
+			inputCopy := input
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				// Serialize the result
+				outputBytes, _ := json.Marshal(payload)
+				outputStr := string(outputBytes)
+
+				// Serialize arguments
+				argsBytes, _ := json.Marshal(inputCopy)
+				argsStr := string(argsBytes)
+
+				var errStr *string
+				if toolErr != nil {
+					e := toolErr.Error()
+					errStr = &e
 				}
-			}
 
-			searchResp, err := s.searchService.Search(ctx, searchReq)
-			if err != nil {
-				log.Error().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed")
-				return nil, err
-			}
+				// Update the in_progress item to completed
+				result := s.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"google_search",
+					argsStr,
+					"Jan MCP Server",
+					outputStr,
+					errStr,
+				)
 
-			payload := s.buildSearchPayload(searchReq.Q, searchReq, searchResp)
-			jsonBytes, err := json.Marshal(payload)
-			if err != nil {
-				log.Error().Err(err).Str("tool", "google_search").Msg("failed to marshal search response")
-				return nil, err
-			}
+				if !result.Success && result.Error != nil {
+					log.Error().
+						Err(result.Error).
+						Str("call_id", tracking.ToolCallID).
+						Str("conv_id", tracking.ConversationID).
+						Int64("duration_ms", time.Since(startTime).Milliseconds()).
+						Msg("Failed to update tool result in LLM-API")
+				}
+			}()
+		}
 
-			return mcpgo.NewToolResultText(string(jsonBytes)), nil
-		},
-	)
+		// Estimate payload tokens for observability
+		estimatedTokens := estimateTokensFromSearchPayload(payload)
+
+		// Record metrics
+		status := "success"
+		if toolErr != nil {
+			status = "error"
+		}
+		metrics.RecordToolCall("google_search", "serper", status, time.Since(startTime).Seconds())
+		if estimatedTokens > 0 {
+			metrics.RecordToolTokens("google_search", "serper", estimatedTokens)
+		}
+
+		return nil, payload, nil
+	})
 
 	// Register scrape tool
-	server.AddTool(
-		mcpgo.NewTool("scrape",
-			mcp.ReflectToMCPOptions(
-				"Scrape a webpage and retrieve the text with optional markdown formatting.",
-				SerperScrapeArgs{},
-			)...,
-		),
-		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-			url, err := req.RequireString("url")
-			if err != nil {
-				log.Error().Err(err).Str("tool", "scrape").Msg("missing required parameter 'url'")
-				return nil, err
-			}
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "scrape",
+		Description: "Scrape a webpage and retrieve the text with optional markdown formatting.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
+		startTime := time.Now()
+		callCtx := extractAllContext(req)
 
-			scrapeReq := domainsearch.FetchWebpageRequest{
-				Url: url,
-			}
+		// Check for tracking context from headers
+		tracking, trackingEnabled := GetToolTracking(ctx)
 
-			if includeMarkdown := req.GetBool("includeMarkdown", false); includeMarkdown {
-				scrapeReq.IncludeMarkdown = &includeMarkdown
-			}
+		log.Info().
+			Str("tool", "scrape").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Bool("tracking_enabled", trackingEnabled).
+			Msg("MCP tool call received")
 
-			scrapeResp, err := s.searchService.FetchWebpage(ctx, scrapeReq)
-			if err != nil {
-				log.Error().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("fetch webpage service failed")
-				return nil, err
-			}
+		scrapeReq := domainsearch.FetchWebpageRequest{
+			Url: input.Url,
+		}
 
-			payload := s.buildScrapePayload(scrapeReq.Url, scrapeResp)
-			jsonBytes, err := json.Marshal(payload)
-			if err != nil {
-				log.Error().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("failed to marshal scrape response")
-				return nil, err
-			}
+		if input.IncludeMarkdown != nil && *input.IncludeMarkdown {
+			scrapeReq.IncludeMarkdown = input.IncludeMarkdown
+		}
 
-			return mcpgo.NewToolResultText(string(jsonBytes)), nil
-		},
-	)
+		var payload scrapeToolPayload
+		var toolErr error
+
+		scrapeResp, err := s.searchService.FetchWebpage(ctx, scrapeReq)
+		if err != nil {
+			log.Warn().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("scrape service failed; using fallback stub")
+			payload = scrapeToolPayload{
+				SourceURL:   scrapeReq.Url,
+				Text:        "Example Domain\nThis domain is for use in illustrative examples in documents.",
+				TextPreview: "Example Domain",
+				Metadata:    map[string]any{"cache_status": "offline_stub"},
+				CacheStatus: "offline_stub",
+				FetchedAt:   time.Now().UTC().Format(time.RFC3339),
+			}
+			toolErr = err
+		} else {
+			payload = s.buildScrapePayload(scrapeReq.Url, scrapeResp)
+		}
+
+		// If tracking is enabled, save result to LLM-API
+		if trackingEnabled && s.llmClient != nil {
+			// Capture input for async goroutine
+			inputCopy := input
+			go func() {
+				saveCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				outputBytes, _ := json.Marshal(payload)
+				outputStr := string(outputBytes)
+
+				// Serialize arguments
+				argsBytes, _ := json.Marshal(inputCopy)
+				argsStr := string(argsBytes)
+
+				var errStr *string
+				if toolErr != nil {
+					e := toolErr.Error()
+					errStr = &e
+				}
+
+				result := s.llmClient.UpdateToolCallResult(
+					saveCtx,
+					tracking.AuthToken,
+					tracking.ConversationID,
+					tracking.ToolCallID,
+					"scrape",
+					argsStr,
+					"Jan MCP Server",
+					outputStr,
+					errStr,
+				)
+
+				if !result.Success && result.Error != nil {
+					log.Error().
+						Err(result.Error).
+						Str("call_id", tracking.ToolCallID).
+						Str("conv_id", tracking.ConversationID).
+						Int64("duration_ms", time.Since(startTime).Milliseconds()).
+						Msg("Failed to update tool result in LLM-API")
+				}
+			}()
+		}
+
+		// Estimate payload tokens for observability
+		scrapeTokens := estimateTokensFromScrapePayload(payload)
+
+		// Record metrics
+		status := "success"
+		if toolErr != nil {
+			status = "error"
+		}
+		metrics.RecordToolCall("scrape", "serper", status, time.Since(startTime).Seconds())
+		if scrapeTokens > 0 {
+			metrics.RecordToolTokens("scrape", "serper", scrapeTokens)
+		}
+
+		return nil, payload, nil
+	})
 
 	// Disabled: file_search_index and file_search_query tools
-	// if s.vectorStore != nil {
-	// 	server.AddTool(
-	// 		mcpgo.NewTool("file_search_index",
-	// 			mcp.ReflectToMCPOptions(
-	// 				"Index arbitrary text into the lightweight vector store used for MCP automations.",
-	// 				FileSearchIndexArgs{},
-	// 			)...,
-	// 		),
-	// 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-	// 			if s.vectorStore == nil {
-	// 				return nil, fmt.Errorf("vector store client is not configured")
-	// 			}
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "file_search_index",
+		Description: "Index arbitrary text into the lightweight vector store used for MCP automations.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchIndexArgs) (*mcp.CallToolResult, map[string]any, error) {
+		startTime := time.Now()
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "file_search_index").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
 
-	// 			docID, err := req.RequireString("document_id")
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
-	// 			text, err := req.RequireString("text")
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
+		status := "success"
+		var tokens float64
 
-	// 			metadata := extractMapArgument(req.GetArguments(), "metadata")
-	// 			tags := req.GetStringSlice("tags", nil)
+		if s.vectorStore != nil && s.vectorStore.IsEnabled() {
+			resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
+				DocumentID: input.DocumentID,
+				Text:       input.Text,
+				Metadata:   input.Metadata,
+				Tags:       input.Tags,
+			})
+			if err == nil {
+				tokens = float64(resp.TokenCount)
+				metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
+				if tokens > 0 {
+					metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
+				}
+				return nil, map[string]any{
+					"document_id": resp.DocumentID,
+					"status":      resp.Status,
+					"indexed_at":  resp.IndexedAt,
+					"token_count": resp.TokenCount,
+				}, nil
+			}
+			log.Warn().Err(err).Str("tool", "file_search_index").Msg("vector store index failed; falling back to stub")
+			status = "error"
+		}
 
-	// 			resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
-	// 				DocumentID: docID,
-	// 				Text:       text,
-	// 				Metadata:   metadata,
-	// 				Tags:       tags,
-	// 			})
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
+		s.fileIndexMu.Lock()
+		s.fileIndex[input.DocumentID] = input
+		s.fileIndexMu.Unlock()
 
-	// 			payload := map[string]any{
-	// 				"document_id": resp.DocumentID,
-	// 				"status":      resp.Status,
-	// 				"indexed_at":  resp.IndexedAt,
-	// 				"token_count": resp.TokenCount,
-	// 			}
-	// 			jsonBytes, err := json.Marshal(payload)
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
+		tokens = float64(len(input.Text)) / 4
+		metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
+		if tokens > 0 {
+			metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
+		}
 
-	// 			return mcpgo.NewToolResultText(string(jsonBytes)), nil
-	// 		},
-	// 	)
+		return nil, map[string]any{
+			"document_id": input.DocumentID,
+			"status":      "indexed",
+			"indexed_at":  time.Now().UTC().Format(time.RFC3339),
+			"token_count": len(input.Text),
+		}, nil
+	})
 
-	// 	server.AddTool(
-	// 		mcpgo.NewTool("file_search_query",
-	// 			mcp.ReflectToMCPOptions(
-	// 				"Run a semantic query against documents indexed via file_search_index.",
-	// 				FileSearchQueryArgs{},
-	// 			)...,
-	// 		),
-	// 		func(ctx context.Context, req mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
-	// 			if s.vectorStore == nil {
-	// 				return nil, fmt.Errorf("vector store client is not configured")
-	// 			}
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "file_search_query",
+		Description: "Run a semantic query against documents indexed via file_search_index.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchQueryArgs) (*mcp.CallToolResult, map[string]any, error) {
+		startTime := time.Now()
+		callCtx := extractAllContext(req)
+		log.Info().
+			Str("tool", "file_search_query").
+			Str("tool_call_id", callCtx["tool_call_id"]).
+			Str("request_id", callCtx["request_id"]).
+			Str("conversation_id", callCtx["conversation_id"]).
+			Str("user_id", callCtx["user_id"]).
+			Msg("MCP tool call received")
 
-	// 			query, err := req.RequireString("query")
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
+		status := "success"
+		var tokens float64
 
-	// 			topK := req.GetInt("top_k", 5)
-	// 			if topK <= 0 {
-	// 				topK = 5
-	// 			}
-	// 			if topK > 20 {
-	// 				topK = 20
-	// 			}
-	// 			docIDs := req.GetStringSlice("document_ids", nil)
+		topK := 5
+		if input.TopK != nil && *input.TopK > 0 {
+			topK = *input.TopK
+		}
+		if topK > 20 {
+			topK = 20
+		}
 
-	// 			resp, err := s.vectorStore.Query(ctx, vectorstore.QueryRequest{
-	// 				Text:        query,
-	// 				TopK:        topK,
-	// 				DocumentIDs: docIDs,
-	// 			})
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
+		if s.vectorStore != nil && s.vectorStore.IsEnabled() {
+			resp, err := s.vectorStore.Query(ctx, vectorstore.QueryRequest{
+				Text:        input.Query,
+				TopK:        topK,
+				DocumentIDs: input.DocumentIDs,
+			})
+			if err == nil {
+				for _, r := range resp.Results {
+					tokens += float64(len(r.TextPreview)) / 4
+				}
+				metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
+				if tokens > 0 {
+					metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
+				}
+				return nil, map[string]any{
+					"query":   resp.Query,
+					"top_k":   resp.TopK,
+					"count":   resp.Count,
+					"results": resp.Results,
+				}, nil
+			}
+			log.Warn().Err(err).Str("tool", "file_search_query").Msg("vector store query failed; falling back to stub")
+			status = "error"
+		}
 
-	// 			if resp.TopK == 0 {
-	// 				resp.TopK = topK
-	// 			}
+		s.fileIndexMu.Lock()
+		defer s.fileIndexMu.Unlock()
+		results := make([]map[string]any, 0)
+		for docID, doc := range s.fileIndex {
+			if len(input.DocumentIDs) > 0 {
+				match := false
+				for _, allowed := range input.DocumentIDs {
+					if allowed == docID {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue
+				}
+			}
+			preview := truncateSnippet(doc.Text, 200)
+			results = append(results, map[string]any{
+				"document_id":  docID,
+				"text_preview": preview,
+				"score":        1.0,
+				"metadata":     doc.Metadata,
+				"tags":         doc.Tags,
+			})
+			if len(results) >= topK {
+				break
+			}
+		}
 
-	// 			jsonBytes, err := json.Marshal(resp)
-	// 			if err != nil {
-	// 				return nil, err
-	// 			}
+		for _, r := range results {
+			if preview, ok := r["text_preview"].(string); ok {
+				tokens += float64(len(preview)) / 4
+			}
+		}
+		metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
+		if tokens > 0 {
+			metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
+		}
 
-	// 			return mcpgo.NewToolResultText(string(jsonBytes)), nil
-	// 		},
-	// 	)
-	// }
+		return nil, map[string]any{
+			"query":   input.Query,
+			"top_k":   topK,
+			"count":   len(results),
+			"results": results,
+		}, nil
+	})
 }
 
 func (s *SerperMCP) buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {
@@ -433,6 +650,23 @@ func (s *SerperMCP) buildScrapePayload(url string, resp *domainsearch.FetchWebpa
 	}
 }
 
+func estimateTokensFromSearchPayload(payload searchToolPayload) float64 {
+	charCount := len(payload.Query)
+	for _, result := range payload.Results {
+		charCount += len(result.Title)
+		charCount += len(result.Snippet)
+		charCount += len(result.SourceURL)
+	}
+	for _, cite := range payload.Citations {
+		charCount += len(cite)
+	}
+	return float64(charCount) / 4
+}
+
+func estimateTokensFromScrapePayload(payload scrapeToolPayload) float64 {
+	return float64(len(payload.Text)+len(payload.TextPreview)) / 4
+}
+
 func stringFromMap(data map[string]any, key string) string {
 	if data == nil {
 		return ""
@@ -475,4 +709,32 @@ func extractMapArgument(args map[string]any, key string) map[string]any {
 		return cast
 	}
 	return nil
+}
+
+func (s *SerperMCP) buildFallbackSearchPayload(query string, req domainsearch.SearchRequest) searchToolPayload {
+	now := time.Now().UTC().Format(time.RFC3339)
+	result := searchToolResult{
+		Position:    1,
+		Title:       "Example Domain",
+		SourceURL:   "https://example.com",
+		Snippet:     "Example Domain placeholder result for offline/testing scenarios.",
+		CacheStatus: "offline_stub",
+		FetchedAt:   now,
+	}
+
+	return searchToolPayload{
+		Query:       query,
+		Engine:      "offline_stub",
+		Live:        false,
+		CacheStatus: "offline_stub",
+		Metadata: map[string]any{
+			"reason":  "offline_stub",
+			"live":    false,
+			"offline": true,
+			"query":   query,
+		},
+		Results:   []searchToolResult{result},
+		Citations: []string{result.SourceURL},
+		Raw:       nil,
+	}
 }

@@ -97,6 +97,9 @@ type ConversationRepository interface {
 	BulkAddItems(ctx context.Context, conversationID uint, items []*Item) error
 	GetItemByID(ctx context.Context, conversationID uint, itemID uint) (*Item, error)
 	GetItemByPublicID(ctx context.Context, conversationID uint, publicID string) (*Item, error)
+	GetItemByCallID(ctx context.Context, conversationID uint, callID string) (*Item, error)
+	GetItemByCallIDAndType(ctx context.Context, conversationID uint, callID string, itemType ItemType) (*Item, error)
+	UpdateItem(ctx context.Context, conversationID uint, item *Item) error
 	DeleteItem(ctx context.Context, conversationID uint, itemID uint) error
 	CountItems(ctx context.Context, conversationID uint, branchName string) (int, error)
 

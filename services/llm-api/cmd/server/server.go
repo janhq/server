@@ -83,6 +83,20 @@ func main() {
 		log.Fatal().Msg("config not loaded")
 	}
 
+	// Initialize Observability (Tracing & Metrics)
+	otelShutdown, err := observability.Setup(ctx, cfg, log)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to setup observability")
+	} else {
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := otelShutdown(shutdownCtx); err != nil {
+				log.Error().Err(err).Msg("failed to shutdown observability")
+			}
+		}()
+	}
+
 	application, err := CreateApplication()
 	if err != nil {
 		log.Fatal().Err(err).Msg("create application")
@@ -98,19 +112,6 @@ func main() {
 		log.Fatal().Err(err).Msg("resolve jwks url")
 	}
 	_ = jwksURL // Will be used by auth middleware
-
-	otelShutdown, err := observability.Setup(ctx, cfg, log)
-	if err != nil {
-		log.Error().Err(err).Msg("initialize observability")
-	} else {
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			if err := otelShutdown(shutdownCtx); err != nil {
-				log.Error().Err(err).Msg("shutdown telemetry")
-			}
-		}()
-	}
 
 	if err := dataInitializer.Install(ctx); err != nil {
 		log.Fatal().Err(err).Msg("install data")

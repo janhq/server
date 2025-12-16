@@ -7,19 +7,30 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
 	"jan-server/services/mcp-tools/internal/infrastructure/auth"
 	"jan-server/services/mcp-tools/internal/infrastructure/config"
+	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/logger"
 	"jan-server/services/mcp-tools/internal/infrastructure/mcpprovider"
+	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 	sandboxfusionclient "jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
 	searchclient "jan-server/services/mcp-tools/internal/infrastructure/search"
 	vectorstoreclient "jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/middlewares"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes/mcp"
 )
+
+func init() {
+	// Initialize MCP metrics with a startup marker
+	// This ensures metrics appear in Prometheus immediately
+	metrics.SetCircuitBreakerState("serper", "closed")
+	metrics.SetCircuitBreakerState("sandboxfusion", "closed")
+	metrics.SetCircuitBreakerState("memory-tools", "closed")
+}
 
 // @title Jan Server MCP Tools Service
 // @version 1.0
@@ -113,7 +124,21 @@ func main() {
 		log.Error().Err(err).Msg("Failed to initialize MCP providers")
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP)
+	// Initialize LLM-API client for tool tracking
+	var llmClient *llmapi.Client
+	if cfg.MCPTrackingEnabled && cfg.LLMAPIBaseURL != "" {
+		llmClient = llmapi.NewClient(cfg.LLMAPIBaseURL)
+		log.Info().
+			Str("llm_api_url", cfg.LLMAPIBaseURL).
+			Msg("LLM-API client initialized for tool tracking")
+	} else {
+		log.Info().
+			Bool("tracking_enabled", cfg.MCPTrackingEnabled).
+			Str("llm_api_url", cfg.LLMAPIBaseURL).
+			Msg("LLM-API tool tracking disabled or not configured")
+	}
+
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {
@@ -125,6 +150,7 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(middlewares.RequestLogger())
 	router.Use(middlewares.CORS())
+	router.Use(middlewares.MetricsRecorder())
 
 	// Apply auth middleware (will skip health checks internally)
 	if authValidator != nil {
@@ -147,6 +173,9 @@ func main() {
 		}
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "initializing"})
 	})
+
+	// Prometheus metrics endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Register MCP routes
 	v1 := router.Group("/v1")

@@ -1232,6 +1232,886 @@
       ]
     },
     {
+      "name": "MCP Tool Integration",
+      "description": "Full-stack MCP test: chat with tool calls, MCP execution, tool result tracking, and conversation reload verification",
+      "item": [
+        {
+          "name": "Step 14: Create MCP Test Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"MCP Tool Test Conversation\"\n}"
+            },
+            "url": "{{kong_url}}/v1/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Step 14] MCP test conversation created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('[Step 14] Response contains conversation ID', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.exist;",
+                  "    pm.expect(response.id).to.include('conv_');",
+                  "    pm.collectionVariables.set('mcp_conversation_id', response.id);",
+                  "    console.log('Created MCP test conversation:', response.id);",
+                  "});",
+                  "",
+                  "console.log('Step 14 Complete: MCP Test Conversation Created');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 15: Send Chat with Tool Use",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Search for information about Model Context Protocol\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{mcp_conversation_id}}\"\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"function\": {\n        \"name\": \"google_search\",\n        \"description\": \"Search the web using Google\",\n        \"parameters\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"q\": {\n              \"type\": \"string\",\n              \"description\": \"Search query\"\n            }\n          },\n          \"required\": [\"q\"]\n        }\n      }\n    }\n  ],\n  \"tool_choice\": \"auto\",\n  \"stream\": false,\n  \"max_tokens\": 500\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('[Step 15] Chat request with tools succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 15] Response contains tool_calls', function () {",
+                  "    pm.expect(data.choices).to.be.an('array').that.is.not.empty;",
+                  "    const message = data.choices[0].message;",
+                  "    pm.expect(message).to.have.property('tool_calls');",
+                  "    pm.expect(message.tool_calls).to.be.an('array').that.is.not.empty;",
+                  "    ",
+                  "    // Save tool call ID for tracking",
+                  "    const toolCall = message.tool_calls[0];",
+                  "    pm.expect(toolCall).to.have.property('id');",
+                  "    pm.collectionVariables.set('tool_call_id', toolCall.id);",
+                  "    pm.collectionVariables.set('tool_name', toolCall.function.name);",
+                  "    pm.collectionVariables.set('tool_arguments', toolCall.function.arguments);",
+                  "    console.log('Tool call ID:', toolCall.id);",
+                  "    console.log('Tool name:', toolCall.function.name);",
+                  "});",
+                  "",
+                  "console.log('Step 15 Complete: Received Tool Call from LLM');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 16: Execute MCP Tool",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Tool-Call-ID",
+                "value": "{{tool_call_id}}"
+              },
+              {
+                "key": "X-Conversation-ID",
+                "value": "{{mcp_conversation_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"google_search\",\n    \"arguments\": {\n      \"q\": \"Model Context Protocol\"\n    }\n  },\n  \"id\": 1\n}"
+            },
+            "url": "{{kong_url}}/mcp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rawBody = pm.response.text();",
+                  "let payload = null;",
+                  "",
+                  "// Handle SSE or JSON response",
+                  "try {",
+                  "  payload = JSON.parse(rawBody);",
+                  "} catch (err) {",
+                  "  const lines = rawBody.split('\\n');",
+                  "  for (const line of lines) {",
+                  "    if (line.startsWith('data: ')) {",
+                  "      try {",
+                  "        payload = JSON.parse(line.substring(6));",
+                  "        break;",
+                  "      } catch (e) {",
+                  "        console.error('Failed to parse SSE payload', e);",
+                  "      }",
+                  "    }",
+                  "  }",
+                  "}",
+                  "",
+                  "pm.test('[Step 16] MCP tool execution succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 16] Tool result contains content', function () {",
+                  "    pm.expect(payload).to.be.an('object');",
+                  "    pm.expect(payload).to.have.property('result');",
+                  "    pm.expect(payload.result).to.have.property('content');",
+                  "    pm.expect(payload.result.content).to.be.an('array').that.is.not.empty;",
+                  "    ",
+                  "    // Save result for submission",
+                  "    pm.collectionVariables.set('tool_result', JSON.stringify(payload.result.content));",
+                  "    console.log('Tool execution result received');",
+                  "});",
+                  "",
+                  "console.log('Step 16 Complete: MCP Tool Executed');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 17: Submit Tool Result to LLM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"tool\",\n      \"content\": \"Search completed successfully\",\n      \"tool_call_id\": \"{{tool_call_id}}\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{mcp_conversation_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 500\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('[Step 17] Tool result submitted successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Step 17] LLM generated final response', function () {",
+                  "    pm.expect(data.choices).to.be.an('array').that.is.not.empty;",
+                  "    const message = data.choices[0].message;",
+                  "    pm.expect(message.role).to.equal('assistant');",
+                  "    pm.expect(message.content).to.be.a('string').and.not.empty;",
+                  "    console.log('Final assistant response received');",
+                  "});",
+                  "",
+                  "console.log('Step 17 Complete: Tool Result Processed by LLM');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 18: Reload Conversation and Verify Tool Sequence",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}/items",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{mcp_conversation_id}}", "items"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "",
+                  "pm.test('[Step 18] Conversation messages retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(data).to.have.property('data');",
+                  "    pm.expect(data.data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('[Step 18] Tool call sequence preserved', function () {",
+                  "    const messages = data.data;",
+                  "    ",
+                  "    // Find assistant message with tool_calls",
+                  "    const assistantWithToolCall = messages.find(msg => ",
+                  "        msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0",
+                  "    );",
+                  "    pm.expect(assistantWithToolCall).to.exist;",
+                  "    pm.expect(assistantWithToolCall.tool_calls[0].id).to.equal(pm.collectionVariables.get('tool_call_id'));",
+                  "    console.log('✓ Found assistant message with tool_calls');",
+                  "    console.log('  Tool Call ID:', assistantWithToolCall.tool_calls[0].id);",
+                  "});",
+                  "",
+                  "pm.test('[Step 18] Tool result message preserved', function () {",
+                  "    const messages = data.data;",
+                  "    ",
+                  "    // Find tool result message",
+                  "    const toolResultMsg = messages.find(msg => ",
+                  "        msg.role === 'tool' && msg.tool_call_id === pm.collectionVariables.get('tool_call_id')",
+                  "    );",
+                  "    pm.expect(toolResultMsg).to.exist;",
+                  "    pm.expect(toolResultMsg.tool_call_id).to.equal(pm.collectionVariables.get('tool_call_id'));",
+                  "    pm.expect(toolResultMsg.content).to.exist;",
+                  "    console.log('✓ Found tool result message with matching tool_call_id');",
+                  "    console.log('  Tool Call ID:', toolResultMsg.tool_call_id);",
+                  "});",
+                  "",
+                  "pm.test('[Step 18] Message ordering is correct', function () {",
+                  "    const messages = data.data;",
+                  "    ",
+                  "    // Expected sequence: user -> assistant(with tool_calls) -> tool -> assistant(final)",
+                  "    const userMsgIndex = messages.findIndex(msg => msg.role === 'user');",
+                  "    const assistantToolCallIndex = messages.findIndex(msg => ",
+                  "        msg.role === 'assistant' && msg.tool_calls",
+                  "    );",
+                  "    const toolResultIndex = messages.findIndex(msg => msg.role === 'tool');",
+                  "    const finalAssistantIndex = messages.findIndex((msg, idx) => ",
+                  "        msg.role === 'assistant' && !msg.tool_calls && idx > toolResultIndex",
+                  "    );",
+                  "    ",
+                  "    pm.expect(userMsgIndex).to.be.at.least(0);",
+                  "    pm.expect(assistantToolCallIndex).to.be.greaterThan(userMsgIndex);",
+                  "    pm.expect(toolResultIndex).to.be.greaterThan(assistantToolCallIndex);",
+                  "    pm.expect(finalAssistantIndex).to.be.greaterThan(toolResultIndex);",
+                  "    ",
+                  "    console.log('✓ Message sequence is correct:');",
+                  "    console.log('  User -> Assistant(tool_calls) -> Tool(result) -> Assistant(final)');",
+                  "});",
+                  "",
+                  "console.log('Step 18 Complete: Tool Call Sequence Verified After Reload');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 19: Delete MCP Test Conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Step 19] MCP test conversation deleted', function () {",
+                  "    pm.expect([200, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "console.log('Step 19 Complete: MCP Test Conversation Cleaned Up');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Conversation Sharing",
+      "description": "Integration tests for conversation sharing feature: share creation, public access, revocation, and cascade behaviors",
+      "item": [
+        {
+          "name": "Share-1: Create Conversation for Sharing Tests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sharing Test Conversation\"\n}"
+            },
+            "url": "{{kong_url}}/v1/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-1] Conversation created for sharing tests', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('[Share-1] Save conversation ID for sharing tests', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.exist;",
+                  "    pm.collectionVariables.set('share_test_conv_id', response.id);",
+                  "    console.log('Created sharing test conversation:', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-2: Attempt to Share Conversation with <2 Items (should fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"conversation\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}/share",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{share_test_conv_id}}", "share"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-2] Share rejected for conversation with less than 2 items', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 403, 422]);",
+                  "});",
+                  "",
+                  "pm.test('[Share-2] Error message indicates minimum items required', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.error).to.exist;",
+                  "    const errorMsg = response.error.message || response.error;",
+                  "    pm.expect(errorMsg.toLowerCase()).to.include('2 items');",
+                  "    console.log('✓ Correctly rejected: conversation needs at least 2 items');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-3: Add First Message (User) to Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! This is a test message for sharing.\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{share_test_conv_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-3] Message added successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.choices).to.be.an('array').that.is.not.empty;",
+                  "    console.log('✓ Added user message and received assistant response');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-4: Create Share Successfully (now has 2+ items)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"conversation\",\n  \"include_images\": false\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}/share",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{share_test_conv_id}}", "share"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-4] Share created successfully', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "pm.test('[Share-4] Response contains share details', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.exist;",
+                  "    pm.expect(response.slug).to.exist;",
+                  "    pm.expect(response.slug).to.have.lengthOf(22);",
+                  "    pm.expect(response.share_url).to.exist;",
+                  "    ",
+                  "    pm.collectionVariables.set('share_id', response.id);",
+                  "    pm.collectionVariables.set('share_slug', response.slug);",
+                  "    console.log('✓ Share created with ID:', response.id);",
+                  "    console.log('  Slug:', response.slug);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-5: Fetch Public Share (should succeed)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/v1/public/shares/{{share_slug}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{share_slug}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-5] Public share accessible', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('[Share-5] Snapshot contains conversation data', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.snapshot).to.exist;",
+                  "    pm.expect(response.snapshot.title).to.exist;",
+                  "    pm.expect(response.snapshot.items).to.be.an('array').that.is.not.empty;",
+                  "    console.log('✓ Public share returns snapshot with', response.snapshot.items.length, 'items');",
+                  "});",
+                  "",
+                  "pm.test('[Share-5] Snapshot does NOT contain owner IDs', function () {",
+                  "    const response = pm.response.json();",
+                  "    const snapshotStr = JSON.stringify(response.snapshot);",
+                  "    pm.expect(snapshotStr).to.not.include('owner_user_id');",
+                  "    pm.expect(snapshotStr).to.not.include('user_id');",
+                  "    console.log('✓ No owner IDs leaked in snapshot');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-6: Revoke Share",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}/shares/{{share_id}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{share_test_conv_id}}", "shares", "{{share_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-6] Share revoked successfully', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "    console.log('✓ Share revoked');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-7: Fetch Revoked Share (should fail with 404/410)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/v1/public/shares/{{share_slug}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{share_slug}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-7] Revoked share returns 404 or 410', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([404, 410]);",
+                  "    console.log('✓ Revoked share correctly inaccessible with status:', pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-8: Attempt to Share TEMPORARY_CHAT_ID (should fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"conversation\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/TEMPORARY_CHAT_ID/share",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "TEMPORARY_CHAT_ID", "share"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-8] TEMPORARY_CHAT_ID sharing rejected', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 403, 404, 422]);",
+                  "    console.log('✓ TEMPORARY_CHAT_ID correctly rejected with status:', pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test('[Share-8] Error response received', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.error).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-9: Create Conversation for Cascade Delete Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Cascade Delete Test Conversation\"\n}"
+            },
+            "url": "{{kong_url}}/v1/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-9] Cascade test conversation created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('cascade_conv_id', response.id);",
+                  "    console.log('Created cascade test conversation:', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-10: Add Messages to Cascade Test Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Testing cascade delete for shares.\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{cascade_conv_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-10] Messages added to cascade test conversation', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    console.log('✓ Added messages to cascade test conversation');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-11: Create Share for Cascade Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"conversation\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{cascade_conv_id}}/share",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{cascade_conv_id}}", "share"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-11] Share created for cascade test', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('cascade_share_slug', response.slug);",
+                  "    console.log('Created share with slug:', response.slug);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-12: Verify Cascade Share is Accessible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/v1/public/shares/{{cascade_share_slug}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{cascade_share_slug}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-12] Cascade share accessible before delete', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    console.log('✓ Share is accessible before conversation deletion');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-13: Delete Conversation (cascade should revoke share)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{cascade_conv_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-13] Conversation deleted', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "    console.log('✓ Conversation deleted, cascade should revoke share');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-14: Verify Share Revoked After Conversation Delete",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{kong_url}}/v1/public/shares/{{cascade_share_slug}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{cascade_share_slug}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-14] Share auto-revoked after conversation deletion', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([404, 410]);",
+                  "    console.log('✓ Share correctly revoked/deleted after conversation deletion with status:', pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Share-15: Cleanup - Delete Share Test Conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Share-15] Share test conversation cleaned up', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "    console.log('✓ Sharing test cleanup complete');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Cleanup",
       "item": [
         {
@@ -1403,6 +2283,66 @@
       "key": "next_cursor",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "mcp_conversation_id",
+      "value": "",
+      "type": "string",
+      "description": "Conversation ID for MCP tool integration test"
+    },
+    {
+      "key": "tool_call_id",
+      "value": "",
+      "type": "string",
+      "description": "Tool call ID for tracking MCP tool execution"
+    },
+    {
+      "key": "tool_name",
+      "value": "",
+      "type": "string",
+      "description": "Name of the tool being called"
+    },
+    {
+      "key": "tool_arguments",
+      "value": "",
+      "type": "string",
+      "description": "Arguments for the tool call"
+    },
+    {
+      "key": "tool_result",
+      "value": "",
+      "type": "string",
+      "description": "Result returned from MCP tool execution"
+    },
+    {
+      "key": "share_test_conv_id",
+      "value": "",
+      "type": "string",
+      "description": "Conversation ID for sharing tests"
+    },
+    {
+      "key": "share_id",
+      "value": "",
+      "type": "string",
+      "description": "Share public ID"
+    },
+    {
+      "key": "share_slug",
+      "value": "",
+      "type": "string",
+      "description": "Share slug for public access"
+    },
+    {
+      "key": "cascade_conv_id",
+      "value": "",
+      "type": "string",
+      "description": "Conversation ID for cascade delete test"
+    },
+    {
+      "key": "cascade_share_slug",
+      "value": "",
+      "type": "string",
+      "description": "Share slug for cascade delete test"
     }
   ]
 }

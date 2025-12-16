@@ -417,3 +417,12 @@ func parseScopes(raw string) []string {
 	}
 	return out
 }
+
+// GetUserIDFromContext returns the authenticated user's ID as a string
+func GetUserIDFromContext(c *gin.Context) string {
+	principal, ok := PrincipalFromContext(c)
+	if !ok {
+		return ""
+	}
+	return principal.ID
+}

@@ -35,6 +35,7 @@ type ModelCatalog struct {
 	SupportsReasoning  *bool  `gorm:"not null;default:false;index"`
 	SupportsAudio      *bool  `gorm:"not null;default:false;index"`
 	SupportsVideo      *bool  `gorm:"not null;default:false;index"`
+	SupportsTools      *bool  `gorm:"not null;default:true;index"`
 	Family             string `gorm:"size:128;index"`
 }
 
@@ -77,6 +78,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 	supportsReasoning := m.SupportsReasoning
 	supportsAudio := m.SupportsAudio
 	supportsVideo := m.SupportsVideo
+	supportsTools := m.SupportsTools
 	experimental := m.Experimental
 
 	return &ModelCatalog{
@@ -104,6 +106,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		SupportsReasoning:   &supportsReasoning,
 		SupportsAudio:       &supportsAudio,
 		SupportsVideo:       &supportsVideo,
+		SupportsTools:       &supportsTools,
 		Family:              m.Family,
 	}, nil
 }
@@ -163,6 +166,10 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 	if m.SupportsVideo != nil {
 		supportsVideo = *m.SupportsVideo
 	}
+	supportsTools := true
+	if m.SupportsTools != nil {
+		supportsTools = *m.SupportsTools
+	}
 
 	return &domainmodel.ModelCatalog{
 		ID:                  m.ID,
@@ -191,6 +198,7 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 		SupportsReasoning:   supportsReasoning,
 		SupportsAudio:       supportsAudio,
 		SupportsVideo:       supportsVideo,
+		SupportsTools:       supportsTools,
 		Family:              m.Family,
 		CreatedAt:           m.CreatedAt,
 		UpdatedAt:           m.UpdatedAt,

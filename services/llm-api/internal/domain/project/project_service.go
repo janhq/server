@@ -29,7 +29,7 @@ func NewProjectService(repo ProjectRepository) *ProjectService {
 func (s *ProjectService) CreateProject(ctx context.Context, proj *Project) (*Project, error) {
 	// Validate project
 	if err := s.validator.ValidateProject(proj); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "project validation failed", err, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "project validation failed", err, "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c")
 	}
 
 	// Persist project
@@ -44,7 +44,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, proj *Project) (*Pro
 func (s *ProjectService) GetProjectByPublicIDAndUserID(ctx context.Context, publicID string, userID uint) (*Project, error) {
 	// Validate project ID format
 	if err := s.validator.ValidateProjectID(publicID); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "invalid project ID", err, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "invalid project ID", err, "a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d")
 	}
 
 	// Retrieve project
@@ -60,7 +60,7 @@ func (s *ProjectService) GetProjectByPublicIDAndUserID(ctx context.Context, publ
 func (s *ProjectService) UpdateProject(ctx context.Context, proj *Project) (*Project, error) {
 	// Validate updated project
 	if err := s.validator.ValidateProject(proj); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "project validation failed", err, "")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "project validation failed", err, "b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e")
 	}
 
 	// Persist changes

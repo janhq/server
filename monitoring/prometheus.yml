@@ -31,3 +31,27 @@ scrape_configs:
         labels:
           service: 'mcp-tools'
     metrics_path: '/metrics'
+
+  - job_name: 'response-api'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['response-api:8082']
+        labels:
+          service: 'response-api'
+    metrics_path: '/metrics'
+
+  - job_name: 'media-api'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['media-api:8285']
+        labels:
+          service: 'media-api'
+    metrics_path: '/metrics'
+
+  - job_name: 'memory-tools'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['memory-tools:8090']
+        labels:
+          service: 'memory-tools'
+    metrics_path: '/metrics'

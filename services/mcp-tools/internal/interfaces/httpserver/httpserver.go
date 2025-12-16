@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"jan-server/services/mcp-tools/internal/infrastructure/auth"
 	"jan-server/services/mcp-tools/internal/infrastructure/config"
@@ -27,6 +28,7 @@ func NewHTTPServer(
 	router.Use(gin.Recovery())
 	router.Use(middlewares.RequestLogger())
 	router.Use(middlewares.CORS())
+	router.Use(middlewares.MetricsRecorder())
 
 	// Apply auth middleware (will skip health checks internally)
 	if authValidator != nil {
@@ -58,6 +60,9 @@ func (s *HTTPServer) setupRoutes() {
 		}
 		c.JSON(503, gin.H{"status": "initializing"})
 	})
+
+	// Prometheus metrics endpoint
+	s.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Register MCP routes
 	v1 := s.router.Group("/v1")
