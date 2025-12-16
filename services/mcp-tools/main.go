@@ -88,7 +88,11 @@ func main() {
 	}
 
 	// Initialize MCP routes
-	serperMCP := mcp.NewSerperMCP(searchService, vectorClient)
+	serperMCP := mcp.NewSerperMCP(searchService, vectorClient, mcp.SerperMCPConfig{
+		MaxSnippetChars:       cfg.MaxSnippetChars,
+		MaxScrapePreviewChars: cfg.MaxScrapePreviewChars,
+		MaxScrapeTextChars:    cfg.MaxScrapeTextChars,
+	})
 
 	// Initialize memory MCP
 	var memoryMCP *mcp.MemoryMCP

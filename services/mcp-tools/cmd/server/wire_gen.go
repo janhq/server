@@ -25,7 +25,12 @@ func CreateApplication(ctx context.Context) (*Application, error) {
 	searchClient := infrastructure.ProvideSearchClient(config)
 	searchService := search.NewSearchService(searchClient)
 	client := infrastructure.ProvideVectorStoreClient(config)
-	serperMCP := mcp.NewSerperMCP(searchService, client)
+	serperMCPConfig := mcp.SerperMCPConfig{
+		MaxSnippetChars:       config.MaxSnippetChars,
+		MaxScrapePreviewChars: config.MaxScrapePreviewChars,
+		MaxScrapeTextChars:    config.MaxScrapeTextChars,
+	}
+	serperMCP := mcp.NewSerperMCP(searchService, client, serperMCPConfig)
 	mcpproviderConfig := infrastructure.ProvideMCPProviderConfig()
 	providerMCP := mcp.NewProviderMCP(mcpproviderConfig)
 	sandboxfusionClient := infrastructure.ProvideSandboxFusionClient(config)

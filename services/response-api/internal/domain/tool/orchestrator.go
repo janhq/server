@@ -42,6 +42,7 @@ type ExecuteParams struct {
 	Messages        []llm.ChatMessage
 	Temperature     *float64
 	MaxTokens       *int
+	ContextLength   *int // Model's context length limit for message trimming
 	ToolChoice      *llm.ToolChoice
 	ToolDefinitions []llm.ToolDefinition
 	StreamObserver  StreamObserver
@@ -60,7 +61,17 @@ func (o *Orchestrator) Execute(params ExecuteParams) (*ExecuteResult, error) {
 	messages := append([]llm.ChatMessage(nil), params.Messages...)
 	var executions []Execution
 
+	// Get context length for message trimming
+	contextLength := llm.DefaultContextLength
+	if params.ContextLength != nil && *params.ContextLength > 0 {
+		contextLength = *params.ContextLength
+	}
+
 	for depth := 0; depth < o.maxDepth; depth++ {
+		// Trim messages if they exceed context length
+		trimResult := llm.TrimMessagesToFitContext(messages, contextLength)
+		messages = trimResult.Messages
+
 		req := llm.ChatCompletionRequest{
 			Model:       params.Model,
 			Messages:    messages,

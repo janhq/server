@@ -25,6 +25,7 @@ type ServiceImpl struct {
 	toolExecutions    ToolExecutionRepository
 	orchestrator      *tool.Orchestrator
 	mcpClient         tool.MCPClient
+	modelInfoProvider llm.ModelInfoProvider
 	webhookService    webhook.Service
 	log               zerolog.Logger
 }
@@ -37,6 +38,7 @@ func NewService(
 	toolExecutions ToolExecutionRepository,
 	orchestrator *tool.Orchestrator,
 	mcpClient tool.MCPClient,
+	modelInfoProvider llm.ModelInfoProvider,
 	webhookService webhook.Service,
 	log zerolog.Logger,
 ) *ServiceImpl {
@@ -47,6 +49,7 @@ func NewService(
 		toolExecutions:    toolExecutions,
 		orchestrator:      orchestrator,
 		mcpClient:         mcpClient,
+		modelInfoProvider: modelInfoProvider,
 		webhookService:    webhookService,
 		log:               log.With().Str("component", "response-service").Logger(),
 	}
@@ -225,6 +228,17 @@ func (s *ServiceImpl) createSync(ctx context.Context, params CreateParams) (*Res
 		}
 	}
 
+	// Fetch model context length for message trimming
+	var contextLength *int
+	if s.modelInfoProvider != nil {
+		modelInfo, err := s.modelInfoProvider.GetModelInfo(ctx, params.Model)
+		if err != nil {
+			s.log.Warn().Err(err).Str("model", params.Model).Msg("failed to fetch model info, using default context length")
+		} else if modelInfo != nil && modelInfo.ContextLength != nil {
+			contextLength = modelInfo.ContextLength
+		}
+	}
+
 	execParams := func(defs []llm.ToolDefinition, toolChoice *llm.ToolChoice) tool.ExecuteParams {
 		return tool.ExecuteParams{
 			Ctx:             ctx,
@@ -232,6 +246,7 @@ func (s *ServiceImpl) createSync(ctx context.Context, params CreateParams) (*Res
 			Messages:        messages,
 			Temperature:     params.Temperature,
 			MaxTokens:       params.MaxTokens,
+			ContextLength:   contextLength,
 			ToolChoice:      toolChoice,
 			ToolDefinitions: defs,
 			StreamObserver:  params.StreamObserver,
@@ -557,6 +572,17 @@ func (s *ServiceImpl) ExecuteBackground(ctx context.Context, publicID string) er
 		toolDefs = []llm.ToolDefinition{}
 	}
 
+	// Fetch model context length for message trimming
+	var contextLength *int
+	if s.modelInfoProvider != nil {
+		modelInfo, err := s.modelInfoProvider.GetModelInfo(ctx, resp.Model)
+		if err != nil {
+			s.log.Warn().Err(err).Str("model", resp.Model).Msg("failed to fetch model info for background task, using default context length")
+		} else if modelInfo != nil && modelInfo.ContextLength != nil {
+			contextLength = modelInfo.ContextLength
+		}
+	}
+
 	// Execute orchestration (no streaming in background mode)
 	execParams := tool.ExecuteParams{
 		Ctx:             ctx,
@@ -564,6 +590,7 @@ func (s *ServiceImpl) ExecuteBackground(ctx context.Context, publicID string) er
 		Messages:        messages,
 		Temperature:     nil, // Use model defaults for background tasks
 		MaxTokens:       nil,
+		ContextLength:   contextLength,
 		ToolDefinitions: toolDefs,
 		StreamObserver:  nil, // Background mode never streams
 	}

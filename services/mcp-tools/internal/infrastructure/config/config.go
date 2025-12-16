@@ -40,6 +40,11 @@ type Config struct {
 	SerperRetryMaxDelay     int   `env:"SERPER_RETRY_MAX_DELAY" envDefault:"5000"`
 	SerperRetryBackoffFactor float64 `env:"SERPER_RETRY_BACKOFF_FACTOR" envDefault:"1.5"`
 
+	// Tool Result Token Limits - Controls maximum output size for MCP tool results
+	MaxSnippetChars      int `env:"MCP_MAX_SNIPPET_CHARS" envDefault:"5000"`       // Max chars for search result snippets
+	MaxScrapePreviewChars int `env:"MCP_MAX_SCRAPE_PREVIEW_CHARS" envDefault:"5000"` // Max chars for scrape text preview
+	MaxScrapeTextChars   int `env:"MCP_MAX_SCRAPE_TEXT_CHARS" envDefault:"50000"`   // Max chars for full scrape text (approx 12.5k tokens)
+
 	// External Services
 	VectorStoreURL   string `env:"VECTOR_STORE_URL" envDefault:"http://vector-store-mcp:3015"`
 	SandboxFusionURL string `env:"SANDBOXFUSION_URL" envDefault:"http://sandbox-fusion:8080"`
