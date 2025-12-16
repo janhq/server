@@ -13,6 +13,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
+	"jan-server/services/llm-api/internal/domain/share"
 	"jan-server/services/llm-api/internal/domain/user"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure"
@@ -22,6 +23,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/prompttemplaterepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/sharerepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/userrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/usersettingsrepo"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
@@ -37,8 +39,10 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/sharehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/usersettingshandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/auth"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/public"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1"
 	admin2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	model3 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/model"
@@ -48,6 +52,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	model2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model/provider"
+	share2 "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/share"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/users"
 )
 
@@ -87,7 +92,8 @@ func CreateApplication() (*Application, error) {
 	conversationService := conversation.NewConversationService(conversationRepository)
 	projectRepository := projectrepo.NewProjectGormRepository(db)
 	projectService := project.NewProjectService(projectRepository)
-	conversationHandler := conversationhandler.NewConversationHandler(conversationService, projectService)
+	shareRepository := sharerepo.NewShareGormRepository(database)
+	conversationHandler := conversationhandler.NewConversationHandler(conversationService, projectService, shareRepository)
 	client := infrastructure.ProvideKeycloakClient(config, zerologLogger)
 	resolver := infrastructure.ProvideMediaResolver(config, zerologLogger, client)
 	processorConfig := domain.ProvidePromptProcessorConfig(config, zerologLogger)
@@ -115,7 +121,12 @@ func CreateApplication() (*Application, error) {
 	adminRoute := admin2.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler, promptTemplateHandler)
 	userSettingsHandler := usersettingshandler.NewUserSettingsHandler(usersettingsService, zerologLogger)
 	usersRoute := users.NewUsersRoute(userSettingsHandler, authHandler)
-	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute, usersRoute, promptTemplateHandler)
+	itemRepository := conversationrepo.NewItemGormRepository(database)
+	shareService := share.NewShareService(shareRepository, conversationRepository, itemRepository)
+	shareHandler := sharehandler.NewShareHandler(shareService, conversationHandler, config)
+	shareRoute := share2.NewShareRoute(shareHandler, authHandler, conversationHandler)
+	publicShareRoute := public.NewPublicShareRoute(shareHandler)
+	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, projectRoute, adminRoute, usersRoute, promptTemplateHandler, shareRoute, publicShareRoute)
 	guestHandler := guestauth.NewGuestHandler(client, zerologLogger)
 	upgradeHandler := guestauth.NewUpgradeHandler(client, zerologLogger)
 	tokenHandler := authhandler.NewTokenHandler(client, zerologLogger)

@@ -11,6 +11,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/query"
+	"jan-server/services/llm-api/internal/domain/share"
 	authhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	conversationrequests "jan-server/services/llm-api/internal/interfaces/httpserver/requests/conversation"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
@@ -32,17 +33,20 @@ type ConversationHandler struct {
 	conversationService *conversation.ConversationService
 	projectService      *project.ProjectService
 	itemValidator       *conversation.ItemValidator
+	shareRepo           share.ShareRepository
 }
 
 // NewConversationHandler creates a new conversation handler
 func NewConversationHandler(
 	conversationService *conversation.ConversationService,
 	projectService *project.ProjectService,
+	shareRepo share.ShareRepository,
 ) *ConversationHandler {
 	return &ConversationHandler{
 		conversationService: conversationService,
 		projectService:      projectService,
 		itemValidator:       conversation.NewItemValidator(conversation.DefaultItemValidationConfig()),
+		shareRepo:           shareRepo,
 	}
 }
 
@@ -156,7 +160,7 @@ func (h *ConversationHandler) UpdateConversation(
 		} else {
 			// Verify project exists and user has access
 			if h.projectService == nil {
-				return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeInternal, "project service unavailable", nil, "")
+				return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeInternal, "project service unavailable", nil, "a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d")
 			}
 			proj, err := h.projectService.GetProjectByPublicIDAndUserID(ctx, projectID, userID)
 			if err != nil {
@@ -226,6 +230,21 @@ func (h *ConversationHandler) DeleteConversation(
 	userID uint,
 	conversationID string,
 ) (*conversationresponses.ConversationDeletedResponse, error) {
+	// Get the conversation first to get its numeric ID for share revocation
+	conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, conversationID, userID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+	}
+
+	// Revoke all shares for this conversation before deleting
+	if h.shareRepo != nil {
+		if err := h.shareRepo.RevokeAllByConversationID(ctx, conv.ID); err != nil {
+			// Log but don't fail the delete - shares should still be revoked
+			// The share lookup will fail anyway since the conversation is deleted
+			_ = err // Ignore error, conversation delete takes priority
+		}
+	}
+
 	if err := h.conversationService.DeleteConversationByID(ctx, userID, conversationID); err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to delete conversation")
 	}
