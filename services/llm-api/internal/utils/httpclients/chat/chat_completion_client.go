@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 
 	"github.com/gin-gonic/gin"
@@ -204,10 +203,7 @@ func (c *ChatCompletionClient) CreateChatCompletionStream(ctx context.Context, a
 
 	go func() {
 		defer func() {
-			if closeErr := resp.RawResponse.Body.Close(); closeErr != nil {
-				log := logger.GetLogger()
-				log.Error().Err(closeErr).Str("client", c.name).Msg("unable to close response body")
-			}
+			_ = resp.RawResponse.Body.Close()
 		}()
 
 		if _, copyErr := io.Copy(writer, resp.RawResponse.Body); copyErr != nil {
@@ -294,15 +290,15 @@ func (c *ChatCompletionClient) StreamChatCompletionToContextWithCallback(reqCtx 
 				break
 			}
 
+			chunksReceived++
+
+			// Check if this is the [DONE] marker BEFORE writing it
 			// Check if this is the [DONE] marker BEFORE writing it
 			if data, found := strings.CutPrefix(line, dataPrefix); found {
 				if data == doneMarker {
 					// Call the beforeDone callback BEFORE sending [DONE]
 					if beforeDone != nil {
-						if err := beforeDone(reqCtx); err != nil {
-							log := logger.GetLogger()
-							log.Warn().Err(err).Msg("beforeDone callback failed")
-						}
+						_ = beforeDone(reqCtx)
 					}
 					// Now write the [DONE] marker
 					if err := c.writeSSELine(reqCtx, line); err != nil {
@@ -509,6 +505,7 @@ func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey st
 	if err != nil {
 		return nil, err
 	}
+
 	if resp.IsError() {
 		return nil, c.errorFromResponse(ctx, resp, "streaming request failed")
 	}
@@ -529,10 +526,7 @@ func (c *ChatCompletionClient) streamResponseToChannel(ctx context.Context, apiK
 	}
 
 	defer func() {
-		if closeErr := resp.RawResponse.Body.Close(); closeErr != nil {
-			log := logger.GetLogger()
-			log.Error().Err(closeErr).Str("client", c.name).Msg("unable to close response body")
-		}
+		_ = resp.RawResponse.Body.Close()
 	}()
 
 	scanner := bufio.NewScanner(resp.RawResponse.Body)
@@ -580,8 +574,6 @@ func (c *ChatCompletionClient) processStreamChunkForChannel(data string) (*Strea
 	}
 
 	if err := json.Unmarshal([]byte(data), &streamData); err != nil {
-		log := logger.GetLogger()
-		log.Error().Err(err).Str("client", c.name).Str("data", data).Msg("failed to parse stream chunk JSON")
 		return nil, nil
 	}
 
@@ -786,4 +778,12 @@ func statusCode(resp *resty.Response) int {
 		return 0
 	}
 	return resp.StatusCode()
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
