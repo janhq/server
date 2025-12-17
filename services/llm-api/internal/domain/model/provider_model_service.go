@@ -135,6 +135,26 @@ func (s *ProviderModelService) FindByPublicID(ctx context.Context, publicID stri
 	return s.providerModelRepo.FindByPublicID(ctx, publicID)
 }
 
+// FindByID finds a provider model by its internal ID
+func (s *ProviderModelService) FindByID(ctx context.Context, id uint) (*ProviderModel, error) {
+	if id == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider model ID is required", nil, "8a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d")
+	}
+
+	return s.providerModelRepo.FindByID(ctx, id)
+}
+
+// FindByIDs finds provider models by their internal IDs
+func (s *ProviderModelService) FindByIDs(ctx context.Context, ids []uint) ([]*ProviderModel, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	return s.providerModelRepo.FindByFilter(ctx, ProviderModelFilter{
+		IDs: &ids,
+	}, nil)
+}
+
 func (s *ProviderModelService) Update(ctx context.Context, providerModel *ProviderModel) (*ProviderModel, error) {
 	if providerModel == nil {
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider model cannot be nil", nil, "45c19f50-e0d1-4745-b6c4-be6de6ce0ec0")

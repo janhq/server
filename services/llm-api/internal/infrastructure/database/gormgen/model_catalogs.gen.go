@@ -49,6 +49,7 @@ func newModelCatalog(db *gorm.DB, opts ...gen.DOOption) modelCatalog {
 	_modelCatalog.SupportsImages = field.NewBool(tableName, "supports_images")
 	_modelCatalog.SupportsEmbeddings = field.NewBool(tableName, "supports_embeddings")
 	_modelCatalog.SupportsReasoning = field.NewBool(tableName, "supports_reasoning")
+	_modelCatalog.SupportsInstruct = field.NewBool(tableName, "supports_instruct")
 	_modelCatalog.SupportsAudio = field.NewBool(tableName, "supports_audio")
 	_modelCatalog.SupportsVideo = field.NewBool(tableName, "supports_video")
 	_modelCatalog.SupportsTools = field.NewBool(tableName, "supports_tools")
@@ -84,6 +85,7 @@ type modelCatalog struct {
 	SupportsImages      field.Bool
 	SupportsEmbeddings  field.Bool
 	SupportsReasoning   field.Bool
+	SupportsInstruct    field.Bool
 	SupportsAudio       field.Bool
 	SupportsVideo       field.Bool
 	SupportsTools       field.Bool
@@ -125,6 +127,7 @@ func (m *modelCatalog) updateTableName(table string) *modelCatalog {
 	m.SupportsImages = field.NewBool(table, "supports_images")
 	m.SupportsEmbeddings = field.NewBool(table, "supports_embeddings")
 	m.SupportsReasoning = field.NewBool(table, "supports_reasoning")
+	m.SupportsInstruct = field.NewBool(table, "supports_instruct")
 	m.SupportsAudio = field.NewBool(table, "supports_audio")
 	m.SupportsVideo = field.NewBool(table, "supports_video")
 	m.SupportsTools = field.NewBool(table, "supports_tools")
@@ -145,7 +148,7 @@ func (m *modelCatalog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (m *modelCatalog) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 25)
+	m.fieldMap = make(map[string]field.Expr, 26)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
@@ -167,6 +170,7 @@ func (m *modelCatalog) fillFieldMap() {
 	m.fieldMap["supports_images"] = m.SupportsImages
 	m.fieldMap["supports_embeddings"] = m.SupportsEmbeddings
 	m.fieldMap["supports_reasoning"] = m.SupportsReasoning
+	m.fieldMap["supports_instruct"] = m.SupportsInstruct
 	m.fieldMap["supports_audio"] = m.SupportsAudio
 	m.fieldMap["supports_video"] = m.SupportsVideo
 	m.fieldMap["supports_tools"] = m.SupportsTools

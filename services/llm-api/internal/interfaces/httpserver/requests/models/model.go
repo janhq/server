@@ -35,6 +35,7 @@ type UpdateModelCatalogRequest struct {
 	SupportsImages      *bool                            `json:"supports_images"`
 	SupportsEmbeddings  *bool                            `json:"supports_embeddings"`
 	SupportsReasoning   *bool                            `json:"supports_reasoning"`
+	SupportsInstruct    *bool                            `json:"supports_instruct"`
 	SupportsAudio       *bool                            `json:"supports_audio"`
 	SupportsVideo       *bool                            `json:"supports_video"`
 	SupportsTools       *bool                            `json:"supports_tools"`
@@ -44,19 +45,20 @@ type UpdateModelCatalogRequest struct {
 }
 
 type UpdateProviderModelRequest struct {
-	ModelDisplayName    *string                  `json:"model_display_name"`
-	Category            *string                  `json:"category"`
-	CategoryOrderNumber *int                     `json:"category_order_number"`
-	ModelOrderNumber    *int                     `json:"model_order_number"`
-	Pricing             *domainmodel.Pricing     `json:"pricing"`
-	TokenLimits         *domainmodel.TokenLimits `json:"token_limits"`
-	Family              *string                  `json:"family"`
-	SupportsImages      *bool                    `json:"supports_images"`
-	SupportsEmbeddings  *bool                    `json:"supports_embeddings"`
-	SupportsReasoning   *bool                    `json:"supports_reasoning"`
-	SupportsAudio       *bool                    `json:"supports_audio"`
-	SupportsVideo       *bool                    `json:"supports_video"`
-	Active              *bool                    `json:"active"`
+	ModelDisplayName      *string                  `json:"model_display_name"`
+	Category              *string                  `json:"category"`
+	CategoryOrderNumber   *int                     `json:"category_order_number"`
+	ModelOrderNumber      *int                     `json:"model_order_number"`
+	Pricing               *domainmodel.Pricing     `json:"pricing"`
+	TokenLimits           *domainmodel.TokenLimits `json:"token_limits"`
+	Family                *string                  `json:"family"`
+	SupportsImages        *bool                    `json:"supports_images"`
+	SupportsEmbeddings    *bool                    `json:"supports_embeddings"`
+	SupportsReasoning     *bool                    `json:"supports_reasoning"`
+	SupportsAudio         *bool                    `json:"supports_audio"`
+	SupportsVideo         *bool                    `json:"supports_video"`
+	Active                *bool                    `json:"active"`
+	InstructModelPublicID *string                  `json:"instruct_model_public_id"` // Public ID of the instruct model to use when enable_thinking=false
 }
 
 type BulkEnableModelsRequest struct {
