@@ -109,6 +109,7 @@ type SerperMCP struct {
 	maxSnippetChars       int
 	maxScrapePreviewChars int
 	maxScrapeTextChars    int
+	enableFileSearch      bool
 }
 
 // SerperMCPConfig contains configuration for SerperMCP.
@@ -116,6 +117,7 @@ type SerperMCPConfig struct {
 	MaxSnippetChars       int
 	MaxScrapePreviewChars int
 	MaxScrapeTextChars    int
+	EnableFileSearch      bool
 }
 
 // NewSerperMCP creates a new search MCP handler.
@@ -141,6 +143,7 @@ func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vector
 		maxSnippetChars:       maxSnippet,
 		maxScrapePreviewChars: maxPreview,
 		maxScrapeTextChars:    maxText,
+		enableFileSearch:      cfg.EnableFileSearch,
 	}
 }
 
@@ -388,162 +391,166 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		return nil, payload, nil
 	})
 
-	// Disabled: file_search_index and file_search_query tools
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "file_search_index",
-		Description: "Index arbitrary text into the lightweight vector store used for MCP automations.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchIndexArgs) (*mcp.CallToolResult, map[string]any, error) {
-		startTime := time.Now()
-		callCtx := extractAllContext(req)
-		log.Info().
-			Str("tool", "file_search_index").
-			Str("tool_call_id", callCtx["tool_call_id"]).
-			Str("request_id", callCtx["request_id"]).
-			Str("conversation_id", callCtx["conversation_id"]).
-			Str("user_id", callCtx["user_id"]).
-			Msg("MCP tool call received")
+	// file_search_index and file_search_query tools (conditionally enabled)
+	if !s.enableFileSearch {
+		log.Warn().Msg("file_search_index and file_search_query MCP tools disabled via config")
+	} else {
+		mcp.AddTool(server, &mcp.Tool{
+			Name:        "file_search_index",
+			Description: "Index arbitrary text into the lightweight vector store used for MCP automations.",
+		}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchIndexArgs) (*mcp.CallToolResult, map[string]any, error) {
+			startTime := time.Now()
+			callCtx := extractAllContext(req)
+			log.Info().
+				Str("tool", "file_search_index").
+				Str("tool_call_id", callCtx["tool_call_id"]).
+				Str("request_id", callCtx["request_id"]).
+				Str("conversation_id", callCtx["conversation_id"]).
+				Str("user_id", callCtx["user_id"]).
+				Msg("MCP tool call received")
 
-		status := "success"
-		var tokens float64
+			status := "success"
+			var tokens float64
 
-		if s.vectorStore != nil && s.vectorStore.IsEnabled() {
-			resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
-				DocumentID: input.DocumentID,
-				Text:       input.Text,
-				Metadata:   input.Metadata,
-				Tags:       input.Tags,
-			})
-			if err == nil {
-				tokens = float64(resp.TokenCount)
-				metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
-				if tokens > 0 {
-					metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
+			if s.vectorStore != nil && s.vectorStore.IsEnabled() {
+				resp, err := s.vectorStore.IndexDocument(ctx, vectorstore.IndexRequest{
+					DocumentID: input.DocumentID,
+					Text:       input.Text,
+					Metadata:   input.Metadata,
+					Tags:       input.Tags,
+				})
+				if err == nil {
+					tokens = float64(resp.TokenCount)
+					metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
+					if tokens > 0 {
+						metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
+					}
+					return nil, map[string]any{
+						"document_id": resp.DocumentID,
+						"status":      resp.Status,
+						"indexed_at":  resp.IndexedAt,
+						"token_count": resp.TokenCount,
+					}, nil
 				}
-				return nil, map[string]any{
-					"document_id": resp.DocumentID,
-					"status":      resp.Status,
-					"indexed_at":  resp.IndexedAt,
-					"token_count": resp.TokenCount,
-				}, nil
+				log.Warn().Err(err).Str("tool", "file_search_index").Msg("vector store index failed; falling back to stub")
+				status = "error"
 			}
-			log.Warn().Err(err).Str("tool", "file_search_index").Msg("vector store index failed; falling back to stub")
-			status = "error"
-		}
 
-		s.fileIndexMu.Lock()
-		s.fileIndex[input.DocumentID] = input
-		s.fileIndexMu.Unlock()
+			s.fileIndexMu.Lock()
+			s.fileIndex[input.DocumentID] = input
+			s.fileIndexMu.Unlock()
 
-		tokens = float64(len(input.Text)) / 4
-		metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
-		if tokens > 0 {
-			metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
-		}
-
-		return nil, map[string]any{
-			"document_id": input.DocumentID,
-			"status":      "indexed",
-			"indexed_at":  time.Now().UTC().Format(time.RFC3339),
-			"token_count": len(input.Text),
-		}, nil
-	})
-
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "file_search_query",
-		Description: "Run a semantic query against documents indexed via file_search_index.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchQueryArgs) (*mcp.CallToolResult, map[string]any, error) {
-		startTime := time.Now()
-		callCtx := extractAllContext(req)
-		log.Info().
-			Str("tool", "file_search_query").
-			Str("tool_call_id", callCtx["tool_call_id"]).
-			Str("request_id", callCtx["request_id"]).
-			Str("conversation_id", callCtx["conversation_id"]).
-			Str("user_id", callCtx["user_id"]).
-			Msg("MCP tool call received")
-
-		status := "success"
-		var tokens float64
-
-		topK := 5
-		if input.TopK != nil && *input.TopK > 0 {
-			topK = *input.TopK
-		}
-		if topK > 20 {
-			topK = 20
-		}
-
-		if s.vectorStore != nil && s.vectorStore.IsEnabled() {
-			resp, err := s.vectorStore.Query(ctx, vectorstore.QueryRequest{
-				Text:        input.Query,
-				TopK:        topK,
-				DocumentIDs: input.DocumentIDs,
-			})
-			if err == nil {
-				for _, r := range resp.Results {
-					tokens += float64(len(r.TextPreview)) / 4
-				}
-				metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
-				if tokens > 0 {
-					metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
-				}
-				return nil, map[string]any{
-					"query":   resp.Query,
-					"top_k":   resp.TopK,
-					"count":   resp.Count,
-					"results": resp.Results,
-				}, nil
+			tokens = float64(len(input.Text)) / 4
+			metrics.RecordToolCall("file_search_index", "vectorstore", status, time.Since(startTime).Seconds())
+			if tokens > 0 {
+				metrics.RecordToolTokens("file_search_index", "vectorstore", tokens)
 			}
-			log.Warn().Err(err).Str("tool", "file_search_query").Msg("vector store query failed; falling back to stub")
-			status = "error"
-		}
 
-		s.fileIndexMu.Lock()
-		defer s.fileIndexMu.Unlock()
-		results := make([]map[string]any, 0)
-		for docID, doc := range s.fileIndex {
-			if len(input.DocumentIDs) > 0 {
-				match := false
-				for _, allowed := range input.DocumentIDs {
-					if allowed == docID {
-						match = true
-						break
+			return nil, map[string]any{
+				"document_id": input.DocumentID,
+				"status":      "indexed",
+				"indexed_at":  time.Now().UTC().Format(time.RFC3339),
+				"token_count": len(input.Text),
+			}, nil
+		})
+
+		mcp.AddTool(server, &mcp.Tool{
+			Name:        "file_search_query",
+			Description: "Run a semantic query against documents indexed via file_search_index.",
+		}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchQueryArgs) (*mcp.CallToolResult, map[string]any, error) {
+			startTime := time.Now()
+			callCtx := extractAllContext(req)
+			log.Info().
+				Str("tool", "file_search_query").
+				Str("tool_call_id", callCtx["tool_call_id"]).
+				Str("request_id", callCtx["request_id"]).
+				Str("conversation_id", callCtx["conversation_id"]).
+				Str("user_id", callCtx["user_id"]).
+				Msg("MCP tool call received")
+
+			status := "success"
+			var tokens float64
+
+			topK := 5
+			if input.TopK != nil && *input.TopK > 0 {
+				topK = *input.TopK
+			}
+			if topK > 20 {
+				topK = 20
+			}
+
+			if s.vectorStore != nil && s.vectorStore.IsEnabled() {
+				resp, err := s.vectorStore.Query(ctx, vectorstore.QueryRequest{
+					Text:        input.Query,
+					TopK:        topK,
+					DocumentIDs: input.DocumentIDs,
+				})
+				if err == nil {
+					for _, r := range resp.Results {
+						tokens += float64(len(r.TextPreview)) / 4
+					}
+					metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
+					if tokens > 0 {
+						metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
+					}
+					return nil, map[string]any{
+						"query":   resp.Query,
+						"top_k":   resp.TopK,
+						"count":   resp.Count,
+						"results": resp.Results,
+					}, nil
+				}
+				log.Warn().Err(err).Str("tool", "file_search_query").Msg("vector store query failed; falling back to stub")
+				status = "error"
+			}
+
+			s.fileIndexMu.Lock()
+			defer s.fileIndexMu.Unlock()
+			results := make([]map[string]any, 0)
+			for docID, doc := range s.fileIndex {
+				if len(input.DocumentIDs) > 0 {
+					match := false
+					for _, allowed := range input.DocumentIDs {
+						if allowed == docID {
+							match = true
+							break
+						}
+					}
+					if !match {
+						continue
 					}
 				}
-				if !match {
-					continue
+				preview := truncateSnippet(doc.Text, 200)
+				results = append(results, map[string]any{
+					"document_id":  docID,
+					"text_preview": preview,
+					"score":        1.0,
+					"metadata":     doc.Metadata,
+					"tags":         doc.Tags,
+				})
+				if len(results) >= topK {
+					break
 				}
 			}
-			preview := truncateSnippet(doc.Text, 200)
-			results = append(results, map[string]any{
-				"document_id":  docID,
-				"text_preview": preview,
-				"score":        1.0,
-				"metadata":     doc.Metadata,
-				"tags":         doc.Tags,
-			})
-			if len(results) >= topK {
-				break
-			}
-		}
 
-		for _, r := range results {
-			if preview, ok := r["text_preview"].(string); ok {
-				tokens += float64(len(preview)) / 4
+			for _, r := range results {
+				if preview, ok := r["text_preview"].(string); ok {
+					tokens += float64(len(preview)) / 4
+				}
 			}
-		}
-		metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
-		if tokens > 0 {
-			metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
-		}
+			metrics.RecordToolCall("file_search_query", "vectorstore", status, time.Since(startTime).Seconds())
+			if tokens > 0 {
+				metrics.RecordToolTokens("file_search_query", "vectorstore", tokens)
+			}
 
-		return nil, map[string]any{
-			"query":   input.Query,
-			"top_k":   topK,
-			"count":   len(results),
-			"results": results,
-		}, nil
-	})
+			return nil, map[string]any{
+				"query":   input.Query,
+				"top_k":   topK,
+				"count":   len(results),
+				"results": results,
+			}, nil
+		})
+	} // end if enableFileSearch
 }
 
 func (s *SerperMCP) buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {
