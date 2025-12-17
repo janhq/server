@@ -37,6 +37,7 @@ type ModelCatalog struct {
 	SupportsAudio      *bool  `gorm:"not null;default:false;index"`
 	SupportsVideo      *bool  `gorm:"not null;default:false;index"`
 	SupportsTools      *bool  `gorm:"not null;default:true;index"`
+	SupportsBrowser    *bool  `gorm:"not null;default:false;index"` // Model supports browser/web browsing
 	Family             string `gorm:"size:128;index"`
 }
 
@@ -81,6 +82,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 	supportsAudio := m.SupportsAudio
 	supportsVideo := m.SupportsVideo
 	supportsTools := m.SupportsTools
+	supportsBrowser := m.SupportsBrowser
 	experimental := m.Experimental
 
 	return &ModelCatalog{
@@ -110,6 +112,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		SupportsAudio:       &supportsAudio,
 		SupportsVideo:       &supportsVideo,
 		SupportsTools:       &supportsTools,
+		SupportsBrowser:     &supportsBrowser,
 		Family:              m.Family,
 	}, nil
 }
@@ -177,6 +180,10 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 	if m.SupportsTools != nil {
 		supportsTools = *m.SupportsTools
 	}
+	supportsBrowser := false
+	if m.SupportsBrowser != nil {
+		supportsBrowser = *m.SupportsBrowser
+	}
 
 	return &domainmodel.ModelCatalog{
 		ID:                  m.ID,
@@ -207,6 +214,7 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 		SupportsAudio:       supportsAudio,
 		SupportsVideo:       supportsVideo,
 		SupportsTools:       supportsTools,
+		SupportsBrowser:     supportsBrowser,
 		Family:              m.Family,
 		CreatedAt:           m.CreatedAt,
 		UpdatedAt:           m.UpdatedAt,
