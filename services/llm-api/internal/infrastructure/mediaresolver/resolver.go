@@ -19,7 +19,10 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/keycloak"
 )
 
-var placeholderPattern = regexp.MustCompile(`data:(image/[a-z0-9.+-]+);(jan_[A-Za-z0-9]+)`)
+// Matches placeholders like:
+// - data:image/jpeg;jan_<id>
+// - data:image/jpeg;base64,jan_<id> (some SDKs emit the base64 marker even for placeholders)
+var placeholderPattern = regexp.MustCompile(`data:(image/[a-z0-9.+-]+);(?:base64,)?(jan_[A-Za-z0-9]+)`)
 
 // Resolver resolves jan_* media placeholders embedded in chat messages.
 type Resolver interface {

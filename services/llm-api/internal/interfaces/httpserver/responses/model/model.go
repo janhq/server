@@ -348,6 +348,7 @@ type ModelCatalogResponse struct {
 	SupportsAudio       bool                            `json:"supports_audio"`
 	SupportsVideo       bool                            `json:"supports_video"`
 	SupportsTools       bool                            `json:"supports_tools"`
+	SupportsBrowser     bool                            `json:"supports_browser"`
 	LastSyncedAt        *int64                          `json:"last_synced_at,omitempty"`
 	CreatedAt           int64                           `json:"created_at"`
 	UpdatedAt           int64                           `json:"updated_at"`
@@ -414,6 +415,7 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 		SupportsAudio:       catalog.SupportsAudio,
 		SupportsVideo:       catalog.SupportsVideo,
 		SupportsTools:       catalog.SupportsTools,
+		SupportsBrowser:     catalog.SupportsBrowser,
 		LastSyncedAt:        lastSyncedAt,
 		CreatedAt:           catalog.CreatedAt.Unix(),
 		UpdatedAt:           catalog.UpdatedAt.Unix(),

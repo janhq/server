@@ -53,6 +53,7 @@ func newModelCatalog(db *gorm.DB, opts ...gen.DOOption) modelCatalog {
 	_modelCatalog.SupportsAudio = field.NewBool(tableName, "supports_audio")
 	_modelCatalog.SupportsVideo = field.NewBool(tableName, "supports_video")
 	_modelCatalog.SupportsTools = field.NewBool(tableName, "supports_tools")
+	_modelCatalog.SupportsBrowser = field.NewBool(tableName, "supports_browser")
 	_modelCatalog.Family = field.NewString(tableName, "family")
 
 	_modelCatalog.fillFieldMap()
@@ -89,6 +90,7 @@ type modelCatalog struct {
 	SupportsAudio       field.Bool
 	SupportsVideo       field.Bool
 	SupportsTools       field.Bool
+	SupportsBrowser     field.Bool
 	Family              field.String
 
 	fieldMap map[string]field.Expr
@@ -131,6 +133,7 @@ func (m *modelCatalog) updateTableName(table string) *modelCatalog {
 	m.SupportsAudio = field.NewBool(table, "supports_audio")
 	m.SupportsVideo = field.NewBool(table, "supports_video")
 	m.SupportsTools = field.NewBool(table, "supports_tools")
+	m.SupportsBrowser = field.NewBool(table, "supports_browser")
 	m.Family = field.NewString(table, "family")
 
 	m.fillFieldMap()
@@ -148,7 +151,7 @@ func (m *modelCatalog) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (m *modelCatalog) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 26)
+	m.fieldMap = make(map[string]field.Expr, 27)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
@@ -174,6 +177,7 @@ func (m *modelCatalog) fillFieldMap() {
 	m.fieldMap["supports_audio"] = m.SupportsAudio
 	m.fieldMap["supports_video"] = m.SupportsVideo
 	m.fieldMap["supports_tools"] = m.SupportsTools
+	m.fieldMap["supports_browser"] = m.SupportsBrowser
 	m.fieldMap["family"] = m.Family
 }
 

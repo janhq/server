@@ -68,6 +68,9 @@ func (repo *ModelCatalogGormRepository) applyFilter(query *gormgen.Query, sql go
 	if filter.SupportsTools != nil {
 		sql = sql.Where(query.ModelCatalog.SupportsTools.Is(*filter.SupportsTools))
 	}
+	if filter.SupportsBrowser != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsBrowser.Is(*filter.SupportsBrowser))
+	}
 	if filter.Family != nil && *filter.Family != "" {
 		sql = sql.Where(query.ModelCatalog.Family.Eq(*filter.Family))
 	}

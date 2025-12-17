@@ -105,6 +105,9 @@ func (h *ModelCatalogHandler) UpdateCatalog(
 	if req.SupportsTools != nil {
 		catalog.SupportsTools = *req.SupportsTools
 	}
+	if req.SupportsBrowser != nil {
+		catalog.SupportsBrowser = *req.SupportsBrowser
+	}
 	if req.Family != nil {
 		catalog.Family = *req.Family
 	}

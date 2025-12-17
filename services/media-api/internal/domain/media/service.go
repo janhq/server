@@ -32,7 +32,8 @@ var allowedMIMEs = map[string]string{
 	"image/tiff": "tiff",
 }
 
-var placeholderPattern = regexp.MustCompile(`data:(image/[a-z0-9.+-]+);(jan_[A-Za-z0-9]+)`)
+// Accept jan_* placeholders whether or not a base64 marker is present (some clients emit ;base64, by default)
+var placeholderPattern = regexp.MustCompile(`data:(image/[a-z0-9.+-]+);(?:base64,)?(jan_[A-Za-z0-9]+)`)
 
 // Repository defines persistence operations needed by the service.
 type Repository interface {

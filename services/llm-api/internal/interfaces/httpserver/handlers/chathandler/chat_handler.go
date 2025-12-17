@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -317,10 +316,8 @@ func (h *ChatHandler) CreateChatCompletion(
 		h.applyModelDefaultsFromCatalog(&llmRequest, modelCatalog)
 	}
 
-	// Log all messages before calling the inference engine
-	h.logMessagesBeforeInference(ctx, llmRequest.Messages, request.Model)
-
 	observability.AddSpanEvent(ctx, "calling_llm")
+
 	llmStartTime := time.Now()
 	if request.Stream {
 		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, llmRequest)
@@ -925,6 +922,11 @@ func (h *ChatHandler) itemToMessage(item conversation.Item) *openai.ChatCompleti
 		Role: h.itemRoleToOpenAI(role),
 	}
 
+	// Set tool_call_id for tool messages
+	if role == conversation.ItemRoleTool && item.CallID != nil && *item.CallID != "" {
+		msg.ToolCallID = *item.CallID
+	}
+
 	// Extract content from item - handle both text and multimodal content
 	if len(item.Content) > 0 {
 		hasMultiModal := false
@@ -969,8 +971,9 @@ func (h *ChatHandler) itemToMessage(item conversation.Item) *openai.ChatCompleti
 			}
 		}
 
-		// Use multimodal format if there are images, otherwise use simple string content
-		if hasMultiModal && len(multiContent) > 0 {
+		// Use multimodal format if there are images or if it's a tool message with multiple parts
+		// Tool messages should use MultiContent format when they have structured content
+		if (hasMultiModal || (role == conversation.ItemRoleTool && len(multiContent) > 1)) && len(multiContent) > 0 {
 			msg.MultiContent = multiContent
 		} else if len(textParts) > 0 {
 			msg.Content = textParts[0] // OpenAI typically uses single string content for text-only
@@ -1180,6 +1183,12 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 		switch role {
 		case conversation.ItemRoleUser:
 			contents = append(contents, conversation.NewInputTextContent(msg.Content))
+		case conversation.ItemRoleTool:
+			// For tool messages, use tool_result type
+			contents = append(contents, conversation.Content{
+				Type:       "tool_result",
+				TextString: &msg.Content,
+			})
 		default:
 			contents = append(contents, conversation.NewTextContent(msg.Content))
 		}
@@ -1194,6 +1203,12 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 					switch role {
 					case conversation.ItemRoleUser:
 						contents = append(contents, conversation.NewInputTextContent(part.Text))
+					case conversation.ItemRoleTool:
+						// For tool messages, use tool_result type
+						contents = append(contents, conversation.Content{
+							Type:       "tool_result",
+							TextString: &part.Text,
+						})
 					default:
 						contents = append(contents, conversation.NewTextContent(part.Text))
 					}
@@ -1254,6 +1269,11 @@ func (h *ChatHandler) messageToItem(msg openai.ChatCompletionMessage) conversati
 		item.Content = contents
 	}
 
+	// Store tool_call_id for tool messages
+	if role == conversation.ItemRoleTool && msg.ToolCallID != "" {
+		item.CallID = &msg.ToolCallID
+	}
+
 	return item
 }
 
@@ -1291,74 +1311,10 @@ func (h *ChatHandler) writeSSEData(reqCtx *gin.Context, data string) error {
 	return nil
 }
 
-// logMessagesBeforeInference logs all messages before calling the inference engine
-// This is useful for debugging and auditing what gets sent to the LLM
-func (h *ChatHandler) logMessagesBeforeInference(ctx context.Context, messages []openai.ChatCompletionMessage, model string) {
-	log.Info().
-		Str("model", model).
-		Int("message_count", len(messages)).
-		Msg("Messages before inference")
-
-	for i, msg := range messages {
-		// Truncate content for logging if too long
-		content := msg.Content
-		if len(content) > 500 {
-			content = content[:500] + "... [truncated]"
-		}
-
-		// Handle multipart content
-		multiPartContent := ""
-		if msg.MultiContent != nil && len(msg.MultiContent) > 0 {
-			parts := make([]string, 0, len(msg.MultiContent))
-			for _, part := range msg.MultiContent {
-				switch part.Type {
-				case openai.ChatMessagePartTypeText:
-					text := part.Text
-					if len(text) > 200 {
-						text = text[:200] + "..."
-					}
-					parts = append(parts, fmt.Sprintf("text:%s", text))
-				case openai.ChatMessagePartTypeImageURL:
-					if part.ImageURL != nil {
-						url := part.ImageURL.URL
-						if len(url) > 100 {
-							url = url[:100] + "..."
-						}
-						parts = append(parts, fmt.Sprintf("image:%s", url))
-					}
-				}
-			}
-			multiPartContent = strings.Join(parts, ", ")
-		}
-
-		// Log tool calls if present
-		toolCallInfo := ""
-		if len(msg.ToolCalls) > 0 {
-			toolNames := make([]string, 0, len(msg.ToolCalls))
-			for _, tc := range msg.ToolCalls {
-				toolNames = append(toolNames, tc.Function.Name)
-			}
-			toolCallInfo = strings.Join(toolNames, ", ")
-		}
-
-		logEvent := log.Debug().
-			Int("index", i).
-			Str("role", msg.Role).
-			Str("content", content)
-
-		if multiPartContent != "" {
-			logEvent = logEvent.Str("multi_content", multiPartContent)
-		}
-		if msg.Name != "" {
-			logEvent = logEvent.Str("name", msg.Name)
-		}
-		if msg.ToolCallID != "" {
-			logEvent = logEvent.Str("tool_call_id", msg.ToolCallID)
-		}
-		if toolCallInfo != "" {
-			logEvent = logEvent.Str("tool_calls", toolCallInfo)
-		}
-
-		logEvent.Msg("Message")
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
+	return b
 }

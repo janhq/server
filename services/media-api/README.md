@@ -81,7 +81,7 @@ Client immediately uses the `jan_id` without waiting for server confirmation.
 
 ### Using jan_id in LLM Completion Payload
 
-Client injects the `jan_id` into the completion request using the format `data:image/<mime>;jan_<id>`:
+Client injects the `jan_id` into the completion request using the format `data:image/<mime>;jan_<id>` (or `data:image/<mime>;base64,jan_<id>` if the client always appends the base64 marker):
 
 ```json
 {
@@ -94,7 +94,7 @@ Client injects the `jan_id` into the completion request using the format `data:i
         {
           "type": "image_url",
           "image_url": {
-            "url": "data:image/jpeg;jan_01hqr8v9k2x3f4g5h6j7k8m9n0"
+            "url": "data:image/jpeg;base64,jan_01hqr8v9k2x3f4g5h6j7k8m9n0"
           }
         }
       ]
@@ -169,7 +169,7 @@ curl -H "Authorization: Bearer <token>" \
 | --- | --- |
 | `POST /v1/media` | **Method 1**: Ingests data URL or remote URL, stores bytes privately, returns `{id, mime, bytes, deduped, presigned_url}`. |
 | `POST /v1/media/prepare-upload` | **Method 2**: Generates presigned upload URL and reserves `jan_id`. Client uploads directly to S3. |
-| `POST /v1/media/resolve` | Replaces `data:<mime>;jan_<id>` placeholders in arbitrary JSON with fresh presigned URLs. |
+| `POST /v1/media/resolve` | Replaces `data:<mime>;jan_<id>` (or `data:<mime>;base64,jan_<id>`) placeholders in arbitrary JSON with fresh presigned URLs. |
 | `GET /v1/media/{id}` | Streams media bytes through the API or returns presigned URL (see `PROXY_DOWNLOAD` config). |
 
 See `docs/swagger/swagger.yaml` for the full OpenAPI schema (regenerate with `make swagger`).

@@ -120,7 +120,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Replaces pseudo data URLs with short-lived signed URLs.",
+                "description": "Replaces pseudo data URLs (e.g., data:image/jpeg;jan_xxx or data:image/jpeg;base64,jan_xxx) with short-lived signed URLs. Works for chat/completion payloads, conversations, and any arbitrary JSON envelope.",
                 "consumes": [
                     "application/json"
                 ],
@@ -326,10 +326,9 @@
             ],
             "properties": {
                 "payload": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "description": "Arbitrary JSON payload containing jan_* placeholders (e.g., chat/completion or conversation messages).",
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },
@@ -337,10 +336,9 @@
             "type": "object",
             "properties": {
                 "payload": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "description": "Resolved payload with jan_* placeholders replaced by presigned URLs.",
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },
