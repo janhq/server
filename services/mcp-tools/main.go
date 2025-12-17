@@ -103,6 +103,7 @@ func main() {
 		MaxSnippetChars:       cfg.MaxSnippetChars,
 		MaxScrapePreviewChars: cfg.MaxScrapePreviewChars,
 		MaxScrapeTextChars:    cfg.MaxScrapeTextChars,
+		EnableFileSearch:      cfg.EnableFileSearch,
 	})
 
 	// Initialize memory MCP
