@@ -30,6 +30,7 @@ type Config struct {
 
 	// HTTP Client Performance
 	SerperHTTPTimeout      int `env:"SERPER_HTTP_TIMEOUT" envDefault:"15"`
+	SerperScrapeTimeout    int `env:"SERPER_SCRAPE_TIMEOUT" envDefault:"30"` // Separate longer timeout for scrape operations
 	SerperMaxConnsPerHost  int `env:"SERPER_MAX_CONNS_PER_HOST" envDefault:"50"`
 	SerperMaxIdleConns     int `env:"SERPER_MAX_IDLE_CONNS" envDefault:"100"`
 	SerperIdleConnTimeout  int `env:"SERPER_IDLE_CONN_TIMEOUT" envDefault:"90"`
