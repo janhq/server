@@ -52,7 +52,16 @@ func (h *ProviderModelHandler) GetProviderModel(ctx context.Context, publicID st
 		modelCatalog, _ = h.modelCatalogService.FindByID(ctx, *providerModel.ModelCatalogID)
 	}
 
-	response := modelresponses.BuildProviderModelResponse(providerModel, provider, modelCatalog)
+	// Resolve instruct model public ID if set
+	var instructModelPublicID *string
+	if providerModel.InstructModelID != nil {
+		instructModel, err := h.providerModelService.FindByID(ctx, *providerModel.InstructModelID)
+		if err == nil && instructModel != nil {
+			instructModelPublicID = &instructModel.PublicID
+		}
+	}
+
+	response := modelresponses.BuildProviderModelResponse(providerModel, provider, modelCatalog, instructModelPublicID)
 	return &response, nil
 }
 
@@ -130,6 +139,29 @@ func (h *ProviderModelHandler) ListProviderModels(
 		return nil, 0, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to fetch catalogs")
 	}
 
+	// Collect instruct model IDs for batch lookup
+	instructModelIDs := make(map[uint]bool)
+	for _, pm := range providerModels {
+		if pm.InstructModelID != nil {
+			instructModelIDs[*pm.InstructModelID] = true
+		}
+	}
+
+	// Batch fetch instruct models
+	instructModelMap := make(map[uint]*domainmodel.ProviderModel)
+	if len(instructModelIDs) > 0 {
+		instructModelIDSlice := make([]uint, 0, len(instructModelIDs))
+		for id := range instructModelIDs {
+			instructModelIDSlice = append(instructModelIDSlice, id)
+		}
+		instructModels, err := h.providerModelService.FindByIDs(ctx, instructModelIDSlice)
+		if err == nil {
+			for _, im := range instructModels {
+				instructModelMap[im.ID] = im
+			}
+		}
+	}
+
 	result := make([]modelresponses.ProviderModelResponse, 0, len(providerModels))
 	for _, pm := range providerModels {
 		provider := providerMap[pm.ProviderID]
@@ -142,7 +174,15 @@ func (h *ProviderModelHandler) ListProviderModels(
 			catalog = catalogMap[*pm.ModelCatalogID]
 		}
 
-		result = append(result, modelresponses.BuildProviderModelResponse(pm, provider, catalog))
+		// Resolve instruct model public ID
+		var instructModelPublicID *string
+		if pm.InstructModelID != nil {
+			if instructModel := instructModelMap[*pm.InstructModelID]; instructModel != nil {
+				instructModelPublicID = &instructModel.PublicID
+			}
+		}
+
+		result = append(result, modelresponses.BuildProviderModelResponse(pm, provider, catalog, instructModelPublicID))
 	}
 
 	return result, total, nil
@@ -188,6 +228,24 @@ func (h *ProviderModelHandler) UpdateProviderModel(
 		providerModel.Active = *req.Active
 	}
 
+	// Handle instruct model assignment
+	if req.InstructModelPublicID != nil {
+		if *req.InstructModelPublicID == "" {
+			// Clear the instruct model
+			providerModel.InstructModelID = nil
+		} else {
+			// Look up the instruct model by public ID
+			instructModel, err := h.providerModelService.FindByPublicID(ctx, *req.InstructModelPublicID)
+			if err != nil {
+				return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to find instruct model")
+			}
+			if instructModel == nil {
+				return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "instruct model not found", nil, "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d")
+			}
+			providerModel.InstructModelID = &instructModel.ID
+		}
+	}
+
 	updatedModel, err := h.providerModelService.Update(ctx, providerModel)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update provider model")
@@ -203,7 +261,16 @@ func (h *ProviderModelHandler) UpdateProviderModel(
 		modelCatalog, _ = h.modelCatalogService.FindByID(ctx, *updatedModel.ModelCatalogID)
 	}
 
-	response := modelresponses.BuildProviderModelResponse(updatedModel, provider, modelCatalog)
+	// Resolve instruct model public ID if set
+	var instructModelPublicID *string
+	if updatedModel.InstructModelID != nil {
+		instructModel, err := h.providerModelService.FindByID(ctx, *updatedModel.InstructModelID)
+		if err == nil && instructModel != nil {
+			instructModelPublicID = &instructModel.PublicID
+		}
+	}
+
+	response := modelresponses.BuildProviderModelResponse(updatedModel, provider, modelCatalog, instructModelPublicID)
 	return &response, nil
 }
 

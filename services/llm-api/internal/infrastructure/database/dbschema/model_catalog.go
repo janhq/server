@@ -33,6 +33,7 @@ type ModelCatalog struct {
 	SupportsImages     *bool  `gorm:"not null;default:false;index"`
 	SupportsEmbeddings *bool  `gorm:"not null;default:false;index"`
 	SupportsReasoning  *bool  `gorm:"not null;default:false;index"`
+	SupportsInstruct   *bool  `gorm:"not null;default:false;index"` // Model can use an instruct backup
 	SupportsAudio      *bool  `gorm:"not null;default:false;index"`
 	SupportsVideo      *bool  `gorm:"not null;default:false;index"`
 	SupportsTools      *bool  `gorm:"not null;default:true;index"`
@@ -76,6 +77,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 	supportsImages := m.SupportsImages
 	supportsEmbeddings := m.SupportsEmbeddings
 	supportsReasoning := m.SupportsReasoning
+	supportsInstruct := m.SupportsInstruct
 	supportsAudio := m.SupportsAudio
 	supportsVideo := m.SupportsVideo
 	supportsTools := m.SupportsTools
@@ -104,6 +106,7 @@ func NewSchemaModelCatalog(m *domainmodel.ModelCatalog) (*ModelCatalog, error) {
 		SupportsImages:      &supportsImages,
 		SupportsEmbeddings:  &supportsEmbeddings,
 		SupportsReasoning:   &supportsReasoning,
+		SupportsInstruct:    &supportsInstruct,
 		SupportsAudio:       &supportsAudio,
 		SupportsVideo:       &supportsVideo,
 		SupportsTools:       &supportsTools,
@@ -158,6 +161,10 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 	if m.SupportsReasoning != nil {
 		supportsReasoning = *m.SupportsReasoning
 	}
+	supportsInstruct := false
+	if m.SupportsInstruct != nil {
+		supportsInstruct = *m.SupportsInstruct
+	}
 	supportsAudio := false
 	if m.SupportsAudio != nil {
 		supportsAudio = *m.SupportsAudio
@@ -196,6 +203,7 @@ func (m *ModelCatalog) EtoD() (*domainmodel.ModelCatalog, error) {
 		SupportsImages:      supportsImages,
 		SupportsEmbeddings:  supportsEmbeddings,
 		SupportsReasoning:   supportsReasoning,
+		SupportsInstruct:    supportsInstruct,
 		SupportsAudio:       supportsAudio,
 		SupportsVideo:       supportsVideo,
 		SupportsTools:       supportsTools,

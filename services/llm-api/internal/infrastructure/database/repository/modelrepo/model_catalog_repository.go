@@ -56,6 +56,9 @@ func (repo *ModelCatalogGormRepository) applyFilter(query *gormgen.Query, sql go
 	if filter.SupportsReasoning != nil {
 		sql = sql.Where(query.ModelCatalog.SupportsReasoning.Is(*filter.SupportsReasoning))
 	}
+	if filter.SupportsInstruct != nil {
+		sql = sql.Where(query.ModelCatalog.SupportsInstruct.Is(*filter.SupportsInstruct))
+	}
 	if filter.SupportsAudio != nil {
 		sql = sql.Where(query.ModelCatalog.SupportsAudio.Is(*filter.SupportsAudio))
 	}

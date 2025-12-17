@@ -27,6 +27,10 @@ type ChatCompletionRequest struct {
 	// for conducting in-depth investigations with tool usage.
 	// Requires a model with supports_reasoning: true capability.
 	DeepResearch *bool `json:"deep_research,omitempty"`
+	// EnableThinking controls whether reasoning/thinking capabilities should be used.
+	// Defaults to true. When set to false for a model with supports_reasoning: true
+	// and an instruct model configured, the instruct model will be used instead.
+	EnableThinking *bool `json:"enable_thinking,omitempty"`
 }
 
 // ConversationReference can unmarshal from either a string (ID) or an object

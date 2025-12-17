@@ -87,9 +87,9 @@ services:
           - name: cors
             tags: [llm, api, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id", "mcp-protocol-version", "Accept"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
@@ -126,9 +126,9 @@ services:
           - name: cors
             tags: [llm, api, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id", "mcp-protocol-version", "Accept"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
@@ -232,7 +232,7 @@ services:
           - name: cors
             tags: [media, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "X-Media-Service-Key", "x-media-service-key", "Idempotency-Key", "X-Request-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -257,7 +257,7 @@ services:
           - name: cors
             tags: [llm, cors, public]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["GET", "POST", "DELETE", "OPTIONS"]
               headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
@@ -303,9 +303,9 @@ services:
           - name: cors
             tags: [response, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "Mcp-Session-Id", "mcp-protocol-version", "Accept"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
@@ -351,9 +351,9 @@ services:
           - name: cors
             tags: [mcp, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["POST", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version", "X-Tool-Call-ID", "X-Conversation-ID"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "Idempotency-Key", "X-Request-Id", "mcp-protocol-version", "X-Tool-Call-ID", "X-Conversation-ID", "Accept"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600
@@ -392,9 +392,9 @@ services:
           - name: cors
             tags: [mcp, health, cors]
             config:
-              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1"]
+              origins: ["http://localhost", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1", "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:8080", "http://localhost:8080", "https://chat-dev.jan.ai", "https://platform-dev.jan.ai", "https://api-gateway-dev.jan.ai", "https://chat.jan.ai", "https://platform.jan.ai"]
               methods: ["GET", "OPTIONS"]
-              headers: ["Authorization", "Content-Type", "X-API-Key", "X-Request-Id"]
+              headers: ["Authorization", "Content-Type", "X-API-Key", "X-Request-Id", "Accept"]
               exposed_headers: ["X-Request-Id", "X-Gateway-Auth"]
               credentials: true
               max_age: 3600

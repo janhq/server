@@ -344,6 +344,7 @@ type ModelCatalogResponse struct {
 	SupportsImages      bool                            `json:"supports_images"`
 	SupportsEmbeddings  bool                            `json:"supports_embeddings"`
 	SupportsReasoning   bool                            `json:"supports_reasoning"`
+	SupportsInstruct    bool                            `json:"supports_instruct"`
 	SupportsAudio       bool                            `json:"supports_audio"`
 	SupportsVideo       bool                            `json:"supports_video"`
 	SupportsTools       bool                            `json:"supports_tools"`
@@ -369,9 +370,11 @@ type ProviderModelResponse struct {
 	SupportsImages          bool                     `json:"supports_images"`
 	SupportsEmbeddings      bool                     `json:"supports_embeddings"`
 	SupportsReasoning       bool                     `json:"supports_reasoning"`
+	SupportsInstruct        bool                     `json:"supports_instruct"`
 	SupportsAudio           bool                     `json:"supports_audio"`
 	SupportsVideo           bool                     `json:"supports_video"`
 	Active                  bool                     `json:"active"`
+	InstructModelPublicID   *string                  `json:"instruct_model_public_id,omitempty"` // Public ID of the instruct model to use when enable_thinking=false
 	CreatedAt               int64                    `json:"created_at"`
 	UpdatedAt               int64                    `json:"updated_at"`
 }
@@ -407,6 +410,7 @@ func BuildModelCatalogResponse(catalog *domainmodel.ModelCatalog) ModelCatalogRe
 		SupportsImages:      catalog.SupportsImages,
 		SupportsEmbeddings:  catalog.SupportsEmbeddings,
 		SupportsReasoning:   catalog.SupportsReasoning,
+		SupportsInstruct:    catalog.SupportsInstruct,
 		SupportsAudio:       catalog.SupportsAudio,
 		SupportsVideo:       catalog.SupportsVideo,
 		SupportsTools:       catalog.SupportsTools,
@@ -420,6 +424,7 @@ func BuildProviderModelResponse(
 	providerModel *domainmodel.ProviderModel,
 	provider *domainmodel.Provider,
 	modelCatalog *domainmodel.ModelCatalog,
+	instructModelPublicID *string,
 ) ProviderModelResponse {
 	var modelCatalogID *string
 	if modelCatalog != nil {
@@ -428,7 +433,7 @@ func BuildProviderModelResponse(
 
 	// Get capabilities from model catalog (canonical source)
 	var family *string
-	var supportsImages, supportsEmbeddings, supportsReasoning, supportsAudio, supportsVideo bool
+	var supportsImages, supportsEmbeddings, supportsReasoning, supportsInstruct, supportsAudio, supportsVideo bool
 	if modelCatalog != nil {
 		if modelCatalog.Family != "" {
 			family = ptr.ToString(modelCatalog.Family)
@@ -436,6 +441,7 @@ func BuildProviderModelResponse(
 		supportsImages = modelCatalog.SupportsImages
 		supportsEmbeddings = modelCatalog.SupportsEmbeddings
 		supportsReasoning = modelCatalog.SupportsReasoning
+		supportsInstruct = modelCatalog.SupportsInstruct
 		supportsAudio = modelCatalog.SupportsAudio
 		supportsVideo = modelCatalog.SupportsVideo
 	}
@@ -457,9 +463,11 @@ func BuildProviderModelResponse(
 		SupportsImages:          supportsImages,
 		SupportsEmbeddings:      supportsEmbeddings,
 		SupportsReasoning:       supportsReasoning,
+		SupportsInstruct:        supportsInstruct,
 		SupportsAudio:           supportsAudio,
 		SupportsVideo:           supportsVideo,
 		Active:                  providerModel.Active,
+		InstructModelPublicID:   instructModelPublicID,
 		CreatedAt:               providerModel.CreatedAt.Unix(),
 		UpdatedAt:               providerModel.UpdatedAt.Unix(),
 	}

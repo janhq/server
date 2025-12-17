@@ -51,6 +51,7 @@ type ModelCatalog struct {
 	SupportsImages     bool   `json:"supports_images"`
 	SupportsEmbeddings bool   `json:"supports_embeddings"`
 	SupportsReasoning  bool   `json:"supports_reasoning"`
+	SupportsInstruct   bool   `json:"supports_instruct"` // Model can use an instruct backup (shows backup dropdown in admin)
 	SupportsAudio      bool   `json:"supports_audio"`
 	SupportsVideo      bool   `json:"supports_video"`
 	SupportsTools      bool   `json:"supports_tools"`
@@ -73,6 +74,7 @@ type ModelCatalogFilter struct {
 	SupportsImages      *bool
 	SupportsEmbeddings  *bool
 	SupportsReasoning   *bool
+	SupportsInstruct    *bool
 	SupportsAudio       *bool
 	SupportsVideo       *bool
 	SupportsTools       *bool

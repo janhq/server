@@ -78,6 +78,7 @@ type ProviderModel struct {
 	ReasoningConfig         *ReasoningConfig `json:"reasoning_config,omitempty"`
 	ProviderFlags           map[string]any   `json:"provider_flags,omitempty"`
 	Active                  bool             `json:"active"`
+	InstructModelID         *uint            `json:"instruct_model_id,omitempty"` // Self-referencing FK to the instruct model variant (used when enable_thinking=false)
 	CreatedAt               time.Time        `json:"created_at"`
 	UpdatedAt               time.Time        `json:"updated_at"`
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -29,6 +30,7 @@ import (
 	"jan-server/services/llm-api/internal/utils/httpclients/chat"
 	"jan-server/services/llm-api/internal/utils/idgen"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
+	"jan-server/services/llm-api/internal/utils/stringutils"
 
 	"github.com/shopspring/decimal"
 )
@@ -191,6 +193,20 @@ func (h *ChatHandler) CreateChatCompletion(
 		return nil, err
 	}
 
+	// Check if we should use the instruct model instead
+	// This happens when enable_thinking is explicitly false and the model has an instruct model configured
+	if request.EnableThinking != nil && !*request.EnableThinking && selectedProviderModel.InstructModelID != nil {
+		instructModel, instructProvider, err := h.providerHandler.GetProviderModelByID(ctx, *selectedProviderModel.InstructModelID)
+		if err == nil && instructModel != nil && instructProvider != nil {
+			observability.AddSpanEvent(ctx, "switching_to_instruct_model",
+				attribute.String("original_model", selectedProviderModel.ModelPublicID),
+				attribute.String("instruct_model", instructModel.ModelPublicID),
+			)
+			selectedProviderModel = instructModel
+			selectedProvider = instructProvider
+		}
+	}
+
 	// Add provider information to span
 	observability.AddSpanAttributes(ctx,
 		attribute.String("provider.display_name", selectedProvider.DisplayName),
@@ -300,6 +316,10 @@ func (h *ChatHandler) CreateChatCompletion(
 	if modelCatalog != nil {
 		h.applyModelDefaultsFromCatalog(&llmRequest, modelCatalog)
 	}
+
+	// Log all messages before calling the inference engine
+	h.logMessagesBeforeInference(ctx, llmRequest.Messages, request.Model)
+
 	observability.AddSpanEvent(ctx, "calling_llm")
 	llmStartTime := time.Now()
 	if request.Stream {
@@ -785,18 +805,10 @@ func (h *ChatHandler) generateTitleFromMessage(messages []openai.ChatCompletionM
 	// Find the first user message
 	for _, msg := range messages {
 		if msg.Role == "user" && msg.Content != "" {
-			// Extract first 60 characters for title
-			content := strings.TrimSpace(msg.Content)
-			if len(content) > 60 {
-				// Find a good breaking point (end of word)
-				truncated := content[:60]
-				if lastSpace := strings.LastIndex(truncated, " "); lastSpace > 30 {
-					content = content[:lastSpace] + "..."
-				} else {
-					content = truncated + "..."
-				}
+			title := stringutils.GenerateTitle(msg.Content, 60)
+			if title != "" {
+				return title
 			}
-			return content
 		}
 	}
 	return "New Conversation"
@@ -1277,4 +1289,76 @@ func (h *ChatHandler) writeSSEData(reqCtx *gin.Context, data string) error {
 	}
 	reqCtx.Writer.Flush()
 	return nil
+}
+
+// logMessagesBeforeInference logs all messages before calling the inference engine
+// This is useful for debugging and auditing what gets sent to the LLM
+func (h *ChatHandler) logMessagesBeforeInference(ctx context.Context, messages []openai.ChatCompletionMessage, model string) {
+	log.Info().
+		Str("model", model).
+		Int("message_count", len(messages)).
+		Msg("Messages before inference")
+
+	for i, msg := range messages {
+		// Truncate content for logging if too long
+		content := msg.Content
+		if len(content) > 500 {
+			content = content[:500] + "... [truncated]"
+		}
+
+		// Handle multipart content
+		multiPartContent := ""
+		if msg.MultiContent != nil && len(msg.MultiContent) > 0 {
+			parts := make([]string, 0, len(msg.MultiContent))
+			for _, part := range msg.MultiContent {
+				switch part.Type {
+				case openai.ChatMessagePartTypeText:
+					text := part.Text
+					if len(text) > 200 {
+						text = text[:200] + "..."
+					}
+					parts = append(parts, fmt.Sprintf("text:%s", text))
+				case openai.ChatMessagePartTypeImageURL:
+					if part.ImageURL != nil {
+						url := part.ImageURL.URL
+						if len(url) > 100 {
+							url = url[:100] + "..."
+						}
+						parts = append(parts, fmt.Sprintf("image:%s", url))
+					}
+				}
+			}
+			multiPartContent = strings.Join(parts, ", ")
+		}
+
+		// Log tool calls if present
+		toolCallInfo := ""
+		if len(msg.ToolCalls) > 0 {
+			toolNames := make([]string, 0, len(msg.ToolCalls))
+			for _, tc := range msg.ToolCalls {
+				toolNames = append(toolNames, tc.Function.Name)
+			}
+			toolCallInfo = strings.Join(toolNames, ", ")
+		}
+
+		logEvent := log.Debug().
+			Int("index", i).
+			Str("role", msg.Role).
+			Str("content", content)
+
+		if multiPartContent != "" {
+			logEvent = logEvent.Str("multi_content", multiPartContent)
+		}
+		if msg.Name != "" {
+			logEvent = logEvent.Str("name", msg.Name)
+		}
+		if msg.ToolCallID != "" {
+			logEvent = logEvent.Str("tool_call_id", msg.ToolCallID)
+		}
+		if toolCallInfo != "" {
+			logEvent = logEvent.Str("tool_calls", toolCallInfo)
+		}
+
+		logEvent.Msg("Message")
+	}
 }
