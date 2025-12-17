@@ -2,11 +2,99 @@ package chatrequests
 
 import (
 	"encoding/json"
+	"strings"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
 
+	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 )
+
+// FlexibleContentPart represents a content part that can handle multiple formats:
+// - OpenAI format: {"type": "image_url", "image_url": {"url": "..."}}
+// - Client format (browser-mcp): {"type": "image", "data": "data:image/png;base64,jan_*", "mimeType": "image/png"}
+// - Text format: {"type": "text", "text": "..."}
+type FlexibleContentPart struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
+	// OpenAI format for images
+	ImageURL *openai.ChatMessageImageURL `json:"image_url,omitempty"`
+	// Client format for images (browser-mcp, etc.)
+	Data        string `json:"data,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// ToOpenAIChatMessagePart converts FlexibleContentPart to openai.ChatMessagePart
+func (p *FlexibleContentPart) ToOpenAIChatMessagePart() openai.ChatMessagePart {
+	switch p.Type {
+	case "text":
+		return openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeText,
+			Text: p.Text,
+		}
+	case "image_url":
+		// Already in OpenAI format
+		return openai.ChatMessagePart{
+			Type:     openai.ChatMessagePartTypeImageURL,
+			ImageURL: p.ImageURL,
+		}
+	case "image":
+		// Client format - convert to OpenAI format
+		// The data field contains the image URL (e.g., "data:image/png;base64,jan_01kcpbbwpdmcj76g74rw5ja87z")
+		if p.Data != "" {
+			return openai.ChatMessagePart{
+				Type: openai.ChatMessagePartTypeImageURL,
+				ImageURL: &openai.ChatMessageImageURL{
+					URL: p.Data,
+				},
+			}
+		}
+		// Fallback: return empty image_url part (will be filtered out later if needed)
+		return openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeImageURL,
+		}
+	default:
+		// Unknown type - try to preserve as text if possible
+		if p.Text != "" {
+			return openai.ChatMessagePart{
+				Type: openai.ChatMessagePartTypeText,
+				Text: p.Text,
+			}
+		}
+		return openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeText,
+			Text: "",
+		}
+	}
+}
+
+// parseFlexibleContentParts parses JSON-stringified content into flexible content parts
+// and converts them to OpenAI format
+func parseFlexibleContentParts(jsonContent string) ([]openai.ChatMessagePart, error) {
+	var flexibleParts []FlexibleContentPart
+	if err := json.Unmarshal([]byte(jsonContent), &flexibleParts); err != nil {
+		return nil, err
+	}
+
+	result := make([]openai.ChatMessagePart, 0, len(flexibleParts))
+	for _, fp := range flexibleParts {
+		part := fp.ToOpenAIChatMessagePart()
+		// Filter out empty image parts (no URL)
+		if part.Type == openai.ChatMessagePartTypeImageURL && (part.ImageURL == nil || part.ImageURL.URL == "") {
+			log.Warn().Str("original_type", fp.Type).Msg("Skipping empty image part with no URL/data")
+			continue
+		}
+		result = append(result, part)
+	}
+
+	return result, nil
+}
+
+// isJanMediaPlaceholder checks if a URL contains a jan_* media placeholder
+func isJanMediaPlaceholder(url string) bool {
+	return strings.Contains(url, "jan_")
+}
 
 // ChatCompletionRequest extends OpenAI's ChatCompletionRequest with conversation support
 type ChatCompletionRequest struct {
@@ -78,6 +166,62 @@ func (c *ConversationReference) IsEmpty() bool {
 	return c == nil || (c.ID == nil && c.Object == nil)
 }
 
+// UnmarshalJSON implements custom unmarshaling for ChatCompletionRequest
+// to handle JSON-stringified content in messages (e.g., tool messages with images)
+func (r *ChatCompletionRequest) UnmarshalJSON(data []byte) error {
+	// Create an alias to avoid infinite recursion
+	type Alias ChatCompletionRequest
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+
+	// Unmarshal into the alias
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Post-process messages to handle JSON-stringified content
+	for i := range r.Messages {
+		msg := &r.Messages[i]
+		
+		// Check if content is a JSON-stringified array (starts with '[{')
+		if msg.Content != "" && len(msg.Content) > 2 && msg.Content[0] == '[' && msg.Content[1] == '{' {
+			log.Info().Int("message_index", i).Str("role", msg.Role).Str("content_prefix", msg.Content[:min(50, len(msg.Content))]).Msg("Detected JSON-stringified content")
+			
+			// Use flexible parser that handles both OpenAI and client formats
+			parts, err := parseFlexibleContentParts(msg.Content)
+			if err == nil {
+				// Successfully parsed - log details for debugging
+				for j, part := range parts {
+					if part.Type == openai.ChatMessagePartTypeImageURL && part.ImageURL != nil {
+						urlPreview := part.ImageURL.URL
+						if len(urlPreview) > 80 {
+							urlPreview = urlPreview[:80] + "..."
+						}
+						log.Info().Int("message_index", i).Int("part_index", j).Str("type", string(part.Type)).Str("image_url", urlPreview).Bool("has_jan_placeholder", isJanMediaPlaceholder(part.ImageURL.URL)).Msg("Parsed image part")
+					} else if part.Type == openai.ChatMessagePartTypeText {
+						textPreview := part.Text
+						if len(textPreview) > 50 {
+							textPreview = textPreview[:50] + "..."
+						}
+						log.Debug().Int("message_index", i).Int("part_index", j).Str("type", string(part.Type)).Str("text_preview", textPreview).Msg("Parsed text part")
+					}
+				}
+				log.Info().Int("message_index", i).Int("parts_count", len(parts)).Msg("Successfully parsed stringified JSON to MultiContent")
+				msg.MultiContent = parts
+				msg.Content = "" // Clear the string content
+			} else {
+				log.Warn().Err(err).Int("message_index", i).Msg("Failed to parse stringified JSON, leaving as-is for backward compatibility")
+			}
+			// If parsing fails, leave content as-is (backward compatibility)
+		}
+	}
+
+	return nil
+}
+
 // GetID returns the conversation ID, whether it was provided directly or from an object
 // Returns empty string if the reference is nil or has no ID.
 func (c *ConversationReference) GetID() string {
@@ -100,4 +244,12 @@ func (c *ConversationReference) GetConversation() *conversation.Conversation {
 		return nil
 	}
 	return c.Object
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
