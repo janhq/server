@@ -66,6 +66,7 @@ func main() {
 		CBTimeout:          time.Duration(cfg.SerperCBTimeout) * time.Second,
 		CBMaxHalfOpen:      cfg.SerperCBMaxHalfOpen,
 		HTTPTimeout:        time.Duration(cfg.SerperHTTPTimeout) * time.Second,
+		ScrapeTimeout:      time.Duration(cfg.SerperScrapeTimeout) * time.Second,
 		MaxConnsPerHost:    cfg.SerperMaxConnsPerHost,
 		MaxIdleConns:       cfg.SerperMaxIdleConns,
 		IdleConnTimeout:    time.Duration(cfg.SerperIdleConnTimeout) * time.Second,

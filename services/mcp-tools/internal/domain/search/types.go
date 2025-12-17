@@ -47,4 +47,6 @@ type FetchWebpageRequest struct {
 type FetchWebpageResponse struct {
 	Text     string         `json:"text"`
 	Metadata map[string]any `json:"metadata"`
+	Status   string         `json:"status,omitempty"` // "success", "partial", or "failed"
+	Error    string         `json:"error,omitempty"`  // Error message if scrape failed
 }

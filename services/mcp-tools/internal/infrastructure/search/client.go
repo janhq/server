@@ -48,6 +48,7 @@ type ClientConfig struct {
 
 	// HTTP Client Settings
 	HTTPTimeout       time.Duration
+	ScrapeTimeout     time.Duration // Separate timeout for scrape operations (typically longer)
 	MaxConnsPerHost   int
 	MaxIdleConns      int
 	IdleConnTimeout   time.Duration
@@ -63,6 +64,7 @@ type ClientConfig struct {
 type SearchClient struct {
 	cfg            ClientConfig
 	serperClient   *resty.Client
+	scrapeClient   *resty.Client // Separate client for scrape with longer timeout
 	fallbackClient *resty.Client
 	searxClient    *resty.Client
 	retryConfig    RetryConfig
@@ -114,9 +116,26 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 		SetRetryCount(0).
 		SetTransport(transport)
 
+	// Scrape client with longer timeout (default 30s if not configured)
+	scrapeTimeout := cfg.ScrapeTimeout
+	if scrapeTimeout == 0 {
+		scrapeTimeout = 30 * time.Second
+	}
+	scrapeHTTP := resty.New().
+		SetHeader("User-Agent", "Jan-MCP-Tools/1.0").
+		SetTimeout(scrapeTimeout).
+		SetRetryCount(0).
+		SetTransport(transport)
+
+	// Fallback client with browser-like headers to avoid basic bot detection
 	fallbackHTTP := resty.New().
-		SetHeader("User-Agent", "Jan-MCP-Tools-Fallback/1.0").
-		SetTimeout(10 * time.Second).
+		SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36").
+		SetHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8").
+		SetHeader("Accept-Language", "en-US,en;q=0.5").
+		SetHeader("Accept-Encoding", "gzip, deflate").
+		SetHeader("Connection", "keep-alive").
+		SetHeader("Upgrade-Insecure-Requests", "1").
+		SetTimeout(15 * time.Second).
 		SetRetryCount(0)
 
 	searxHTTP := resty.New().
@@ -160,6 +179,7 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 	return &SearchClient{
 		cfg:            cfg,
 		serperClient:   serperHTTP,
+		scrapeClient:   scrapeHTTP,
 		fallbackClient: fallbackHTTP,
 		searxClient:    searxHTTP,
 		retryConfig:    retryConfig,
@@ -206,13 +226,46 @@ func (c *SearchClient) Search(ctx context.Context, query domainsearch.SearchRequ
 }
 
 // FetchWebpage scrapes a webpage either via Serper's scrape API or a fallback HTTP fetcher.
+// Returns a response with status indicating success/failure - graceful degradation instead of errors.
 func (c *SearchClient) FetchWebpage(ctx context.Context, query domainsearch.FetchWebpageRequest) (*domainsearch.FetchWebpageResponse, error) {
+	var serperErr, fallbackErr error
+
 	if c.hasAPIKey() {
 		if res, err := c.fetchViaSerper(ctx, query); err == nil {
+			res.Status = "success"
 			return res, nil
+		} else {
+			serperErr = err
 		}
 	}
-	return c.fetchFallback(ctx, query)
+
+	// Try fallback
+	if res, err := c.fetchFallback(ctx, query); err == nil {
+		res.Status = "success"
+		return res, nil
+	} else {
+		fallbackErr = err
+	}
+
+	// Both failed - return graceful degradation response
+	errMsg := "scrape failed"
+	if serperErr != nil && fallbackErr != nil {
+		errMsg = fmt.Sprintf("serper: %v; fallback: %v", serperErr, fallbackErr)
+	} else if fallbackErr != nil {
+		errMsg = fallbackErr.Error()
+	} else if serperErr != nil {
+		errMsg = serperErr.Error()
+	}
+
+	return &domainsearch.FetchWebpageResponse{
+		Text:   "",
+		Status: "failed",
+		Error:  errMsg,
+		Metadata: map[string]any{
+			"url":    query.Url,
+			"reason": "Unable to scrape content from this URL",
+		},
+	}, nil
 }
 
 func (c *SearchClient) enrichQuery(query domainsearch.SearchRequest) domainsearch.SearchRequest {
@@ -482,10 +535,10 @@ func (c *SearchClient) fetchViaSerper(ctx context.Context, query domainsearch.Fe
 		body["includeMarkdown"] = *query.IncludeMarkdown
 	}
 
-	// Retry with exponential backoff
+	// Retry with exponential backoff - use dedicated scrape client with longer timeout
 	result, err := WithRetry(ctx, c.retryConfig, "serper_scrape", func() (*domainsearch.FetchWebpageResponse, error) {
 		var res domainsearch.FetchWebpageResponse
-		resp, err := c.serperClient.R().
+		resp, err := c.scrapeClient.R().
 			SetContext(ctx).
 			SetHeader("X-API-KEY", c.cfg.SerperAPIKey).
 			SetHeader("Content-Type", "application/json").
