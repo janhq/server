@@ -117,6 +117,88 @@ func (h *UserSettingsHandler) UpdateSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, toResponse(settings))
 }
 
+// GetPreferences handles GET /v1/users/me/settings/preferences
+// @Summary Get user preferences
+// @Description Retrieve current user's preferences only
+// @Tags User Settings
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} PreferencesResponse
+// @Failure 401 {object} responses.ErrorResponse
+// @Failure 500 {object} responses.ErrorResponse
+// @Router /v1/users/me/settings/preferences [get]
+func (h *UserSettingsHandler) GetPreferences(c *gin.Context) {
+	user, ok := authhandler.GetUserFromContext(c)
+	if !ok {
+		responses.HandleErrorWithStatus(c, http.StatusUnauthorized, nil, "user not authenticated")
+		return
+	}
+
+	settings, err := h.service.GetOrCreateSettings(c.Request.Context(), user.ID)
+	if err != nil {
+		h.logger.Error().Err(err).Uint("user_id", user.ID).Msg("failed to get user preferences")
+		responses.HandleErrorWithStatus(c, http.StatusInternalServerError, err, "failed to retrieve preferences")
+		return
+	}
+
+	c.JSON(http.StatusOK, PreferencesResponse{Preferences: settings.Preferences})
+}
+
+// UpdatePreferencesRequest is the request body for updating preferences.
+type UpdatePreferencesRequest struct {
+	Preferences map[string]interface{} `json:"preferences"`
+}
+
+// UpdatePreferences handles PATCH /v1/users/me/settings/preferences
+// @Summary Update user preferences
+// @Description Update current user's preferences only
+// @Tags User Settings
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param preferences body UpdatePreferencesRequest true "Preferences to update"
+// @Success 200 {object} PreferencesResponse
+// @Failure 400 {object} responses.ErrorResponse
+// @Failure 401 {object} responses.ErrorResponse
+// @Failure 500 {object} responses.ErrorResponse
+// @Router /v1/users/me/settings/preferences [patch]
+func (h *UserSettingsHandler) UpdatePreferences(c *gin.Context) {
+	user, ok := authhandler.GetUserFromContext(c)
+	if !ok {
+		responses.HandleErrorWithStatus(c, http.StatusUnauthorized, nil, "user not authenticated")
+		return
+	}
+
+	var req UpdatePreferencesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.HandleErrorWithStatus(c, http.StatusBadRequest, err, "invalid request body")
+		return
+	}
+
+	if req.Preferences == nil {
+		responses.HandleErrorWithStatus(c, http.StatusBadRequest, nil, "preferences field is required")
+		return
+	}
+
+	updateReq := usersettings.UpdateRequest{
+		Preferences: req.Preferences,
+	}
+
+	settings, err := h.service.UpdateSettings(c.Request.Context(), user.ID, updateReq)
+	if err != nil {
+		h.logger.Error().Err(err).Uint("user_id", user.ID).Msg("failed to update user preferences")
+		responses.HandleErrorWithStatus(c, http.StatusInternalServerError, err, "failed to update preferences")
+		return
+	}
+
+	c.JSON(http.StatusOK, PreferencesResponse{Preferences: settings.Preferences})
+}
+
+// PreferencesResponse is the JSON response for user preferences.
+type PreferencesResponse struct {
+	Preferences map[string]interface{} `json:"preferences"`
+}
+
 // UserSettingsResponse is the JSON response for user settings.
 type UserSettingsResponse struct {
 	ID               uint                          `json:"id"`

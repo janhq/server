@@ -153,3 +153,31 @@ func shouldReplaceModel(existing, incoming modelAggregate) bool {
 
 	return false
 }
+
+// GetFirstActiveModelID returns the first model ID using the same logic as /v1/models endpoint.
+// This is used to set the default selected_model in user preferences.
+func (modelHandler *ModelHandler) GetFirstActiveModelID(ctx context.Context) (string, error) {
+	accessibleModels, err := modelHandler.BuildAccessibleProviderModels(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if accessibleModels == nil || len(accessibleModels.ProviderModels) == 0 || len(accessibleModels.Providers) == 0 {
+		return "", nil
+	}
+
+	providerByID := make(map[uint]*domainmodel.Provider, len(accessibleModels.Providers))
+	for _, provider := range accessibleModels.Providers {
+		if provider == nil {
+			continue
+		}
+		providerByID[provider.ID] = provider
+	}
+
+	mergedModels := modelHandler.MergeModels(accessibleModels.ProviderModels, providerByID)
+	if len(mergedModels) == 0 {
+		return "", nil
+	}
+
+	return mergedModels[0].ModelPublicID, nil
+}
