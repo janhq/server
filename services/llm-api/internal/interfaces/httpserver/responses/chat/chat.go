@@ -8,6 +8,7 @@ import (
 type ChatCompletionResponse struct {
 	openai.ChatCompletionResponse
 	Conversation *ConversationContext `json:"conversation,omitempty"`
+	Trimmed      bool                 `json:"trimmed,omitempty"` // True if messages were trimmed to fit context
 }
 
 // ConversationContext represents the conversation associated with this response
@@ -17,9 +18,10 @@ type ConversationContext struct {
 }
 
 // NewChatCompletionResponse creates a response with optional conversation context
-func NewChatCompletionResponse(openaiResp *openai.ChatCompletionResponse, conversationID string, conversationTitle *string) *ChatCompletionResponse {
+func NewChatCompletionResponse(openaiResp *openai.ChatCompletionResponse, conversationID string, conversationTitle *string, trimmed bool) *ChatCompletionResponse {
 	resp := &ChatCompletionResponse{
 		ChatCompletionResponse: *openaiResp,
+		Trimmed:                trimmed,
 	}
 
 	if conversationID != "" {

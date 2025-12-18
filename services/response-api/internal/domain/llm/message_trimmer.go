@@ -60,13 +60,9 @@ type TrimMessagesResult struct {
 	EstimatedTokens int
 }
 
-// TrimMessagesToFitContext removes oldest tool results and assistant messages
-// to fit within the context length limit.
-// Priority order for removal (oldest first):
-// 1. Tool result messages (role="tool")
-// 2. Assistant messages with tool calls
-// 3. Regular assistant messages
-// Never removes: system prompts, user messages
+// TrimMessagesToFitContext removes oldest conversation items to fit within the context length limit.
+// Removes oldest non-system messages first, regardless of role (user, assistant, tool).
+// Never removes: system prompts at index 0
 func TrimMessagesToFitContext(messages []ChatMessage, contextLength int) TrimMessagesResult {
 	if contextLength <= 0 {
 		contextLength = DefaultContextLength
@@ -89,37 +85,19 @@ func TrimMessagesToFitContext(messages []ChatMessage, contextLength int) TrimMes
 	copy(result, messages)
 	trimmedCount := 0
 
-	// Find indices of messages that can be removed (in order of priority)
-	// We iterate from oldest to newest (excluding system prompt at index 0)
+	// Remove oldest items first (any role except system at index 0)
+	// This approach removes conversation items chronologically from oldest to newest
 	for currentTokens > maxTokens && len(result) > MinMessagesToKeep {
+		// Find the oldest removable message (skip index 0 which is system prompt)
 		removedIdx := -1
-
-		// Phase 1: Remove oldest tool result message
 		for i := 1; i < len(result); i++ {
-			if result[i].Role == "tool" {
-				removedIdx = i
-				break
+			// Skip system messages anywhere in the conversation
+			if result[i].Role == "system" {
+				continue
 			}
-		}
-
-		// Phase 2: Remove oldest assistant message with tool calls (and its following tool results)
-		if removedIdx == -1 {
-			for i := 1; i < len(result); i++ {
-				if result[i].Role == "assistant" && len(result[i].ToolCalls) > 0 {
-					removedIdx = i
-					break
-				}
-			}
-		}
-
-		// Phase 3: Remove oldest regular assistant message
-		if removedIdx == -1 {
-			for i := 1; i < len(result); i++ {
-				if result[i].Role == "assistant" {
-					removedIdx = i
-					break
-				}
-			}
+			// Remove the oldest non-system message
+			removedIdx = i
+			break
 		}
 
 		// If no removable message found, stop
