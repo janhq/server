@@ -119,43 +119,6 @@ func DefaultPreferences() map[string]interface{} {
 	}
 }
 
-// ValidateAndNormalizePreferences validates preference values and applies special rules.
-// Rules:
-// 1. If enable_deep_research=true, then enable_search and enable_thinking must be true
-// 2. If enable_browser=true, then enable_deep_research and enable_search must be false
-func ValidateAndNormalizePreferences(prefs map[string]interface{}) error {
-	if prefs == nil {
-		return nil
-	}
-
-	// Helper function to get bool value
-	getBool := func(key string) bool {
-		if val, ok := prefs[key]; ok {
-			if b, ok := val.(bool); ok {
-				return b
-			}
-		}
-		return false
-	}
-
-	enableDeepResearch := getBool("enable_deep_research")
-	enableBrowser := getBool("enable_browser")
-
-	// Rule 1: If enable_deep_research=true, enforce enable_search and enable_thinking to be true
-	if enableDeepResearch {
-		prefs["enable_search"] = true
-		prefs["enable_thinking"] = true
-	}
-
-	// Rule 2: If enable_browser=true, enforce enable_deep_research and enable_search to be false
-	if enableBrowser {
-		prefs["enable_deep_research"] = false
-		prefs["enable_search"] = false
-	}
-
-	return nil
-}
-
 // DefaultUserSettings returns settings with safe defaults.
 func DefaultUserSettings(userID uint) *UserSettings {
 	return &UserSettings{
@@ -317,13 +280,6 @@ func (s *Service) UpdateSettings(ctx context.Context, userID uint, req UpdateReq
 	settings, err := s.GetOrCreateSettings(ctx, userID)
 	if err != nil {
 		return nil, err
-	}
-
-	// Validate and normalize preferences before applying
-	if req.Preferences != nil {
-		if err := ValidateAndNormalizePreferences(req.Preferences); err != nil {
-			return nil, err
-		}
 	}
 
 	settings.Apply(req)
