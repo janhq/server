@@ -119,6 +119,11 @@ type ConversationRepository interface {
 	// TODO: Implement forking functionality for conversation editing
 	ForkBranch(ctx context.Context, conversationID uint, sourceBranch, newBranch string, fromItemID string, description *string) error
 
+	// SwapBranchToMain swaps a branch with MAIN - the given branch becomes MAIN
+	// and the old MAIN is renamed to a backup branch name. This is used for edit/regenerate
+	// operations where the new content should become the primary conversation.
+	SwapBranchToMain(ctx context.Context, conversationID uint, branchToPromote string) (oldMainBackupName string, err error)
+
 	// Item rating operations - TODO: Implement item rating/feedback system
 	RateItem(ctx context.Context, conversationID uint, itemID string, rating ItemRating, comment *string) error
 	GetItemRating(ctx context.Context, conversationID uint, itemID string) (*ItemRating, error)
@@ -299,8 +304,22 @@ func (c *Conversation) CreateBranch(newBranchName, sourceBranch, fromItemID stri
 	return nil
 }
 
+// CreateBranchMetadata creates metadata for a new branch
+func (c *Conversation) CreateBranchMetadata(name string, parentBranch *string, forkFromItemID *string, description *string) BranchMetadata {
+	now := time.Now()
+	return BranchMetadata{
+		Name:             name,
+		Description:      description,
+		ParentBranch:     parentBranch,
+		ForkedAt:         &now,
+		ForkedFromItemID: forkFromItemID,
+		ItemCount:        0,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+}
+
 // GenerateEditBranchName generates a unique branch name for conversation edits
-// TODO: Currently unused - will be needed when implementing conversation branching UI
 func GenerateEditBranchName(conversationID uint) string {
 	return fmt.Sprintf("EDIT_%d_%d", conversationID, time.Now().Unix())
 }

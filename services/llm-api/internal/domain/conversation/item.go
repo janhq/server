@@ -684,6 +684,7 @@ type ItemFilter struct {
 	ConversationID *uint
 	Role           *ItemRole
 	ResponseID     *uint
+	Branch         *string // Filter by branch name
 }
 
 type ItemRepository interface {

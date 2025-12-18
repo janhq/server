@@ -21,6 +21,7 @@ type V1Route struct {
 	model                 *model.ModelRoute
 	chat                  *chat.ChatRoute
 	conversation          *conversation.ConversationRoute
+	branch                *conversation.BranchRoute
 	project               *projects.ProjectRoute
 	adminRoute            *admin.AdminRoute
 	users                 *users.UsersRoute
@@ -33,6 +34,7 @@ func NewV1Route(
 	model *model.ModelRoute,
 	chat *chat.ChatRoute,
 	conversation *conversation.ConversationRoute,
+	branch *conversation.BranchRoute,
 	project *projects.ProjectRoute,
 	adminRoute *admin.AdminRoute,
 	users *users.UsersRoute,
@@ -44,6 +46,7 @@ func NewV1Route(
 		model,
 		chat,
 		conversation,
+		branch,
 		project,
 		adminRoute,
 		users,
@@ -63,6 +66,7 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	v1Route.model.RegisterRouter(v1Router)
 	v1Route.chat.RegisterRouter(v1Router)
 	v1Route.conversation.RegisterRouter(v1Router)
+	v1Route.branch.RegisterRouter(v1Router)
 	v1Route.project.RegisterRoutes(v1Router)
 	v1Route.users.RegisterRouter(v1Router)
 

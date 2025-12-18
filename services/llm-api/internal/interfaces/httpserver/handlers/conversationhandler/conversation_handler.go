@@ -31,23 +31,26 @@ const (
 
 // ConversationHandler handles conversation-related HTTP requests
 type ConversationHandler struct {
-	conversationService *conversation.ConversationService
-	projectService      *project.ProjectService
-	itemValidator       *conversation.ItemValidator
-	shareRepo           share.ShareRepository
+	conversationService  *conversation.ConversationService
+	messageActionService *conversation.MessageActionService
+	projectService       *project.ProjectService
+	itemValidator        *conversation.ItemValidator
+	shareRepo            share.ShareRepository
 }
 
 // NewConversationHandler creates a new conversation handler
 func NewConversationHandler(
 	conversationService *conversation.ConversationService,
+	messageActionService *conversation.MessageActionService,
 	projectService *project.ProjectService,
 	shareRepo share.ShareRepository,
 ) *ConversationHandler {
 	return &ConversationHandler{
-		conversationService: conversationService,
-		projectService:      projectService,
-		itemValidator:       conversation.NewItemValidator(conversation.DefaultItemValidationConfig()),
-		shareRepo:           shareRepo,
+		conversationService:  conversationService,
+		messageActionService: messageActionService,
+		projectService:       projectService,
+		itemValidator:        conversation.NewItemValidator(conversation.DefaultItemValidationConfig()),
+		shareRepo:            shareRepo,
 	}
 }
 
@@ -276,6 +279,7 @@ func (h *ConversationHandler) ListItems(
 	ctx context.Context,
 	userID uint,
 	conversationID string,
+	branchName *string,
 	pagination *query.Pagination,
 ) ([]conversation.Item, error) {
 	// Verify conversation ownership
@@ -284,8 +288,14 @@ func (h *ConversationHandler) ListItems(
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
 	}
 
-	// Get items from repository for the active branch
-	items, err := h.conversationService.GetConversationItems(ctx, conv, conv.ActiveBranch, pagination)
+	// Use specified branch or fall back to active branch
+	branch := conv.ActiveBranch
+	if branchName != nil && *branchName != "" {
+		branch = *branchName
+	}
+
+	// Get items from repository for the specified branch
+	items, err := h.conversationService.GetConversationItems(ctx, conv, branch, pagination)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to list items")
 	}
@@ -371,26 +381,39 @@ func (h *ConversationHandler) GetItem(
 	return item, nil
 }
 
-// DeleteItem deletes an item from a conversation
+// DeleteItemResponse represents the response for deleting a message
+type DeleteItemResponse struct {
+	Branch        string `json:"branch"`          // Always "MAIN" after swap
+	OldMainBackup string `json:"old_main_backup"` // Backup name for old MAIN
+	BranchCreated bool   `json:"branch_created"`
+	Deleted       bool   `json:"deleted"`
+}
+
+// DeleteItem deletes an item from a conversation by creating a new MAIN branch without it
 func (h *ConversationHandler) DeleteItem(
 	ctx context.Context,
 	userID uint,
 	conversationID string,
 	itemID string,
-) (*conversationresponses.ConversationResponse, error) {
+) (*DeleteItemResponse, error) {
 	// Verify conversation ownership
 	conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, conversationID, userID)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
 	}
 
-	// Delete item
-	if err := h.conversationService.DeleteConversationItem(ctx, conv, itemID); err != nil {
+	// Delete item using branch swap approach
+	result, err := h.messageActionService.DeleteMessage(ctx, conv, itemID)
+	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to delete item")
 	}
 
-	// Return the conversation (per OpenAI spec)
-	return conversationresponses.NewConversationResponse(conv), nil
+	return &DeleteItemResponse{
+		Branch:        result.NewBranch,
+		OldMainBackup: result.OldMainBackup,
+		BranchCreated: true,
+		Deleted:       true,
+	}, nil
 }
 
 // UpdateItemByCallID updates an existing mcp_call item with tool execution results

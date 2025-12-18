@@ -1013,10 +1013,39 @@ func (h *ChatHandler) addCompletionToConversation(
 		return nil
 	}
 
+	// Use conversation's active branch instead of hardcoded MAIN
+	branchName := conv.ActiveBranch
+	if branchName == "" {
+		branchName = conversation.BranchMain
+	}
+
 	items := make([]conversation.Item, 0, 2)
 
-	if item := h.buildInputConversationItem(newMessages, storeReasoning, askItemID); item != nil {
-		items = append(items, *item)
+	// Build the user input item
+	userItem := h.buildInputConversationItem(newMessages, storeReasoning, askItemID)
+	
+	// Check if we should skip adding the user message (avoid duplicates after regenerate)
+	// This happens when regenerate creates a branch with the user message, then frontend
+	// triggers a new completion which would add the same user message again
+	if userItem != nil {
+		skipUserItem := false
+		
+		// Get the last item in the branch to check for duplicates
+		existingItems, err := h.conversationService.GetConversationItems(ctx, conv, branchName, nil)
+		if err == nil && len(existingItems) > 0 {
+			lastItem := existingItems[len(existingItems)-1]
+			// If the last item is a user message, check if it has the same content
+			if lastItem.Role != nil && *lastItem.Role == conversation.ItemRoleUser {
+				// Compare content - if it's the same, skip adding
+				if h.isSameMessageContent(userItem, &lastItem) {
+					skipUserItem = true
+				}
+			}
+		}
+		
+		if !skipUserItem {
+			items = append(items, *userItem)
+		}
 	}
 
 	if item := h.buildAssistantConversationItem(response, storeReasoning, completionItemID); item != nil {
@@ -1036,11 +1065,42 @@ func (h *ChatHandler) addCompletionToConversation(
 		return nil
 	}
 
-	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, conversation.BranchMain, items); err != nil {
+	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, branchName, items); err != nil {
 		return platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to add items to conversation")
 	}
 
 	return nil
+}
+
+// isSameMessageContent checks if two items have the same text content
+// Used to detect duplicate user messages after regenerate
+func (h *ChatHandler) isSameMessageContent(newItem *conversation.Item, existingItem *conversation.Item) bool {
+	if newItem == nil || existingItem == nil {
+		return false
+	}
+	
+	// Extract text content from both items
+	newText := extractTextFromContent(newItem.Content)
+	existingText := extractTextFromContent(existingItem.Content)
+	
+	// Compare normalized text (trim whitespace)
+	return strings.TrimSpace(newText) == strings.TrimSpace(existingText)
+}
+
+// extractTextFromContent extracts the text content from a slice of Content
+func extractTextFromContent(contents []conversation.Content) string {
+	for _, c := range contents {
+		if c.TextString != nil && *c.TextString != "" {
+			return *c.TextString
+		}
+		if c.Text != nil && c.Text.Text != "" {
+			return c.Text.Text
+		}
+		if c.OutputText != nil && c.OutputText.Text != "" {
+			return c.OutputText.Text
+		}
+	}
+	return ""
 }
 
 func (h *ChatHandler) buildInputConversationItem(
