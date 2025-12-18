@@ -102,19 +102,20 @@ func listSessions(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 // getSession godoc
 // @Summary      Get a realtime session
-// @Description  Retrieves a specific session by ID
+// @Description  Retrieves a specific session by ID. Users can only access their own sessions.
 // @Tags         Realtime API
 // @Produce      json
 // @Param        id path string true "Session ID"
 // @Success      200 {object} session.Session
+// @Failure      403 {object} errorResponse
 // @Failure      404 {object} errorResponse
-// @Failure      410 {object} errorResponse
 // @Failure      500 {object} errorResponse
 // @Security     BearerAuth
 // @Router       /realtime/sessions/{id} [get]
 func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		userID := extractUserID(c)
 
 		sess, err := handler.GetSession(c.Request.Context(), id)
 		if err != nil {
@@ -123,6 +124,17 @@ func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 				Error: &errorDetail{
 					Message: err.Error(),
 					Type:    errType,
+				},
+			})
+			return
+		}
+
+		// Authorization: verify session belongs to the authenticated user
+		if sess.UserID != userID {
+			c.JSON(http.StatusForbidden, errorResponse{
+				Error: &errorDetail{
+					Message: "access denied",
+					Type:    "forbidden_error",
 				},
 			})
 			return
@@ -144,11 +156,12 @@ func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 // deleteSession godoc
 // @Summary      Delete a realtime session
-// @Description  Ends a session and invalidates its token
+// @Description  Ends a session and invalidates its token. Users can only delete their own sessions.
 // @Tags         Realtime API
 // @Produce      json
 // @Param        id path string true "Session ID"
 // @Success      200 {object} session.DeleteSessionResponse
+// @Failure      403 {object} errorResponse
 // @Failure      404 {object} errorResponse
 // @Failure      500 {object} errorResponse
 // @Security     BearerAuth
@@ -156,6 +169,31 @@ func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 func deleteSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		userID := extractUserID(c)
+
+		// First, get the session to verify ownership
+		sess, err := handler.GetSession(c.Request.Context(), id)
+		if err != nil {
+			status, errType := mapError(err)
+			c.JSON(status, errorResponse{
+				Error: &errorDetail{
+					Message: err.Error(),
+					Type:    errType,
+				},
+			})
+			return
+		}
+
+		// Authorization: verify session belongs to the authenticated user
+		if sess.UserID != userID {
+			c.JSON(http.StatusForbidden, errorResponse{
+				Error: &errorDetail{
+					Message: "access denied",
+					Type:    "forbidden_error",
+				},
+			})
+			return
+		}
 
 		if err := handler.DeleteSession(c.Request.Context(), id); err != nil {
 			status, errType := mapError(err)
