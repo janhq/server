@@ -1,0 +1,200 @@
+basePath: /v1
+definitions:
+  session.ClientSecret:
+    properties:
+      expires_at:
+        description: actual token expiry timestamp
+        type: integer
+      value:
+        type: string
+    type: object
+  session.DeleteSessionResponse:
+    properties:
+      deleted:
+        type: boolean
+      id:
+        type: string
+      object:
+        description: '"realtime.session.deleted"'
+        type: string
+    type: object
+  session.ListSessionsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/session.Session'
+        type: array
+      object:
+        description: '"list"'
+        type: string
+    type: object
+  session.Session:
+    properties:
+      client_secret:
+        $ref: '#/definitions/session.ClientSecret'
+      id:
+        type: string
+      object:
+        description: '"realtime.session"'
+        type: string
+      room_id:
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/session.SessionState'
+        description: connection status for GET responses
+      user_id:
+        type: string
+      ws_url:
+        description: LiveKit WebSocket URL
+        type: string
+    type: object
+  session.SessionState:
+    enum:
+    - created
+    - connected
+    type: string
+    x-enum-varnames:
+    - StateCreated
+    - StateConnected
+  v1.errorDetail:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      type:
+        type: string
+    type: object
+  v1.errorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/v1.errorDetail'
+    type: object
+host: localhost:8186
+info:
+  contact:
+    name: Jan Team
+    url: https://github.com/janhq/jan-server
+  description: |-
+    Realtime API service using LiveKit as transport.
+    Provides session management for real-time audio/video communication.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Realtime API
+  version: "1.0"
+paths:
+  /realtime/sessions:
+    get:
+      description: Lists all active sessions for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/session.ListSessionsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List realtime sessions
+      tags:
+      - Realtime API
+    post:
+      description: Creates a new realtime session with LiveKit token
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/session.Session'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a realtime session
+      tags:
+      - Realtime API
+  /realtime/sessions/{id}:
+    delete:
+      description: Ends a session and invalidates its token
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/session.DeleteSessionResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a realtime session
+      tags:
+      - Realtime API
+    get:
+      description: Retrieves a specific session by ID
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/session.Session'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+        "410":
+          description: Gone
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/v1.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a realtime session
+      tags:
+      - Realtime API
+securityDefinitions:
+  BearerAuth:
+    description: JWT Bearer token from Keycloak
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

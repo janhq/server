@@ -23,6 +23,12 @@ definitions:
           for conducting in-depth investigations with tool usage.
           Requires a model with supports_reasoning: true capability.
         type: boolean
+      enable_thinking:
+        description: |-
+          EnableThinking controls whether reasoning/thinking capabilities should be used.
+          Defaults to true. When set to false for a model with supports_reasoning: true
+          and an instruct model configured, the instruct model will be used instead.
+        type: boolean
       frequency_penalty:
         type: number
       function_call:
@@ -355,26 +361,16 @@ definitions:
         allOf:
         - $ref: '#/definitions/conversation.InputAudio'
         description: User audio input
-      input_text:
-        description: User input text (simple)
-        type: string
       output_text:
         allOf:
         - $ref: '#/definitions/conversation.OutputText'
         description: AI output text (with annotations)
-      reasoning_content:
-        description: AI reasoning content
-        type: string
       refusal:
         description: Model refusal message
         type: string
       summary_text:
         description: Summary content
         type: string
-      text:
-        allOf:
-        - $ref: '#/definitions/conversation.Text'
-        description: Generic text content
       thinking:
         description: Internal reasoning (o1 models)
         type: string
@@ -461,9 +457,35 @@ definitions:
     type: object
   conversation.Item:
     properties:
+      acknowledged_safety_checks:
+        description: For computer call outputs
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
+      action:
+        additionalProperties: true
+        description: For computer/shell actions
+        type: object
+      approval_request_id:
+        description: For MCP approval
+        type: string
+      approve:
+        description: For MCP approval response
+        type: boolean
+      arguments:
+        description: For tool calls (JSON string)
+        type: string
       branch:
         description: Branch identifier (MAIN, EDIT_1, etc.)
         type: string
+      call_id:
+        description: OpenAI-compatible fields for specific item types
+        type: string
+      commands:
+        description: For shell calls
+        items:
+          type: string
+        type: array
       completed_at:
         type: string
       content:
@@ -472,15 +494,36 @@ definitions:
         type: array
       created_at:
         type: string
+      error:
+        description: For failed calls
+        type: string
       id:
         type: string
       incomplete_at:
         type: string
       incomplete_details:
         $ref: '#/definitions/conversation.IncompleteDetails'
+      max_output_length:
+        description: For shell calls
+        type: integer
+      name:
+        description: For MCP tool calls - tool name
+        type: string
       object:
         description: Always "conversation.item" for OpenAI compatibility
         type: string
+      operation:
+        additionalProperties: true
+        description: For patch operations
+        type: object
+      output:
+        description: For tool call outputs
+        type: string
+      pending_safety_checks:
+        description: For computer calls
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
       rated_at:
         description: When rating was given
         type: string
@@ -491,13 +534,29 @@ definitions:
       rating_comment:
         description: Optional comment with rating
         type: string
+      reason:
+        description: For MCP approval reason
+        type: string
       role:
         $ref: '#/definitions/conversation.ItemRole'
       sequence_number:
         description: Order within branch
         type: integer
+      server_label:
+        description: For MCP calls
+        type: string
+      shell_outputs:
+        description: For shell call outputs
+        items:
+          $ref: '#/definitions/conversation.ShellOutput'
+        type: array
       status:
         $ref: '#/definitions/conversation.ItemStatus'
+      tools:
+        description: For mcp_list_tools
+        items:
+          $ref: '#/definitions/conversation.McpTool'
+        type: array
       type:
         $ref: '#/definitions/conversation.ItemType'
     type: object
@@ -579,33 +638,66 @@ definitions:
     - function_call
     - function_call_output
     - reasoning
+    - file_search_call
+    - web_search_call
+    - image_generation_call
+    - computer_call
+    - computer_call_output
+    - code_interpreter_call
+    - local_shell_call
+    - local_shell_call_output
+    - shell_call
+    - shell_call_output
+    - apply_patch_call
+    - apply_patch_call_output
+    - mcp_list_tools
+    - mcp_approval_request
+    - mcp_approval_response
+    - mcp_call
+    - custom_tool_call
+    - custom_tool_call_output
     - file_search
     - web_search
     - code_interpreter
     - computer_use
-    - custom_tool_call
     - mcp_item
     - image_generation
     type: string
     x-enum-comments:
-      ItemTypeCodeInterpreter: Code execution
-      ItemTypeComputerUse: Computer interaction
-      ItemTypeCustomToolCall: Custom tool invocations
-      ItemTypeFileSearch: RAG/retrieval operations
-      ItemTypeImageGeneration: DALL-E image generation
-      ItemTypeMCPItem: Model Context Protocol items
+      ItemTypeCodeInterpreter: 'Legacy: maps to code_interpreter_call'
+      ItemTypeComputerUse: 'Legacy: maps to computer_call'
+      ItemTypeFileSearch: 'Legacy: maps to file_search_call'
+      ItemTypeImageGeneration: 'Legacy: maps to image_generation_call'
+      ItemTypeMCPItem: 'Legacy: maps to mcp_call'
       ItemTypeReasoning: For o1/reasoning models
-      ItemTypeWebSearch: Web browsing operations
+      ItemTypeWebSearch: 'Legacy: maps to web_search_call'
     x-enum-varnames:
     - ItemTypeMessage
     - ItemTypeFunctionCall
     - ItemTypeFunctionCallOut
     - ItemTypeReasoning
+    - ItemTypeFileSearchCall
+    - ItemTypeWebSearchCall
+    - ItemTypeImageGenerationCall
+    - ItemTypeComputerCall
+    - ItemTypeComputerCallOutput
+    - ItemTypeCodeInterpreterCall
+    - ItemTypeLocalShellCall
+    - ItemTypeLocalShellCallOutput
+    - ItemTypeShellCall
+    - ItemTypeShellCallOutput
+    - ItemTypeApplyPatchCall
+    - ItemTypeApplyPatchCallOutput
+    - ItemTypeMcpListTools
+    - ItemTypeMcpApprovalRequest
+    - ItemTypeMcpApprovalResponse
+    - ItemTypeMcpCall
+    - ItemTypeCustomToolCall
+    - ItemTypeCustomToolCallOutput
     - ItemTypeFileSearch
     - ItemTypeWebSearch
     - ItemTypeCodeInterpreter
     - ItemTypeComputerUse
-    - ItemTypeCustomToolCall
     - ItemTypeMCPItem
     - ItemTypeImageGeneration
   conversation.LogProb:
@@ -623,6 +715,15 @@ definitions:
           $ref: '#/definitions/conversation.TopLogProb'
         type: array
     type: object
+  conversation.McpTool:
+    properties:
+      annotations: {}
+      description:
+        type: string
+      input_schema: {}
+      name:
+        type: string
+    type: object
   conversation.OutputText:
     properties:
       annotations:
@@ -636,6 +737,13 @@ definitions:
           $ref: '#/definitions/conversation.LogProb'
         type: array
       text:
+        type: string
+    type: object
+  conversation.SafetyCheck:
+    properties:
+      reason:
+        type: string
+      type:
         type: string
     type: object
   conversation.ScreenshotContent:
@@ -666,14 +774,12 @@ definitions:
       "y":
         type: integer
     type: object
-  conversation.Text:
+  conversation.ShellOutput:
     properties:
-      annotations:
-        items:
-          $ref: '#/definitions/conversation.Annotation'
-        type: array
-      text:
-        description: Changed from "value" to match OpenAI spec
+      type:
+        description: stdout, stderr, exit_code
+        type: string
+      value:
         type: string
     type: object
   conversation.ToolCall:
@@ -729,10 +835,36 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      project_id:
+        type: string
       referrer:
         type: string
       title:
         type: string
+    type: object
+  conversationrequests.UpdateItemByCallIDRequest:
+    properties:
+      arguments:
+        description: JSON string of arguments
+        type: string
+      error:
+        description: Error message if status is "failed"
+        type: string
+      name:
+        description: Tool info fields (optional - already set on creation, but can
+          be updated)
+        type: string
+      output:
+        description: Result fields
+        type: string
+      server_label:
+        description: MCP server label
+        type: string
+      status:
+        description: Required fields
+        type: string
+    required:
+    - status
     type: object
   conversationresponses.ConversationDeletedResponse:
     properties:
@@ -811,9 +943,35 @@ definitions:
     type: object
   conversationresponses.ItemResponse:
     properties:
+      acknowledged_safety_checks:
+        description: For computer call outputs
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
+      action:
+        additionalProperties: true
+        description: For computer/shell actions
+        type: object
+      approval_request_id:
+        description: For MCP approval
+        type: string
+      approve:
+        description: For MCP approval response
+        type: boolean
+      arguments:
+        description: For tool calls (JSON string)
+        type: string
       branch:
         description: Branch identifier (MAIN, EDIT_1, etc.)
         type: string
+      call_id:
+        description: OpenAI-compatible fields for specific item types
+        type: string
+      commands:
+        description: For shell calls
+        items:
+          type: string
+        type: array
       completed_at:
         type: string
       content:
@@ -822,15 +980,36 @@ definitions:
         type: array
       created_at:
         type: string
+      error:
+        description: For failed calls
+        type: string
       id:
         type: string
       incomplete_at:
         type: string
       incomplete_details:
         $ref: '#/definitions/conversation.IncompleteDetails'
+      max_output_length:
+        description: For shell calls
+        type: integer
+      name:
+        description: For MCP tool calls - tool name
+        type: string
       object:
         description: Always "conversation.item" for OpenAI compatibility
         type: string
+      operation:
+        additionalProperties: true
+        description: For patch operations
+        type: object
+      output:
+        description: For tool call outputs
+        type: string
+      pending_safety_checks:
+        description: For computer calls
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
       rated_at:
         description: When rating was given
         type: string
@@ -841,13 +1020,29 @@ definitions:
       rating_comment:
         description: Optional comment with rating
         type: string
+      reason:
+        description: For MCP approval reason
+        type: string
       role:
         $ref: '#/definitions/conversation.ItemRole'
       sequence_number:
         description: Order within branch
         type: integer
+      server_label:
+        description: For MCP calls
+        type: string
+      shell_outputs:
+        description: For shell call outputs
+        items:
+          $ref: '#/definitions/conversation.ShellOutput'
+        type: array
       status:
         $ref: '#/definitions/conversation.ItemStatus'
+      tools:
+        description: For mcp_list_tools
+        items:
+          $ref: '#/definitions/conversation.McpTool'
+        type: array
       type:
         $ref: '#/definitions/conversation.ItemType'
     type: object
@@ -997,11 +1192,17 @@ definitions:
         $ref: '#/definitions/model.SupportedParameters'
       supports_audio:
         type: boolean
+      supports_browser:
+        type: boolean
       supports_embeddings:
         type: boolean
       supports_images:
         type: boolean
+      supports_instruct:
+        type: boolean
       supports_reasoning:
+        type: boolean
+      supports_tools:
         type: boolean
       supports_video:
         type: boolean
@@ -1088,6 +1289,9 @@ definitions:
         type: string
       id:
         type: string
+      instruct_model_public_id:
+        description: Public ID of the instruct model to use when enable_thinking=false
+        type: string
       model_catalog_id:
         type: string
       model_display_name:
@@ -1109,6 +1313,8 @@ definitions:
       supports_embeddings:
         type: boolean
       supports_images:
+        type: boolean
+      supports_instruct:
         type: boolean
       supports_reasoning:
         type: boolean
@@ -1692,11 +1898,17 @@ definitions:
         $ref: '#/definitions/model.SupportedParameters'
       supports_audio:
         type: boolean
+      supports_browser:
+        type: boolean
       supports_embeddings:
         type: boolean
       supports_images:
         type: boolean
+      supports_instruct:
+        type: boolean
       supports_reasoning:
+        type: boolean
+      supports_tools:
         type: boolean
       supports_video:
         type: boolean
@@ -1714,6 +1926,9 @@ definitions:
       category_order_number:
         type: integer
       family:
+        type: string
+      instruct_model_public_id:
+        description: Public ID of the instruct model to use when enable_thinking=false
         type: string
       model_display_name:
         type: string
@@ -3232,6 +3447,69 @@ paths:
       security:
       - BearerAuth: []
       summary: Get a conversation item
+      tags:
+      - Conversations API
+  /v1/conversations/{conv_public_id}/items/by-call-id/{call_id}:
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a conversation item's status and output using its call_id.
+        This endpoint is primarily used by MCP tools to report tool execution results.
+
+        **Features:**
+        - Find item by call_id (e.g., call_xxx) instead of item_id
+        - Update status to completed, failed, or cancelled
+        - Store tool output or error message
+        - Automatic timestamp for completion
+
+        **Use Cases:**
+        - MCP tool reports successful execution with output
+        - MCP tool reports failure with error message
+        - Tool call status tracking and observability
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Call ID of the tool call item (format: call_xxxxx)'
+        in: path
+        name: call_id
+        required: true
+        type: string
+      - description: Update request with status and optional output/error
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationrequests.UpdateItemByCallIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully updated item
+          schema:
+            $ref: '#/definitions/conversationresponses.ItemResponse'
+        "400":
+          description: Invalid request - validation failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation or item not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update item by call ID
       tags:
       - Conversations API
   /v1/healthz:

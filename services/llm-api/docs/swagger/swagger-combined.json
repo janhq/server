@@ -16,6 +16,114 @@
       },
       "type": "object"
     },
+    "Realtime_session.ClientSecret": {
+      "properties": {
+        "expires_at": {
+          "description": "actual token expiry timestamp",
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.DeleteSessionResponse": {
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "object": {
+          "description": "\"realtime.session.deleted\"",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.ListSessionsResponse": {
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/Realtime_session.Session"
+          },
+          "type": "array"
+        },
+        "object": {
+          "description": "\"list\"",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.Session": {
+      "properties": {
+        "client_secret": {
+          "$ref": "#/definitions/Realtime_session.ClientSecret"
+        },
+        "id": {
+          "type": "string"
+        },
+        "object": {
+          "description": "\"realtime.session\"",
+          "type": "string"
+        },
+        "room_id": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/Realtime_session.SessionState"
+            }
+          ],
+          "description": "connection status for GET responses"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "ws_url": {
+          "description": "LiveKit WebSocket URL",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.SessionState": {
+      "enum": [
+        "created",
+        "connected"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "StateCreated",
+        "StateConnected"
+      ]
+    },
+    "Realtime_v1.errorDetail": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_v1.errorResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/Realtime_v1.errorDetail"
+        }
+      },
+      "type": "object"
+    },
     "chatrequests.ChatCompletionRequest": {
       "properties": {
         "chat_template_kwargs": {
@@ -33,6 +141,10 @@
         },
         "deep_research": {
           "description": "DeepResearch enables the Deep Research mode which uses a specialized prompt\nfor conducting in-depth investigations with tool usage.\nRequires a model with supports_reasoning: true capability.",
+          "type": "boolean"
+        },
+        "enable_thinking": {
+          "description": "EnableThinking controls whether reasoning/thinking capabilities should be used.\nDefaults to true. When set to false for a model with supports_reasoning: true\nand an instruct model configured, the instruct model will be used instead.",
           "type": "boolean"
         },
         "frequency_penalty": {
@@ -494,10 +606,6 @@
           ],
           "description": "User audio input"
         },
-        "input_text": {
-          "description": "User input text (simple)",
-          "type": "string"
-        },
         "output_text": {
           "allOf": [
             {
@@ -506,10 +614,6 @@
           ],
           "description": "AI output text (with annotations)"
         },
-        "reasoning_content": {
-          "description": "AI reasoning content",
-          "type": "string"
-        },
         "refusal": {
           "description": "Model refusal message",
           "type": "string"
@@ -517,14 +621,6 @@
         "summary_text": {
           "description": "Summary content",
           "type": "string"
-        },
-        "text": {
-          "allOf": [
-            {
-              "$ref": "#/definitions/conversation.Text"
-            }
-          ],
-          "description": "Generic text content"
         },
         "thinking": {
           "description": "Internal reasoning (o1 models)",
@@ -652,9 +748,44 @@
     },
     "conversation.Item": {
       "properties": {
+        "acknowledged_safety_checks": {
+          "description": "For computer call outputs",
+          "items": {
+            "$ref": "#/definitions/conversation.SafetyCheck"
+          },
+          "type": "array"
+        },
+        "action": {
+          "additionalProperties": true,
+          "description": "For computer/shell actions",
+          "type": "object"
+        },
+        "approval_request_id": {
+          "description": "For MCP approval",
+          "type": "string"
+        },
+        "approve": {
+          "description": "For MCP approval response",
+          "type": "boolean"
+        },
+        "arguments": {
+          "description": "For tool calls (JSON string)",
+          "type": "string"
+        },
         "branch": {
           "description": "Branch identifier (MAIN, EDIT_1, etc.)",
           "type": "string"
+        },
+        "call_id": {
+          "description": "OpenAI-compatible fields for specific item types",
+          "type": "string"
+        },
+        "commands": {
+          "description": "For shell calls",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "completed_at": {
           "type": "string"
@@ -668,6 +799,10 @@
         "created_at": {
           "type": "string"
         },
+        "error": {
+          "description": "For failed calls",
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
@@ -677,9 +812,33 @@
         "incomplete_details": {
           "$ref": "#/definitions/conversation.IncompleteDetails"
         },
+        "max_output_length": {
+          "description": "For shell calls",
+          "type": "integer"
+        },
+        "name": {
+          "description": "For MCP tool calls - tool name",
+          "type": "string"
+        },
         "object": {
           "description": "Always \"conversation.item\" for OpenAI compatibility",
           "type": "string"
+        },
+        "operation": {
+          "additionalProperties": true,
+          "description": "For patch operations",
+          "type": "object"
+        },
+        "output": {
+          "description": "For tool call outputs",
+          "type": "string"
+        },
+        "pending_safety_checks": {
+          "description": "For computer calls",
+          "items": {
+            "$ref": "#/definitions/conversation.SafetyCheck"
+          },
+          "type": "array"
         },
         "rated_at": {
           "description": "When rating was given",
@@ -697,6 +856,10 @@
           "description": "Optional comment with rating",
           "type": "string"
         },
+        "reason": {
+          "description": "For MCP approval reason",
+          "type": "string"
+        },
         "role": {
           "$ref": "#/definitions/conversation.ItemRole"
         },
@@ -704,8 +867,26 @@
           "description": "Order within branch",
           "type": "integer"
         },
+        "server_label": {
+          "description": "For MCP calls",
+          "type": "string"
+        },
+        "shell_outputs": {
+          "description": "For shell call outputs",
+          "items": {
+            "$ref": "#/definitions/conversation.ShellOutput"
+          },
+          "type": "array"
+        },
         "status": {
           "$ref": "#/definitions/conversation.ItemStatus"
+        },
+        "tools": {
+          "description": "For mcp_list_tools",
+          "items": {
+            "$ref": "#/definitions/conversation.McpTool"
+          },
+          "type": "array"
         },
         "type": {
           "$ref": "#/definitions/conversation.ItemType"
@@ -802,35 +983,68 @@
         "function_call",
         "function_call_output",
         "reasoning",
+        "file_search_call",
+        "web_search_call",
+        "image_generation_call",
+        "computer_call",
+        "computer_call_output",
+        "code_interpreter_call",
+        "local_shell_call",
+        "local_shell_call_output",
+        "shell_call",
+        "shell_call_output",
+        "apply_patch_call",
+        "apply_patch_call_output",
+        "mcp_list_tools",
+        "mcp_approval_request",
+        "mcp_approval_response",
+        "mcp_call",
+        "custom_tool_call",
+        "custom_tool_call_output",
         "file_search",
         "web_search",
         "code_interpreter",
         "computer_use",
-        "custom_tool_call",
         "mcp_item",
         "image_generation"
       ],
       "type": "string",
       "x-enum-comments": {
-        "ItemTypeCodeInterpreter": "Code execution",
-        "ItemTypeComputerUse": "Computer interaction",
-        "ItemTypeCustomToolCall": "Custom tool invocations",
-        "ItemTypeFileSearch": "RAG/retrieval operations",
-        "ItemTypeImageGeneration": "DALL-E image generation",
-        "ItemTypeMCPItem": "Model Context Protocol items",
+        "ItemTypeCodeInterpreter": "Legacy: maps to code_interpreter_call",
+        "ItemTypeComputerUse": "Legacy: maps to computer_call",
+        "ItemTypeFileSearch": "Legacy: maps to file_search_call",
+        "ItemTypeImageGeneration": "Legacy: maps to image_generation_call",
+        "ItemTypeMCPItem": "Legacy: maps to mcp_call",
         "ItemTypeReasoning": "For o1/reasoning models",
-        "ItemTypeWebSearch": "Web browsing operations"
+        "ItemTypeWebSearch": "Legacy: maps to web_search_call"
       },
       "x-enum-varnames": [
         "ItemTypeMessage",
         "ItemTypeFunctionCall",
         "ItemTypeFunctionCallOut",
         "ItemTypeReasoning",
+        "ItemTypeFileSearchCall",
+        "ItemTypeWebSearchCall",
+        "ItemTypeImageGenerationCall",
+        "ItemTypeComputerCall",
+        "ItemTypeComputerCallOutput",
+        "ItemTypeCodeInterpreterCall",
+        "ItemTypeLocalShellCall",
+        "ItemTypeLocalShellCallOutput",
+        "ItemTypeShellCall",
+        "ItemTypeShellCallOutput",
+        "ItemTypeApplyPatchCall",
+        "ItemTypeApplyPatchCallOutput",
+        "ItemTypeMcpListTools",
+        "ItemTypeMcpApprovalRequest",
+        "ItemTypeMcpApprovalResponse",
+        "ItemTypeMcpCall",
+        "ItemTypeCustomToolCall",
+        "ItemTypeCustomToolCallOutput",
         "ItemTypeFileSearch",
         "ItemTypeWebSearch",
         "ItemTypeCodeInterpreter",
         "ItemTypeComputerUse",
-        "ItemTypeCustomToolCall",
         "ItemTypeMCPItem",
         "ItemTypeImageGeneration"
       ]
@@ -858,6 +1072,19 @@
       },
       "type": "object"
     },
+    "conversation.McpTool": {
+      "properties": {
+        "annotations": {},
+        "description": {
+          "type": "string"
+        },
+        "input_schema": {},
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "conversation.OutputText": {
       "properties": {
         "annotations": {
@@ -875,6 +1102,17 @@
           "type": "array"
         },
         "text": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "conversation.SafetyCheck": {
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "type": {
           "type": "string"
         }
       },
@@ -920,16 +1158,13 @@
       },
       "type": "object"
     },
-    "conversation.Text": {
+    "conversation.ShellOutput": {
       "properties": {
-        "annotations": {
-          "items": {
-            "$ref": "#/definitions/conversation.Annotation"
-          },
-          "type": "array"
+        "type": {
+          "description": "stdout, stderr, exit_code",
+          "type": "string"
         },
-        "text": {
-          "description": "Changed from \"value\" to match OpenAI spec",
+        "value": {
           "type": "string"
         }
       },
@@ -1015,6 +1250,9 @@
           },
           "type": "object"
         },
+        "project_id": {
+          "type": "string"
+        },
         "referrer": {
           "type": "string"
         },
@@ -1022,6 +1260,38 @@
           "type": "string"
         }
       },
+      "type": "object"
+    },
+    "conversationrequests.UpdateItemByCallIDRequest": {
+      "properties": {
+        "arguments": {
+          "description": "JSON string of arguments",
+          "type": "string"
+        },
+        "error": {
+          "description": "Error message if status is \"failed\"",
+          "type": "string"
+        },
+        "name": {
+          "description": "Tool info fields (optional - already set on creation, but can be updated)",
+          "type": "string"
+        },
+        "output": {
+          "description": "Result fields",
+          "type": "string"
+        },
+        "server_label": {
+          "description": "MCP server label",
+          "type": "string"
+        },
+        "status": {
+          "description": "Required fields",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
       "type": "object"
     },
     "conversationresponses.ConversationDeletedResponse": {
@@ -1141,9 +1411,44 @@
     },
     "conversationresponses.ItemResponse": {
       "properties": {
+        "acknowledged_safety_checks": {
+          "description": "For computer call outputs",
+          "items": {
+            "$ref": "#/definitions/conversation.SafetyCheck"
+          },
+          "type": "array"
+        },
+        "action": {
+          "additionalProperties": true,
+          "description": "For computer/shell actions",
+          "type": "object"
+        },
+        "approval_request_id": {
+          "description": "For MCP approval",
+          "type": "string"
+        },
+        "approve": {
+          "description": "For MCP approval response",
+          "type": "boolean"
+        },
+        "arguments": {
+          "description": "For tool calls (JSON string)",
+          "type": "string"
+        },
         "branch": {
           "description": "Branch identifier (MAIN, EDIT_1, etc.)",
           "type": "string"
+        },
+        "call_id": {
+          "description": "OpenAI-compatible fields for specific item types",
+          "type": "string"
+        },
+        "commands": {
+          "description": "For shell calls",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "completed_at": {
           "type": "string"
@@ -1157,6 +1462,10 @@
         "created_at": {
           "type": "string"
         },
+        "error": {
+          "description": "For failed calls",
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
@@ -1166,9 +1475,33 @@
         "incomplete_details": {
           "$ref": "#/definitions/conversation.IncompleteDetails"
         },
+        "max_output_length": {
+          "description": "For shell calls",
+          "type": "integer"
+        },
+        "name": {
+          "description": "For MCP tool calls - tool name",
+          "type": "string"
+        },
         "object": {
           "description": "Always \"conversation.item\" for OpenAI compatibility",
           "type": "string"
+        },
+        "operation": {
+          "additionalProperties": true,
+          "description": "For patch operations",
+          "type": "object"
+        },
+        "output": {
+          "description": "For tool call outputs",
+          "type": "string"
+        },
+        "pending_safety_checks": {
+          "description": "For computer calls",
+          "items": {
+            "$ref": "#/definitions/conversation.SafetyCheck"
+          },
+          "type": "array"
         },
         "rated_at": {
           "description": "When rating was given",
@@ -1186,6 +1519,10 @@
           "description": "Optional comment with rating",
           "type": "string"
         },
+        "reason": {
+          "description": "For MCP approval reason",
+          "type": "string"
+        },
         "role": {
           "$ref": "#/definitions/conversation.ItemRole"
         },
@@ -1193,8 +1530,26 @@
           "description": "Order within branch",
           "type": "integer"
         },
+        "server_label": {
+          "description": "For MCP calls",
+          "type": "string"
+        },
+        "shell_outputs": {
+          "description": "For shell call outputs",
+          "items": {
+            "$ref": "#/definitions/conversation.ShellOutput"
+          },
+          "type": "array"
+        },
         "status": {
           "$ref": "#/definitions/conversation.ItemStatus"
+        },
+        "tools": {
+          "description": "For mcp_list_tools",
+          "items": {
+            "$ref": "#/definitions/conversation.McpTool"
+          },
+          "type": "array"
         },
         "type": {
           "$ref": "#/definitions/conversation.ItemType"
@@ -1408,13 +1763,22 @@
         "supports_audio": {
           "type": "boolean"
         },
+        "supports_browser": {
+          "type": "boolean"
+        },
         "supports_embeddings": {
           "type": "boolean"
         },
         "supports_images": {
           "type": "boolean"
         },
+        "supports_instruct": {
+          "type": "boolean"
+        },
         "supports_reasoning": {
+          "type": "boolean"
+        },
+        "supports_tools": {
           "type": "boolean"
         },
         "supports_video": {
@@ -1547,6 +1911,10 @@
         "id": {
           "type": "string"
         },
+        "instruct_model_public_id": {
+          "description": "Public ID of the instruct model to use when enable_thinking=false",
+          "type": "string"
+        },
         "model_catalog_id": {
           "type": "string"
         },
@@ -1578,6 +1946,9 @@
           "type": "boolean"
         },
         "supports_images": {
+          "type": "boolean"
+        },
+        "supports_instruct": {
           "type": "boolean"
         },
         "supports_reasoning": {
@@ -2406,13 +2777,22 @@
         "supports_audio": {
           "type": "boolean"
         },
+        "supports_browser": {
+          "type": "boolean"
+        },
         "supports_embeddings": {
           "type": "boolean"
         },
         "supports_images": {
           "type": "boolean"
         },
+        "supports_instruct": {
+          "type": "boolean"
+        },
         "supports_reasoning": {
+          "type": "boolean"
+        },
+        "supports_tools": {
           "type": "boolean"
         },
         "supports_video": {
@@ -2439,6 +2819,10 @@
           "type": "integer"
         },
         "family": {
+          "type": "string"
+        },
+        "instruct_model_public_id": {
+          "description": "Public ID of the instruct model to use when enable_thinking=false",
           "type": "string"
         },
         "model_display_name": {
@@ -2518,8 +2902,8 @@
       "name": "Jan Server Team",
       "url": "https://github.com/janhq/jan-server"
     },
-    "description": "Unified API documentation for Jan Server including LLM API (OpenAI-compatible) and MCP Tools",
-    "title": "Jan Server API (LLM API + MCP Tools)",
+    "description": "Unified API documentation for Jan Server including LLM API (OpenAI-compatible), MCP Tools, and Realtime API",
+    "title": "Jan Server API (LLM API + MCP Tools + Realtime API)",
     "version": "2.0"
   },
   "paths": {
@@ -3151,7 +3535,7 @@
         ]
       }
     },
-    "/mcp/v1/mcp": {
+    "/mcp": {
       "post": {
         "consumes": [
           "application/json"
@@ -4457,6 +4841,83 @@
         ]
       }
     },
+    "/v1/conversations/{conv_public_id}/items/by-call-id/{call_id}": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Update a conversation item's status and output using its call_id.\nThis endpoint is primarily used by MCP tools to report tool execution results.\n\n**Features:**\n- Find item by call_id (e.g., call_xxx) instead of item_id\n- Update status to completed, failed, or cancelled\n- Store tool output or error message\n- Automatic timestamp for completion\n\n**Use Cases:**\n- MCP tool reports successful execution with output\n- MCP tool reports failure with error message\n- Tool call status tracking and observability",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Call ID of the tool call item (format: call_xxxxx)",
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Update request with status and optional output/error",
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/conversationrequests.UpdateItemByCallIDRequest"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully updated item",
+            "schema": {
+              "$ref": "#/definitions/conversationresponses.ItemResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request - validation failed",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing or invalid authentication",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Conversation or item not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update item by call ID",
+        "tags": [
+          "Conversations API"
+        ]
+      }
+    },
     "/v1/conversations/{conv_public_id}/items/{item_id}": {
       "delete": {
         "description": "Delete an item from a conversation. The item will be removed from the conversation.\n\n**Features:**\n- Remove specific item from conversation\n- Automatic ownership verification\n- Returns updated conversation object after deletion\n- Items are permanently removed (not soft delete)\n\n**Important:**\n- Deleting an item may affect conversation flow\n- Item IDs are not reused after deletion\n- Other items in conversation remain unchanged\n- Consider creating a new branch instead of deleting items\n\n**Response:**\nReturns the conversation object (not the deleted item)",
@@ -5061,6 +5522,174 @@
         ]
       }
     },
+    "/v1/realtime/sessions": {
+      "get": {
+        "description": "Lists all active sessions for the current user",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.ListSessionsResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List realtime sessions",
+        "tags": [
+          "Realtime API"
+        ]
+      },
+      "post": {
+        "description": "Creates a new realtime session with LiveKit token",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.Session"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a realtime session",
+        "tags": [
+          "Realtime API"
+        ]
+      }
+    },
+    "/v1/realtime/sessions/{id}": {
+      "delete": {
+        "description": "Ends a session and invalidates its token",
+        "parameters": [
+          {
+            "description": "Session ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.DeleteSessionResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a realtime session",
+        "tags": [
+          "Realtime API"
+        ]
+      },
+      "get": {
+        "description": "Retrieves a specific session by ID",
+        "parameters": [
+          {
+            "description": "Session ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.Session"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a realtime session",
+        "tags": [
+          "Realtime API"
+        ]
+      }
+    },
     "/v1/version": {
       "get": {
         "description": "Returns the current build version of the API server and environment reload timestamp.",
@@ -5096,8 +5725,39 @@
   "swagger": "2.0",
   "tags": [
     {
+      "name": "Authentication API"
+    },
+    {
+      "name": "Server API"
+    },
+    {
+      "name": "Model API"
+    },
+    {
+      "name": "Admin Model API"
+    },
+    {
+      "name": "Admin Provider API"
+    },
+    {
+      "name": "Chat Completions API"
+    },
+    {
+      "name": "Conversations API"
+    },
+    {
+      "name": "Projects API"
+    },
+    {
+      "name": "MCP API"
+    },
+    {
       "description": "Model Context Protocol tools",
       "name": "MCP Tools"
+    },
+    {
+      "description": "Realtime API for audio/video communication via LiveKit",
+      "name": "Realtime API"
     }
   ]
 }
