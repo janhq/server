@@ -1907,6 +1907,83 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/conversations/{conv_public_id}/items/by-call-id/{call_id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a conversation item's status and output using its call_id.\nThis endpoint is primarily used by MCP tools to report tool execution results.\n\n**Features:**\n- Find item by call_id (e.g., call_xxx) instead of item_id\n- Update status to completed, failed, or cancelled\n- Store tool output or error message\n- Automatic timestamp for completion\n\n**Use Cases:**\n- MCP tool reports successful execution with output\n- MCP tool reports failure with error message\n- Tool call status tracking and observability",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Conversations API"
+                ],
+                "summary": "Update item by call ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID (format: conv_xxxxx)",
+                        "name": "conv_public_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Call ID of the tool call item (format: call_xxxxx)",
+                        "name": "call_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update request with status and optional output/error",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/conversationrequests.UpdateItemByCallIDRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully updated item",
+                        "schema": {
+                            "$ref": "#/definitions/conversationresponses.ItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request - validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - missing or invalid authentication",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation or item not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/conversations/{conv_public_id}/items/{item_id}": {
             "get": {
                 "security": [
@@ -2556,6 +2633,10 @@ const docTemplate = `{
                     "description": "DeepResearch enables the Deep Research mode which uses a specialized prompt\nfor conducting in-depth investigations with tool usage.\nRequires a model with supports_reasoning: true capability.",
                     "type": "boolean"
                 },
+                "enable_thinking": {
+                    "description": "EnableThinking controls whether reasoning/thinking capabilities should be used.\nDefaults to true. When set to false for a model with supports_reasoning: true\nand an instruct model configured, the instruct model will be used instead.",
+                    "type": "boolean"
+                },
                 "frequency_penalty": {
                     "type": "number"
                 },
@@ -3015,10 +3096,6 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "input_text": {
-                    "description": "User input text (simple)",
-                    "type": "string"
-                },
                 "output_text": {
                     "description": "AI output text (with annotations)",
                     "allOf": [
@@ -3027,10 +3104,6 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "reasoning_content": {
-                    "description": "AI reasoning content",
-                    "type": "string"
-                },
                 "refusal": {
                     "description": "Model refusal message",
                     "type": "string"
@@ -3038,14 +3111,6 @@ const docTemplate = `{
                 "summary_text": {
                     "description": "Summary content",
                     "type": "string"
-                },
-                "text": {
-                    "description": "Generic text content",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/conversation.Text"
-                        }
-                    ]
                 },
                 "thinking": {
                     "description": "Internal reasoning (o1 models)",
@@ -3173,9 +3238,44 @@ const docTemplate = `{
         "conversation.Item": {
             "type": "object",
             "properties": {
+                "acknowledged_safety_checks": {
+                    "description": "For computer call outputs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.SafetyCheck"
+                    }
+                },
+                "action": {
+                    "description": "For computer/shell actions",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "approval_request_id": {
+                    "description": "For MCP approval",
+                    "type": "string"
+                },
+                "approve": {
+                    "description": "For MCP approval response",
+                    "type": "boolean"
+                },
+                "arguments": {
+                    "description": "For tool calls (JSON string)",
+                    "type": "string"
+                },
                 "branch": {
                     "description": "Branch identifier (MAIN, EDIT_1, etc.)",
                     "type": "string"
+                },
+                "call_id": {
+                    "description": "OpenAI-compatible fields for specific item types",
+                    "type": "string"
+                },
+                "commands": {
+                    "description": "For shell calls",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "completed_at": {
                     "type": "string"
@@ -3189,6 +3289,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "error": {
+                    "description": "For failed calls",
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3198,9 +3302,33 @@ const docTemplate = `{
                 "incomplete_details": {
                     "$ref": "#/definitions/conversation.IncompleteDetails"
                 },
+                "max_output_length": {
+                    "description": "For shell calls",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "For MCP tool calls - tool name",
+                    "type": "string"
+                },
                 "object": {
                     "description": "Always \"conversation.item\" for OpenAI compatibility",
                     "type": "string"
+                },
+                "operation": {
+                    "description": "For patch operations",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "output": {
+                    "description": "For tool call outputs",
+                    "type": "string"
+                },
+                "pending_safety_checks": {
+                    "description": "For computer calls",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.SafetyCheck"
+                    }
                 },
                 "rated_at": {
                     "description": "When rating was given",
@@ -3218,6 +3346,10 @@ const docTemplate = `{
                     "description": "Optional comment with rating",
                     "type": "string"
                 },
+                "reason": {
+                    "description": "For MCP approval reason",
+                    "type": "string"
+                },
                 "role": {
                     "$ref": "#/definitions/conversation.ItemRole"
                 },
@@ -3225,8 +3357,26 @@ const docTemplate = `{
                     "description": "Order within branch",
                     "type": "integer"
                 },
+                "server_label": {
+                    "description": "For MCP calls",
+                    "type": "string"
+                },
+                "shell_outputs": {
+                    "description": "For shell call outputs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.ShellOutput"
+                    }
+                },
                 "status": {
                     "$ref": "#/definitions/conversation.ItemStatus"
+                },
+                "tools": {
+                    "description": "For mcp_list_tools",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.McpTool"
+                    }
                 },
                 "type": {
                     "$ref": "#/definitions/conversation.ItemType"
@@ -3323,34 +3473,67 @@ const docTemplate = `{
                 "function_call",
                 "function_call_output",
                 "reasoning",
+                "file_search_call",
+                "web_search_call",
+                "image_generation_call",
+                "computer_call",
+                "computer_call_output",
+                "code_interpreter_call",
+                "local_shell_call",
+                "local_shell_call_output",
+                "shell_call",
+                "shell_call_output",
+                "apply_patch_call",
+                "apply_patch_call_output",
+                "mcp_list_tools",
+                "mcp_approval_request",
+                "mcp_approval_response",
+                "mcp_call",
+                "custom_tool_call",
+                "custom_tool_call_output",
                 "file_search",
                 "web_search",
                 "code_interpreter",
                 "computer_use",
-                "custom_tool_call",
                 "mcp_item",
                 "image_generation"
             ],
             "x-enum-comments": {
-                "ItemTypeCodeInterpreter": "Code execution",
-                "ItemTypeComputerUse": "Computer interaction",
-                "ItemTypeCustomToolCall": "Custom tool invocations",
-                "ItemTypeFileSearch": "RAG/retrieval operations",
-                "ItemTypeImageGeneration": "DALL-E image generation",
-                "ItemTypeMCPItem": "Model Context Protocol items",
+                "ItemTypeCodeInterpreter": "Legacy: maps to code_interpreter_call",
+                "ItemTypeComputerUse": "Legacy: maps to computer_call",
+                "ItemTypeFileSearch": "Legacy: maps to file_search_call",
+                "ItemTypeImageGeneration": "Legacy: maps to image_generation_call",
+                "ItemTypeMCPItem": "Legacy: maps to mcp_call",
                 "ItemTypeReasoning": "For o1/reasoning models",
-                "ItemTypeWebSearch": "Web browsing operations"
+                "ItemTypeWebSearch": "Legacy: maps to web_search_call"
             },
             "x-enum-varnames": [
                 "ItemTypeMessage",
                 "ItemTypeFunctionCall",
                 "ItemTypeFunctionCallOut",
                 "ItemTypeReasoning",
+                "ItemTypeFileSearchCall",
+                "ItemTypeWebSearchCall",
+                "ItemTypeImageGenerationCall",
+                "ItemTypeComputerCall",
+                "ItemTypeComputerCallOutput",
+                "ItemTypeCodeInterpreterCall",
+                "ItemTypeLocalShellCall",
+                "ItemTypeLocalShellCallOutput",
+                "ItemTypeShellCall",
+                "ItemTypeShellCallOutput",
+                "ItemTypeApplyPatchCall",
+                "ItemTypeApplyPatchCallOutput",
+                "ItemTypeMcpListTools",
+                "ItemTypeMcpApprovalRequest",
+                "ItemTypeMcpApprovalResponse",
+                "ItemTypeMcpCall",
+                "ItemTypeCustomToolCall",
+                "ItemTypeCustomToolCallOutput",
                 "ItemTypeFileSearch",
                 "ItemTypeWebSearch",
                 "ItemTypeCodeInterpreter",
                 "ItemTypeComputerUse",
-                "ItemTypeCustomToolCall",
                 "ItemTypeMCPItem",
                 "ItemTypeImageGeneration"
             ]
@@ -3378,6 +3561,19 @@ const docTemplate = `{
                 }
             }
         },
+        "conversation.McpTool": {
+            "type": "object",
+            "properties": {
+                "annotations": {},
+                "description": {
+                    "type": "string"
+                },
+                "input_schema": {},
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "conversation.OutputText": {
             "type": "object",
             "properties": {
@@ -3396,6 +3592,17 @@ const docTemplate = `{
                     }
                 },
                 "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "conversation.SafetyCheck": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -3440,17 +3647,14 @@ const docTemplate = `{
                 }
             }
         },
-        "conversation.Text": {
+        "conversation.ShellOutput": {
             "type": "object",
             "properties": {
-                "annotations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/conversation.Annotation"
-                    }
+                "type": {
+                    "description": "stdout, stderr, exit_code",
+                    "type": "string"
                 },
-                "text": {
-                    "description": "Changed from \"value\" to match OpenAI spec",
+                "value": {
                     "type": "string"
                 }
             }
@@ -3536,10 +3740,45 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "project_id": {
+                    "type": "string"
+                },
                 "referrer": {
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "conversationrequests.UpdateItemByCallIDRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "arguments": {
+                    "description": "JSON string of arguments",
+                    "type": "string"
+                },
+                "error": {
+                    "description": "Error message if status is \"failed\"",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Tool info fields (optional - already set on creation, but can be updated)",
+                    "type": "string"
+                },
+                "output": {
+                    "description": "Result fields",
+                    "type": "string"
+                },
+                "server_label": {
+                    "description": "MCP server label",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Required fields",
                     "type": "string"
                 }
             }
@@ -3662,9 +3901,44 @@ const docTemplate = `{
         "conversationresponses.ItemResponse": {
             "type": "object",
             "properties": {
+                "acknowledged_safety_checks": {
+                    "description": "For computer call outputs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.SafetyCheck"
+                    }
+                },
+                "action": {
+                    "description": "For computer/shell actions",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "approval_request_id": {
+                    "description": "For MCP approval",
+                    "type": "string"
+                },
+                "approve": {
+                    "description": "For MCP approval response",
+                    "type": "boolean"
+                },
+                "arguments": {
+                    "description": "For tool calls (JSON string)",
+                    "type": "string"
+                },
                 "branch": {
                     "description": "Branch identifier (MAIN, EDIT_1, etc.)",
                     "type": "string"
+                },
+                "call_id": {
+                    "description": "OpenAI-compatible fields for specific item types",
+                    "type": "string"
+                },
+                "commands": {
+                    "description": "For shell calls",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "completed_at": {
                     "type": "string"
@@ -3678,6 +3952,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "error": {
+                    "description": "For failed calls",
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3687,9 +3965,33 @@ const docTemplate = `{
                 "incomplete_details": {
                     "$ref": "#/definitions/conversation.IncompleteDetails"
                 },
+                "max_output_length": {
+                    "description": "For shell calls",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "For MCP tool calls - tool name",
+                    "type": "string"
+                },
                 "object": {
                     "description": "Always \"conversation.item\" for OpenAI compatibility",
                     "type": "string"
+                },
+                "operation": {
+                    "description": "For patch operations",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "output": {
+                    "description": "For tool call outputs",
+                    "type": "string"
+                },
+                "pending_safety_checks": {
+                    "description": "For computer calls",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.SafetyCheck"
+                    }
                 },
                 "rated_at": {
                     "description": "When rating was given",
@@ -3707,6 +4009,10 @@ const docTemplate = `{
                     "description": "Optional comment with rating",
                     "type": "string"
                 },
+                "reason": {
+                    "description": "For MCP approval reason",
+                    "type": "string"
+                },
                 "role": {
                     "$ref": "#/definitions/conversation.ItemRole"
                 },
@@ -3714,8 +4020,26 @@ const docTemplate = `{
                     "description": "Order within branch",
                     "type": "integer"
                 },
+                "server_label": {
+                    "description": "For MCP calls",
+                    "type": "string"
+                },
+                "shell_outputs": {
+                    "description": "For shell call outputs",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.ShellOutput"
+                    }
+                },
                 "status": {
                     "$ref": "#/definitions/conversation.ItemStatus"
+                },
+                "tools": {
+                    "description": "For mcp_list_tools",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/conversation.McpTool"
+                    }
                 },
                 "type": {
                     "$ref": "#/definitions/conversation.ItemType"
@@ -3929,13 +4253,22 @@ const docTemplate = `{
                 "supports_audio": {
                     "type": "boolean"
                 },
+                "supports_browser": {
+                    "type": "boolean"
+                },
                 "supports_embeddings": {
                     "type": "boolean"
                 },
                 "supports_images": {
                     "type": "boolean"
                 },
+                "supports_instruct": {
+                    "type": "boolean"
+                },
                 "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_tools": {
                     "type": "boolean"
                 },
                 "supports_video": {
@@ -4068,6 +4401,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "instruct_model_public_id": {
+                    "description": "Public ID of the instruct model to use when enable_thinking=false",
+                    "type": "string"
+                },
                 "model_catalog_id": {
                     "type": "string"
                 },
@@ -4099,6 +4436,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "supports_images": {
+                    "type": "boolean"
+                },
+                "supports_instruct": {
                     "type": "boolean"
                 },
                 "supports_reasoning": {
@@ -4927,13 +5267,22 @@ const docTemplate = `{
                 "supports_audio": {
                     "type": "boolean"
                 },
+                "supports_browser": {
+                    "type": "boolean"
+                },
                 "supports_embeddings": {
                     "type": "boolean"
                 },
                 "supports_images": {
                     "type": "boolean"
                 },
+                "supports_instruct": {
+                    "type": "boolean"
+                },
                 "supports_reasoning": {
+                    "type": "boolean"
+                },
+                "supports_tools": {
                     "type": "boolean"
                 },
                 "supports_video": {
@@ -4960,6 +5309,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "family": {
+                    "type": "string"
+                },
+                "instruct_model_public_id": {
+                    "description": "Public ID of the instruct model to use when enable_thinking=false",
                     "type": "string"
                 },
                 "model_display_name": {

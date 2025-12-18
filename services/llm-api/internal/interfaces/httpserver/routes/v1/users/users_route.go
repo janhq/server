@@ -33,6 +33,10 @@ func (r *UsersRoute) RegisterRouter(router gin.IRouter) {
 		{
 			meGroup.GET("/settings", r.authHandler.WithAppUserAuthChain(r.settingsHandler.GetSettings)...)
 			meGroup.PATCH("/settings", r.authHandler.WithAppUserAuthChain(r.settingsHandler.UpdateSettings)...)
+
+			// /v1/users/me/settings/preferences - User preferences endpoints
+			meGroup.GET("/settings/preferences", r.authHandler.WithAppUserAuthChain(r.settingsHandler.GetPreferences)...)
+			meGroup.PATCH("/settings/preferences", r.authHandler.WithAppUserAuthChain(r.settingsHandler.UpdatePreferences)...)
 		}
 	}
 }

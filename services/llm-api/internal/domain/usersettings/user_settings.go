@@ -108,6 +108,17 @@ func DefaultAdvancedSettings() AdvancedSettings {
 	}
 }
 
+// DefaultPreferences returns default preference values.
+func DefaultPreferences() map[string]interface{} {
+	return map[string]interface{}{
+		"selected_model":       "", // Will be set to first model from /v1/models
+		"enable_deep_research": false,
+		"enable_thinking":      true,
+		"enable_search":        true,
+		"enable_browser":       false,
+	}
+}
+
 // DefaultUserSettings returns settings with safe defaults.
 func DefaultUserSettings(userID uint) *UserSettings {
 	return &UserSettings{
@@ -117,7 +128,7 @@ func DefaultUserSettings(userID uint) *UserSettings {
 		AdvancedSettings: DefaultAdvancedSettings(),
 		EnableTrace:      false,
 		EnableTools:      true,
-		Preferences:      make(map[string]interface{}),
+		Preferences:      DefaultPreferences(),
 	}
 }
 
@@ -186,14 +197,23 @@ type Repository interface {
 	Update(ctx context.Context, settings *UserSettings) error
 }
 
+// ModelProvider provides access to model information for default settings.
+type ModelProvider interface {
+	GetFirstActiveModelID(ctx context.Context) (string, error)
+}
+
 // Service manages user settings operations.
 type Service struct {
-	repo Repository
+	repo          Repository
+	modelProvider ModelProvider
 }
 
 // NewService constructs a Service with required dependencies.
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, modelProvider ModelProvider) *Service {
+	return &Service{
+		repo:          repo,
+		modelProvider: modelProvider,
+	}
 }
 
 // GetOrCreateSettings retrieves existing settings or creates defaults for a user.
@@ -206,6 +226,14 @@ func (s *Service) GetOrCreateSettings(ctx context.Context, userID uint) (*UserSe
 	// Create default settings if none exist
 	if settings == nil {
 		defaults := DefaultUserSettings(userID)
+
+		// Set default selected_model from first active model
+		if s.modelProvider != nil {
+			if modelID, err := s.modelProvider.GetFirstActiveModelID(ctx); err == nil && modelID != "" {
+				defaults.Preferences["selected_model"] = modelID
+			}
+		}
+
 		return s.repo.Upsert(ctx, defaults)
 	}
 
