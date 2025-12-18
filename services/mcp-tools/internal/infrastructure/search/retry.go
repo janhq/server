@@ -12,11 +12,12 @@ import (
 
 // RetryConfig defines retry behavior for search operations
 type RetryConfig struct {
-	MaxAttempts     int
-	InitialDelay    time.Duration
-	MaxDelay        time.Duration
-	BackoffFactor   float64
-	RetryableErrors []string
+	MaxAttempts        int
+	InitialDelay       time.Duration
+	MaxDelay           time.Duration
+	BackoffFactor      float64
+	RetryableErrors    []string
+	NonRetryableErrors []string // Errors that should never be retried
 }
 
 // DefaultRetryConfig returns sensible defaults for retry behavior
@@ -35,6 +36,12 @@ func DefaultRetryConfig() RetryConfig {
 			"502", // Bad gateway
 			"503", // Service unavailable
 			"504", // Gateway timeout
+		},
+		NonRetryableErrors: []string{
+			"403", // Forbidden - anti-bot protection, won't succeed on retry
+			"401", // Unauthorized - auth issue, won't succeed on retry
+			"404", // Not found - page doesn't exist
+			"410", // Gone - resource permanently removed
 		},
 	}
 }
@@ -59,9 +66,9 @@ func WithRetry[T any](ctx context.Context, cfg RetryConfig, operation string, fn
 		}
 
 		lastErr = err
-		
+
 		// Check if error is retryable
-		if !isRetryable(err, cfg.RetryableErrors) {
+		if !isRetryable(err, cfg) {
 			log.Debug().
 				Err(err).
 				Str("operation", operation).
@@ -113,17 +120,26 @@ func calculateBackoff(attempt int, initial, max time.Duration, factor float64) t
 }
 
 // isRetryable checks if an error should trigger a retry
-func isRetryable(err error, retryableErrors []string) bool {
+func isRetryable(err error, cfg RetryConfig) bool {
 	if err == nil {
 		return false
 	}
-	
-	errStr := err.Error()
-	for _, pattern := range retryableErrors {
-		if strings.Contains(strings.ToLower(errStr), strings.ToLower(pattern)) {
+
+	errStr := strings.ToLower(err.Error())
+
+	// Check non-retryable errors first - these should never be retried
+	for _, pattern := range cfg.NonRetryableErrors {
+		if strings.Contains(errStr, strings.ToLower(pattern)) {
+			return false
+		}
+	}
+
+	// Check if error matches known retryable patterns
+	for _, pattern := range cfg.RetryableErrors {
+		if strings.Contains(errStr, strings.ToLower(pattern)) {
 			return true
 		}
 	}
-	
+
 	return false
 }
