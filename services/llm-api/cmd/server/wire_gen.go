@@ -102,7 +102,7 @@ func CreateApplication() (*Application, error) {
 	processorImpl := domain.ProvidePromptProcessor(processorConfig, zerologLogger, prompttemplateService)
 	memoryClient := infrastructure.ProvideMemoryClient(config, zerologLogger)
 	usersettingsRepository := usersettingsrepo.NewUserSettingsGormRepository(db)
-	usersettingsService := usersettings.NewService(usersettingsRepository)
+	usersettingsService := usersettings.NewService(usersettingsRepository, modelHandler)
 	memoryHandler := handlers.ProvideMemoryHandler(memoryClient, config, usersettingsService)
 	chatHandler := chathandler.NewChatHandler(inferenceProvider, providerHandler, conversationHandler, conversationService, projectService, resolver, processorImpl, memoryHandler, usersettingsService)
 	chatCompletionRoute := chat.NewChatCompletionRoute(chatHandler, authHandler)

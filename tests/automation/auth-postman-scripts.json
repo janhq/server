@@ -519,6 +519,330 @@
       ]
     },
     {
+      "name": "User Settings API",
+      "description": "Tests for user settings and preferences endpoints.",
+      "item": [
+        {
+          "name": "Get User Settings (Guest Token)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guest_access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/users/me/settings",
+            "description": "Retrieve user settings for guest user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('guest can get user settings', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('settings has required fields', function () {",
+                  "    pm.expect(data).to.have.property('memory_config');",
+                  "    pm.expect(data).to.have.property('profile_settings');",
+                  "    pm.expect(data).to.have.property('advanced_settings');",
+                  "    pm.expect(data).to.have.property('preferences');",
+                  "});",
+                  "pm.test('preferences has default values', function () {",
+                  "    pm.expect(data.preferences).to.have.property('selected_model');",
+                  "    pm.expect(data.preferences).to.have.property('enable_deep_research');",
+                  "    pm.expect(data.preferences).to.have.property('enable_thinking');",
+                  "    pm.expect(data.preferences).to.have.property('enable_search');",
+                  "    pm.expect(data.preferences).to.have.property('enable_browser');",
+                  "});",
+                  "pm.test('preferences default values are correct', function () {",
+                  "    pm.expect(data.preferences.enable_deep_research).to.eql(false);",
+                  "    pm.expect(data.preferences.enable_thinking).to.eql(true);",
+                  "    pm.expect(data.preferences.enable_search).to.eql(true);",
+                  "    pm.expect(data.preferences.enable_browser).to.eql(false);",
+                  "});",
+                  "pm.test('selected_model is set from first model', function () {",
+                  "    pm.expect(data.preferences.selected_model).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Preferences Only (Guest Token)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guest_access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/users/me/settings/preferences",
+            "description": "Retrieve only user preferences."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('guest can get preferences', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('response has preferences field', function () {",
+                  "    pm.expect(data).to.have.property('preferences');",
+                  "});",
+                  "pm.test('preferences has expected keys', function () {",
+                  "    pm.expect(data.preferences).to.have.property('selected_model');",
+                  "    pm.expect(data.preferences).to.have.property('enable_deep_research');",
+                  "    pm.expect(data.preferences).to.have.property('enable_thinking');",
+                  "    pm.expect(data.preferences).to.have.property('enable_search');",
+                  "    pm.expect(data.preferences).to.have.property('enable_browser');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User Preferences (Guest Token)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guest_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferences\": {\n    \"selected_model\": \"openai/gpt-4o\",\n    \"enable_deep_research\": true,\n    \"enable_thinking\": false,\n    \"enable_search\": true,\n    \"enable_browser\": true\n  }\n}"
+            },
+            "url": "{{kong_url}}/v1/users/me/settings/preferences",
+            "description": "Update user preferences."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('preferences updated successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('preferences reflect updated values', function () {",
+                  "    pm.expect(data.preferences.selected_model).to.eql('openai/gpt-4o');",
+                  "    pm.expect(data.preferences.enable_deep_research).to.eql(true);",
+                  "    pm.expect(data.preferences.enable_thinking).to.eql(false);",
+                  "    pm.expect(data.preferences.enable_search).to.eql(true);",
+                  "    pm.expect(data.preferences.enable_browser).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Updated Preferences (Guest Token)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{guest_access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/users/me/settings/preferences",
+            "description": "Verify preferences were persisted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('preferences persisted correctly', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(data.preferences.selected_model).to.eql('openai/gpt-4o');",
+                  "    pm.expect(data.preferences.enable_deep_research).to.eql(true);",
+                  "    pm.expect(data.preferences.enable_thinking).to.eql(false);",
+                  "    pm.expect(data.preferences.enable_search).to.eql(true);",
+                  "    pm.expect(data.preferences.enable_browser).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Full User Settings (Registered User)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile_settings\": {\n    \"base_style\": \"Professional\",\n    \"nick_name\": \"TestUser\",\n    \"occupation\": \"Developer\"\n  },\n  \"memory_config\": {\n    \"enabled\": true,\n    \"observe_enabled\": true,\n    \"inject_user_core\": true,\n    \"inject_semantic\": true,\n    \"inject_episodic\": false,\n    \"max_user_items\": 5,\n    \"max_project_items\": 10,\n    \"max_episodic_items\": 3,\n    \"min_similarity\": 0.8\n  },\n  \"advanced_settings\": {\n    \"web_search\": true,\n    \"code_enabled\": true\n  }\n}"
+            },
+            "url": "{{kong_url}}/v1/users/me/settings",
+            "description": "Update full user settings including profile, memory, and advanced settings."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('settings updated successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('profile settings updated', function () {",
+                  "    pm.expect(data.profile_settings.base_style).to.eql('Professional');",
+                  "    pm.expect(data.profile_settings.nick_name).to.eql('TestUser');",
+                  "    pm.expect(data.profile_settings.occupation).to.eql('Developer');",
+                  "});",
+                  "pm.test('memory config updated', function () {",
+                  "    pm.expect(data.memory_config.enabled).to.eql(true);",
+                  "    pm.expect(data.memory_config.max_user_items).to.eql(5);",
+                  "    pm.expect(data.memory_config.max_project_items).to.eql(10);",
+                  "    pm.expect(data.memory_config.min_similarity).to.be.closeTo(0.8, 0.01);",
+                  "});",
+                  "pm.test('advanced settings updated', function () {",
+                  "    pm.expect(data.advanced_settings.web_search).to.eql(true);",
+                  "    pm.expect(data.advanced_settings.code_enabled).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Settings (Registered User)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/users/me/settings",
+            "description": "Verify full settings were persisted for registered user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "pm.test('registered user can get settings', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('all settings sections present', function () {",
+                  "    pm.expect(data).to.have.property('memory_config');",
+                  "    pm.expect(data).to.have.property('profile_settings');",
+                  "    pm.expect(data).to.have.property('advanced_settings');",
+                  "    pm.expect(data).to.have.property('preferences');",
+                  "});",
+                  "pm.test('profile settings persisted', function () {",
+                  "    pm.expect(data.profile_settings.base_style).to.eql('Professional');",
+                  "    pm.expect(data.profile_settings.nick_name).to.eql('TestUser');",
+                  "});",
+                  "pm.test('advanced settings persisted', function () {",
+                  "    pm.expect(data.advanced_settings.web_search).to.eql(true);",
+                  "    pm.expect(data.advanced_settings.code_enabled).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid Base Style Returns 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile_settings\": {\n    \"base_style\": \"InvalidStyle\"\n  }\n}"
+            },
+            "url": "{{kong_url}}/v1/users/me/settings",
+            "description": "Verify that invalid base_style returns 400 error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid base_style returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('error message mentions base_style', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(JSON.stringify(data)).to.include('base_style');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthenticated Request Returns 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{kong_url}}/v1/users/me/settings",
+            "description": "Verify that unauthenticated request returns 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unauthenticated request returns 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Guest Login Flow",
       "item": [
         {
