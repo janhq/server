@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/google/wire"
 
+	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers"
 	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/apikeyhandler"
@@ -52,6 +53,9 @@ var RouteProvider = wire.NewSet(
 	usersettingshandler.NewUserSettingsHandler,
 	prompttemplatehandler.NewPromptTemplateHandler,
 	sharehandler.NewShareHandler,
+
+	// Bind ModelHandler to ModelProvider interface for usersettings
+	wire.Bind(new(usersettings.ModelProvider), new(*modelhandler.ModelHandler)),
 
 	// Routes
 	auth.NewAuthRoute,
