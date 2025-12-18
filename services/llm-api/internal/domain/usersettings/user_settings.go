@@ -160,7 +160,13 @@ func (s *UserSettings) Apply(req UpdateRequest) {
 		s.EnableTools = *req.EnableTools
 	}
 	if req.Preferences != nil {
-		s.Preferences = req.Preferences
+		// Merge preferences instead of replacing them
+		if s.Preferences == nil {
+			s.Preferences = DefaultPreferences()
+		}
+		for key, value := range req.Preferences {
+			s.Preferences[key] = value
+		}
 	}
 }
 
