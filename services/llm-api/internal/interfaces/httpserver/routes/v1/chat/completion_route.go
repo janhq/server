@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
@@ -81,16 +82,38 @@ func (chatCompletionRoute *ChatCompletionRoute) PostCompletion(reqCtx *gin.Conte
 	}
 
 	var request chatrequests.ChatCompletionRequest
+	contentLength := reqCtx.Request.ContentLength
 	if err := reqCtx.ShouldBindJSON(&request); err != nil {
 		responses.HandleError(reqCtx, err, "Invalid request body")
 		return
 	}
 
+	conversationID := ""
+	if request.Conversation != nil {
+		conversationID = request.Conversation.GetID()
+	}
+
+	log.Info().
+		Str("route", "/v1/chat/completions").
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Int("messages", len(request.Messages)).
+		Int64("content_length", contentLength).
+		Bool("stream", request.Stream).
+		Msg("chat completion request received")
+
 	// Delegate to chat handler
 	result, err := chatCompletionRoute.chatHandler.CreateChatCompletion(reqCtx.Request.Context(), reqCtx, user.ID, request)
 	if err != nil {
+		// Check if it's a validation error (user input too large)
+		if platformerrors.IsValidationError(err) {
+			responses.HandleError(reqCtx, err, err.Error())
+			return
+		}
+
+		// For other errors, return fallback response
 		fallback := chatCompletionRoute.chatHandler.BuildFallbackResponse(request.Model)
-		chatResponse := chatresponses.NewChatCompletionResponse(fallback, "", nil)
+		chatResponse := chatresponses.NewChatCompletionResponse(fallback, "", nil, false)
 		reqCtx.JSON(http.StatusOK, chatResponse)
 		return
 	}
@@ -98,7 +121,7 @@ func (chatCompletionRoute *ChatCompletionRoute) PostCompletion(reqCtx *gin.Conte
 	// For non-streaming requests, return the response with conversation context
 	if !request.Stream {
 		// Wrap the OpenAI response with conversation context (including title)
-		chatResponse := chatresponses.NewChatCompletionResponse(result.Response, result.ConversationID, result.ConversationTitle)
+		chatResponse := chatresponses.NewChatCompletionResponse(result.Response, result.ConversationID, result.ConversationTitle, result.Trimmed)
 		reqCtx.JSON(http.StatusOK, chatResponse)
 	}
 

@@ -206,6 +206,11 @@ func IsErrorType(err error, errorType ErrorType) bool {
 	return false
 }
 
+// IsValidationError checks if an error is a validation error
+func IsValidationError(err error) bool {
+	return IsErrorType(err, ErrorTypeValidation)
+}
+
 // LogError logs a platform error with proper structure
 func LogError(logger zerolog.Logger, err *PlatformError) {
 	if err == nil {
