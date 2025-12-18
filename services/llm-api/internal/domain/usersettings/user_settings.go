@@ -237,7 +237,36 @@ func (s *Service) GetOrCreateSettings(ctx context.Context, userID uint) (*UserSe
 		return s.repo.Upsert(ctx, defaults)
 	}
 
+	// Ensure preferences always have default values (for existing users with empty preferences)
+	s.ensureDefaultPreferences(ctx, settings)
+
 	return settings, nil
+}
+
+// ensureDefaultPreferences merges default preferences into existing settings.
+// Missing keys are filled with defaults; existing keys are preserved.
+func (s *Service) ensureDefaultPreferences(ctx context.Context, settings *UserSettings) {
+	if settings.Preferences == nil {
+		settings.Preferences = make(map[string]interface{})
+	}
+
+	defaults := DefaultPreferences()
+
+	// Fill in missing preference keys with defaults
+	for key, defaultValue := range defaults {
+		if _, exists := settings.Preferences[key]; !exists {
+			settings.Preferences[key] = defaultValue
+		}
+	}
+
+	// Set selected_model from first active model if empty
+	if selectedModel, ok := settings.Preferences["selected_model"].(string); !ok || selectedModel == "" {
+		if s.modelProvider != nil {
+			if modelID, err := s.modelProvider.GetFirstActiveModelID(ctx); err == nil && modelID != "" {
+				settings.Preferences["selected_model"] = modelID
+			}
+		}
+	}
 }
 
 // UpdateSettings applies updates to user settings.
