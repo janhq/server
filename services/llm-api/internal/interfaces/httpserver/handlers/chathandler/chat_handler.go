@@ -18,6 +18,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
 	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 	"jan-server/services/llm-api/internal/infrastructure/metrics"
@@ -41,6 +42,7 @@ type ChatCompletionResult struct {
 	Response          *openai.ChatCompletionResponse
 	ConversationID    string
 	ConversationTitle *string
+	Trimmed           bool // True if messages were trimmed to fit context
 }
 
 // ChatHandler handles chat completion requests
@@ -289,20 +291,112 @@ func (h *ChatHandler) CreateChatCompletion(
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create chat client")
 	}
 
-	// Trim messages to fit within model's context length
+	// Build token budget for context management
 	contextLength := DefaultContextLength
 	if modelCatalog != nil && modelCatalog.ContextLength != nil && *modelCatalog.ContextLength > 0 {
 		contextLength = *modelCatalog.ContextLength
 	}
-	trimResult := TrimMessagesToFitContext(request.Messages, contextLength)
-	if trimResult.TrimmedCount > 0 {
-		observability.AddSpanEvent(ctx, "messages_trimmed",
-			attribute.Int("trimmed_count", trimResult.TrimmedCount),
-			attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
-			attribute.Int("context_length", contextLength),
-		)
-		request.Messages = trimResult.Messages
+
+	// Validate user input size BEFORE any processing
+	// This returns an error if the current user input exceeds MaxUserContentTokens
+	if err := ValidateUserInputSize(request.Messages); err != nil {
+		observability.RecordError(ctx, err)
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, err.Error(), nil, "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 	}
+
+	// Get max_tokens from request (0 if not set)
+	maxCompletionTokens := 0
+	if request.MaxTokens > 0 {
+		maxCompletionTokens = request.MaxTokens
+	}
+
+	// Track whether any trimming occurred
+	wasTrimmed := false
+
+	// Build and validate token budget
+	budget := BuildTokenBudget(contextLength, request.Tools, maxCompletionTokens)
+	if err := budget.Validate(); err != nil {
+		budgetLog := logger.GetLogger()
+		budgetLog.Warn().
+			Err(err).
+			Int("context_length", budget.ContextLength).
+			Int("tools_tokens", budget.ToolsTokens).
+			Int("max_completion_tokens", budget.MaxCompletionTokens).
+			Msg("token budget validation failed, using fallback trimming")
+		// Fall back to legacy trimming if budget validation fails
+		trimResult := TrimMessagesToFitContext(request.Messages, contextLength)
+		if trimResult.TrimmedCount > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "messages_trimmed",
+				attribute.Int("trimmed_count", trimResult.TrimmedCount),
+				attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
+				attribute.Int("context_length", contextLength),
+			)
+			request.Messages = trimResult.Messages
+		}
+	} else {
+		// Log budget for debugging
+		budgetLog := logger.GetLogger()
+		budgetLog.Info().
+			Int("context_length", budget.ContextLength).
+			Int("tools_tokens", budget.ToolsTokens).
+			Int("response_reserve", budget.ResponseReserve).
+			Int("available_for_messages", budget.AvailableForMessages).
+			Msg("token budget computed")
+
+		// First, truncate oversized user content in HISTORICAL messages (not current input)
+		userTruncatedMessages, userTruncEvents := TruncateLargeUserContent(request.Messages)
+		if len(userTruncEvents) > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "user_content_truncated",
+				attribute.Int("truncation_count", len(userTruncEvents)),
+			)
+			request.Messages = userTruncatedMessages
+		}
+
+		// Second, truncate oversized tool content (with JSON-aware parsing)
+		truncatedMessages, truncEvents := TruncateLargeToolContent(request.Messages)
+		if len(truncEvents) > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "tool_content_truncated",
+				attribute.Int("truncation_count", len(truncEvents)),
+			)
+			request.Messages = truncatedMessages
+		}
+
+		// Then trim messages using the validated budget (oldest items first)
+		trimResult := TrimMessagesToFitBudget(request.Messages, budget)
+		if trimResult.TrimmedCount > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "messages_trimmed",
+				attribute.Int("trimmed_count", trimResult.TrimmedCount),
+				attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
+				attribute.Int("context_length", contextLength),
+				attribute.Int("tools_tokens", budget.ToolsTokens),
+			)
+			request.Messages = trimResult.Messages
+		}
+	}
+
+	// Log final content size AFTER all trimming for accurate debugging
+	finalContentLength := 0
+	for _, msg := range request.Messages {
+		finalContentLength += len(msg.Content)
+		for _, part := range msg.MultiContent {
+			finalContentLength += len(part.Text)
+		}
+	}
+	trimLog := logger.GetLogger()
+	trimLog.Info().
+		Str("route", "/v1/chat/completions").
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Int("messages_after_trim", len(request.Messages)).
+		Int("content_length_after_trim", finalContentLength).
+		Int("context_length", contextLength).
+		Bool("stream", request.Stream).
+		Bool("trimmed", wasTrimmed).
+		Msg("chat completion ready for LLM (after trimming)")
 
 	var response *openai.ChatCompletionResponse
 
@@ -414,6 +508,7 @@ func (h *ChatHandler) CreateChatCompletion(
 		Response:          response,
 		ConversationID:    conversationID,
 		ConversationTitle: conversationTitle,
+		Trimmed:           wasTrimmed,
 	}, nil
 }
 
