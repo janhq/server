@@ -133,13 +133,35 @@ func (chatCompletionRoute *ChatCompletionRoute) PostCompletion(reqCtx *gin.Conte
 			return
 		}
 
-		// For other errors, return fallback response
+		// Check if it's a NOT_FOUND error (conversation not found, etc.) - return proper error
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+			log.Debug().
+				Err(err).
+				Str("route", "/v1/chat/completions").
+				Msg("[DEBUG] returning not found error response")
+			responses.HandleNewError(reqCtx, platformerrors.ErrorTypeNotFound, err.Error(), "conv-not-found-001")
+			return
+		}
+
+		// Check if it's an internal/server error that's NOT from LLM - return proper error
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeForbidden) ||
+			platformerrors.IsErrorType(err, platformerrors.ErrorTypeUnauthorized) ||
+			platformerrors.IsErrorType(err, platformerrors.ErrorTypeConflict) {
+			log.Debug().
+				Err(err).
+				Str("route", "/v1/chat/completions").
+				Msg("[DEBUG] returning platform error response")
+			responses.HandleError(reqCtx, err, err.Error())
+			return
+		}
+
+		// Only for LLM/model communication errors, return fallback response
 		log.Warn().
 			Err(err).
 			Str("route", "/v1/chat/completions").
 			Str("model", request.Model).
 			Str("conversation_id", conversationID).
-			Msg("[DEBUG] returning fallback response due to error")
+			Msg("[DEBUG] returning fallback response due to LLM error")
 
 		fallback := chatCompletionRoute.chatHandler.BuildFallbackResponse(request.Model)
 		chatResponse := chatresponses.NewChatCompletionResponse(fallback, "", nil, false)

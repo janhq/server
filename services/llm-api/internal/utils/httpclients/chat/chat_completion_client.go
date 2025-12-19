@@ -114,6 +114,11 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 	// Sanitize messages to remove invalid parts that cause provider validation errors
 	request.Messages = SanitizeMessages(request.Messages)
 
+	// Clear ToolChoice if there are no tools - providers reject tool_choice without tools
+	if len(request.Tools) == 0 {
+		request.ToolChoice = nil
+	}
+
 	// Start OpenTelemetry span for tracking
 	ctx, span := otel.Tracer("chat-completion-client").Start(ctx, "CreateChatCompletion",
 		trace.WithSpanKind(trace.SpanKindClient),
@@ -535,6 +540,11 @@ func (c *ChatCompletionClient) errorFromResponse(ctx context.Context, resp *rest
 func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey string, request CompletionRequest, opts ...StreamOption) (*resty.Response, error) {
 	// Sanitize messages to remove invalid parts that cause provider validation errors
 	request.Messages = SanitizeMessages(request.Messages)
+
+	// Clear ToolChoice if there are no tools - providers reject tool_choice without tools
+	if len(request.Tools) == 0 {
+		request.ToolChoice = nil
+	}
 
 	log.Debug().
 		Str("provider", c.name).
