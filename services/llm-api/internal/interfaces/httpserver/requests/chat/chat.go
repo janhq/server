@@ -62,9 +62,12 @@ func (p *FlexibleContentPart) ToOpenAIChatMessagePart() openai.ChatMessagePart {
 				Text: p.Text,
 			}
 		}
+		// Return empty part - will be filtered out by caller
+		// Note: We can't return nil, so we return an empty image part which will be filtered
+		// because empty text parts with omitempty cause {"type": "text"} without text field
+		// which fails validation on some LLM providers
 		return openai.ChatMessagePart{
-			Type: openai.ChatMessagePartTypeText,
-			Text: "",
+			Type: openai.ChatMessagePartTypeImageURL, // Will be filtered out by caller
 		}
 	}
 }
@@ -83,6 +86,12 @@ func parseFlexibleContentParts(jsonContent string) ([]openai.ChatMessagePart, er
 		// Filter out empty image parts (no URL)
 		if part.Type == openai.ChatMessagePartTypeImageURL && (part.ImageURL == nil || part.ImageURL.URL == "") {
 			log.Warn().Str("original_type", fp.Type).Msg("Skipping empty image part with no URL/data")
+			continue
+		}
+		// Filter out empty text parts (empty Text field would cause validation errors
+		// because go-openai uses omitempty, resulting in {"type": "text"} without text field)
+		if part.Type == openai.ChatMessagePartTypeText && part.Text == "" {
+			log.Warn().Str("original_type", fp.Type).Msg("Skipping empty text part with no content")
 			continue
 		}
 		result = append(result, part)

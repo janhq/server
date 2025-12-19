@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -37,30 +38,47 @@ func (m *DeepResearchModule) Name() string {
 // 2. Module is not disabled
 func (m *DeepResearchModule) ShouldApply(ctx context.Context, promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
 	if ctx == nil || ctx.Err() != nil {
+		log.Debug().Msg("[DEBUG] DeepResearchModule.ShouldApply: context is nil or cancelled")
 		return false
 	}
 	if promptCtx == nil || promptCtx.Preferences == nil {
+		log.Debug().Msg("[DEBUG] DeepResearchModule.ShouldApply: promptCtx or Preferences is nil")
 		return false
 	}
 
 	// Check if module is disabled
 	if isModuleDisabled(promptCtx.Preferences, m.Name()) {
+		log.Debug().Msg("[DEBUG] DeepResearchModule.ShouldApply: module is disabled via preferences")
 		return false
 	}
 
 	// Check if deep_research is enabled in preferences
 	deepResearch, ok := promptCtx.Preferences["deep_research"]
 	if !ok {
+		log.Debug().
+			Interface("preferences", promptCtx.Preferences).
+			Msg("[DEBUG] DeepResearchModule.ShouldApply: deep_research not found in preferences")
 		return false
 	}
+
+	log.Debug().
+		Interface("deep_research_value", deepResearch).
+		Str("deep_research_type", fmt.Sprintf("%T", deepResearch)).
+		Msg("[DEBUG] DeepResearchModule.ShouldApply: found deep_research in preferences")
 
 	// Handle different types
 	switch v := deepResearch.(type) {
 	case bool:
+		log.Debug().Bool("result", v).Msg("[DEBUG] DeepResearchModule.ShouldApply: returning bool value")
 		return v
 	case string:
-		return strings.ToLower(v) == "true"
+		result := strings.ToLower(v) == "true"
+		log.Debug().Bool("result", result).Msg("[DEBUG] DeepResearchModule.ShouldApply: returning parsed string value")
+		return result
 	default:
+		log.Debug().
+			Str("type", fmt.Sprintf("%T", deepResearch)).
+			Msg("[DEBUG] DeepResearchModule.ShouldApply: unsupported type, returning false")
 		return false
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"jan-server/services/llm-api/internal/config"
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/utils/crypto"
@@ -22,12 +24,29 @@ func NewInferenceProvider() *InferenceProvider {
 }
 
 func (ip *InferenceProvider) GetChatCompletionClient(ctx context.Context, provider *domainmodel.Provider) (*chatclient.ChatCompletionClient, error) {
+	log.Debug().
+		Str("provider_id", provider.PublicID).
+		Str("provider_name", provider.DisplayName).
+		Str("base_url", provider.BaseURL).
+		Str("provider_kind", string(provider.Kind)).
+		Msg("[DEBUG] GetChatCompletionClient: creating client for provider")
+
 	client, err := ip.createRestyClient(ctx, provider)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("provider_id", provider.PublicID).
+			Str("provider_name", provider.DisplayName).
+			Msg("[DEBUG] GetChatCompletionClient: failed to create resty client")
 		return nil, err
 	}
 
 	clientName := provider.DisplayName
+	log.Debug().
+		Str("provider_name", clientName).
+		Str("base_url", provider.BaseURL).
+		Msg("[DEBUG] GetChatCompletionClient: client created successfully")
+
 	return chatclient.NewChatCompletionClient(client, clientName, provider.BaseURL), nil
 }
 
