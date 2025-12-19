@@ -29,7 +29,7 @@ const (
 	MinMessagesTokenFloor = 1000
 
 	// SafetyMarginRatio reserves space for response and overhead (15% margin for response).
-	SafetyMarginRatio = 0.75
+	SafetyMarginRatio = 0.66
 
 	// FixedOverheadTokens is fixed overhead for API request structure.
 	FixedOverheadTokens = 100
@@ -48,6 +48,10 @@ const (
 
 	// MaxMultiContentTextTokens is max tokens per text part in multi-content arrays.
 	MaxMultiContentTextTokens = 6000
+
+	// Image limits to prevent context overflow
+	MaxToolImages = 6 // Maximum images across all tool messages
+	MaxUserImages = 15 // Maximum images across all user messages
 
 	// Image token estimates (conservative for safety)
 	ImageTokensLowRes  = 85   // Low resolution image
@@ -670,6 +674,122 @@ type TrimMessagesResult struct {
 	Messages        []openai.ChatCompletionMessage
 	TrimmedCount    int
 	EstimatedTokens int
+}
+
+// imageLocation tracks the position of an image in the messages array.
+type imageLocation struct {
+	messageIdx int
+	partIdx    int
+}
+
+// LimitImagesInMessages limits the number of images in messages to prevent context overflow.
+// It keeps the most recent images and removes older ones.
+// - maxToolImages: maximum images across all tool messages (default: MaxToolImages = 10)
+// - maxUserImages: maximum images across all user messages (default: MaxUserImages = 15)
+// Images are removed from oldest messages first.
+func LimitImagesInMessages(messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
+	log := logger.GetLogger()
+
+	// Create a deep copy to avoid modifying the original
+	result := make([]openai.ChatCompletionMessage, len(messages))
+	for i := range messages {
+		result[i] = messages[i]
+		// Deep copy MultiContent if present
+		if len(messages[i].MultiContent) > 0 {
+			result[i].MultiContent = make([]openai.ChatMessagePart, len(messages[i].MultiContent))
+			copy(result[i].MultiContent, messages[i].MultiContent)
+		}
+	}
+
+	// Count images by role, tracking message index and part index for each image
+	var toolImages []imageLocation
+	var userImages []imageLocation
+
+	for i := len(result) - 1; i >= 0; i-- {
+		msg := &result[i]
+		if len(msg.MultiContent) == 0 {
+			continue
+		}
+
+		for j := len(msg.MultiContent) - 1; j >= 0; j-- {
+			part := msg.MultiContent[j]
+			if part.Type == openai.ChatMessagePartTypeImageURL && part.ImageURL != nil && part.ImageURL.URL != "" {
+				loc := imageLocation{messageIdx: i, partIdx: j}
+				if msg.Role == "tool" {
+					toolImages = append(toolImages, loc)
+				} else if msg.Role == "user" {
+					userImages = append(userImages, loc)
+				}
+			}
+		}
+	}
+
+	// Reverse to get oldest first (we collected newest first by iterating backwards)
+	reverseImageLocations(toolImages)
+	reverseImageLocations(userImages)
+
+	toolImagesRemoved := 0
+	userImagesRemoved := 0
+
+	// Remove excess tool images (oldest first)
+	if len(toolImages) > MaxToolImages {
+		excessCount := len(toolImages) - MaxToolImages
+		for i := 0; i < excessCount; i++ {
+			loc := toolImages[i]
+			result[loc.messageIdx].MultiContent = removePartAtIndex(result[loc.messageIdx].MultiContent, loc.partIdx)
+			// Adjust indices for subsequent removals in the same message
+			for j := i + 1; j < len(toolImages); j++ {
+				if toolImages[j].messageIdx == loc.messageIdx && toolImages[j].partIdx > loc.partIdx {
+					toolImages[j].partIdx--
+				}
+			}
+			toolImagesRemoved++
+		}
+	}
+
+	// Remove excess user images (oldest first)
+	if len(userImages) > MaxUserImages {
+		excessCount := len(userImages) - MaxUserImages
+		for i := 0; i < excessCount; i++ {
+			loc := userImages[i]
+			result[loc.messageIdx].MultiContent = removePartAtIndex(result[loc.messageIdx].MultiContent, loc.partIdx)
+			// Adjust indices for subsequent removals in the same message
+			for j := i + 1; j < len(userImages); j++ {
+				if userImages[j].messageIdx == loc.messageIdx && userImages[j].partIdx > loc.partIdx {
+					userImages[j].partIdx--
+				}
+			}
+			userImagesRemoved++
+		}
+	}
+
+	if toolImagesRemoved > 0 || userImagesRemoved > 0 {
+		log.Info().
+			Int("tool_images_before", len(toolImages)).
+			Int("tool_images_removed", toolImagesRemoved).
+			Int("tool_images_after", len(toolImages)-toolImagesRemoved).
+			Int("user_images_before", len(userImages)).
+			Int("user_images_removed", userImagesRemoved).
+			Int("user_images_after", len(userImages)-userImagesRemoved).
+			Msg("limited images in messages to prevent context overflow")
+	}
+
+	return result
+}
+
+// reverseImageLocations reverses a slice of imageLocation in place.
+func reverseImageLocations(locs []imageLocation) {
+	for i, j := 0, len(locs)-1; i < j; i, j = i+1, j-1 {
+		locs[i], locs[j] = locs[j], locs[i]
+	}
+}
+
+// removePartAtIndex removes the element at index i from the slice.
+func removePartAtIndex(parts []openai.ChatMessagePart, i int) []openai.ChatMessagePart {
+	if i < 0 || i >= len(parts) {
+		return parts
+	}
+	return append(parts[:i], parts[i+1:]...)
 }
 
 // TrimMessagesToFitBudget trims messages using the provided TokenBudget.

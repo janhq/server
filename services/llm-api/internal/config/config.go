@@ -84,6 +84,9 @@ type Config struct {
 	MediaResolveURL     string        `env:"MEDIA_RESOLVE_URL" envDefault:"http://kong:8000/media/v1/media/resolve"`
 	MediaResolveTimeout time.Duration `env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s"`
 
+	// Streaming timeout for LLM responses (increase for large/complex requests)
+	StreamTimeout time.Duration `env:"STREAM_TIMEOUT" envDefault:"600s"`
+
 	// Prompt Orchestration
 	PromptOrchestrationEnabled         bool `env:"PROMPT_ORCHESTRATION_ENABLED" envDefault:"false"`
 	PromptOrchestrationEnableMemory    bool `env:"PROMPT_ORCHESTRATION_MEMORY" envDefault:"false"`

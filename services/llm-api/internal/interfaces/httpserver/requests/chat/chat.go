@@ -14,6 +14,7 @@ import (
 // - OpenAI format: {"type": "image_url", "image_url": {"url": "..."}}
 // - Client format (browser-mcp): {"type": "image", "data": "data:image/png;base64,jan_*", "mimeType": "image/png"}
 // - Text format: {"type": "text", "text": "..."}
+// - Tool result format: {"type": "tool_result", "tool_result": "..."}
 type FlexibleContentPart struct {
 	Type string `json:"type"`
 	Text string `json:"text,omitempty"`
@@ -23,6 +24,8 @@ type FlexibleContentPart struct {
 	Data        string `json:"data,omitempty"`
 	MimeType    string `json:"mimeType,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Tool result content (browser-mcp, etc.)
+	ToolResult string `json:"tool_result,omitempty"`
 }
 
 // ToOpenAIChatMessagePart converts FlexibleContentPart to openai.ChatMessagePart
@@ -32,6 +35,13 @@ func (p *FlexibleContentPart) ToOpenAIChatMessagePart() openai.ChatMessagePart {
 		return openai.ChatMessagePart{
 			Type: openai.ChatMessagePartTypeText,
 			Text: p.Text,
+		}
+	case "tool_result":
+		// Tool result format (browser-mcp, etc.) - convert to text part
+		// The tool_result field contains the actual content
+		return openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeText,
+			Text: p.ToolResult,
 		}
 	case "image_url":
 		// Already in OpenAI format
