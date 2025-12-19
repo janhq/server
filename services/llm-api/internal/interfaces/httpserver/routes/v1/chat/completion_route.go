@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -103,15 +104,43 @@ func (chatCompletionRoute *ChatCompletionRoute) PostCompletion(reqCtx *gin.Conte
 		Msg("chat completion request received")
 
 	// Delegate to chat handler
+	log.Debug().
+		Str("route", "/v1/chat/completions").
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Bool("stream", request.Stream).
+		Msg("[DEBUG] delegating to chat handler")
+
 	result, err := chatCompletionRoute.chatHandler.CreateChatCompletion(reqCtx.Request.Context(), reqCtx, user.ID, request)
 	if err != nil {
+		// Log the full error for debugging
+		log.Error().
+			Err(err).
+			Str("route", "/v1/chat/completions").
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Bool("stream", request.Stream).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] chat completion failed with error")
+
 		// Check if it's a validation error (user input too large)
 		if platformerrors.IsValidationError(err) {
+			log.Debug().
+				Err(err).
+				Str("route", "/v1/chat/completions").
+				Msg("[DEBUG] returning validation error response")
 			responses.HandleError(reqCtx, err, err.Error())
 			return
 		}
 
 		// For other errors, return fallback response
+		log.Warn().
+			Err(err).
+			Str("route", "/v1/chat/completions").
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Msg("[DEBUG] returning fallback response due to error")
+
 		fallback := chatCompletionRoute.chatHandler.BuildFallbackResponse(request.Model)
 		chatResponse := chatresponses.NewChatCompletionResponse(fallback, "", nil, false)
 		reqCtx.JSON(http.StatusOK, chatResponse)
