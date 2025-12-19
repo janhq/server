@@ -1025,24 +1025,7 @@ func (h *ChatHandler) getOrCreateConversation(
 	if convRef != nil && convRef.GetID() != "" {
 		conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, convRef.GetID(), userID)
 		if err != nil {
-			// If conversation not found, create it with the provided ID
-			// This supports clients that have local conversations not yet synced to server
-			if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
-				log := logger.GetLogger()
-				log.Info().
-					Str("public_id", convRef.GetID()).
-					Uint("user_id", userID).
-					Msg("Conversation not found, creating with provided ID")
-				// Create conversation with the provided public ID
-				newConv := conversation.NewConversationWithProject(convRef.GetID(), userID, nil, nil, nil)
-				newConv.Referrer = &referrer
-				createdConv, createErr := h.conversationService.CreateConversation(ctx, newConv)
-				if createErr != nil {
-					return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, createErr, "failed to create conversation with provided ID")
-				}
-				return createdConv, nil
-			}
-			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "conversation not found for this user")
 		}
 
 		// Return existing conversation with its original referrer
