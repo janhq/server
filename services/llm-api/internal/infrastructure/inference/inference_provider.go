@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -17,10 +18,18 @@ import (
 	"resty.dev/v3"
 )
 
-type InferenceProvider struct{}
+type InferenceProvider struct {
+	streamTimeout time.Duration
+}
 
-func NewInferenceProvider() *InferenceProvider {
-	return &InferenceProvider{}
+func NewInferenceProvider(cfg *config.Config) *InferenceProvider {
+	timeout := 300 * time.Second // default 5 minutes
+	if cfg != nil && cfg.StreamTimeout > 0 {
+		timeout = cfg.StreamTimeout
+	}
+	return &InferenceProvider{
+		streamTimeout: timeout,
+	}
 }
 
 func (ip *InferenceProvider) GetChatCompletionClient(ctx context.Context, provider *domainmodel.Provider) (*chatclient.ChatCompletionClient, error) {
@@ -47,7 +56,7 @@ func (ip *InferenceProvider) GetChatCompletionClient(ctx context.Context, provid
 		Str("base_url", provider.BaseURL).
 		Msg("[DEBUG] GetChatCompletionClient: client created successfully")
 
-	return chatclient.NewChatCompletionClient(client, clientName, provider.BaseURL), nil
+	return chatclient.NewChatCompletionClient(client, clientName, provider.BaseURL, chatclient.WithStreamTimeout(ip.streamTimeout)), nil
 }
 
 func (ip *InferenceProvider) GetChatModelClient(ctx context.Context, provider *domainmodel.Provider) (*chatclient.ChatModelClient, error) {

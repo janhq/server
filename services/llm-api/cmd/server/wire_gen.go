@@ -86,7 +86,7 @@ func CreateApplication() (*Application, error) {
 	service := user.NewService(repository)
 	authHandler := authhandler.NewAuthHandler(service, zerologLogger)
 	modelRoute := model2.NewModelRoute(modelHandler, modelCatalogHandler, modelProviderRoute, authHandler)
-	inferenceProvider := inference.NewInferenceProvider()
+	inferenceProvider := inference.NewInferenceProvider(config)
 	providerHandler := modelhandler.NewProviderHandler(providerService, providerModelService, inferenceProvider)
 	conversationRepository := conversationrepo.NewConversationGormRepository(database)
 	conversationService := conversation.NewConversationService(conversationRepository)
@@ -170,7 +170,7 @@ func CreateDataInitializer() (*DataInitializer, error) {
 	providerModelService := model.NewProviderModelService(providerModelRepository, modelCatalogRepository)
 	modelCatalogService := model.NewModelCatalogService(modelCatalogRepository)
 	providerService := model.NewProviderService(providerRepository, providerModelService, modelCatalogService)
-	inferenceProvider := inference.NewInferenceProvider()
+	inferenceProvider := inference.NewInferenceProvider(config)
 	promptTemplateRepository := prompttemplaterepo.NewPromptTemplateGormRepository(database)
 	service := prompttemplate.NewService(promptTemplateRepository)
 	dataInitializer := &DataInitializer{

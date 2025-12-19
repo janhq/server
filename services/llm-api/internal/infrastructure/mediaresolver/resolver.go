@@ -70,16 +70,19 @@ func NewResolver(cfg *config.Config, log zerolog.Logger, keycloakClient *keycloa
 }
 
 func (r *httpResolver) ResolveMessages(ctx context.Context, messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, bool, error) {
-	// Debug: Check for placeholders
-	if r.log.Debug().Enabled() {
-		for i, msg := range messages {
-			if matchesPlaceholder(msg.Content) {
-				r.log.Debug().Int("message_index", i).Str("content_preview", msg.Content[:min(100, len(msg.Content))]).Msg("found placeholder in message content")
-			}
-			for j, part := range msg.MultiContent {
-				if part.Type == openai.ChatMessagePartTypeImageURL && part.ImageURL != nil && matchesPlaceholder(part.ImageURL.URL) {
-					r.log.Debug().Int("message_index", i).Int("part_index", j).Str("url_preview", part.ImageURL.URL[:min(100, len(part.ImageURL.URL))]).Msg("found placeholder in image URL")
-				}
+	// Debug: Check for placeholders and log them
+	var placeholderIDs []string
+	for i, msg := range messages {
+		if matchesPlaceholder(msg.Content) {
+			ids := extractPlaceholderIDs(msg.Content)
+			placeholderIDs = append(placeholderIDs, ids...)
+			r.log.Debug().Int("message_index", i).Strs("placeholder_ids", ids).Msg("found placeholder in message content")
+		}
+		for j, part := range msg.MultiContent {
+			if part.Type == openai.ChatMessagePartTypeImageURL && part.ImageURL != nil && matchesPlaceholder(part.ImageURL.URL) {
+				ids := extractPlaceholderIDs(part.ImageURL.URL)
+				placeholderIDs = append(placeholderIDs, ids...)
+				r.log.Debug().Int("message_index", i).Int("part_index", j).Strs("placeholder_ids", ids).Str("url", part.ImageURL.URL).Msg("found placeholder in image URL")
 			}
 		}
 	}
@@ -89,7 +92,7 @@ func (r *httpResolver) ResolveMessages(ctx context.Context, messages []openai.Ch
 		return messages, false, nil
 	}
 
-	r.log.Debug().Int("message_count", len(messages)).Msg("resolving media placeholders via media-api")
+	r.log.Info().Int("message_count", len(messages)).Int("placeholder_count", len(placeholderIDs)).Strs("placeholder_ids", placeholderIDs).Msg("resolving media placeholders via media-api")
 
 	requestBody := map[string]interface{}{
 		"payload": map[string]interface{}{
@@ -196,6 +199,18 @@ func matchesPlaceholder(value string) bool {
 		return false
 	}
 	return placeholderPattern.MatchString(value)
+}
+
+// extractPlaceholderIDs extracts all jan_* placeholder IDs from a string
+func extractPlaceholderIDs(value string) []string {
+	matches := placeholderPattern.FindAllStringSubmatch(value, -1)
+	ids := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if len(match) >= 3 {
+			ids = append(ids, match[2]) // match[2] is the jan_* ID
+		}
+	}
+	return ids
 }
 
 func (r *httpResolver) resolveAuthorization(ctx context.Context) string {

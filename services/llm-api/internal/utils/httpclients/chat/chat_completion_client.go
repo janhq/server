@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	requestTimeout       = 120 * time.Second
+	defaultStreamTimeout = 600 * time.Second // Default to 10 minutes for long requests
 	channelBufferSize    = 100
 	errorBufferSize      = 10
 	dataPrefix           = "data: "
@@ -73,9 +73,10 @@ func WithAcceptEncodingIdentity() StreamOption {
 }
 
 type ChatCompletionClient struct {
-	client  *resty.Client
-	baseURL string
-	name    string
+	client        *resty.Client
+	baseURL       string
+	name          string
+	streamTimeout time.Duration
 }
 
 // CompletionRequest extends the OpenAI chat request with provider-specific fields.
@@ -102,12 +103,29 @@ type toolCallAccumulator struct {
 	Complete bool
 }
 
-func NewChatCompletionClient(client *resty.Client, name, baseURL string) *ChatCompletionClient {
-	return &ChatCompletionClient{
-		client:  client,
-		baseURL: normalizeBaseURL(baseURL),
-		name:    name,
+// ClientOption is a functional option for configuring ChatCompletionClient
+type ClientOption func(*ChatCompletionClient)
+
+// WithStreamTimeout sets a custom stream timeout
+func WithStreamTimeout(timeout time.Duration) ClientOption {
+	return func(c *ChatCompletionClient) {
+		if timeout > 0 {
+			c.streamTimeout = timeout
+		}
 	}
+}
+
+func NewChatCompletionClient(client *resty.Client, name, baseURL string, opts ...ClientOption) *ChatCompletionClient {
+	c := &ChatCompletionClient{
+		client:        client,
+		baseURL:       normalizeBaseURL(baseURL),
+		name:          name,
+		streamTimeout: defaultStreamTimeout,
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey string, request CompletionRequest) (*openai.ChatCompletionResponse, error) {
@@ -310,7 +328,7 @@ func (c *ChatCompletionClient) StreamChatCompletionToContextWithCallback(reqCtx 
 		IncludeUsage: true,
 	}
 
-	streamCtx, cancel := context.WithTimeout(ctx, requestTimeout)
+	streamCtx, cancel := context.WithTimeout(ctx, c.streamTimeout)
 	defer cancel()
 
 	c.SetupSSEHeaders(reqCtx)
