@@ -200,9 +200,17 @@ func (s *ConversationService) AddItemsToConversation(ctx context.Context, conv *
 		return []Item{}, nil
 	}
 
-	// Validate branch exists (for now, only MAIN is supported)
+	// Default to MAIN branch if not specified
+	if branchName == "" {
+		branchName = BranchMain
+	}
+
+	// Validate branch exists for non-MAIN branches
 	if branchName != BranchMain {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, fmt.Sprintf("branch not found: %s", branchName), nil, "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b")
+		branch, err := s.repo.GetBranch(ctx, conv.ID, branchName)
+		if err != nil || branch == nil {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeNotFound, fmt.Sprintf("branch not found: %s", branchName), nil, "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b")
+		}
 	}
 
 	// Get current item count to determine starting sequence number
@@ -229,15 +237,9 @@ func (s *ConversationService) AddItemsToConversation(ctx context.Context, conv *
 		itemPtrs[i] = &items[i]
 	}
 
-	// Add items to repository
-	if branchName == BranchMain || branchName == "" {
-		if err := s.repo.BulkAddItems(ctx, conv.ID, itemPtrs); err != nil {
-			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to add items")
-		}
-	} else {
-		if err := s.repo.BulkAddItemsToBranch(ctx, conv.ID, branchName, itemPtrs); err != nil {
-			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to add items to branch")
-		}
+	// Add items to repository - use branch-aware method for all branches
+	if err := s.repo.BulkAddItemsToBranch(ctx, conv.ID, branchName, itemPtrs); err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to add items to branch")
 	}
 
 	// Update conversation's updated_at timestamp

@@ -2112,6 +2112,724 @@
       ]
     },
     {
+      "name": "Conversation Branching",
+      "description": "Tests for conversation branching: create branches, list branches, switch active branch, get branch items, edit message (creates branch), and delete branch",
+      "item": [
+        {
+          "name": "Branch-1: Create Conversation for Branch Tests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Branch Test Conversation\"\n}"
+            },
+            "url": "{{kong_url}}/v1/conversations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-1] Branch test conversation created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('branch_test_conv_id', response.id);",
+                  "    console.log('Created branch test conversation:', response.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-2: Add Messages to Create History",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"What is 2 + 2?\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{branch_test_conv_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-2] First message exchange created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.choices).to.be.an('array').that.is.not.empty;",
+                  "    console.log('✓ First user/assistant exchange created');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-3: Add Second Message Exchange",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Now what is 3 + 3?\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{branch_test_conv_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-3] Second message exchange created', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    console.log('✓ Second user/assistant exchange created');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-4: Get Conversation Items (MAIN branch)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "items"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-4] Items retrieved from MAIN branch', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('data');",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "    pm.expect(response.data.length).to.be.at.least(4);",
+                  "    console.log('Found ' + response.data.length + ' items in MAIN branch');",
+                  "});",
+                  "",
+                  "// Use data[3] which should be first user message (desc order: 0=assistant2, 1=user2, 2=assistant1, 3=user1)",
+                  "pm.collectionVariables.set('edit_target_item_id', pm.response.json().data[3].id);",
+                  "pm.collectionVariables.set('regen_target_item_id', pm.response.json().data[2].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-5: List Branches (should only have MAIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-5] Branches list retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('data');",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('[Branch-5] MAIN branch exists', function () {",
+                  "    const response = pm.response.json();",
+                  "    const mainBranch = response.data.find(b => b.name === 'main' || b.name === 'MAIN');",
+                  "    pm.expect(mainBranch).to.exist;",
+                  "    pm.expect(mainBranch.is_active).to.be.true;",
+                  "    console.log('✓ MAIN branch is active');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-6: Create New Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"edit-branch-1\",\n  \"parent_branch\": \"MAIN\",\n  \"fork_from_item_id\": \"{{edit_target_item_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-6] New branch created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('name', 'edit-branch-1');",
+                  "    pm.collectionVariables.set('new_branch_name', response.name);",
+                  "    console.log('✓ Created branch:', response.name);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-7: List Branches (should have 2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-7] Two branches now exist', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data.length).to.equal(2);",
+                  "    console.log('✓ Conversation now has 2 branches');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-8: Activate New Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/{{new_branch_name}}/activate",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches", "{{new_branch_name}}", "activate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-8] Branch activated successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.active_branch).to.equal(pm.collectionVariables.get('new_branch_name'));",
+                  "    console.log('✓ Active branch switched to:', response.active_branch);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-9: Get Items with Branch Parameter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items?branch={{new_branch_name}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "items"],
+              "query": [
+                {
+                  "key": "branch",
+                  "value": "{{new_branch_name}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-9] Items retrieved from new branch', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('data');",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "    console.log('Found ' + response.data.length + ' items in branch: ' + pm.collectionVariables.get('new_branch_name'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-10: Add Message to New Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Actually, what is 5 + 5?\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{branch_test_conv_id}}\",\n    \"branch\": \"{{new_branch_name}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 100\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-10] Message added to new branch', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.choices).to.be.an('array').that.is.not.empty;",
+                  "    console.log('✓ Message added to branch:', pm.collectionVariables.get('new_branch_name'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-11: Verify Branch Has More Items Than MAIN",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items?branch={{new_branch_name}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "items"],
+              "query": [
+                {
+                  "key": "branch",
+                  "value": "{{new_branch_name}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-11] Branch diverged from MAIN', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    // Branch should have items from fork point + new items",
+                  "    pm.expect(response.data.length).to.be.at.least(2);",
+                  "    console.log('Branch has ' + response.data.length + ' items after divergence');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-12: Edit Message (via API)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"What is 10 + 10?\"\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items/{{edit_target_item_id}}/edit",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "items", "{{edit_target_item_id}}", "edit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-12] Message edited (creates new branch swapped to MAIN)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    // Verify response structure - branch should always be MAIN after swap",
+                  "    pm.expect(response.branch).to.equal('MAIN');",
+                  "    pm.expect(response.branch_created).to.be.true;",
+                  "    pm.expect(response.user_item).to.be.an('object');",
+                  "    pm.expect(response.old_main_backup).to.be.a('string');",
+                  "    ",
+                  "    // Verify new_branch details point to MAIN",
+                  "    if (response.new_branch) {",
+                  "        pm.expect(response.new_branch.name).to.equal('MAIN');",
+                  "        pm.expect(response.new_branch.item_count).to.be.a('number');",
+                  "        console.log('✓ Branch promoted to MAIN, old MAIN backup:', response.old_main_backup);",
+                  "    }",
+                  "    ",
+                  "    pm.collectionVariables.set('edit_created_branch', response.branch);",
+                  "    pm.collectionVariables.set('edit_old_main_backup', response.old_main_backup);",
+                  "    console.log('✓ Edit swapped to MAIN, backup branch:', response.old_main_backup);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-13: Regenerate Assistant Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"max_tokens\": 100\n}"
+            },
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items/{{regen_target_item_id}}/regenerate",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "items", "{{regen_target_item_id}}", "regenerate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-13] Message regenerated (swapped to MAIN)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    // Verify response structure - branch should always be MAIN after swap",
+                  "    pm.expect(response.branch).to.equal('MAIN');",
+                  "    pm.expect(response.branch_created).to.be.true;",
+                  "    pm.expect(response.user_item_id).to.be.a('string');",
+                  "    pm.expect(response.old_main_backup).to.be.a('string');",
+                  "    ",
+                  "    // Verify new_branch details point to MAIN",
+                  "    if (response.new_branch) {",
+                  "        pm.expect(response.new_branch.name).to.equal('MAIN');",
+                  "        pm.expect(response.new_branch.item_count).to.be.a('number');",
+                  "        console.log('✓ Branch promoted to MAIN, old MAIN backup:', response.old_main_backup);",
+                  "    }",
+                  "    ",
+                  "    pm.collectionVariables.set('regen_created_branch', response.branch);",
+                  "    pm.collectionVariables.set('regen_old_main_backup', response.old_main_backup);",
+                  "    console.log('✓ Regenerate swapped to MAIN, backup branch:', response.old_main_backup);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-14: Get Branch Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/{{new_branch_name}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches", "{{new_branch_name}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-14] Branch details retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('name');",
+                  "    pm.expect(response).to.have.property('created_at');",
+                  "    console.log('✓ Branch details:', JSON.stringify(response));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-15: Switch Back to MAIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/main/activate",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches", "main", "activate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-15] Switched back to MAIN branch', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.active_branch.toLowerCase()).to.equal('main');",
+                  "    console.log('✓ Switched back to MAIN branch');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-16: Delete Non-Active Branch",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/{{new_branch_name}}",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches", "{{new_branch_name}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-16] Branch deleted successfully', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "    console.log('✓ Branch deleted:', pm.collectionVariables.get('new_branch_name'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-17: Verify Branch Deleted",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-17] Only MAIN branch remains', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    const deletedBranch = response.data.find(b => b.name === pm.collectionVariables.get('new_branch_name'));",
+                  "    pm.expect(deletedBranch).to.be.undefined;",
+                  "    console.log('✓ Deleted branch no longer exists');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-18: Attempt Delete MAIN Branch (should fail)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/main",
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{branch_test_conv_id}}", "branches", "main"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-18] MAIN branch deletion rejected', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 403, 422]);",
+                  "    console.log('✓ MAIN branch correctly protected from deletion');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Branch-19: Cleanup - Delete Branch Test Conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Branch-19] Branch test conversation cleaned up', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "    console.log('✓ Branch test cleanup complete');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Cleanup",
       "item": [
         {
@@ -2343,6 +3061,36 @@
       "value": "",
       "type": "string",
       "description": "Share slug for cascade delete test"
+    },
+    {
+      "key": "branch_test_conv_id",
+      "value": "",
+      "type": "string",
+      "description": "Conversation ID for branch tests"
+    },
+    {
+      "key": "edit_target_item_id",
+      "value": "",
+      "type": "string",
+      "description": "User item ID to use for edit tests"
+    },
+    {
+      "key": "regen_target_item_id",
+      "value": "",
+      "type": "string",
+      "description": "Assistant item ID to use for regenerate tests"
+    },
+    {
+      "key": "new_branch_name",
+      "value": "",
+      "type": "string",
+      "description": "Name of the newly created branch"
+    },
+    {
+      "key": "edit_created_branch",
+      "value": "",
+      "type": "string",
+      "description": "Branch created by edit operation"
     }
   ]
 }

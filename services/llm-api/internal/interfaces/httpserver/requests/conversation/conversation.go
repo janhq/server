@@ -39,6 +39,7 @@ type ListItemsQueryParams struct {
 	Include []string `form:"include"`
 	Limit   *int     `form:"limit"`
 	Order   *string  `form:"order"`
+	Branch  *string  `form:"branch"` // Filter by branch name (defaults to active branch)
 }
 
 // GetItemQueryParams represents query parameters for getting a single item
