@@ -1025,7 +1025,7 @@ func (h *ChatHandler) getOrCreateConversation(
 	if convRef != nil && convRef.GetID() != "" {
 		conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, convRef.GetID(), userID)
 		if err != nil {
-			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "conversation not found for this user")
 		}
 
 		// Return existing conversation with its original referrer
