@@ -18,6 +18,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
+	"jan-server/services/llm-api/internal/infrastructure/logger"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
 	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 	"jan-server/services/llm-api/internal/infrastructure/metrics"
@@ -41,6 +42,7 @@ type ChatCompletionResult struct {
 	Response          *openai.ChatCompletionResponse
 	ConversationID    string
 	ConversationTitle *string
+	Trimmed           bool // True if messages were trimmed to fit context
 }
 
 // ChatHandler handles chat completion requests
@@ -289,20 +291,112 @@ func (h *ChatHandler) CreateChatCompletion(
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create chat client")
 	}
 
-	// Trim messages to fit within model's context length
+	// Build token budget for context management
 	contextLength := DefaultContextLength
 	if modelCatalog != nil && modelCatalog.ContextLength != nil && *modelCatalog.ContextLength > 0 {
 		contextLength = *modelCatalog.ContextLength
 	}
-	trimResult := TrimMessagesToFitContext(request.Messages, contextLength)
-	if trimResult.TrimmedCount > 0 {
-		observability.AddSpanEvent(ctx, "messages_trimmed",
-			attribute.Int("trimmed_count", trimResult.TrimmedCount),
-			attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
-			attribute.Int("context_length", contextLength),
-		)
-		request.Messages = trimResult.Messages
+
+	// Validate user input size BEFORE any processing
+	// This returns an error if the current user input exceeds MaxUserContentTokens
+	if err := ValidateUserInputSize(request.Messages); err != nil {
+		observability.RecordError(ctx, err)
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation, err.Error(), nil, "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 	}
+
+	// Get max_tokens from request (0 if not set)
+	maxCompletionTokens := 0
+	if request.MaxTokens > 0 {
+		maxCompletionTokens = request.MaxTokens
+	}
+
+	// Track whether any trimming occurred
+	wasTrimmed := false
+
+	// Build and validate token budget
+	budget := BuildTokenBudget(contextLength, request.Tools, maxCompletionTokens)
+	if err := budget.Validate(); err != nil {
+		budgetLog := logger.GetLogger()
+		budgetLog.Warn().
+			Err(err).
+			Int("context_length", budget.ContextLength).
+			Int("tools_tokens", budget.ToolsTokens).
+			Int("max_completion_tokens", budget.MaxCompletionTokens).
+			Msg("token budget validation failed, using fallback trimming")
+		// Fall back to legacy trimming if budget validation fails
+		trimResult := TrimMessagesToFitContext(request.Messages, contextLength)
+		if trimResult.TrimmedCount > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "messages_trimmed",
+				attribute.Int("trimmed_count", trimResult.TrimmedCount),
+				attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
+				attribute.Int("context_length", contextLength),
+			)
+			request.Messages = trimResult.Messages
+		}
+	} else {
+		// Log budget for debugging
+		budgetLog := logger.GetLogger()
+		budgetLog.Info().
+			Int("context_length", budget.ContextLength).
+			Int("tools_tokens", budget.ToolsTokens).
+			Int("response_reserve", budget.ResponseReserve).
+			Int("available_for_messages", budget.AvailableForMessages).
+			Msg("token budget computed")
+
+		// First, truncate oversized user content in HISTORICAL messages (not current input)
+		userTruncatedMessages, userTruncEvents := TruncateLargeUserContent(request.Messages)
+		if len(userTruncEvents) > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "user_content_truncated",
+				attribute.Int("truncation_count", len(userTruncEvents)),
+			)
+			request.Messages = userTruncatedMessages
+		}
+
+		// Second, truncate oversized tool content (with JSON-aware parsing)
+		truncatedMessages, truncEvents := TruncateLargeToolContent(request.Messages)
+		if len(truncEvents) > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "tool_content_truncated",
+				attribute.Int("truncation_count", len(truncEvents)),
+			)
+			request.Messages = truncatedMessages
+		}
+
+		// Then trim messages using the validated budget (oldest items first)
+		trimResult := TrimMessagesToFitBudget(request.Messages, budget)
+		if trimResult.TrimmedCount > 0 {
+			wasTrimmed = true
+			observability.AddSpanEvent(ctx, "messages_trimmed",
+				attribute.Int("trimmed_count", trimResult.TrimmedCount),
+				attribute.Int("estimated_tokens", trimResult.EstimatedTokens),
+				attribute.Int("context_length", contextLength),
+				attribute.Int("tools_tokens", budget.ToolsTokens),
+			)
+			request.Messages = trimResult.Messages
+		}
+	}
+
+	// Log final content size AFTER all trimming for accurate debugging
+	finalContentLength := 0
+	for _, msg := range request.Messages {
+		finalContentLength += len(msg.Content)
+		for _, part := range msg.MultiContent {
+			finalContentLength += len(part.Text)
+		}
+	}
+	trimLog := logger.GetLogger()
+	trimLog.Info().
+		Str("route", "/v1/chat/completions").
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Int("messages_after_trim", len(request.Messages)).
+		Int("content_length_after_trim", finalContentLength).
+		Int("context_length", contextLength).
+		Bool("stream", request.Stream).
+		Bool("trimmed", wasTrimmed).
+		Msg("chat completion ready for LLM (after trimming)")
 
 	var response *openai.ChatCompletionResponse
 
@@ -414,6 +508,7 @@ func (h *ChatHandler) CreateChatCompletion(
 		Response:          response,
 		ConversationID:    conversationID,
 		ConversationTitle: conversationTitle,
+		Trimmed:           wasTrimmed,
 	}, nil
 }
 
@@ -1013,10 +1108,39 @@ func (h *ChatHandler) addCompletionToConversation(
 		return nil
 	}
 
+	// Use conversation's active branch instead of hardcoded MAIN
+	branchName := conv.ActiveBranch
+	if branchName == "" {
+		branchName = conversation.BranchMain
+	}
+
 	items := make([]conversation.Item, 0, 2)
 
-	if item := h.buildInputConversationItem(newMessages, storeReasoning, askItemID); item != nil {
-		items = append(items, *item)
+	// Build the user input item
+	userItem := h.buildInputConversationItem(newMessages, storeReasoning, askItemID)
+	
+	// Check if we should skip adding the user message (avoid duplicates after regenerate)
+	// This happens when regenerate creates a branch with the user message, then frontend
+	// triggers a new completion which would add the same user message again
+	if userItem != nil {
+		skipUserItem := false
+		
+		// Get the last item in the branch to check for duplicates
+		existingItems, err := h.conversationService.GetConversationItems(ctx, conv, branchName, nil)
+		if err == nil && len(existingItems) > 0 {
+			lastItem := existingItems[len(existingItems)-1]
+			// If the last item is a user message, check if it has the same content
+			if lastItem.Role != nil && *lastItem.Role == conversation.ItemRoleUser {
+				// Compare content - if it's the same, skip adding
+				if h.isSameMessageContent(userItem, &lastItem) {
+					skipUserItem = true
+				}
+			}
+		}
+		
+		if !skipUserItem {
+			items = append(items, *userItem)
+		}
 	}
 
 	if item := h.buildAssistantConversationItem(response, storeReasoning, completionItemID); item != nil {
@@ -1036,11 +1160,42 @@ func (h *ChatHandler) addCompletionToConversation(
 		return nil
 	}
 
-	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, conversation.BranchMain, items); err != nil {
+	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, branchName, items); err != nil {
 		return platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to add items to conversation")
 	}
 
 	return nil
+}
+
+// isSameMessageContent checks if two items have the same text content
+// Used to detect duplicate user messages after regenerate
+func (h *ChatHandler) isSameMessageContent(newItem *conversation.Item, existingItem *conversation.Item) bool {
+	if newItem == nil || existingItem == nil {
+		return false
+	}
+	
+	// Extract text content from both items
+	newText := extractTextFromContent(newItem.Content)
+	existingText := extractTextFromContent(existingItem.Content)
+	
+	// Compare normalized text (trim whitespace)
+	return strings.TrimSpace(newText) == strings.TrimSpace(existingText)
+}
+
+// extractTextFromContent extracts the text content from a slice of Content
+func extractTextFromContent(contents []conversation.Content) string {
+	for _, c := range contents {
+		if c.TextString != nil && *c.TextString != "" {
+			return *c.TextString
+		}
+		if c.Text != nil && c.Text.Text != "" {
+			return c.Text.Text
+		}
+		if c.OutputText != nil && c.OutputText.Text != "" {
+			return c.OutputText.Text
+		}
+	}
+	return ""
 }
 
 func (h *ChatHandler) buildInputConversationItem(

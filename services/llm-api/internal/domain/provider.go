@@ -20,6 +20,7 @@ import (
 var ServiceProvider = wire.NewSet(
 	// Conversation domain
 	conversation.NewConversationService,
+	conversation.NewMessageActionService,
 
 	// Project domain
 	project.NewProjectService,

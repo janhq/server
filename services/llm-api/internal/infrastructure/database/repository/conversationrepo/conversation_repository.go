@@ -2,6 +2,7 @@ package conversationrepo
 
 import (
 	"context"
+	"time"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/query"
@@ -9,6 +10,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/gormgen"
 	"jan-server/services/llm-api/internal/infrastructure/database/transaction"
 	"jan-server/services/llm-api/internal/utils/functional"
+	"jan-server/services/llm-api/internal/utils/idgen"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
 
@@ -304,13 +306,17 @@ func (repo *ConversationGormRepository) DeleteItem(ctx context.Context, conversa
 func (repo *ConversationGormRepository) CountItems(ctx context.Context, conversationID uint, branchName string) (int, error) {
 	q := repo.db.GetQuery(ctx)
 	sql := q.ConversationItem.WithContext(ctx)
-	sql = repo.applyItemFilter(q, sql, conversation.ItemFilter{
+	
+	// Apply filter with branch name for proper per-branch counting
+	filter := conversation.ItemFilter{
 		ConversationID: &conversationID,
-	})
+	}
+	if branchName != "" {
+		filter.Branch = &branchName
+	}
+	sql = repo.applyItemFilter(q, sql, filter)
 
-	// For now, we count all items since branch filtering isn't fully implemented in gormgen
 	count, err := sql.Count()
-
 	if err != nil {
 		return 0, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to count items")
 	}
@@ -327,63 +333,126 @@ func (repo *ConversationGormRepository) CreateBranch(ctx context.Context, conver
 		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "conversation not found")
 	}
 
-	// TODO: Implement branch storage in database
-	// For now, return not implemented error
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "b4c5d6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8e")
+	// Create branch in database
+	branch := dbschema.NewSchemaConversationBranch(conversationID, *metadata)
+	q := repo.db.GetQuery(ctx)
+	if err := q.ConversationBranch.WithContext(ctx).Create(branch); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to create branch")
+	}
+	return nil
 }
 
 // GetBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) GetBranch(ctx context.Context, conversationID uint, branchName string) (*conversation.BranchMetadata, error) {
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f")
+	q := repo.db.GetQuery(ctx)
+	branch, err := q.ConversationBranch.WithContext(ctx).
+		Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+		Where(q.ConversationBranch.Name.Eq(branchName)).
+		First()
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "branch not found")
+	}
+	result := branch.EtoD()
+	return &result, nil
 }
 
 // ListBranches implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) ListBranches(ctx context.Context, conversationID uint) ([]*conversation.BranchMetadata, error) {
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "d6e7f8a9-b0c1-4d2e-3f4a-5b6c7d8e9f0a")
+	q := repo.db.GetQuery(ctx)
+	branches, err := q.ConversationBranch.WithContext(ctx).
+		Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+		Order(q.ConversationBranch.CreatedAt.Asc()).
+		Find()
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to list branches")
+	}
+
+	result := make([]*conversation.BranchMetadata, len(branches))
+	for i, branch := range branches {
+		meta := branch.EtoD()
+		result[i] = &meta
+	}
+	return result, nil
 }
 
 // DeleteBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) DeleteBranch(ctx context.Context, conversationID uint, branchName string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1b")
+	// Don't allow deleting MAIN branch
+	if branchName == "MAIN" {
+		return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeValidation, "cannot delete MAIN branch", nil, "e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1b")
+	}
+
+	q := repo.db.GetQuery(ctx)
+	
+	// Delete all items in this branch first
+	_, err := q.ConversationItem.WithContext(ctx).
+		Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+		Where(q.ConversationItem.Branch.Eq(branchName)).
+		Delete()
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to delete branch items")
+	}
+
+	// Delete the branch metadata
+	_, err = q.ConversationBranch.WithContext(ctx).
+		Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+		Where(q.ConversationBranch.Name.Eq(branchName)).
+		Delete()
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to delete branch")
+	}
+	return nil
 }
 
 // SetActiveBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) SetActiveBranch(ctx context.Context, conversationID uint, branchName string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "f8a9b0c1-d2e3-4f4a-5b6c-7d8e9f0a1b2c")
+	q := repo.db.GetQuery(ctx)
+	_, err := q.Conversation.WithContext(ctx).
+		Where(q.Conversation.ID.Eq(conversationID)).
+		Update(q.Conversation.ActiveBranch, branchName)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to set active branch")
+	}
+	return nil
 }
 
 // Branch item operations
 // AddItemToBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) AddItemToBranch(ctx context.Context, conversationID uint, branchName string, item *conversation.Item) error {
-	// For now, branch operations are not implemented
-	// Default to MAIN branch behavior
-	if branchName == "MAIN" || branchName == "" {
-		return repo.AddItem(ctx, conversationID, item)
+	// Set branch on item
+	item.Branch = branchName
+	if branchName == "" {
+		item.Branch = "MAIN"
 	}
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "a9b0c1d2-e3f4-4a5b-6c7d-8e9f0a1b2c3d")
+	return repo.AddItem(ctx, conversationID, item)
 }
 
 // GetBranchItems implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) GetBranchItems(ctx context.Context, conversationID uint, branchName string, pagination *query.Pagination) ([]*conversation.Item, error) {
-	// For now, return items for MAIN branch with pagination support
-	if branchName == "MAIN" || branchName == "" {
-		q := repo.db.GetQuery(ctx)
-		sql := q.ConversationItem.WithContext(ctx)
-		sql = repo.applyItemFilter(q, sql, conversation.ItemFilter{
-			ConversationID: &conversationID,
-		})
-		sql = repo.applyItemPagination(q, sql, pagination)
-
-		rows, err := sql.Find()
-		if err != nil {
-			return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to get branch items")
-		}
-
-		return functional.Map(rows, func(item *dbschema.ConversationItem) *conversation.Item {
-			return item.EtoD()
-		}), nil
+	// Default to MAIN branch if empty
+	if branchName == "" {
+		branchName = "MAIN"
 	}
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "b0c1d2e3-f4a5-4b6c-7d8e-9f0a1b2c3d4e")
+
+	q := repo.db.GetQuery(ctx)
+	sql := q.ConversationItem.WithContext(ctx)
+	
+	// Apply filter with branch name
+	filter := conversation.ItemFilter{
+		ConversationID: &conversationID,
+		Branch:         &branchName,
+	}
+	sql = repo.applyItemFilter(q, sql, filter)
+	sql = repo.applyItemPagination(q, sql, pagination)
+
+	rows, err := sql.Find()
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to get branch items")
+	}
+
+	return functional.Map(rows, func(item *dbschema.ConversationItem) *conversation.Item {
+		return item.EtoD()
+	}), nil
 }
 
 // applyItemPagination applies pagination to item queries
@@ -418,35 +487,259 @@ func (repo *ConversationGormRepository) applyItemPagination(q *gormgen.Query, sq
 
 // BulkAddItemsToBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) BulkAddItemsToBranch(ctx context.Context, conversationID uint, branchName string, items []*conversation.Item) error {
-	// For now, branch operations are not implemented
-	// Default to MAIN branch behavior
-	if branchName == "MAIN" || branchName == "" {
-		return repo.BulkAddItems(ctx, conversationID, items)
+	if len(items) == 0 {
+		return nil
 	}
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f")
+
+	// Default to MAIN if empty
+	if branchName == "" {
+		branchName = "MAIN"
+	}
+
+	// Set branch on all items
+	for _, item := range items {
+		item.Branch = branchName
+	}
+
+	// Use existing BulkAddItems - it already handles the conversion
+	return repo.BulkAddItems(ctx, conversationID, items)
 }
 
 // ForkBranch implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) ForkBranch(ctx context.Context, conversationID uint, sourceBranch, newBranch string, fromItemID string, description *string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "branch operations not yet implemented in database layer", nil, "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a")
+	// Get source branch items up to the fork point
+	sourceItems, err := repo.GetBranchItems(ctx, conversationID, sourceBranch, nil)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to get source branch items")
+	}
+
+	// Find fork point
+	forkIndex := -1
+	for i, item := range sourceItems {
+		if item.PublicID == fromItemID {
+			forkIndex = i
+			break
+		}
+	}
+
+	if forkIndex == -1 && fromItemID != "" {
+		return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotFound, "fork item not found", nil, "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a")
+	}
+
+	// Create branch metadata
+	now := time.Now()
+	metadata := &conversation.BranchMetadata{
+		Name:             newBranch,
+		Description:      description,
+		ParentBranch:     &sourceBranch,
+		ForkedAt:         &now,
+		ForkedFromItemID: &fromItemID,
+		ItemCount:        0,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+
+	if err := repo.CreateBranch(ctx, conversationID, newBranch, metadata); err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to create branch")
+	}
+
+	// Copy items up to fork point to new branch
+	if forkIndex >= 0 {
+		itemsToCopy := make([]*conversation.Item, forkIndex+1)
+		for i := 0; i <= forkIndex; i++ {
+			itemCopy := *sourceItems[i]
+			itemCopy.ID = 0 // Reset ID for new insert
+			// Generate new PublicID for the copied item (PublicID has unique constraint)
+			newPublicID, err := idgen.GenerateSecureID("msg", 16)
+			if err != nil {
+				return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to generate item ID")
+			}
+			itemCopy.PublicID = newPublicID
+			itemCopy.Branch = newBranch
+			itemCopy.SequenceNumber = i + 1
+			itemsToCopy[i] = &itemCopy
+		}
+
+		if err := repo.BulkAddItemsToBranch(ctx, conversationID, newBranch, itemsToCopy); err != nil {
+			return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to copy items to new branch")
+		}
+
+		// Update branch item count
+		q := repo.db.GetQuery(ctx)
+		_, err = q.ConversationBranch.WithContext(ctx).
+			Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+			Where(q.ConversationBranch.Name.Eq(newBranch)).
+			Update(q.ConversationBranch.ItemCount, len(itemsToCopy))
+		if err != nil {
+			return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to update branch item count")
+		}
+	}
+
+	return nil
+}
+
+// SwapBranchToMain implements conversation.ConversationRepository.
+// It promotes the given branch to become MAIN by:
+// 1. Creating a backup for the old MAIN items (if they exist)
+// 2. Renaming the given branch to MAIN
+// 3. Setting MAIN as the active branch
+func (repo *ConversationGormRepository) SwapBranchToMain(ctx context.Context, conversationID uint, branchToPromote string) (string, error) {
+	if branchToPromote == "MAIN" {
+		// Already MAIN, nothing to do
+		return "", nil
+	}
+
+	q := repo.db.GetQuery(ctx)
+
+	// Generate backup name for old MAIN
+	oldMainBackupName := "MAIN_" + time.Now().Format("20060102150405")
+
+	// Check if MAIN branch record exists in the database
+	mainBranch, err := q.ConversationBranch.WithContext(ctx).
+		Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+		Where(q.ConversationBranch.Name.Eq("MAIN")).
+		First()
+
+	if err == nil && mainBranch != nil {
+		// MAIN branch record exists - rename it to backup
+		_, err = q.ConversationBranch.WithContext(ctx).
+			Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+			Where(q.ConversationBranch.Name.Eq("MAIN")).
+			Update(q.ConversationBranch.Name, oldMainBackupName)
+		if err != nil {
+			return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to rename MAIN branch to backup")
+		}
+	} else {
+		// MAIN branch record doesn't exist - create backup branch for existing MAIN items
+		// Count existing MAIN items
+		count, err := q.ConversationItem.WithContext(ctx).
+			Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+			Where(q.ConversationItem.Branch.Eq("MAIN")).
+			Count()
+		if err != nil {
+			return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to count MAIN items")
+		}
+
+		if count > 0 {
+			// Create a branch record for the backup
+			now := time.Now()
+			description := "Backup of original MAIN branch"
+			backupBranch := &dbschema.ConversationBranch{
+				ConversationID: conversationID,
+				Name:           oldMainBackupName,
+				Description:    &description,
+				ItemCount:      int(count),
+			}
+			backupBranch.CreatedAt = now
+			backupBranch.UpdatedAt = now
+
+			if err := q.ConversationBranch.WithContext(ctx).Create(backupBranch); err != nil {
+				return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to create backup branch")
+			}
+		} else {
+			// No MAIN items exist, no backup needed
+			oldMainBackupName = ""
+		}
+	}
+
+	// Update all items in old MAIN to use backup name (if backup was created)
+	if oldMainBackupName != "" {
+		_, err = q.ConversationItem.WithContext(ctx).
+			Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+			Where(q.ConversationItem.Branch.Eq("MAIN")).
+			Update(q.ConversationItem.Branch, oldMainBackupName)
+		if err != nil {
+			return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to update MAIN items to backup branch")
+		}
+	}
+
+	// Rename the promoted branch metadata to MAIN
+	_, err = q.ConversationBranch.WithContext(ctx).
+		Where(q.ConversationBranch.ConversationID.Eq(conversationID)).
+		Where(q.ConversationBranch.Name.Eq(branchToPromote)).
+		Update(q.ConversationBranch.Name, "MAIN")
+	if err != nil {
+		return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to rename branch to MAIN")
+	}
+
+	// Update all items in promoted branch to use MAIN
+	_, err = q.ConversationItem.WithContext(ctx).
+		Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+		Where(q.ConversationItem.Branch.Eq(branchToPromote)).
+		Update(q.ConversationItem.Branch, "MAIN")
+	if err != nil {
+		return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to update promoted items to MAIN")
+	}
+
+	// Set MAIN as active branch
+	_, err = q.Conversation.WithContext(ctx).
+		Where(q.Conversation.ID.Eq(conversationID)).
+		Update(q.Conversation.ActiveBranch, "MAIN")
+	if err != nil {
+		return "", platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to set active branch to MAIN")
+	}
+
+	return oldMainBackupName, nil
 }
 
 // Item rating operations
 // RateItem implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) RateItem(ctx context.Context, conversationID uint, itemID string, rating conversation.ItemRating, comment *string) error {
-	// TODO: Implement rating storage in database
-	// For now, return not implemented error
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "e3f4a5b6-c7d8-4e9f-0a1b-2c3d4e5f6a7b")
+	q := repo.db.GetQuery(ctx)
+	ratingStr := string(rating)
+	now := time.Now()
+
+	updates := map[string]interface{}{
+		"rating":   ratingStr,
+		"rated_at": now,
+	}
+	if comment != nil {
+		updates["rating_comment"] = *comment
+	}
+
+	_, err := q.ConversationItem.WithContext(ctx).
+		Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+		Where(q.ConversationItem.PublicID.Eq(itemID)).
+		Updates(updates)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to rate item")
+	}
+	return nil
 }
 
 // GetItemRating implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) GetItemRating(ctx context.Context, conversationID uint, itemID string) (*conversation.ItemRating, error) {
-	return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "f4a5b6c7-d8e9-4f0a-1b2c-3d4e5f6a7b8c")
+	q := repo.db.GetQuery(ctx)
+	item, err := q.ConversationItem.WithContext(ctx).
+		Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+		Where(q.ConversationItem.PublicID.Eq(itemID)).
+		First()
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "item not found")
+	}
+	if item.Rating == nil {
+		return nil, nil
+	}
+	rating := conversation.ItemRating(*item.Rating)
+	return &rating, nil
 }
 
 // RemoveItemRating implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) RemoveItemRating(ctx context.Context, conversationID uint, itemID string) error {
-	return platformerrors.NewError(ctx, platformerrors.LayerRepository, platformerrors.ErrorTypeNotImplemented, "rating operations not yet implemented in database layer", nil, "a5b6c7d8-e9f0-4a1b-2c3d-4e5f6a7b8c9d")
+	q := repo.db.GetQuery(ctx)
+	updates := map[string]interface{}{
+		"rating":         nil,
+		"rated_at":       nil,
+		"rating_comment": nil,
+	}
+	_, err := q.ConversationItem.WithContext(ctx).
+		Where(q.ConversationItem.ConversationID.Eq(conversationID)).
+		Where(q.ConversationItem.PublicID.Eq(itemID)).
+		Updates(updates)
+	if err != nil {
+		return platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to remove item rating")
+	}
+	return nil
 }
 
 // applyFilter applies filter conditions to the query
@@ -484,6 +777,10 @@ func (repo *ConversationGormRepository) applyItemFilter(q *gormgen.Query, sql go
 	}
 	if filter.ResponseID != nil {
 		sql = sql.Where(q.ConversationItem.ResponseID.Eq(*filter.ResponseID))
+	}
+	// Filter by branch name
+	if filter.Branch != nil && *filter.Branch != "" {
+		sql = sql.Where(q.ConversationItem.Branch.Eq(*filter.Branch))
 	}
 	return sql
 }
