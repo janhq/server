@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/rs/zerolog/log"
 
 	"jan-server/services/realtime-api/internal/domain/session"
 	"jan-server/services/realtime-api/internal/infrastructure/store"
@@ -41,12 +42,7 @@ func createSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 		sess, err := handler.CreateSession(c.Request.Context(), &session.CreateSessionRequest{}, userID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, errorResponse{
-				Error: &errorDetail{
-					Message: err.Error(),
-					Type:    "server_error",
-				},
-			})
+			handleError(c, err)
 			return
 		}
 
@@ -71,12 +67,7 @@ func listSessions(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 		sessions, err := handler.ListUserSessions(c.Request.Context(), userID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, errorResponse{
-				Error: &errorDetail{
-					Message: err.Error(),
-					Type:    "server_error",
-				},
-			})
+			handleError(c, err)
 			return
 		}
 
@@ -119,24 +110,13 @@ func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 		sess, err := handler.GetSession(c.Request.Context(), id)
 		if err != nil {
-			status, errType := mapError(err)
-			c.JSON(status, errorResponse{
-				Error: &errorDetail{
-					Message: err.Error(),
-					Type:    errType,
-				},
-			})
+			handleError(c, err)
 			return
 		}
 
 		// Authorization: verify session belongs to the authenticated user
 		if sess.UserID != userID {
-			c.JSON(http.StatusForbidden, errorResponse{
-				Error: &errorDetail{
-					Message: "access denied",
-					Type:    "forbidden_error",
-				},
-			})
+			platformerrors.WriteForbidden(c, "access denied")
 			return
 		}
 
@@ -174,35 +154,18 @@ func deleteSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 		// First, get the session to verify ownership
 		sess, err := handler.GetSession(c.Request.Context(), id)
 		if err != nil {
-			status, errType := mapError(err)
-			c.JSON(status, errorResponse{
-				Error: &errorDetail{
-					Message: err.Error(),
-					Type:    errType,
-				},
-			})
+			handleError(c, err)
 			return
 		}
 
 		// Authorization: verify session belongs to the authenticated user
 		if sess.UserID != userID {
-			c.JSON(http.StatusForbidden, errorResponse{
-				Error: &errorDetail{
-					Message: "access denied",
-					Type:    "forbidden_error",
-				},
-			})
+			platformerrors.WriteForbidden(c, "access denied")
 			return
 		}
 
 		if err := handler.DeleteSession(c.Request.Context(), id); err != nil {
-			status, errType := mapError(err)
-			c.JSON(status, errorResponse{
-				Error: &errorDetail{
-					Message: err.Error(),
-					Type:    errType,
-				},
-			})
+			handleError(c, err)
 			return
 		}
 
@@ -214,16 +177,25 @@ func deleteSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 	}
 }
 
-// Helper types and functions
+// Helper functions
 
-type errorResponse struct {
-	Error *errorDetail `json:"error"`
-}
+// handleError handles errors using platform error utilities.
+// It maps store-specific errors and platform errors to appropriate HTTP responses.
+func handleError(c *gin.Context, err error) {
+	logger := log.With().Str("path", c.Request.URL.Path).Logger()
 
-type errorDetail struct {
-	Message string `json:"message"`
-	Type    string `json:"type"`
-	Code    string `json:"code,omitempty"`
+	// Check for store-specific errors first
+	if errors.Is(err, store.ErrSessionNotFound) {
+		platformerrors.WriteNotFound(c, err.Error())
+		return
+	}
+	if errors.Is(err, store.ErrSessionAlreadyExists) || errors.Is(err, store.ErrRoomAlreadyExists) {
+		platformerrors.WriteConflict(c, err.Error())
+		return
+	}
+
+	// Use platform error handler for everything else
+	platformerrors.WriteError(c, err, logger)
 }
 
 func extractUserID(c *gin.Context) string {
@@ -245,17 +217,4 @@ func extractUserID(c *gin.Context) string {
 		}
 	}
 	return "anonymous"
-}
-
-func mapError(err error) (int, string) {
-	if errors.Is(err, store.ErrSessionNotFound) {
-		return http.StatusNotFound, "not_found_error"
-	}
-	if errors.Is(err, store.ErrSessionAlreadyExists) || errors.Is(err, store.ErrRoomAlreadyExists) {
-		return http.StatusConflict, "conflict_error"
-	}
-	if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
-		return http.StatusNotFound, "not_found_error"
-	}
-	return http.StatusInternalServerError, "server_error"
 }

@@ -6,8 +6,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "jan-server/services/realtime-api/docs/swagger"
 	"jan-server/services/realtime-api/internal/config"
 	"jan-server/services/realtime-api/internal/domain/session"
 	"jan-server/services/realtime-api/internal/infrastructure/auth"
@@ -41,8 +45,13 @@ func New(
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+
+	// Apply middlewares in order
+	engine.Use(middlewares.RequestID())
+	engine.Use(middlewares.Tracing(cfg.ServiceName))
+	engine.Use(middlewares.Metrics())
 	engine.Use(middlewares.CORS())
-	engine.Use(middlewares.RequestLogger())
+	engine.Use(middlewares.RequestLoggerWithLogger(log))
 
 	// Public routes (no auth)
 	registerCoreRoutes(engine, cfg)
@@ -111,4 +120,10 @@ func registerCoreRoutes(engine *gin.Engine, cfg *config.Config) {
 	engine.GET("/readyz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ready"})
 	})
+
+	// Prometheus metrics endpoint
+	engine.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Swagger documentation
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
