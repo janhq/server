@@ -255,6 +255,24 @@ func (h *ChatHandler) CreateChatCompletion(
 		if request.DeepResearch != nil && *request.DeepResearch {
 			preferences["deep_research"] = true
 			observability.AddSpanAttributes(ctx, attribute.Bool("chat.deep_research", true))
+			// Debug logging for deep research
+			debugLog := logger.GetLogger()
+			debugLog.Debug().
+				Bool("deep_research", true).
+				Str("conversation_id", conversationID).
+				Str("model", request.Model).
+				Msg("[DEBUG] deep_research flag enabled, adding to preferences")
+		} else {
+			// Debug logging when deep research is NOT enabled
+			debugLog := logger.GetLogger()
+			deepResearchValue := "nil"
+			if request.DeepResearch != nil {
+				deepResearchValue = fmt.Sprintf("%v", *request.DeepResearch)
+			}
+			debugLog.Debug().
+				Str("deep_research_value", deepResearchValue).
+				Str("conversation_id", conversationID).
+				Msg("[DEBUG] deep_research flag not enabled")
 		}
 
 		var profileSettings *usersettings.ProfileSettings
@@ -412,20 +430,53 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	observability.AddSpanEvent(ctx, "calling_llm")
 
+	// Debug logging before LLM call
+	log := logger.GetLogger()
+	log.Debug().
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Bool("stream", request.Stream).
+		Int("message_count", len(llmRequest.Messages)).
+		Msg("[DEBUG] calling LLM provider")
+
 	llmStartTime := time.Now()
 	if request.Stream {
+		log.Debug().
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Msg("[DEBUG] starting streaming completion")
 		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, llmRequest)
 	} else {
+		log.Debug().
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Msg("[DEBUG] starting non-streaming completion")
 		response, err = h.callCompletion(ctx, chatClient, llmRequest)
 	}
 	llmDuration := time.Since(llmStartTime)
 
 	if err != nil {
+		// Enhanced error logging for debugging
+		log.Error().
+			Err(err).
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Bool("stream", request.Stream).
+			Dur("duration", llmDuration).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] LLM completion failed - returning fallback response")
+
 		observability.AddSpanEvent(ctx, "completion_fallback",
 			attribute.String("error", err.Error()),
 		)
 		response = h.BuildFallbackResponse(request.Model)
 		err = nil
+	} else {
+		log.Debug().
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Dur("duration", llmDuration).
+			Msg("[DEBUG] LLM completion succeeded")
 	}
 
 	// Add LLM response metrics
@@ -518,10 +569,26 @@ func (h *ChatHandler) callCompletion(
 	chatClient *chat.ChatCompletionClient,
 	request chat.CompletionRequest,
 ) (*openai.ChatCompletionResponse, error) {
+	log := logger.GetLogger()
+	log.Debug().
+		Str("model", request.Model).
+		Int("message_count", len(request.Messages)).
+		Msg("[DEBUG] callCompletion: calling CreateChatCompletion")
+
 	chatCompletion, err := chatClient.CreateChatCompletion(ctx, "", request)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("model", request.Model).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] callCompletion: CreateChatCompletion failed")
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "chat completion failed")
 	}
+
+	log.Debug().
+		Str("model", request.Model).
+		Int("total_tokens", chatCompletion.Usage.TotalTokens).
+		Msg("[DEBUG] callCompletion: completed successfully")
 
 	return chatCompletion, nil
 }
@@ -567,10 +634,25 @@ func (h *ChatHandler) streamCompletion(
 	}
 
 	// Stream completion response to context with callback
+	log := logger.GetLogger()
+	log.Debug().
+		Str("model", request.Model).
+		Int("message_count", len(request.Messages)).
+		Msg("[DEBUG] streamCompletion: calling StreamChatCompletionToContextWithCallback")
+
 	resp, err := chatClient.StreamChatCompletionToContextWithCallback(reqCtx, "", request, beforeDoneCallback)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("model", request.Model).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] streamCompletion: streaming failed")
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "streaming completion failed")
 	}
+
+	log.Debug().
+		Str("model", request.Model).
+		Msg("[DEBUG] streamCompletion: completed successfully")
 
 	return resp, nil
 }
