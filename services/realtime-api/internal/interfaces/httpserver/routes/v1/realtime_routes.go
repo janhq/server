@@ -1,16 +1,15 @@
 package v1
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/rs/zerolog/log"
 
-	"jan-server/services/realtime-api/internal/domain/session"
-	"jan-server/services/realtime-api/internal/infrastructure/store"
+	domainsession "jan-server/services/realtime-api/internal/domain/session"
 	"jan-server/services/realtime-api/internal/interfaces/httpserver/handlers"
+	"jan-server/services/realtime-api/internal/interfaces/httpserver/responses"
+	sessionres "jan-server/services/realtime-api/internal/interfaces/httpserver/responses/session"
 	"jan-server/services/realtime-api/internal/utils/platformerrors"
 )
 
@@ -40,14 +39,13 @@ func createSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := extractUserID(c)
 
-		sess, err := handler.CreateSession(c.Request.Context(), &session.CreateSessionRequest{}, userID)
+		sess, err := handler.CreateSession(c.Request.Context(), &domainsession.CreateSessionRequest{}, userID)
 		if err != nil {
-			handleError(c, err)
+			responses.HandleError(c, err, "failed to create session")
 			return
 		}
 
-		// POST response: include client_secret, room_id, user_id but NOT status
-		c.JSON(http.StatusCreated, sess)
+		c.JSON(http.StatusCreated, sessionres.NewSessionResponse(sess))
 	}
 }
 
@@ -67,27 +65,11 @@ func listSessions(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 		sessions, err := handler.ListUserSessions(c.Request.Context(), userID)
 		if err != nil {
-			handleError(c, err)
+			responses.HandleError(c, err, "failed to list sessions")
 			return
 		}
 
-		// GET response: include status, room_id, user_id but NOT client_secret
-		result := make([]*session.Session, len(sessions))
-		for i, s := range sessions {
-			result[i] = &session.Session{
-				ID:     s.ID,
-				Object: s.Object,
-				WsURL:  s.WsURL,
-				RoomID: s.Room,
-				UserID: s.UserID,
-				Status: s.State,
-			}
-		}
-
-		c.JSON(http.StatusOK, session.ListSessionsResponse{
-			Object: "list",
-			Data:   result,
-		})
+		c.JSON(http.StatusOK, sessionres.NewListSessionsResponse(sessions))
 	}
 }
 
@@ -110,27 +92,17 @@ func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 
 		sess, err := handler.GetSession(c.Request.Context(), id)
 		if err != nil {
-			handleError(c, err)
+			responses.HandleError(c, err, "failed to get session")
 			return
 		}
 
 		// Authorization: verify session belongs to the authenticated user
 		if sess.UserID != userID {
-			platformerrors.WriteForbidden(c, "access denied")
+			responses.HandleNewError(c, platformerrors.ErrorTypeForbidden, "access denied")
 			return
 		}
 
-		// GET response: include status, room_id, user_id but NOT client_secret
-		result := &session.Session{
-			ID:     sess.ID,
-			Object: sess.Object,
-			WsURL:  sess.WsURL,
-			RoomID: sess.Room,
-			UserID: sess.UserID,
-			Status: sess.State,
-		}
-
-		c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK, sessionres.NewSessionResponseForGet(sess))
 	}
 }
 
@@ -154,49 +126,26 @@ func deleteSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 		// First, get the session to verify ownership
 		sess, err := handler.GetSession(c.Request.Context(), id)
 		if err != nil {
-			handleError(c, err)
+			responses.HandleError(c, err, "failed to get session")
 			return
 		}
 
 		// Authorization: verify session belongs to the authenticated user
 		if sess.UserID != userID {
-			platformerrors.WriteForbidden(c, "access denied")
+			responses.HandleNewError(c, platformerrors.ErrorTypeForbidden, "access denied")
 			return
 		}
 
 		if err := handler.DeleteSession(c.Request.Context(), id); err != nil {
-			handleError(c, err)
+			responses.HandleError(c, err, "failed to delete session")
 			return
 		}
 
-		c.JSON(http.StatusOK, session.DeleteSessionResponse{
-			ID:      id,
-			Object:  "realtime.session.deleted",
-			Deleted: true,
-		})
+		c.JSON(http.StatusOK, sessionres.NewDeleteSessionResponse(id))
 	}
 }
 
 // Helper functions
-
-// handleError handles errors using platform error utilities.
-// It maps store-specific errors and platform errors to appropriate HTTP responses.
-func handleError(c *gin.Context, err error) {
-	logger := log.With().Str("path", c.Request.URL.Path).Logger()
-
-	// Check for store-specific errors first
-	if errors.Is(err, store.ErrSessionNotFound) {
-		platformerrors.WriteNotFound(c, err.Error())
-		return
-	}
-	if errors.Is(err, store.ErrSessionAlreadyExists) || errors.Is(err, store.ErrRoomAlreadyExists) {
-		platformerrors.WriteConflict(c, err.Error())
-		return
-	}
-
-	// Use platform error handler for everything else
-	platformerrors.WriteError(c, err, logger)
-}
 
 func extractUserID(c *gin.Context) string {
 	// Check for user_id set directly by middleware (for Kong API key auth)

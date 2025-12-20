@@ -8,53 +8,35 @@ package main
 
 import (
 	"context"
-
-	"github.com/rs/zerolog"
-
-	"jan-server/services/realtime-api/internal/config"
-	"jan-server/services/realtime-api/internal/domain/session"
-	"jan-server/services/realtime-api/internal/infrastructure/auth"
-	"jan-server/services/realtime-api/internal/infrastructure/livekit"
-	"jan-server/services/realtime-api/internal/infrastructure/store"
+	"jan-server/services/realtime-api/internal/domain"
+	"jan-server/services/realtime-api/internal/infrastructure"
 	"jan-server/services/realtime-api/internal/interfaces/httpserver"
 )
 
+// Injectors from wire.go:
+
 // CreateApplication creates the application with all dependencies wired.
-func CreateApplication(
-	ctx context.Context,
-	cfg *config.Config,
-	log zerolog.Logger,
-) (*Application, *store.Syncer, error) {
-	// Initialize auth validator
-	authValidator, err := auth.NewValidator(ctx, cfg, log)
+func CreateApplication(ctx context.Context) (*Application, error) {
+	config, err := infrastructure.ProvideConfig()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	// Initialize LiveKit clients
-	tokenGen := livekit.NewTokenGenerator(cfg)
-	roomClient := livekit.NewRoomClient(cfg)
-
-	// Initialize session store
-	sessionStore := store.NewMemoryStore(log)
-
-	// Initialize session syncer
-	syncer := store.NewSyncer(sessionStore, roomClient, cfg.SessionStaleTTL, cfg.SessionCleanupInterval, log)
-
-	// Initialize session service
-	sessionService := session.NewService(
-		sessionStore,
-		tokenGen,
-		cfg.LiveKitWsURL,
-		cfg.LiveKitTokenTTL,
-		log,
-	)
-
-	// Initialize HTTP server
-	httpServer := httpserver.New(cfg, log, sessionService, authValidator)
-
-	// Create application
-	app := NewApplication(httpServer, syncer, log)
-
-	return app, syncer, nil
+	logger := infrastructure.ProvideLogger(config)
+	store := infrastructure.ProvideSessionStore(logger)
+	tokenGenerator := infrastructure.ProvideTokenGenerator(config)
+	service := domain.ProvideSessionService(store, tokenGenerator, config, logger)
+	validator, err := infrastructure.ProvideAuthValidator(ctx, config, logger)
+	if err != nil {
+		return nil, err
+	}
+	httpServer := httpserver.New(config, logger, service, validator)
+	roomClient := infrastructure.ProvideRoomClient(config)
+	syncer := infrastructure.ProvideSyncer(store, roomClient, config, logger)
+	application := &Application{
+		HTTPServer: httpServer,
+		Syncer:     syncer,
+		Log:        logger,
+		Cfg:        config,
+	}
+	return application, nil
 }

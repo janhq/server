@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/google/wire"
+
 	"jan-server/services/realtime-api/internal/domain/session"
 )
 
@@ -15,3 +17,9 @@ func NewProvider(sessionService session.Service) *Provider {
 		Session: NewSessionHandler(sessionService),
 	}
 }
+
+// HandlerProvider provides all handlers for wire.
+var HandlerProvider = wire.NewSet(
+	NewSessionHandler,
+	NewProvider,
+)

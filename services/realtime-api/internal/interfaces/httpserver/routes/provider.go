@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/google/wire"
 
 	"jan-server/services/realtime-api/internal/infrastructure/auth"
 	"jan-server/services/realtime-api/internal/interfaces/httpserver/handlers"
@@ -31,3 +32,9 @@ func (p *Provider) Register(engine *gin.Engine) {
 		p.V1.Register(engine, nil)
 	}
 }
+
+// RouteProvider provides all routes for wire.
+var RouteProvider = wire.NewSet(
+	v1.NewRoutes,
+	NewProvider,
+)
