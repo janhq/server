@@ -33,6 +33,8 @@ const (
 	ErrorTypeExternal       ErrorType = "EXTERNAL"
 	ErrorTypeNotImplemented ErrorType = "NOT_IMPLEMENTED"
 	ErrorTypeExpired        ErrorType = "EXPIRED"
+	ErrorTypeRateLimited    ErrorType = "RATE_LIMITED"
+	ErrorTypeTimeout        ErrorType = "TIMEOUT"
 )
 
 // Layer represents the application layer where the error occurred
@@ -134,6 +136,34 @@ func AsError(ctx context.Context, layer Layer, err error, message string) *Platf
 	return NewError(ctx, layer, ErrorTypeInternal, message, err, "")
 }
 
+// AsErrorWithUUID wraps an error with layer context and a specific UUID for traceability
+func AsErrorWithUUID(ctx context.Context, layer Layer, err error, message string, uuid string) *PlatformError {
+	if err == nil {
+		return nil
+	}
+
+	var platformErr *PlatformError
+	if errors.As(err, &platformErr) {
+		// If the wrapped error already has a UUID, use it; otherwise use the provided one
+		existingUUID := platformErr.UUID
+		if existingUUID == "" || existingUUID == "auto-generated-uuid" {
+			existingUUID = uuid
+		}
+		return NewError(ctx, layer, platformErr.Type, fmt.Sprintf("%s: %s", message, platformErr.Message), platformErr, existingUUID)
+	}
+
+	return NewError(ctx, layer, ErrorTypeInternal, message, err, uuid)
+}
+
+// AsErrorWithType wraps an error with a specific error type
+func AsErrorWithType(ctx context.Context, layer Layer, err error, message string, errorType ErrorType) *PlatformError {
+	if err == nil {
+		return nil
+	}
+
+	return NewError(ctx, layer, errorType, message, err, "")
+}
+
 // ErrorTypeToHTTPStatus maps error types to HTTP status codes
 func ErrorTypeToHTTPStatus(errorType ErrorType) int {
 	switch errorType {
@@ -155,6 +185,10 @@ func ErrorTypeToHTTPStatus(errorType ErrorType) int {
 		return http.StatusBadGateway
 	case ErrorTypeExpired:
 		return http.StatusGone
+	case ErrorTypeRateLimited:
+		return http.StatusTooManyRequests
+	case ErrorTypeTimeout:
+		return http.StatusGatewayTimeout
 	case ErrorTypeInternal:
 		fallthrough
 	default:
@@ -174,6 +208,45 @@ func IsErrorType(err error, errorType ErrorType) bool {
 	}
 
 	return false
+}
+
+// IsNotFoundError checks if an error is a not found error
+func IsNotFoundError(err error) bool {
+	return IsErrorType(err, ErrorTypeNotFound)
+}
+
+// IsValidationError checks if an error is a validation error
+func IsValidationError(err error) bool {
+	return IsErrorType(err, ErrorTypeValidation)
+}
+
+// IsUnauthorizedError checks if an error is an unauthorized error
+func IsUnauthorizedError(err error) bool {
+	return IsErrorType(err, ErrorTypeUnauthorized)
+}
+
+// IsForbiddenError checks if an error is a forbidden error
+func IsForbiddenError(err error) bool {
+	return IsErrorType(err, ErrorTypeForbidden)
+}
+
+// IsConflictError checks if an error is a conflict error
+func IsConflictError(err error) bool {
+	return IsErrorType(err, ErrorTypeConflict)
+}
+
+// GetPlatformError extracts a PlatformError from an error chain
+func GetPlatformError(err error) *PlatformError {
+	if err == nil {
+		return nil
+	}
+
+	var platformErr *PlatformError
+	if errors.As(err, &platformErr) {
+		return platformErr
+	}
+
+	return nil
 }
 
 // LogError logs a platform error with proper structure
