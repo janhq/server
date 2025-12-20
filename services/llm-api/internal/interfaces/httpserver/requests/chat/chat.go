@@ -14,6 +14,7 @@ import (
 // - OpenAI format: {"type": "image_url", "image_url": {"url": "..."}}
 // - Client format (browser-mcp): {"type": "image", "data": "data:image/png;base64,jan_*", "mimeType": "image/png"}
 // - Text format: {"type": "text", "text": "..."}
+// - Tool result format: {"type": "tool_result", "tool_result": "..."}
 type FlexibleContentPart struct {
 	Type string `json:"type"`
 	Text string `json:"text,omitempty"`
@@ -23,6 +24,8 @@ type FlexibleContentPart struct {
 	Data        string `json:"data,omitempty"`
 	MimeType    string `json:"mimeType,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Tool result content (browser-mcp, etc.)
+	ToolResult string `json:"tool_result,omitempty"`
 }
 
 // ToOpenAIChatMessagePart converts FlexibleContentPart to openai.ChatMessagePart
@@ -32,6 +35,13 @@ func (p *FlexibleContentPart) ToOpenAIChatMessagePart() openai.ChatMessagePart {
 		return openai.ChatMessagePart{
 			Type: openai.ChatMessagePartTypeText,
 			Text: p.Text,
+		}
+	case "tool_result":
+		// Tool result format (browser-mcp, etc.) - convert to text part
+		// The tool_result field contains the actual content
+		return openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeText,
+			Text: p.ToolResult,
 		}
 	case "image_url":
 		// Already in OpenAI format
@@ -62,9 +72,12 @@ func (p *FlexibleContentPart) ToOpenAIChatMessagePart() openai.ChatMessagePart {
 				Text: p.Text,
 			}
 		}
+		// Return empty part - will be filtered out by caller
+		// Note: We can't return nil, so we return an empty image part which will be filtered
+		// because empty text parts with omitempty cause {"type": "text"} without text field
+		// which fails validation on some LLM providers
 		return openai.ChatMessagePart{
-			Type: openai.ChatMessagePartTypeText,
-			Text: "",
+			Type: openai.ChatMessagePartTypeImageURL, // Will be filtered out by caller
 		}
 	}
 }
@@ -83,6 +96,12 @@ func parseFlexibleContentParts(jsonContent string) ([]openai.ChatMessagePart, er
 		// Filter out empty image parts (no URL)
 		if part.Type == openai.ChatMessagePartTypeImageURL && (part.ImageURL == nil || part.ImageURL.URL == "") {
 			log.Warn().Str("original_type", fp.Type).Msg("Skipping empty image part with no URL/data")
+			continue
+		}
+		// Filter out empty text parts (empty Text field would cause validation errors
+		// because go-openai uses omitempty, resulting in {"type": "text"} without text field)
+		if part.Type == openai.ChatMessagePartTypeText && part.Text == "" {
+			log.Warn().Str("original_type", fp.Type).Msg("Skipping empty text part with no content")
 			continue
 		}
 		result = append(result, part)

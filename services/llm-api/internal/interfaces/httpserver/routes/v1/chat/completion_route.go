@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -103,15 +104,65 @@ func (chatCompletionRoute *ChatCompletionRoute) PostCompletion(reqCtx *gin.Conte
 		Msg("chat completion request received")
 
 	// Delegate to chat handler
+	log.Debug().
+		Str("route", "/v1/chat/completions").
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Bool("stream", request.Stream).
+		Msg("[DEBUG] delegating to chat handler")
+
 	result, err := chatCompletionRoute.chatHandler.CreateChatCompletion(reqCtx.Request.Context(), reqCtx, user.ID, request)
 	if err != nil {
+		// Log the full error for debugging
+		log.Error().
+			Err(err).
+			Str("route", "/v1/chat/completions").
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Bool("stream", request.Stream).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] chat completion failed with error")
+
 		// Check if it's a validation error (user input too large)
 		if platformerrors.IsValidationError(err) {
+			log.Debug().
+				Err(err).
+				Str("route", "/v1/chat/completions").
+				Msg("[DEBUG] returning validation error response")
 			responses.HandleError(reqCtx, err, err.Error())
 			return
 		}
 
-		// For other errors, return fallback response
+		// Check if it's a NOT_FOUND error (conversation not found, etc.) - return proper error
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+			log.Debug().
+				Err(err).
+				Str("route", "/v1/chat/completions").
+				Msg("[DEBUG] returning not found error response")
+			responses.HandleNewError(reqCtx, platformerrors.ErrorTypeNotFound, err.Error(), "conv-not-found-001")
+			return
+		}
+
+		// Check if it's an internal/server error that's NOT from LLM - return proper error
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeForbidden) ||
+			platformerrors.IsErrorType(err, platformerrors.ErrorTypeUnauthorized) ||
+			platformerrors.IsErrorType(err, platformerrors.ErrorTypeConflict) {
+			log.Debug().
+				Err(err).
+				Str("route", "/v1/chat/completions").
+				Msg("[DEBUG] returning platform error response")
+			responses.HandleError(reqCtx, err, err.Error())
+			return
+		}
+
+		// Only for LLM/model communication errors, return fallback response
+		log.Warn().
+			Err(err).
+			Str("route", "/v1/chat/completions").
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Msg("[DEBUG] returning fallback response due to LLM error")
+
 		fallback := chatCompletionRoute.chatHandler.BuildFallbackResponse(request.Model)
 		chatResponse := chatresponses.NewChatCompletionResponse(fallback, "", nil, false)
 		reqCtx.JSON(http.StatusOK, chatResponse)

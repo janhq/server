@@ -404,8 +404,8 @@ func (route *ConversationRoute) listItems(reqCtx *gin.Context) {
 	fetchLimit := requestedLimit + 1
 	pagination.Limit = &fetchLimit
 
-	// Get items from handler
-	items, err := route.handler.ListItems(ctx, user.ID, conv.PublicID, pagination)
+	// Get items from handler with optional branch filter
+	items, err := route.handler.ListItems(ctx, user.ID, conv.PublicID, params.Branch, pagination)
 	if err != nil {
 		responses.HandleError(reqCtx, err, "Failed to list items")
 		return
@@ -556,28 +556,28 @@ func (route *ConversationRoute) getItem(reqCtx *gin.Context) {
 
 // deleteItem godoc
 // @Summary Delete a conversation item
-// @Description Delete an item from a conversation. The item will be removed from the conversation.
+// @Description Delete an item from a conversation by creating a new MAIN branch without it.
+// @Description The old MAIN branch is preserved as a backup.
 // @Description
 // @Description **Features:**
-// @Description - Remove specific item from conversation
+// @Description - Creates a new branch without the deleted item
+// @Description - New branch becomes MAIN, old MAIN becomes backup
 // @Description - Automatic ownership verification
-// @Description - Returns updated conversation object after deletion
-// @Description - Items are permanently removed (not soft delete)
+// @Description - Preserves conversation history in backup branch
 // @Description
 // @Description **Important:**
-// @Description - Deleting an item may affect conversation flow
-// @Description - Item IDs are not reused after deletion
-// @Description - Other items in conversation remain unchanged
-// @Description - Consider creating a new branch instead of deleting items
+// @Description - The old MAIN branch is renamed to MAIN_YYYYMMDDHHMMSS
+// @Description - You can switch back to the backup branch if needed
+// @Description - This is a non-destructive delete operation
 // @Description
 // @Description **Response:**
-// @Description Returns the conversation object (not the deleted item)
+// @Description Returns branch information including the backup branch name
 // @Tags Conversations API
 // @Security BearerAuth
 // @Produce json
 // @Param conv_public_id path string true "Conversation ID (format: conv_xxxxx)"
 // @Param item_id path string true "Item ID to delete (format: msg_xxxxx)"
-// @Success 200 {object} conversationresponses.ConversationResponse "Successfully deleted item, returns conversation"
+// @Success 200 {object} conversationhandler.DeleteItemResponse "Successfully deleted item, returns branch info"
 // @Failure 400 {object} responses.ErrorResponse "Invalid conversation ID or item ID format"
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
 // @Failure 404 {object} responses.ErrorResponse "Conversation or item not found, or access denied"

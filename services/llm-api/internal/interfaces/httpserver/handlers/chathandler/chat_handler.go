@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -255,6 +256,24 @@ func (h *ChatHandler) CreateChatCompletion(
 		if request.DeepResearch != nil && *request.DeepResearch {
 			preferences["deep_research"] = true
 			observability.AddSpanAttributes(ctx, attribute.Bool("chat.deep_research", true))
+			// Debug logging for deep research
+			debugLog := logger.GetLogger()
+			debugLog.Debug().
+				Bool("deep_research", true).
+				Str("conversation_id", conversationID).
+				Str("model", request.Model).
+				Msg("[DEBUG] deep_research flag enabled, adding to preferences")
+		} else {
+			// Debug logging when deep research is NOT enabled
+			debugLog := logger.GetLogger()
+			deepResearchValue := "nil"
+			if request.DeepResearch != nil {
+				deepResearchValue = fmt.Sprintf("%v", *request.DeepResearch)
+			}
+			debugLog.Debug().
+				Str("deep_research_value", deepResearchValue).
+				Str("conversation_id", conversationID).
+				Msg("[DEBUG] deep_research flag not enabled")
 		}
 
 		var profileSettings *usersettings.ProfileSettings
@@ -364,6 +383,10 @@ func (h *ChatHandler) CreateChatCompletion(
 			request.Messages = truncatedMessages
 		}
 
+		// Third, limit images to prevent context overflow from multimodal tokens
+		// Tool messages: max 10 images, User messages: max 15 images
+		request.Messages = LimitImagesInMessages(request.Messages)
+
 		// Then trim messages using the validated budget (oldest items first)
 		trimResult := TrimMessagesToFitBudget(request.Messages, budget)
 		if trimResult.TrimmedCount > 0 {
@@ -412,20 +435,56 @@ func (h *ChatHandler) CreateChatCompletion(
 
 	observability.AddSpanEvent(ctx, "calling_llm")
 
+	// Debug log full request data before sending to LLM
+	debugLogLLMRequest(llmRequest, conversationID)
+
+	// Debug logging before LLM call
+	log := logger.GetLogger()
+	log.Debug().
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Bool("stream", request.Stream).
+		Int("message_count", len(llmRequest.Messages)).
+		Msg("[DEBUG] calling LLM provider")
+
 	llmStartTime := time.Now()
 	if request.Stream {
+		log.Debug().
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Msg("[DEBUG] starting streaming completion")
 		response, err = h.streamCompletion(ctx, reqCtx, chatClient, conv, llmRequest)
 	} else {
+		log.Debug().
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Msg("[DEBUG] starting non-streaming completion")
 		response, err = h.callCompletion(ctx, chatClient, llmRequest)
 	}
 	llmDuration := time.Since(llmStartTime)
 
 	if err != nil {
+		// Enhanced error logging for debugging
+		log.Error().
+			Err(err).
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Bool("stream", request.Stream).
+			Dur("duration", llmDuration).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] LLM completion failed - returning fallback response")
+
 		observability.AddSpanEvent(ctx, "completion_fallback",
 			attribute.String("error", err.Error()),
 		)
 		response = h.BuildFallbackResponse(request.Model)
 		err = nil
+	} else {
+		log.Debug().
+			Str("model", request.Model).
+			Str("conversation_id", conversationID).
+			Dur("duration", llmDuration).
+			Msg("[DEBUG] LLM completion succeeded")
 	}
 
 	// Add LLM response metrics
@@ -518,10 +577,26 @@ func (h *ChatHandler) callCompletion(
 	chatClient *chat.ChatCompletionClient,
 	request chat.CompletionRequest,
 ) (*openai.ChatCompletionResponse, error) {
+	log := logger.GetLogger()
+	log.Debug().
+		Str("model", request.Model).
+		Int("message_count", len(request.Messages)).
+		Msg("[DEBUG] callCompletion: calling CreateChatCompletion")
+
 	chatCompletion, err := chatClient.CreateChatCompletion(ctx, "", request)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("model", request.Model).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] callCompletion: CreateChatCompletion failed")
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "chat completion failed")
 	}
+
+	log.Debug().
+		Str("model", request.Model).
+		Int("total_tokens", chatCompletion.Usage.TotalTokens).
+		Msg("[DEBUG] callCompletion: completed successfully")
 
 	return chatCompletion, nil
 }
@@ -567,10 +642,25 @@ func (h *ChatHandler) streamCompletion(
 	}
 
 	// Stream completion response to context with callback
+	log := logger.GetLogger()
+	log.Debug().
+		Str("model", request.Model).
+		Int("message_count", len(request.Messages)).
+		Msg("[DEBUG] streamCompletion: calling StreamChatCompletionToContextWithCallback")
+
 	resp, err := chatClient.StreamChatCompletionToContextWithCallback(reqCtx, "", request, beforeDoneCallback)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("model", request.Model).
+			Str("error_type", fmt.Sprintf("%T", err)).
+			Msg("[DEBUG] streamCompletion: streaming failed")
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "streaming completion failed")
 	}
+
+	log.Debug().
+		Str("model", request.Model).
+		Msg("[DEBUG] streamCompletion: completed successfully")
 
 	return resp, nil
 }
@@ -612,15 +702,96 @@ func (h *ChatHandler) resolveMediaPlaceholders(ctx context.Context, reqCtx *gin.
 
 	resolved, changed, err := h.mediaResolver.ResolveMessages(ctx, messages)
 	if err != nil {
-		return messages
+		// Log the error - don't silently fail
+		log := logger.GetLogger()
+		log.Error().Err(err).Int("message_count", len(messages)).Msg("failed to resolve media placeholders, stripping unresolved images")
+		observability.AddSpanEvent(ctx, "media_resolution_failed", attribute.String("error", err.Error()))
+		// Strip unresolved placeholders to prevent LLM errors like "Non-base64 digit found"
+		return stripUnresolvedMediaPlaceholders(messages)
 	}
 	if changed {
 		observability.AddSpanEvent(ctx, "media_placeholders_resolved")
-
 		return resolved
 	}
 
 	return messages
+}
+
+// janMediaPlaceholderPattern matches jan_* media placeholders in image URLs
+// Examples: data:image/png;base64,jan_01kcv5bzjd6ehfkk5y0n7vht6b
+var janMediaPlaceholderPattern = regexp.MustCompile(`jan_[A-Za-z0-9]+`)
+
+// stripUnresolvedMediaPlaceholders removes image parts with unresolved jan_* placeholders
+// from messages to prevent LLM errors like "Non-base64 digit found".
+// It keeps text parts and only removes image_url parts with placeholders.
+func stripUnresolvedMediaPlaceholders(messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
+	log := logger.GetLogger()
+	result := make([]openai.ChatCompletionMessage, 0, len(messages))
+	strippedCount := 0
+	var strippedIDs []string
+
+	for i, msg := range messages {
+		newMsg := msg
+
+		// Check MultiContent for image parts with placeholders
+		if len(msg.MultiContent) > 0 {
+			filteredParts := make([]openai.ChatMessagePart, 0, len(msg.MultiContent))
+			for _, part := range msg.MultiContent {
+				if part.Type == openai.ChatMessagePartTypeImageURL && part.ImageURL != nil {
+					// Check if URL contains a jan_* placeholder
+					if janMediaPlaceholderPattern.MatchString(part.ImageURL.URL) {
+						// Extract the placeholder ID for logging
+						match := janMediaPlaceholderPattern.FindString(part.ImageURL.URL)
+						log.Warn().
+							Int("message_index", i).
+							Str("role", msg.Role).
+							Str("placeholder_id", match).
+							Str("full_url", part.ImageURL.URL).
+							Msg("stripping unresolved image placeholder from message")
+						strippedIDs = append(strippedIDs, match)
+						strippedCount++
+						continue // Skip this part
+					}
+				}
+				filteredParts = append(filteredParts, part)
+			}
+			newMsg.MultiContent = filteredParts
+
+			// If all parts were stripped, add a placeholder text to avoid empty message
+			if len(filteredParts) == 0 && len(msg.MultiContent) > 0 {
+				newMsg.MultiContent = []openai.ChatMessagePart{
+					{
+						Type: openai.ChatMessagePartTypeText,
+						Text: "[Image could not be loaded]",
+					},
+				}
+			}
+		}
+
+		// Check Content field for embedded jan_* placeholders (rare, but possible)
+		if msg.Content != "" && janMediaPlaceholderPattern.MatchString(msg.Content) && strings.Contains(msg.Content, "data:image") {
+			// This is a stringified JSON that wasn't parsed - try to clean it
+			match := janMediaPlaceholderPattern.FindString(msg.Content)
+			log.Warn().
+				Int("message_index", i).
+				Str("role", msg.Role).
+				Str("placeholder_id", match).
+				Msg("found unresolved placeholder in content field, attempting to clean")
+			strippedIDs = append(strippedIDs, match)
+			strippedCount++
+		}
+
+		result = append(result, newMsg)
+	}
+
+	if strippedCount > 0 {
+		log.Warn().
+			Int("stripped_count", strippedCount).
+			Strs("stripped_ids", strippedIDs).
+			Msg("stripped unresolved media placeholders from messages - images not found in media-api database")
+	}
+
+	return result
 }
 
 // applyModelDefaultsFromCatalog fills in missing request parameters using defaults from the model catalog.
@@ -943,7 +1114,7 @@ func (h *ChatHandler) getOrCreateConversation(
 	if convRef != nil && convRef.GetID() != "" {
 		conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, convRef.GetID(), userID)
 		if err != nil {
-			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "conversation not found for this user")
 		}
 
 		// Return existing conversation with its original referrer
@@ -1108,10 +1279,39 @@ func (h *ChatHandler) addCompletionToConversation(
 		return nil
 	}
 
+	// Use conversation's active branch instead of hardcoded MAIN
+	branchName := conv.ActiveBranch
+	if branchName == "" {
+		branchName = conversation.BranchMain
+	}
+
 	items := make([]conversation.Item, 0, 2)
 
-	if item := h.buildInputConversationItem(newMessages, storeReasoning, askItemID); item != nil {
-		items = append(items, *item)
+	// Build the user input item
+	userItem := h.buildInputConversationItem(newMessages, storeReasoning, askItemID)
+	
+	// Check if we should skip adding the user message (avoid duplicates after regenerate)
+	// This happens when regenerate creates a branch with the user message, then frontend
+	// triggers a new completion which would add the same user message again
+	if userItem != nil {
+		skipUserItem := false
+		
+		// Get the last item in the branch to check for duplicates
+		existingItems, err := h.conversationService.GetConversationItems(ctx, conv, branchName, nil)
+		if err == nil && len(existingItems) > 0 {
+			lastItem := existingItems[len(existingItems)-1]
+			// If the last item is a user message, check if it has the same content
+			if lastItem.Role != nil && *lastItem.Role == conversation.ItemRoleUser {
+				// Compare content - if it's the same, skip adding
+				if h.isSameMessageContent(userItem, &lastItem) {
+					skipUserItem = true
+				}
+			}
+		}
+		
+		if !skipUserItem {
+			items = append(items, *userItem)
+		}
 	}
 
 	if item := h.buildAssistantConversationItem(response, storeReasoning, completionItemID); item != nil {
@@ -1131,11 +1331,42 @@ func (h *ChatHandler) addCompletionToConversation(
 		return nil
 	}
 
-	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, conversation.BranchMain, items); err != nil {
+	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, branchName, items); err != nil {
 		return platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to add items to conversation")
 	}
 
 	return nil
+}
+
+// isSameMessageContent checks if two items have the same text content
+// Used to detect duplicate user messages after regenerate
+func (h *ChatHandler) isSameMessageContent(newItem *conversation.Item, existingItem *conversation.Item) bool {
+	if newItem == nil || existingItem == nil {
+		return false
+	}
+	
+	// Extract text content from both items
+	newText := extractTextFromContent(newItem.Content)
+	existingText := extractTextFromContent(existingItem.Content)
+	
+	// Compare normalized text (trim whitespace)
+	return strings.TrimSpace(newText) == strings.TrimSpace(existingText)
+}
+
+// extractTextFromContent extracts the text content from a slice of Content
+func extractTextFromContent(contents []conversation.Content) string {
+	for _, c := range contents {
+		if c.TextString != nil && *c.TextString != "" {
+			return *c.TextString
+		}
+		if c.Text != nil && c.Text.Text != "" {
+			return c.Text.Text
+		}
+		if c.OutputText != nil && c.OutputText.Text != "" {
+			return c.OutputText.Text
+		}
+	}
+	return ""
 }
 
 func (h *ChatHandler) buildInputConversationItem(
@@ -1412,4 +1643,100 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// debugLogLLMRequest logs the full LLM request with truncated text content (100 chars) and full image URLs
+func debugLogLLMRequest(request chat.CompletionRequest, conversationID string) {
+	log := logger.GetLogger()
+	if !log.Debug().Enabled() {
+		return
+	}
+
+	log.Debug().
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Int("message_count", len(request.Messages)).
+		Float32("temperature", request.Temperature).
+		Float32("top_p", request.TopP).
+		Int("max_tokens", request.MaxTokens).
+		Msg("[DEBUG] LLM Request - Start")
+
+	for i, msg := range request.Messages {
+		// Log message header
+		msgLog := log.Debug().
+			Int("msg_index", i).
+			Str("role", msg.Role)
+
+		// Handle simple content (string)
+		if msg.Content != "" {
+			contentPreview := msg.Content
+			remaining := 0
+			if len(contentPreview) > 100 {
+				remaining = len(contentPreview) - 100
+				contentPreview = contentPreview[:100]
+			}
+			msgLog.Str("content", contentPreview)
+			if remaining > 0 {
+				msgLog.Int("content_remaining_chars", remaining)
+			}
+		}
+
+		// Handle MultiContent (array of parts)
+		if len(msg.MultiContent) > 0 {
+			msgLog.Int("parts_count", len(msg.MultiContent))
+		}
+
+		msgLog.Msg("[DEBUG] LLM Request - Message")
+
+		// Log each part in MultiContent
+		for j, part := range msg.MultiContent {
+			partLog := log.Debug().
+				Int("msg_index", i).
+				Int("part_index", j).
+				Str("type", string(part.Type))
+
+			switch part.Type {
+			case openai.ChatMessagePartTypeText:
+				textPreview := part.Text
+				remaining := 0
+				if len(textPreview) > 100 {
+					remaining = len(textPreview) - 100
+					textPreview = textPreview[:100]
+				}
+				partLog.Str("text", textPreview)
+				if remaining > 0 {
+					partLog.Int("text_remaining_chars", remaining)
+				}
+			case openai.ChatMessagePartTypeImageURL:
+				if part.ImageURL != nil {
+					// Show full image URL to debug placeholder issues
+					partLog.Str("image_url", part.ImageURL.URL)
+					if part.ImageURL.Detail != "" {
+						partLog.Str("detail", string(part.ImageURL.Detail))
+					}
+				}
+			}
+
+			partLog.Msg("[DEBUG] LLM Request - Part")
+		}
+	}
+
+	// Log tools if present
+	if len(request.Tools) > 0 {
+		toolNames := make([]string, 0, len(request.Tools))
+		for _, tool := range request.Tools {
+			if tool.Function != nil {
+				toolNames = append(toolNames, tool.Function.Name)
+			}
+		}
+		log.Debug().
+			Int("tools_count", len(request.Tools)).
+			Strs("tool_names", toolNames).
+			Msg("[DEBUG] LLM Request - Tools")
+	}
+
+	log.Debug().
+		Str("model", request.Model).
+		Str("conversation_id", conversationID).
+		Msg("[DEBUG] LLM Request - End")
 }
