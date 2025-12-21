@@ -257,6 +257,9 @@ dist/
 .DS_Store
 cmd/server/__debug_bin*
 
+# Service binaries
+services/*/bin/
+
 # Downloaded models (large files - root directory only)
 /models/
 

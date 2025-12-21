@@ -19,11 +19,13 @@ var setupAndRunCmd = &cobra.Command{
 func init() {
 	setupAndRunCmd.Flags().Bool("skip-prompts", false, "Skip interactive prompts and use existing .env")
 	setupAndRunCmd.Flags().Bool("with-memory-tools", false, "Enable memory tools profile and defaults during setup")
+	setupAndRunCmd.Flags().Bool("with-realtime-api", false, "Enable realtime API profile during setup")
 }
 
 func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	skipPrompts, _ := cmd.Flags().GetBool("skip-prompts")
 	enableMemory, _ := cmd.Flags().GetBool("with-memory-tools")
+	enableRealtime, _ := cmd.Flags().GetBool("with-realtime-api")
 
 	fmt.Println("🚀 Jan Server Setup and Run")
 	fmt.Println("=" + strings.Repeat("=", 50))
@@ -75,6 +77,12 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	if skipPrompts && enableMemory {
 		if err := applyMemoryDefaults(envPath); err != nil {
 			return fmt.Errorf("failed to enable memory tools defaults: %w", err)
+		}
+	}
+
+	if skipPrompts && enableRealtime {
+		if err := applyRealtimeDefaults(envPath); err != nil {
+			return fmt.Errorf("failed to enable realtime API defaults: %w", err)
 		}
 	}
 
@@ -174,6 +182,11 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	// Only show vLLM if using local provider
 	if os.Getenv("_USING_LOCAL_VLLM") == "true" {
 		fmt.Println("  • vLLM (Local):     http://localhost:8101")
+	}
+
+	// Show Realtime API if enabled
+	if os.Getenv("REALTIME_API_ENABLED") == "true" {
+		fmt.Println("  • Realtime API:     http://localhost:8186")
 	}
 
 	fmt.Println()
@@ -512,6 +525,52 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 		}
 	}
 
+	// 5. Realtime API Configuration
+	fmt.Println()
+	fmt.Println("🎙️  Realtime API Setup")
+	fmt.Println("Enable realtime API for real-time audio/video communication via LiveKit.")
+	fmt.Print("Enable Realtime API? (y/N): ")
+
+	realtimeChoice, _ := reader.ReadString('\n')
+	realtimeChoice = strings.TrimSpace(strings.ToLower(realtimeChoice))
+
+	// Default is No for Realtime API (requires LiveKit credentials)
+	if realtimeChoice == "y" || realtimeChoice == "yes" {
+		updates["REALTIME_API_ENABLED"] = "true"
+		profiles = append(profiles, "realtime")
+
+		fmt.Println()
+		fmt.Println("LiveKit Configuration (required for Realtime API):")
+		fmt.Println("Get credentials from https://cloud.livekit.io or your self-hosted LiveKit server")
+		fmt.Println()
+
+		fmt.Print("LIVEKIT_WS_URL (e.g., wss://your-app.livekit.cloud): ")
+		livekitURL, _ := reader.ReadString('\n')
+		livekitURL = strings.TrimSpace(livekitURL)
+		if livekitURL != "" {
+			updates["LIVEKIT_WS_URL"] = livekitURL
+		}
+
+		fmt.Print("LIVEKIT_API_KEY: ")
+		livekitKey, _ := reader.ReadString('\n')
+		livekitKey = strings.TrimSpace(livekitKey)
+		if livekitKey != "" {
+			updates["LIVEKIT_API_KEY"] = livekitKey
+		}
+
+		fmt.Print("LIVEKIT_API_SECRET: ")
+		livekitSecret, _ := reader.ReadString('\n')
+		livekitSecret = strings.TrimSpace(livekitSecret)
+		if livekitSecret != "" {
+			updates["LIVEKIT_API_SECRET"] = livekitSecret
+		}
+
+		fmt.Println("✓ Realtime API enabled (profile: realtime)")
+	} else {
+		updates["REALTIME_API_ENABLED"] = "false"
+		fmt.Println("✓ Realtime API disabled (enable later by editing .env)")
+	}
+
 	// Apply all updates
 	fmt.Println()
 
@@ -610,6 +669,35 @@ func applyMemoryDefaults(envPath string) error {
 	updates := make(map[string]string)
 	setMemoryDefaults(updates, &profiles, false, false)
 	updates["MCP_ENABLE_MEMORY_RETRIEVE"] = "true"
+	if len(profiles) > 0 {
+		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
+	}
+
+	return applyEnvUpdates(envPath, updates)
+}
+
+func applyRealtimeDefaults(envPath string) error {
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("read .env: %w", err)
+	}
+
+	profiles := parseProfiles(strings.Split(string(data), "\n"))
+	updates := make(map[string]string)
+
+	// Add realtime profile if not present
+	hasRealtime := false
+	for _, profile := range profiles {
+		if profile == "realtime" {
+			hasRealtime = true
+			break
+		}
+	}
+	if !hasRealtime {
+		profiles = append(profiles, "realtime")
+	}
+
+	updates["REALTIME_API_ENABLED"] = "true"
 	if len(profiles) > 0 {
 		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
 	}

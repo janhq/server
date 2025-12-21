@@ -34,7 +34,7 @@ func init() {
 	swaggerCmd.AddCommand(swaggerCombineCmd)
 
 	// generate flags
-	swaggerGenerateCmd.Flags().StringP("service", "s", "", "Generate for specific service (llm-api, media-api, response-api, mcp-tools)")
+	swaggerGenerateCmd.Flags().StringP("service", "s", "", "Generate for specific service (llm-api, media-api, response-api, mcp-tools, realtime-api)")
 	swaggerGenerateCmd.Flags().Bool("combine", false, "Combine specs after generation")
 }
 
@@ -45,7 +45,7 @@ func runSwaggerGenerate(cmd *cobra.Command, args []string) error {
 	fmt.Println("Generating Swagger documentation...")
 	fmt.Println()
 
-	services := []string{"llm-api", "media-api", "response-api", "mcp-tools"}
+	services := []string{"llm-api", "media-api", "response-api", "mcp-tools", "realtime-api"}
 	if service != "" {
 		services = []string{service}
 	}
@@ -115,6 +115,15 @@ func generateSwaggerForService(service string) error {
 			"--parseDependency",
 			"--parseInternal",
 		}
+	case "realtime-api":
+		swaggerArgs = []string{
+			"run", "github.com/swaggo/swag/cmd/swag@v1.8.12", "init",
+			"--dir", "./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1",
+			"--generalInfo", "server.go",
+			"--output", "./docs/swagger",
+			"--parseDependency",
+			"--parseInternal",
+		}
 	default:
 		return fmt.Errorf("unknown service: %s", service)
 	}
@@ -150,6 +159,7 @@ func runSwaggerCombine(cmd *cobra.Command, args []string) error {
 
 	llmSwagger := filepath.Join("services", "llm-api", "docs", "swagger", "swagger.json")
 	mcpSwagger := filepath.Join("services", "mcp-tools", "docs", "swagger", "swagger.json")
+	realtimeSwagger := filepath.Join("services", "realtime-api", "docs", "swagger", "swagger.json")
 	outputFile := filepath.Join("services", "llm-api", "docs", "swagger", "swagger-combined.json")
 
 	// Read LLM API swagger
@@ -163,75 +173,158 @@ func runSwaggerCombine(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse llm-api swagger: %w", err)
 	}
 
-	// Read MCP Tools swagger (optional)
-	mcpData, err := os.ReadFile(mcpSwagger)
-	if err != nil {
-		fmt.Println("  ⚠ MCP Tools swagger not found, using LLM API only")
-		// Just write LLM API spec
-		if err := os.WriteFile(outputFile, llmData, 0644); err != nil {
-			return fmt.Errorf("failed to write output: %w", err)
-		}
-		fmt.Printf("  ✓ Combined swagger created (LLM API only)\n")
-		return nil
-	}
-
-	var mcpSpec map[string]interface{}
-	if err := json.Unmarshal(mcpData, &mcpSpec); err != nil {
-		return fmt.Errorf("failed to parse mcp-tools swagger: %w", err)
-	}
-
 	// Merge specs
 	combined := llmSpec
 	if info, ok := combined["info"].(map[string]interface{}); ok {
-		info["title"] = "Jan Server API (LLM API + MCP Tools)"
-		info["description"] = "Unified API documentation for Jan Server including LLM API (OpenAI-compatible) and MCP Tools"
+		info["title"] = "Jan Server API (LLM API + MCP Tools + Realtime API)"
+		info["description"] = "Unified API documentation for Jan Server including LLM API (OpenAI-compatible), MCP Tools, and Realtime API"
 	}
 
-	// Merge paths with /mcp prefix
-	llmPaths, _ := combined["paths"].(map[string]interface{})
-	if llmPaths == nil {
-		llmPaths = make(map[string]interface{})
+	// Get paths and definitions maps
+	combinedPaths, _ := combined["paths"].(map[string]interface{})
+	if combinedPaths == nil {
+		combinedPaths = make(map[string]interface{})
 	}
 
-	if mcpPaths, ok := mcpSpec["paths"].(map[string]interface{}); ok {
-		for path, methods := range mcpPaths {
-			llmPaths["/mcp"+path] = methods
-		}
-	}
-	combined["paths"] = llmPaths
-
-	// Merge definitions
-	llmDefs, _ := combined["definitions"].(map[string]interface{})
-	if llmDefs == nil {
-		llmDefs = make(map[string]interface{})
+	combinedDefs, _ := combined["definitions"].(map[string]interface{})
+	if combinedDefs == nil {
+		combinedDefs = make(map[string]interface{})
 	}
 
-	if mcpDefs, ok := mcpSpec["definitions"].(map[string]interface{}); ok {
-		for defName, def := range mcpDefs {
-			llmDefs["MCP_"+defName] = def
-		}
-	}
-	combined["definitions"] = llmDefs
+	combinedTags, _ := combined["tags"].([]interface{})
 
-	// Merge tags
-	llmTags, _ := combined["tags"].([]interface{})
-	mcpTag := map[string]interface{}{
-		"name":        "MCP Tools",
-		"description": "Model Context Protocol tools",
-	}
-	llmTags = append(llmTags, mcpTag)
-
-	if mcpTags, ok := mcpSpec["tags"].([]interface{}); ok {
-		for _, tag := range mcpTags {
-			if tagMap, ok := tag.(map[string]interface{}); ok {
-				if name, ok := tagMap["name"].(string); ok {
-					tagMap["name"] = "MCP: " + name
+	// Read and merge MCP Tools swagger (optional)
+	mcpData, err := os.ReadFile(mcpSwagger)
+	if err != nil {
+		fmt.Println("  ⚠ MCP Tools swagger not found, skipping")
+	} else {
+		var mcpSpec map[string]interface{}
+		if err := json.Unmarshal(mcpData, &mcpSpec); err != nil {
+			fmt.Printf("  ⚠ Failed to parse mcp-tools swagger: %v\n", err)
+		} else {
+			// Merge MCP paths - Kong routes /mcp → /v1/mcp, so replace /v1/mcp with /mcp
+			if mcpPaths, ok := mcpSpec["paths"].(map[string]interface{}); ok {
+				for path, methods := range mcpPaths {
+					// /v1/mcp → /mcp (Kong handles the routing)
+					if path == "/v1/mcp" {
+						combinedPaths["/mcp"] = methods
+					} else {
+						combinedPaths["/mcp"+path] = methods
+					}
 				}
-				llmTags = append(llmTags, tagMap)
+			}
+
+			// Merge MCP definitions
+			if mcpDefs, ok := mcpSpec["definitions"].(map[string]interface{}); ok {
+				for defName, def := range mcpDefs {
+					combinedDefs["MCP_"+defName] = def
+				}
+			}
+
+			// Merge MCP tags
+			mcpTag := map[string]interface{}{
+				"name":        "MCP Tools",
+				"description": "Model Context Protocol tools",
+			}
+			combinedTags = append(combinedTags, mcpTag)
+
+			if mcpTags, ok := mcpSpec["tags"].([]interface{}); ok {
+				for _, tag := range mcpTags {
+					if tagMap, ok := tag.(map[string]interface{}); ok {
+						if name, ok := tagMap["name"].(string); ok {
+							tagMap["name"] = "MCP: " + name
+						}
+						combinedTags = append(combinedTags, tagMap)
+					}
+				}
+			}
+			fmt.Println("  ✓ MCP Tools swagger merged")
+		}
+	}
+
+	// Read and merge Realtime API swagger (optional)
+	realtimeData, err := os.ReadFile(realtimeSwagger)
+	if err != nil {
+		fmt.Println("  ⚠ Realtime API swagger not found, skipping")
+	} else {
+		var realtimeSpec map[string]interface{}
+		if err := json.Unmarshal(realtimeData, &realtimeSpec); err != nil {
+			fmt.Printf("  ⚠ Failed to parse realtime-api swagger: %v\n", err)
+		} else {
+			// Merge Realtime paths with /v1 prefix (and fix $ref references)
+			if realtimePaths, ok := realtimeSpec["paths"].(map[string]interface{}); ok {
+				for path, methods := range realtimePaths {
+					// Fix $ref references in paths to use Realtime_ prefix
+					fixedMethods := fixRealtimeRefs(methods)
+					combinedPaths["/v1"+path] = fixedMethods
+				}
+			}
+
+			// Merge Realtime definitions (and fix $ref references)
+			if realtimeDefs, ok := realtimeSpec["definitions"].(map[string]interface{}); ok {
+				for defName, def := range realtimeDefs {
+					// Fix $ref references inside definitions
+					fixedDef := fixRealtimeRefs(def)
+					combinedDefs["Realtime_"+defName] = fixedDef
+				}
+			}
+
+			// Merge Realtime tags - use "Realtime API" to match the @Tags annotation
+			realtimeTag := map[string]interface{}{
+				"name":        "Realtime API",
+				"description": "Realtime API for audio/video communication via LiveKit",
+			}
+			combinedTags = append(combinedTags, realtimeTag)
+			fmt.Println("  ✓ Realtime API swagger merged")
+		}
+	}
+
+	combined["paths"] = combinedPaths
+	combined["definitions"] = combinedDefs
+
+	// Build ordered tags list - Realtime API should be at the bottom
+	// First, collect all tags used in paths
+	tagOrder := []string{
+		"Authentication API",
+		"Server API",
+		"Model API",
+		"Admin Model API",
+		"Admin Provider API",
+		"Chat Completions API",
+		"Conversations API",
+		"Projects API",
+		"MCP API",
+		"MCP Tools",
+		"Realtime API", // Keep at bottom
+	}
+
+	// Build tag descriptions map
+	tagDescriptions := map[string]string{
+		"MCP Tools":   "Model Context Protocol tools",
+		"Realtime API": "Realtime API for audio/video communication via LiveKit",
+	}
+
+	// Add descriptions from existing tags
+	for _, tag := range combinedTags {
+		if tagMap, ok := tag.(map[string]interface{}); ok {
+			name, _ := tagMap["name"].(string)
+			desc, _ := tagMap["description"].(string)
+			if name != "" && desc != "" {
+				tagDescriptions[name] = desc
 			}
 		}
 	}
-	combined["tags"] = llmTags
+
+	// Build final ordered tags array
+	orderedTags := make([]interface{}, 0, len(tagOrder))
+	for _, name := range tagOrder {
+		tag := map[string]interface{}{"name": name}
+		if desc, ok := tagDescriptions[name]; ok {
+			tag["description"] = desc
+		}
+		orderedTags = append(orderedTags, tag)
+	}
+	combined["tags"] = orderedTags
 
 	// Write combined spec
 	combinedData, err := json.MarshalIndent(combined, "", "  ")
@@ -245,4 +338,39 @@ func runSwaggerCombine(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("  ✓ Combined swagger created at: %s\n", outputFile)
 	return nil
+}
+
+// fixRealtimeRefs recursively updates $ref paths in Realtime API definitions
+// to use the Realtime_ prefix (e.g., "#/definitions/session.Session" -> "#/definitions/Realtime_session.Session")
+func fixRealtimeRefs(v interface{}) interface{} {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		result := make(map[string]interface{})
+		for k, v := range val {
+			if k == "$ref" {
+				if refStr, ok := v.(string); ok {
+					// Fix reference: #/definitions/X -> #/definitions/Realtime_X
+					if len(refStr) > 14 && refStr[:14] == "#/definitions/" {
+						defName := refStr[14:]
+						result[k] = "#/definitions/Realtime_" + defName
+					} else {
+						result[k] = v
+					}
+				} else {
+					result[k] = v
+				}
+			} else {
+				result[k] = fixRealtimeRefs(v)
+			}
+		}
+		return result
+	case []interface{}:
+		result := make([]interface{}, len(val))
+		for i, item := range val {
+			result[i] = fixRealtimeRefs(item)
+		}
+		return result
+	default:
+		return v
+	}
 }
