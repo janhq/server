@@ -854,15 +854,18 @@ func (s *SerperMCP) filterSearchResults(ctx context.Context, toolKey string, pay
 	filteredResults := make([]searchToolResult, 0, len(payload.Results))
 	filteredCitations := make([]string, 0, len(payload.Citations))
 	removedCount := 0
+	filteredURLs := make([]string, 0)
 
 	for _, result := range payload.Results {
 		// Check if any field matches disallowed keywords
 		contentToCheck := result.Title + " " + result.Snippet + " " + result.SourceURL
 		if toolConfig.MatchesDisallowedKeyword(contentToCheck) {
 			removedCount++
-			log.Debug().
+			filteredURLs = append(filteredURLs, result.SourceURL)
+			log.Info().
 				Str("tool_key", toolKey).
 				Str("source_url", result.SourceURL).
+				Str("title", result.Title).
 				Msg("Filtered search result due to disallowed keyword")
 			continue
 		}
@@ -879,7 +882,8 @@ func (s *SerperMCP) filterSearchResults(ctx context.Context, toolKey string, pay
 			Str("tool_key", toolKey).
 			Int("removed", removedCount).
 			Int("remaining", len(filteredResults)).
-			Msg("Filtered search results")
+			Strs("filtered_urls", filteredURLs).
+			Msg("Filtered search results due to disallowed keywords")
 	}
 
 	payload.Results = filteredResults

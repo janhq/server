@@ -158,7 +158,7 @@ func main() {
 		serperMCP.SetToolConfigCache(toolConfigCache)
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient)
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient, toolConfigCache)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

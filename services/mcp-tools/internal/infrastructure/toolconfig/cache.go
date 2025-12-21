@@ -50,12 +50,20 @@ func NewCacheWithTTL(client *llmapi.Client, ttl time.Duration) *Cache {
 func (c *Cache) GetAllTools(ctx context.Context) ([]*CachedTool, error) {
 	c.mu.RLock()
 	if time.Since(c.lastFetched) < c.cacheTTL && len(c.allTools) > 0 {
+		log.Debug().
+			Int("cached_count", len(c.allTools)).
+			Dur("age", time.Since(c.lastFetched)).
+			Msg("Returning cached tools (not expired)")
 		tools := c.allTools
 		c.mu.RUnlock()
 		return tools, nil
 	}
 	c.mu.RUnlock()
 
+	log.Debug().
+		Dur("age", time.Since(c.lastFetched)).
+		Bool("has_cached", len(c.allTools) > 0).
+		Msg("Cache expired or empty, refreshing")
 	return c.refresh(ctx)
 }
 
