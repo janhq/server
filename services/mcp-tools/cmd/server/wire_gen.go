@@ -15,6 +15,10 @@ import (
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes/mcp"
 )
 
+import (
+	_ "jan-server/services/mcp-tools/internal/infrastructure/metrics"
+)
+
 // Injectors from wire.go:
 
 func CreateApplication(ctx context.Context) (*Application, error) {
@@ -25,11 +29,7 @@ func CreateApplication(ctx context.Context) (*Application, error) {
 	searchClient := infrastructure.ProvideSearchClient(config)
 	searchService := search.NewSearchService(searchClient)
 	client := infrastructure.ProvideVectorStoreClient(config)
-	serperMCPConfig := mcp.SerperMCPConfig{
-		MaxSnippetChars:       config.MaxSnippetChars,
-		MaxScrapePreviewChars: config.MaxScrapePreviewChars,
-		MaxScrapeTextChars:    config.MaxScrapeTextChars,
-	}
+	serperMCPConfig := routes.ProvideSerperMCPConfig(config)
 	serperMCP := mcp.NewSerperMCP(searchService, client, serperMCPConfig)
 	mcpproviderConfig := infrastructure.ProvideMCPProviderConfig()
 	providerMCP := mcp.NewProviderMCP(mcpproviderConfig)
@@ -37,7 +37,8 @@ func CreateApplication(ctx context.Context) (*Application, error) {
 	sandboxFusionMCP := routes.ProvideSandboxFusionMCP(sandboxfusionClient, config)
 	memoryMCP := routes.ProvideMemoryMCP(config)
 	llmapiClient := infrastructure.ProvideLLMAPIClient(config)
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxFusionMCP, memoryMCP, llmapiClient)
+	cache := routes.ProvideToolConfigCache(config, llmapiClient)
+	mcpRoute := routes.ProvideMCPRoute(serperMCP, providerMCP, sandboxFusionMCP, memoryMCP, llmapiClient, cache)
 	validator, err := infrastructure.ProvideAuthValidator(ctx, config)
 	if err != nil {
 		return nil, err

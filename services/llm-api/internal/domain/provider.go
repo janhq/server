@@ -7,6 +7,7 @@ import (
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/apikey"
 	"jan-server/services/llm-api/internal/domain/conversation"
+	"jan-server/services/llm-api/internal/domain/mcptool"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
@@ -42,6 +43,9 @@ var ServiceProvider = wire.NewSet(
 
 	// Prompt templates
 	prompttemplate.NewService,
+
+	// MCP tools
+	mcptool.NewService,
 
 	// Prompt orchestration
 	ProvidePromptProcessorConfig,

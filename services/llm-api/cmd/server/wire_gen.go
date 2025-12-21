@@ -10,6 +10,7 @@ import (
 	"jan-server/services/llm-api/internal/domain"
 	"jan-server/services/llm-api/internal/domain/apikey"
 	"jan-server/services/llm-api/internal/domain/conversation"
+	"jan-server/services/llm-api/internal/domain/mcptool"
 	"jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
@@ -20,6 +21,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/crontab"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/apikeyrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/conversationrepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/mcptoolrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/prompttemplaterepo"
@@ -36,6 +38,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/mcptoolhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
@@ -121,7 +124,10 @@ func CreateApplication() (*Application, error) {
 	adminGroupHandler := admin.NewAdminGroupHandler(client, adminAuditLogger)
 	featureFlagHandler := admin.NewFeatureFlagHandler(database, adminAuditLogger)
 	promptTemplateHandler := prompttemplatehandler.NewPromptTemplateHandler(prompttemplateService, adminAuditLogger)
-	adminRoute := admin2.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler, promptTemplateHandler)
+	mcpToolRepository := mcptoolrepo.NewMCPToolGormRepository(database)
+	mcpToolService := mcptool.NewService(mcpToolRepository)
+	mcpToolHandler := mcptoolhandler.NewMCPToolHandler(mcpToolService, adminAuditLogger)
+	adminRoute := admin2.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler, promptTemplateHandler, mcpToolHandler)
 	userSettingsHandler := usersettingshandler.NewUserSettingsHandler(usersettingsService, zerologLogger)
 	usersRoute := users.NewUsersRoute(userSettingsHandler, authHandler)
 	itemRepository := conversationrepo.NewItemGormRepository(database)
@@ -129,7 +135,7 @@ func CreateApplication() (*Application, error) {
 	shareHandler := sharehandler.NewShareHandler(shareService, conversationHandler, config)
 	shareRoute := share2.NewShareRoute(shareHandler, authHandler, conversationHandler)
 	publicShareRoute := public.NewPublicShareRoute(shareHandler)
-	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, branchRoute, projectRoute, adminRoute, usersRoute, promptTemplateHandler, shareRoute, publicShareRoute)
+	v1Route := v1.NewV1Route(modelRoute, chatRoute, conversationRoute, branchRoute, projectRoute, adminRoute, usersRoute, promptTemplateHandler, mcpToolHandler, shareRoute, publicShareRoute)
 	guestHandler := guestauth.NewGuestHandler(client, zerologLogger)
 	upgradeHandler := guestauth.NewUpgradeHandler(client, zerologLogger)
 	tokenHandler := authhandler.NewTokenHandler(client, zerologLogger)

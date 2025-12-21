@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"jan-server/services/llm-api/internal/config"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/mcptoolhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/public"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
@@ -26,6 +27,7 @@ type V1Route struct {
 	adminRoute            *admin.AdminRoute
 	users                 *users.UsersRoute
 	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler
+	mcpToolHandler        *mcptoolhandler.MCPToolHandler
 	share                 *share.ShareRoute
 	publicShare           *public.PublicShareRoute
 }
@@ -39,6 +41,7 @@ func NewV1Route(
 	adminRoute *admin.AdminRoute,
 	users *users.UsersRoute,
 	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler,
+	mcpToolHandler *mcptoolhandler.MCPToolHandler,
 	share *share.ShareRoute,
 	publicShare *public.PublicShareRoute,
 ) *V1Route {
@@ -51,6 +54,7 @@ func NewV1Route(
 		adminRoute,
 		users,
 		promptTemplateHandler,
+		mcpToolHandler,
 		share,
 		publicShare,
 	}
@@ -81,6 +85,10 @@ func (v1Route *V1Route) RegisterPublicRouter(router gin.IRouter) {
 
 	// Public prompt template endpoints
 	v1Router.GET("/prompt-templates/:key", v1Route.promptTemplateHandler.GetByKey)
+
+	// Public MCP tool endpoints (for mcp-tools service)
+	v1Router.GET("/mcp-tools", v1Route.mcpToolHandler.ListActive)
+	v1Router.GET("/mcp-tools/:key", v1Route.mcpToolHandler.GetByKey)
 
 	// Public share routes (no auth required)
 	v1Route.publicShare.RegisterRouter(v1Router)
