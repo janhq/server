@@ -12,6 +12,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/mcptool"
 	"jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/domain/modelprompttemplate"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
 	"jan-server/services/llm-api/internal/domain/share"
@@ -22,6 +23,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/apikeyrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/conversationrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/mcptoolrepo"
+	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelprompttemplaterepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/modelrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/projectrepo"
 	"jan-server/services/llm-api/internal/infrastructure/database/repository/prompttemplaterepo"
@@ -40,6 +42,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/mcptoolhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelprompthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/sharehandler"
@@ -103,7 +106,9 @@ func CreateApplication() (*Application, error) {
 	processorConfig := domain.ProvidePromptProcessorConfig(config, zerologLogger)
 	promptTemplateRepository := prompttemplaterepo.NewPromptTemplateGormRepository(database)
 	prompttemplateService := prompttemplate.NewService(promptTemplateRepository)
-	processorImpl := domain.ProvidePromptProcessor(processorConfig, zerologLogger, prompttemplateService)
+	modelPromptTemplateRepository := modelprompttemplaterepo.NewModelPromptTemplateGormRepository(database)
+	modelprompttemplateService := modelprompttemplate.NewService(modelPromptTemplateRepository, promptTemplateRepository)
+	processorImpl := domain.ProvidePromptProcessor(processorConfig, zerologLogger, prompttemplateService, modelprompttemplateService)
 	memoryClient := infrastructure.ProvideMemoryClient(config, zerologLogger)
 	usersettingsRepository := usersettingsrepo.NewUserSettingsGormRepository(db)
 	usersettingsService := usersettings.NewService(usersettingsRepository, modelHandler)
@@ -117,16 +122,17 @@ func CreateApplication() (*Application, error) {
 	projectHandler := projecthandler.NewProjectHandler(projectService)
 	projectRoute := projects.NewProjectRoute(projectHandler, authHandler)
 	providerModelHandler := modelhandler.NewProviderModelHandler(providerModelService, providerService, modelCatalogService)
-	adminModelRoute := model3.NewAdminModelRoute(modelHandler, modelCatalogHandler, providerModelHandler)
-	adminProviderRoute := provider2.NewAdminProviderRoute(providerHandler)
 	adminAuditLogger := infrastructure.ProvideAdminAuditLogger(db, zerologLogger)
+	modelPromptTemplateHandler := modelprompthandler.NewModelPromptTemplateHandler(modelprompttemplateService, adminAuditLogger)
+	adminModelRoute := model3.NewAdminModelRoute(modelHandler, modelCatalogHandler, providerModelHandler, modelPromptTemplateHandler)
+	adminProviderRoute := provider2.NewAdminProviderRoute(providerHandler)
 	adminUserHandler := admin.NewAdminUserHandler(client, adminAuditLogger)
 	adminGroupHandler := admin.NewAdminGroupHandler(client, adminAuditLogger)
 	featureFlagHandler := admin.NewFeatureFlagHandler(database, adminAuditLogger)
 	promptTemplateHandler := prompttemplatehandler.NewPromptTemplateHandler(prompttemplateService, adminAuditLogger)
 	mcpToolRepository := mcptoolrepo.NewMCPToolGormRepository(database)
-	mcpToolService := mcptool.NewService(mcpToolRepository)
-	mcpToolHandler := mcptoolhandler.NewMCPToolHandler(mcpToolService, adminAuditLogger)
+	mcptoolService := mcptool.NewService(mcpToolRepository)
+	mcpToolHandler := mcptoolhandler.NewMCPToolHandler(mcptoolService, adminAuditLogger)
 	adminRoute := admin2.NewAdminRoute(adminModelRoute, adminProviderRoute, adminUserHandler, adminGroupHandler, featureFlagHandler, promptTemplateHandler, mcpToolHandler)
 	userSettingsHandler := usersettingshandler.NewUserSettingsHandler(usersettingsService, zerologLogger)
 	usersRoute := users.NewUsersRoute(userSettingsHandler, authHandler)

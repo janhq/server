@@ -281,6 +281,12 @@ func (h *ChatHandler) CreateChatCompletion(
 			profileSettings = &userSettings.ProfileSettings
 		}
 
+		// Get model catalog ID for model-specific template resolution
+		var modelCatalogID *string
+		if modelCatalog != nil && modelCatalog.PublicID != "" {
+			modelCatalogID = &modelCatalog.PublicID
+		}
+
 		promptCtx := &prompt.Context{
 			UserID:             userID,
 			ConversationID:     conversationID,
@@ -289,6 +295,7 @@ func (h *ChatHandler) CreateChatCompletion(
 			Memory:             loadedMemory,
 			ProjectInstruction: projectInstruction,
 			Profile:            profileSettings,
+			ModelCatalogID:     modelCatalogID,
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)

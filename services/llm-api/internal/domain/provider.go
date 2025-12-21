@@ -9,6 +9,7 @@ import (
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/domain/mcptool"
 	"jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/domain/modelprompttemplate"
 	"jan-server/services/llm-api/internal/domain/project"
 	"jan-server/services/llm-api/internal/domain/prompt"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
@@ -44,6 +45,9 @@ var ServiceProvider = wire.NewSet(
 	// Prompt templates
 	prompttemplate.NewService,
 
+	// Model prompt templates
+	modelprompttemplate.NewService,
+
 	// MCP tools
 	mcptool.NewService,
 
@@ -78,13 +82,20 @@ func ProvidePromptProcessor(
 	config prompt.ProcessorConfig,
 	log zerolog.Logger,
 	templateService *prompttemplate.Service,
+	modelPromptService *modelprompttemplate.Service,
 ) *prompt.ProcessorImpl {
 	processor := prompt.NewProcessorWithTemplateService(config, log, templateService)
 
 	// Register Deep Research module if prompt orchestration is enabled
 	if config.Enabled && templateService != nil {
-		processor.RegisterModule(prompt.NewDeepResearchModule(templateService))
-		log.Info().Msg("registered Deep Research prompt module")
+		// Use model-aware Deep Research module if model prompt service is available
+		if modelPromptService != nil {
+			processor.RegisterModule(prompt.NewDeepResearchModuleWithModelPrompts(templateService, modelPromptService))
+			log.Info().Msg("registered Deep Research prompt module with model-specific template support")
+		} else {
+			processor.RegisterModule(prompt.NewDeepResearchModule(templateService))
+			log.Info().Msg("registered Deep Research prompt module")
+		}
 	}
 
 	return processor
