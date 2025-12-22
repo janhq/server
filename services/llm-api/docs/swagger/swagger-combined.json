@@ -16,93 +16,7 @@
       },
       "type": "object"
     },
-    "Realtime_session.ClientSecret": {
-      "properties": {
-        "expires_at": {
-          "description": "actual token expiry timestamp",
-          "type": "integer"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Realtime_session.DeleteSessionResponse": {
-      "properties": {
-        "deleted": {
-          "type": "boolean"
-        },
-        "id": {
-          "type": "string"
-        },
-        "object": {
-          "description": "\"realtime.session.deleted\"",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Realtime_session.ListSessionsResponse": {
-      "properties": {
-        "data": {
-          "items": {
-            "$ref": "#/definitions/Realtime_session.Session"
-          },
-          "type": "array"
-        },
-        "object": {
-          "description": "\"list\"",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Realtime_session.Session": {
-      "properties": {
-        "client_secret": {
-          "$ref": "#/definitions/Realtime_session.ClientSecret"
-        },
-        "id": {
-          "type": "string"
-        },
-        "object": {
-          "description": "\"realtime.session\"",
-          "type": "string"
-        },
-        "room_id": {
-          "type": "string"
-        },
-        "status": {
-          "allOf": [
-            {
-              "$ref": "#/definitions/Realtime_session.SessionState"
-            }
-          ],
-          "description": "connection status for GET responses"
-        },
-        "user_id": {
-          "type": "string"
-        },
-        "ws_url": {
-          "description": "LiveKit WebSocket URL",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Realtime_session.SessionState": {
-      "enum": [
-        "created",
-        "connected"
-      ],
-      "type": "string",
-      "x-enum-varnames": [
-        "StateCreated",
-        "StateConnected"
-      ]
-    },
-    "Realtime_v1.errorDetail": {
+    "Realtime_responses.ErrorDetail": {
       "properties": {
         "code": {
           "type": "string"
@@ -116,10 +30,75 @@
       },
       "type": "object"
     },
-    "Realtime_v1.errorResponse": {
+    "Realtime_responses.ErrorResponse": {
       "properties": {
         "error": {
-          "$ref": "#/definitions/Realtime_v1.errorDetail"
+          "$ref": "#/definitions/Realtime_responses.ErrorDetail"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_sessionres.ClientSecretDetail": {
+      "properties": {
+        "expires_at": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_sessionres.DeleteSessionResponse": {
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "object": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_sessionres.ListSessionsResponse": {
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/Realtime_sessionres.SessionResponse"
+          },
+          "type": "array"
+        },
+        "object": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_sessionres.SessionResponse": {
+      "properties": {
+        "client_secret": {
+          "$ref": "#/definitions/Realtime_sessionres.ClientSecretDetail"
+        },
+        "id": {
+          "type": "string"
+        },
+        "object": {
+          "type": "string"
+        },
+        "room_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "ws_url": {
+          "type": "string"
         }
       },
       "type": "object"
@@ -338,6 +317,10 @@
         },
         "system_fingerprint": {
           "type": "string"
+        },
+        "trimmed": {
+          "description": "True if messages were trimmed to fit context",
+          "type": "boolean"
         },
         "usage": {
           "$ref": "#/definitions/openai.Usage"
@@ -1202,6 +1185,182 @@
       },
       "type": "object"
     },
+    "conversationhandler.ActivateBranchResponse": {
+      "properties": {
+        "active_branch": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "conversationhandler.BranchResponse": {
+      "properties": {
+        "created_at": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "forked_at": {
+          "type": "integer"
+        },
+        "forked_from_item_id": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "item_count": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parent_branch": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "conversationhandler.CreateBranchRequest": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "fork_from_item_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parent_branch": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "conversationhandler.DeleteItemResponse": {
+      "properties": {
+        "branch": {
+          "description": "Always \"MAIN\" after swap",
+          "type": "string"
+        },
+        "branch_created": {
+          "type": "boolean"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "old_main_backup": {
+          "description": "Backup name for old MAIN",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "conversationhandler.EditMessageRequest": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "regenerate": {
+          "description": "Auto-trigger new response (default: true)",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "conversationhandler.EditMessageResponse": {
+      "properties": {
+        "branch": {
+          "description": "Always \"MAIN\" after swap",
+          "type": "string"
+        },
+        "branch_created": {
+          "type": "boolean"
+        },
+        "new_branch": {
+          "$ref": "#/definitions/conversationhandler.BranchResponse"
+        },
+        "old_main_backup": {
+          "description": "Backup name for old MAIN",
+          "type": "string"
+        },
+        "user_item": {
+          "$ref": "#/definitions/conversation.Item"
+        }
+      },
+      "type": "object"
+    },
+    "conversationhandler.ListBranchesResponse": {
+      "properties": {
+        "active_branch": {
+          "type": "string"
+        },
+        "data": {
+          "items": {
+            "$ref": "#/definitions/conversationhandler.BranchResponse"
+          },
+          "type": "array"
+        },
+        "object": {
+          "description": "\"list\"",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "conversationhandler.RegenerateMessageRequest": {
+      "properties": {
+        "max_tokens": {
+          "description": "Override max tokens",
+          "type": "integer"
+        },
+        "model": {
+          "description": "Override model",
+          "type": "string"
+        },
+        "temperature": {
+          "description": "Override temperature",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "conversationhandler.RegenerateMessageResponse": {
+      "properties": {
+        "branch": {
+          "description": "Always \"MAIN\" after swap",
+          "type": "string"
+        },
+        "branch_created": {
+          "type": "boolean"
+        },
+        "new_branch": {
+          "$ref": "#/definitions/conversationhandler.BranchResponse"
+        },
+        "old_main_backup": {
+          "description": "Backup name for old MAIN",
+          "type": "string"
+        },
+        "user_item_id": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "conversationrequests.CreateConversationRequest": {
       "properties": {
         "items": {
@@ -1292,6 +1451,20 @@
       "required": [
         "status"
       ],
+      "type": "object"
+    },
+    "conversationresponses.BulkConversationsDeletedResponse": {
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        },
+        "deleted_count": {
+          "type": "integer"
+        },
+        "object": {
+          "type": "string"
+        }
+      },
       "type": "object"
     },
     "conversationresponses.ConversationDeletedResponse": {
@@ -1706,6 +1879,23 @@
       },
       "type": "object"
     },
+    "modelresponses.EndpointResponse": {
+      "properties": {
+        "healthy": {
+          "type": "boolean"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "modelresponses.ModelCatalogResponse": {
       "properties": {
         "active": {
@@ -1974,6 +2164,12 @@
         "base_url": {
           "type": "string"
         },
+        "endpoints": {
+          "items": {
+            "$ref": "#/definitions/modelresponses.EndpointResponse"
+          },
+          "type": "array"
+        },
         "id": {
           "type": "string"
         },
@@ -2014,6 +2210,12 @@
         "base_url": {
           "type": "string"
         },
+        "endpoints": {
+          "items": {
+            "$ref": "#/definitions/modelresponses.EndpointResponse"
+          },
+          "type": "array"
+        },
         "id": {
           "type": "string"
         },
@@ -2045,6 +2247,12 @@
         },
         "base_url": {
           "type": "string"
+        },
+        "endpoints": {
+          "items": {
+            "$ref": "#/definitions/modelresponses.EndpointResponse"
+          },
+          "type": "array"
         },
         "id": {
           "type": "string"
@@ -2665,6 +2873,12 @@
         "base_url": {
           "type": "string"
         },
+        "endpoints": {
+          "items": {
+            "$ref": "#/definitions/requestmodels.EndpointDTO"
+          },
+          "type": "array"
+        },
         "metadata": {
           "additionalProperties": {
             "type": "string"
@@ -2674,12 +2888,14 @@
         "name": {
           "type": "string"
         },
+        "url": {
+          "type": "string"
+        },
         "vendor": {
           "type": "string"
         }
       },
       "required": [
-        "base_url",
         "name",
         "vendor"
       ],
@@ -2733,6 +2949,20 @@
       "required": [
         "enable"
       ],
+      "type": "object"
+    },
+    "requestmodels.EndpointDTO": {
+      "properties": {
+        "priority": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
       "type": "object"
     },
     "requestmodels.UpdateModelCatalogRequest": {
@@ -2866,6 +3096,12 @@
         "base_url": {
           "type": "string"
         },
+        "endpoints": {
+          "items": {
+            "$ref": "#/definitions/requestmodels.EndpointDTO"
+          },
+          "type": "array"
+        },
         "metadata": {
           "additionalProperties": {
             "type": "string"
@@ -2873,6 +3109,9 @@
           "type": "object"
         },
         "name": {
+          "type": "string"
+        },
+        "url": {
           "type": "string"
         }
       },
@@ -4358,6 +4597,41 @@
       }
     },
     "/v1/conversations": {
+      "delete": {
+        "description": "Permanently delete all conversations for the authenticated user\n\n**WARNING: This is a destructive operation that cannot be undone.**\n\n**Features:**\n- Deletes ALL conversations owned by the authenticated user\n- Automatically cascades to delete all associated items and shares\n- Returns the count of deleted conversations\n- Requires valid authentication to ensure ownership verification\n\n**Security:**\n- Only deletes conversations owned by the authenticated user\n- Cannot delete other users' conversations\n- Authentication is mandatory",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted all conversations",
+            "schema": {
+              "$ref": "#/definitions/conversationresponses.BulkConversationsDeletedResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - missing or invalid authentication",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error - deletion failed",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete all conversations",
+        "tags": [
+          "Conversations API"
+        ]
+      },
       "get": {
         "description": "List conversations for the authenticated user with optional referrer filtering.",
         "parameters": [
@@ -4669,6 +4943,271 @@
         ]
       }
     },
+    "/v1/conversations/{conv_public_id}/branches": {
+      "get": {
+        "description": "List all branches for a conversation",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved branches",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.ListBranchesResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Conversation not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List branches",
+        "tags": [
+          "Conversation Branches"
+        ]
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Create a new branch in a conversation, optionally forking from an existing item",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Create branch request",
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.CreateBranchRequest"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully created branch",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.BranchResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Conversation not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a branch",
+        "tags": [
+          "Conversation Branches"
+        ]
+      }
+    },
+    "/v1/conversations/{conv_public_id}/branches/{branch_name}": {
+      "delete": {
+        "description": "Delete a branch from a conversation (cannot delete MAIN or active branch)",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Branch name",
+            "in": "path",
+            "name": "branch_name",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Branch deleted successfully"
+          },
+          "400": {
+            "description": "Cannot delete MAIN or active branch",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Branch not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a branch",
+        "tags": [
+          "Conversation Branches"
+        ]
+      },
+      "get": {
+        "description": "Get details of a specific branch",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Branch name",
+            "in": "path",
+            "name": "branch_name",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved branch",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.BranchResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Branch not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get branch details",
+        "tags": [
+          "Conversation Branches"
+        ]
+      }
+    },
+    "/v1/conversations/{conv_public_id}/branches/{branch_name}/activate": {
+      "post": {
+        "description": "Set a branch as the active branch for a conversation",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Branch name",
+            "in": "path",
+            "name": "branch_name",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Branch activated successfully",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.ActivateBranchResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Branch not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Activate a branch",
+        "tags": [
+          "Conversation Branches"
+        ]
+      }
+    },
     "/v1/conversations/{conv_public_id}/items": {
       "get": {
         "description": "List all items in a conversation with cursor-based pagination support\n\n**Features:**\n- Cursor-based pagination using item IDs\n- Configurable page size (1-100 items, default 20)\n- Sort order control (ascending or descending)\n- Optional include parameter for additional fields\n- Returns paginated list with navigation cursors\n\n**Pagination:**\n- Use `after` cursor from previous response for next page\n- `has_more` indicates if more items are available\n- `first_id` and `last_id` provide cursor references\n\n**Query Parameters:**\n- `limit`: Number of items (1-100, default 20)\n- `order`: Sort order (\"asc\" or \"desc\", default \"desc\")\n- `after`: Item ID cursor for pagination\n- `include`: Additional fields to include (optional)",
@@ -4920,7 +5459,7 @@
     },
     "/v1/conversations/{conv_public_id}/items/{item_id}": {
       "delete": {
-        "description": "Delete an item from a conversation. The item will be removed from the conversation.\n\n**Features:**\n- Remove specific item from conversation\n- Automatic ownership verification\n- Returns updated conversation object after deletion\n- Items are permanently removed (not soft delete)\n\n**Important:**\n- Deleting an item may affect conversation flow\n- Item IDs are not reused after deletion\n- Other items in conversation remain unchanged\n- Consider creating a new branch instead of deleting items\n\n**Response:**\nReturns the conversation object (not the deleted item)",
+        "description": "Delete an item from a conversation by creating a new MAIN branch without it.\nThe old MAIN branch is preserved as a backup.\n\n**Features:**\n- Creates a new branch without the deleted item\n- New branch becomes MAIN, old MAIN becomes backup\n- Automatic ownership verification\n- Preserves conversation history in backup branch\n\n**Important:**\n- The old MAIN branch is renamed to MAIN_YYYYMMDDHHMMSS\n- You can switch back to the backup branch if needed\n- This is a non-destructive delete operation\n\n**Response:**\nReturns branch information including the backup branch name",
         "parameters": [
           {
             "description": "Conversation ID (format: conv_xxxxx)",
@@ -4942,9 +5481,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Successfully deleted item, returns conversation",
+            "description": "Successfully deleted item, returns branch info",
             "schema": {
-              "$ref": "#/definitions/conversationresponses.ConversationResponse"
+              "$ref": "#/definitions/conversationhandler.DeleteItemResponse"
             }
           },
           "400": {
@@ -5053,6 +5592,147 @@
         "summary": "Get a conversation item",
         "tags": [
           "Conversations API"
+        ]
+      }
+    },
+    "/v1/conversations/{conv_public_id}/items/{item_id}/edit": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Edit a user message and create a new branch with the edited content",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Message item ID (format: msg_xxxxx)",
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Edit message request",
+            "in": "body",
+            "name": "request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.EditMessageRequest"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Message edited successfully",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.EditMessageResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request or not a user message",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Message not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Edit a message",
+        "tags": [
+          "Message Actions"
+        ]
+      }
+    },
+    "/v1/conversations/{conv_public_id}/items/{item_id}/regenerate": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Regenerate an assistant response by creating a new branch",
+        "parameters": [
+          {
+            "description": "Conversation ID (format: conv_xxxxx)",
+            "in": "path",
+            "name": "conv_public_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Assistant message item ID (format: msg_xxxxx)",
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Regenerate options",
+            "in": "body",
+            "name": "request",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.RegenerateMessageRequest"
+            }
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Regeneration initiated",
+            "schema": {
+              "$ref": "#/definitions/conversationhandler.RegenerateMessageResponse"
+            }
+          },
+          "400": {
+            "description": "Invalid request or not an assistant message",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Message not found",
+            "schema": {
+              "$ref": "#/definitions/responses.ErrorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Regenerate a response",
+        "tags": [
+          "Message Actions"
         ]
       }
     },
@@ -5532,19 +6212,19 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Realtime_session.ListSessionsResponse"
+              "$ref": "#/definitions/Realtime_sessionres.ListSessionsResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           },
           "500": {
             "description": "Internal Server Error",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           }
         },
@@ -5559,7 +6239,10 @@
         ]
       },
       "post": {
-        "description": "Creates a new realtime session with LiveKit token",
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Creates a new realtime session with LiveKit token. No request body required.",
         "produces": [
           "application/json"
         ],
@@ -5567,19 +6250,19 @@
           "201": {
             "description": "Created",
             "schema": {
-              "$ref": "#/definitions/Realtime_session.Session"
+              "$ref": "#/definitions/Realtime_sessionres.SessionResponse"
             }
           },
           "401": {
             "description": "Unauthorized",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           },
           "500": {
             "description": "Internal Server Error",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           }
         },
@@ -5596,7 +6279,7 @@
     },
     "/v1/realtime/sessions/{id}": {
       "delete": {
-        "description": "Ends a session and invalidates its token",
+        "description": "Ends a session and invalidates its token. Users can only delete their own sessions.",
         "parameters": [
           {
             "description": "Session ID",
@@ -5613,19 +6296,25 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Realtime_session.DeleteSessionResponse"
+              "$ref": "#/definitions/Realtime_sessionres.DeleteSessionResponse"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           },
           "404": {
             "description": "Not Found",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           },
           "500": {
             "description": "Internal Server Error",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           }
         },
@@ -5640,7 +6329,7 @@
         ]
       },
       "get": {
-        "description": "Retrieves a specific session by ID",
+        "description": "Retrieves a specific session by ID. Users can only access their own sessions.",
         "parameters": [
           {
             "description": "Session ID",
@@ -5657,25 +6346,25 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Realtime_session.Session"
+              "$ref": "#/definitions/Realtime_sessionres.SessionResponse"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           },
           "404": {
             "description": "Not Found",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
-            }
-          },
-          "410": {
-            "description": "Gone",
-            "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           },
           "500": {
             "description": "Internal Server Error",
             "schema": {
-              "$ref": "#/definitions/Realtime_v1.errorResponse"
+              "$ref": "#/definitions/Realtime_responses.ErrorResponse"
             }
           }
         },

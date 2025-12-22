@@ -1,24 +1,111 @@
 package requestmodels
 
 import (
+	"fmt"
+	"strings"
+
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 )
 
 type AddProviderRequest struct {
-	Name     string            `json:"name" binding:"required"`
-	Vendor   string            `json:"vendor" binding:"required"`
-	BaseURL  string            `json:"base_url" binding:"required"`
-	APIKey   string            `json:"api_key"`
-	Metadata map[string]string `json:"metadata"`
-	Active   *bool             `json:"active"`
+	Name      string            `json:"name" binding:"required"`
+	Vendor    string            `json:"vendor" binding:"required"`
+	BaseURL   string            `json:"base_url"`
+	URL       string            `json:"url"`
+	Endpoints []EndpointDTO     `json:"endpoints"`
+	APIKey    string            `json:"api_key"`
+	Metadata  map[string]string `json:"metadata"`
+	Active    *bool             `json:"active"`
 }
 
 type UpdateProviderRequest struct {
-	Name     *string            `json:"name"`
-	BaseURL  *string            `json:"base_url"`
-	APIKey   *string            `json:"api_key"`
-	Metadata *map[string]string `json:"metadata"`
-	Active   *bool              `json:"active"`
+	Name      *string            `json:"name"`
+	BaseURL   *string            `json:"base_url"`
+	URL       *string            `json:"url"`
+	Endpoints []EndpointDTO      `json:"endpoints"`
+	APIKey    *string            `json:"api_key"`
+	Metadata  *map[string]string `json:"metadata"`
+	Active    *bool              `json:"active"`
+}
+
+type EndpointDTO struct {
+	URL      string `json:"url"`
+	Weight   int    `json:"weight,omitempty"`
+	Priority int    `json:"priority,omitempty"`
+}
+
+// GetEndpointList resolves endpoints with precedence: explicit endpoints array > URL/base_url fields.
+func (r *AddProviderRequest) GetEndpointList() (domainmodel.EndpointList, error) {
+	if len(r.Endpoints) > 0 {
+		return buildEndpointList(r.Endpoints)
+	}
+	source := strings.TrimSpace(firstNonEmpty(r.URL, r.BaseURL))
+	if source == "" {
+		return nil, fmt.Errorf("either endpoints or base_url/url is required")
+	}
+	return domainmodel.ParseEndpoints(source)
+}
+
+// GetEndpointList resolves endpoints for update request. The second return indicates whether endpoints were provided.
+func (r *UpdateProviderRequest) GetEndpointList() (domainmodel.EndpointList, bool, error) {
+	if r.Endpoints != nil {
+		endpoints, err := buildEndpointList(r.Endpoints)
+		return endpoints, true, err
+	}
+	if r.BaseURL != nil || r.URL != nil {
+		source := ""
+		if r.URL != nil {
+			source = strings.TrimSpace(*r.URL)
+		}
+		if source == "" && r.BaseURL != nil {
+			source = strings.TrimSpace(*r.BaseURL)
+		}
+		if source == "" {
+			return nil, true, nil
+		}
+		endpoints, err := domainmodel.ParseEndpoints(source)
+		return endpoints, true, err
+	}
+	return nil, false, nil
+}
+
+func buildEndpointList(dtos []EndpointDTO) (domainmodel.EndpointList, error) {
+	if len(dtos) == 0 {
+		return domainmodel.EndpointList{}, nil
+	}
+	result := make(domainmodel.EndpointList, 0, len(dtos))
+	for idx, dto := range dtos {
+		urlStr := strings.TrimSpace(dto.URL)
+		if urlStr == "" {
+			continue
+		}
+		parsed, err := domainmodel.ParseEndpoints(urlStr)
+		if err != nil {
+			return nil, fmt.Errorf("endpoints[%d]: %w", idx, err)
+		}
+		for _, ep := range parsed {
+			weight := dto.Weight
+			if weight <= 0 {
+				weight = ep.Weight
+			}
+			result = append(result, domainmodel.Endpoint{
+				URL:      ep.URL,
+				Weight:   weight,
+				Priority: dto.Priority,
+				Healthy:  true,
+			})
+		}
+	}
+	return result, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 type UpdateModelCatalogRequest struct {

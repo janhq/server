@@ -118,7 +118,7 @@ func generateSwaggerForService(service string) error {
 	case "realtime-api":
 		swaggerArgs = []string{
 			"run", "github.com/swaggo/swag/cmd/swag@v1.8.12", "init",
-			"--dir", "./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1",
+			"--dir", "./cmd/server,./internal/interfaces/httpserver/handlers,./internal/interfaces/httpserver/routes/v1,./internal/interfaces/httpserver/responses",
 			"--generalInfo", "server.go",
 			"--output", "./docs/swagger",
 			"--parseDependency",

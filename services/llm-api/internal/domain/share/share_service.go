@@ -52,7 +52,8 @@ type CreateShareInput struct {
 	Title                  *string
 	Scope                  ShareScope
 	IncludeImages          bool
-	IncludeContextMessages bool // For single-message share: include preceding user turn
+	IncludeContextMessages bool    // For single-message share: include preceding user turn
+	Branch                 *string // Branch to share from (defaults to active branch if not specified)
 }
 
 // CreateShareOutput contains the result of creating a share
@@ -87,8 +88,14 @@ func (s *ShareService) CreateShare(ctx context.Context, input CreateShareInput) 
 			"private conversations cannot be shared", nil, "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f")
 	}
 
-	// Fetch items from the item repository
-	itemPtrs, err := s.itemRepo.FindByConversationID(ctx, input.ConversationID)
+	// Determine which branch to share from
+	branchName := conv.ActiveBranch
+	if input.Branch != nil && *input.Branch != "" {
+		branchName = *input.Branch
+	}
+
+	// Fetch items from the specified branch
+	itemPtrs, err := s.convRepo.GetBranchItems(ctx, input.ConversationID, branchName, nil)
 	if err != nil {
 		return nil, platformerrors.AsErrorWithUUID(ctx, platformerrors.LayerDomain, err, "failed to fetch conversation items", "8c9d0e1f-2a3b-4c4d-5e6f-7a8b9c0d1e2f")
 	}
@@ -222,6 +229,21 @@ func (s *ShareService) ListSharesByConversation(ctx context.Context, conversatio
 	shares, err := s.repo.FindByFilter(ctx, filter, nil)
 	if err != nil {
 		return nil, platformerrors.AsErrorWithUUID(ctx, platformerrors.LayerDomain, err, "failed to list shares", "6e7f8a9b-0c1d-4e2f-3a4b-5c6d7e8f9a0b")
+	}
+
+	return shares, nil
+}
+
+// ListUserShares lists all shares for a user across all conversations
+func (s *ShareService) ListUserShares(ctx context.Context, ownerUserID uint, includeRevoked bool) ([]*Share, error) {
+	filter := ShareFilter{
+		OwnerUserID:    &ownerUserID,
+		IncludeRevoked: includeRevoked,
+	}
+
+	shares, err := s.repo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, platformerrors.AsErrorWithUUID(ctx, platformerrors.LayerDomain, err, "failed to list user shares", "7e8f9a0b-1c2d-4e3f-5a6b-7c8d9e0f1a2b")
 	}
 
 	return shares, nil

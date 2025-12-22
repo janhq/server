@@ -42,19 +42,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/session.ListSessionsResponse"
+                            "$ref": "#/definitions/sessionres.ListSessionsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     }
                 }
@@ -65,7 +65,10 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a new realtime session with LiveKit token",
+                "description": "Creates a new realtime session with LiveKit token. No request body required.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -77,19 +80,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/session.Session"
+                            "$ref": "#/definitions/sessionres.SessionResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     }
                 }
@@ -102,7 +105,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieves a specific session by ID",
+                "description": "Retrieves a specific session by ID. Users can only access their own sessions.",
                 "produces": [
                     "application/json"
                 ],
@@ -123,25 +126,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/session.Session"
+                            "$ref": "#/definitions/sessionres.SessionResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
-                        }
-                    },
-                    "410": {
-                        "description": "Gone",
-                        "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     }
                 }
@@ -152,7 +155,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Ends a session and invalidates its token",
+                "description": "Ends a session and invalidates its token. Users can only delete their own sessions.",
                 "produces": [
                     "application/json"
                 ],
@@ -173,19 +176,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/session.DeleteSessionResponse"
+                            "$ref": "#/definitions/sessionres.DeleteSessionResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/v1.errorResponse"
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     }
                 }
@@ -193,93 +202,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "session.ClientSecret": {
-            "type": "object",
-            "properties": {
-                "expires_at": {
-                    "description": "actual token expiry timestamp",
-                    "type": "integer"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "session.DeleteSessionResponse": {
-            "type": "object",
-            "properties": {
-                "deleted": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "object": {
-                    "description": "\"realtime.session.deleted\"",
-                    "type": "string"
-                }
-            }
-        },
-        "session.ListSessionsResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/session.Session"
-                    }
-                },
-                "object": {
-                    "description": "\"list\"",
-                    "type": "string"
-                }
-            }
-        },
-        "session.Session": {
-            "type": "object",
-            "properties": {
-                "client_secret": {
-                    "$ref": "#/definitions/session.ClientSecret"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "object": {
-                    "description": "\"realtime.session\"",
-                    "type": "string"
-                },
-                "room_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "description": "connection status for GET responses",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/session.SessionState"
-                        }
-                    ]
-                },
-                "user_id": {
-                    "type": "string"
-                },
-                "ws_url": {
-                    "description": "LiveKit WebSocket URL",
-                    "type": "string"
-                }
-            }
-        },
-        "session.SessionState": {
-            "type": "string",
-            "enum": [
-                "created",
-                "connected"
-            ],
-            "x-enum-varnames": [
-                "StateCreated",
-                "StateConnected"
-            ]
-        },
-        "v1.errorDetail": {
+        "responses.ErrorDetail": {
             "type": "object",
             "properties": {
                 "code": {
@@ -293,11 +216,76 @@ const docTemplate = `{
                 }
             }
         },
-        "v1.errorResponse": {
+        "responses.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/v1.errorDetail"
+                    "$ref": "#/definitions/responses.ErrorDetail"
+                }
+            }
+        },
+        "sessionres.ClientSecretDetail": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "sessionres.DeleteSessionResponse": {
+            "type": "object",
+            "properties": {
+                "deleted": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                }
+            }
+        },
+        "sessionres.ListSessionsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/sessionres.SessionResponse"
+                    }
+                },
+                "object": {
+                    "type": "string"
+                }
+            }
+        },
+        "sessionres.SessionResponse": {
+            "type": "object",
+            "properties": {
+                "client_secret": {
+                    "$ref": "#/definitions/sessionres.ClientSecretDetail"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "ws_url": {
+                    "type": "string"
                 }
             }
         }

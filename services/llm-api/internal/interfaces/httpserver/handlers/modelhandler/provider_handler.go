@@ -37,6 +37,11 @@ func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requ
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeConflict, "provider with vendor already exists", nil, "30c583bd-82f0-41c7-83ca-c2bf071cb018")
 	}
 
+	endpoints, err := addProviderRequest.GetEndpointList()
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "invalid endpoints")
+	}
+
 	active := true
 	if addProviderRequest.Active != nil {
 		active = *addProviderRequest.Active
@@ -46,6 +51,7 @@ func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requ
 		Name:     addProviderRequest.Name,
 		Vendor:   addProviderRequest.Vendor,
 		BaseURL:  addProviderRequest.BaseURL,
+		Endpoints: endpoints,
 		APIKey:   addProviderRequest.APIKey,
 		Metadata: addProviderRequest.Metadata,
 		Active:   active,
@@ -240,9 +246,20 @@ func (h *ProviderHandler) UpdateProvider(
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeNotFound, "provider not found", nil, "0d77a312-f914-492d-8dbc-7f1ba9d14da9")
 	}
 
+	endpoints, provided, err := req.GetEndpointList()
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "invalid endpoints")
+	}
+
 	updateInput := domainmodel.UpdateProviderInput{
 		Name:     req.Name,
 		BaseURL:  req.BaseURL,
+		Endpoints: func() *domainmodel.EndpointList {
+			if provided {
+				return &endpoints
+			}
+			return nil
+		}(),
 		APIKey:   req.APIKey,
 		Metadata: req.Metadata,
 		Active:   req.Active,

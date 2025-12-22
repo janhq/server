@@ -4,6 +4,11 @@ providers:
       enable: ${VLLM_ENABLED:-false}
       type: vllm
       url: ${VLLM_PROVIDER_URL}
+      # You can now provide multiple endpoints; first entry is used as legacy base_url.
+      # endpoints:
+      #   - url: ${VLLM_PROVIDER_URL}
+      #   - url: ${VLLM_PROVIDER_URL_2}
+      #   - url: ${VLLM_PROVIDER_URL_3}
       api_key: ${VLLM_INTERNAL_KEY}
       description: Default access to vLLM Provider
       auto_enable_new_models: true
