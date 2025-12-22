@@ -1331,6 +1331,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1357,6 +1361,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1378,6 +1386,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1392,6 +1404,17 @@ definitions:
         type: string
       vendor:
         type: string
+    type: object
+  modelresponses.EndpointResponse:
+    properties:
+      healthy:
+        type: boolean
+      priority:
+        type: integer
+      url:
+        type: string
+      weight:
+        type: integer
     type: object
   openai.ChatCompletionChoice:
     properties:
@@ -1820,18 +1843,34 @@ definitions:
         type: string
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/requestmodels.EndpointDTO'
+        type: array
       metadata:
         additionalProperties:
           type: string
         type: object
       name:
         type: string
+      url:
+        type: string
       vendor:
         type: string
     required:
-    - base_url
     - name
     - vendor
+    type: object
+  requestmodels.EndpointDTO:
+    properties:
+      priority:
+        type: integer
+      url:
+        type: string
+      weight:
+        type: integer
+    required:
+    - url
     type: object
   requestmodels.BulkEnableModelsRequest:
     properties:
@@ -1957,11 +1996,17 @@ definitions:
         type: string
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/requestmodels.EndpointDTO'
+        type: array
       metadata:
         additionalProperties:
           type: string
         type: object
       name:
+        type: string
+      url:
         type: string
     type: object
   responses.ErrorResponse:

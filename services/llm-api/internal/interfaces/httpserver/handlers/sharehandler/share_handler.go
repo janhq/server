@@ -84,6 +84,11 @@ func (h *ShareHandler) CreateShare(reqCtx *gin.Context) {
 		return
 	}
 
+	// Check for branch query parameter (takes precedence over body)
+	if branchParam := reqCtx.Query("branch"); branchParam != "" {
+		req.Branch = &branchParam
+	}
+
 	// Validate item_id is provided for item scope
 	if req.Scope == "item" && (req.ItemID == nil || *req.ItemID == "") {
 		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation,
@@ -99,6 +104,7 @@ func (h *ShareHandler) CreateShare(reqCtx *gin.Context) {
 		Scope:                  req.ToShareScope(),
 		IncludeImages:          req.IncludeImages,
 		IncludeContextMessages: req.IncludeContextMessages,
+		Branch:                 req.Branch,
 	}
 
 	output, err := h.shareService.CreateShare(ctx, input)

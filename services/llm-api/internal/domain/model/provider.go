@@ -33,19 +33,20 @@ const (
 )
 
 type Provider struct {
-	ID              uint         `json:"id"`
-	PublicID        string       `json:"public_id"`
-	DisplayName     string       `json:"display_name"`
-	Kind            ProviderKind `json:"kind"`
-	BaseURL         string       `json:"base_url"`               // e.g., https://api.openai.com/v1
-	EncryptedAPIKey string       `json:"-"`                      // encrypted at rest, decrypted in memory when needed
-	APIKeyHint      *string      `json:"api_key_hint,omitempty"` // last4 or source name, not the secret
-	IsModerated     bool         `json:"is_moderated"`           // whether provider enforces moderation upstream
-	Active          bool
+	ID              uint              `json:"id"`
+	PublicID        string            `json:"public_id"`
+	DisplayName     string            `json:"display_name"`
+	Kind            ProviderKind      `json:"kind"`
+	BaseURL         string            `json:"base_url"`               // e.g., https://api.openai.com/v1
+	Endpoints       EndpointList      `json:"endpoints,omitempty"`    // Optional: multiple endpoints for round robin
+	EncryptedAPIKey string            `json:"-"`                      // encrypted at rest, decrypted in memory when needed
+	APIKeyHint      *string           `json:"api_key_hint,omitempty"` // last4 or source name, not the secret
+	IsModerated     bool              `json:"is_moderated"`           // whether provider enforces moderation upstream
+	Active          bool              `json:"active"`
 	Metadata        map[string]string `json:"metadata,omitempty"` // supports: image_input, file_attachment, description, etc.
-	LastSyncedAt    *time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	LastSyncedAt    *time.Time        `json:"last_synced_at,omitempty"`
+	CreatedAt       time.Time         `json:"created_at"`
+	UpdatedAt       time.Time         `json:"updated_at"`
 }
 
 // Metadata keys for provider capabilities
@@ -173,6 +174,31 @@ func (p *Provider) SupportsTools() bool {
 	default:
 		return false
 	}
+}
+
+// GetEndpoints returns configured endpoints with backward-compat fallback to BaseURL.
+// Always returns a non-empty list if BaseURL is set.
+func (p *Provider) GetEndpoints() EndpointList {
+	if len(p.Endpoints) > 0 {
+		return p.Endpoints
+	}
+	if p.BaseURL != "" {
+		return EndpointList{{URL: p.BaseURL, Weight: 1, Healthy: true}}
+	}
+	return nil
+}
+
+// SetEndpoints updates endpoints and keeps BaseURL in sync (first endpoint).
+func (p *Provider) SetEndpoints(endpoints EndpointList) {
+	p.Endpoints = endpoints
+	if len(endpoints) > 0 {
+		p.BaseURL = endpoints[0].URL
+	}
+}
+
+// HasMultipleEndpoints reports whether provider has more than one configured endpoint.
+func (p *Provider) HasMultipleEndpoints() bool {
+	return len(p.Endpoints) > 1
 }
 
 // ProviderFilter defines optional conditions for querying providers.

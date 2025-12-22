@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/model"
@@ -82,15 +83,17 @@ func (d *DataInitializer) bootstrapProvider(ctx context.Context, entry config.Pr
 func (d *DataInitializer) ensureProvider(ctx context.Context, entry config.ProviderBootstrapEntry) (*model.Provider, error) {
 	kind := model.ProviderKindFromVendor(entry.Vendor)
 	metadata := cloneMetadata(entry.Metadata)
+	endpoints := toDomainEndpoints(entry.Endpoints)
 
 	if kind == model.ProviderCustom {
 		return d.provider.UpsertProvider(ctx, model.UpsertProviderInput{
-			Name:     entry.Name,
-			Vendor:   entry.Vendor,
-			BaseURL:  entry.BaseURL,
-			APIKey:   entry.APIKey,
-			Metadata: metadata,
-			Active:   entry.Active,
+			Name:      entry.Name,
+			Vendor:    entry.Vendor,
+			BaseURL:   entry.BaseURL,
+			Endpoints: endpoints,
+			APIKey:    entry.APIKey,
+			Metadata:  metadata,
+			Active:    entry.Active,
 		})
 	}
 
@@ -101,21 +104,23 @@ func (d *DataInitializer) ensureProvider(ctx context.Context, entry config.Provi
 
 	if existing == nil {
 		return d.provider.RegisterProvider(ctx, model.RegisterProviderInput{
-			Name:     entry.Name,
-			Vendor:   entry.Vendor,
-			BaseURL:  entry.BaseURL,
-			APIKey:   entry.APIKey,
-			Metadata: metadata,
-			Active:   entry.Active,
+			Name:      entry.Name,
+			Vendor:    entry.Vendor,
+			BaseURL:   entry.BaseURL,
+			Endpoints: endpoints,
+			APIKey:    entry.APIKey,
+			Metadata:  metadata,
+			Active:    entry.Active,
 		})
 	}
 
 	updateMetadata := metadata
 	updateInput := model.UpdateProviderInput{
-		BaseURL:  &entry.BaseURL,
-		APIKey:   &entry.APIKey,
-		Metadata: &updateMetadata,
-		Active:   &entry.Active,
+		BaseURL:   &entry.BaseURL,
+		Endpoints: &endpoints,
+		APIKey:    &entry.APIKey,
+		Metadata:  &updateMetadata,
+		Active:    &entry.Active,
 	}
 	if entry.Name != "" && entry.Name != existing.DisplayName {
 		updateInput.Name = &entry.Name
@@ -137,4 +142,28 @@ func cloneMetadata(src map[string]string) map[string]string {
 		dst[k] = v
 	}
 	return dst
+}
+
+func toDomainEndpoints(cfgs []config.EndpointConfig) model.EndpointList {
+	if len(cfgs) == 0 {
+		return nil
+	}
+	endpoints := make(model.EndpointList, 0, len(cfgs))
+	for _, ep := range cfgs {
+		urlStr := strings.TrimSpace(ep.URL)
+		if urlStr == "" {
+			continue
+		}
+		weight := ep.Weight
+		if weight <= 0 {
+			weight = 1
+		}
+		endpoints = append(endpoints, model.Endpoint{
+			URL:      urlStr,
+			Weight:   weight,
+			Priority: ep.Priority,
+			Healthy:  true,
+		})
+	}
+	return endpoints
 }

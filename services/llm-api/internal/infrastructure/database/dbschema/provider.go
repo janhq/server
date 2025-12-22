@@ -21,6 +21,7 @@ type Provider struct {
 	DisplayName     string         `gorm:"size:255;not null"`
 	Kind            string         `gorm:"size:64;not null;index;index:idx_provider_active_kind,priority:2"`
 	BaseURL         string         `gorm:"size:512"`
+	Endpoints       datatypes.JSON `gorm:"type:jsonb"`
 	EncryptedAPIKey string         `gorm:"type:text"`
 	APIKeyHint      *string        `gorm:"size:128"`
 	IsModerated     *bool          `gorm:"not null;default:false;index"`
@@ -37,6 +38,13 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 		}
 	}
 
+	var endpointsJSON datatypes.JSON
+	if len(p.Endpoints) > 0 {
+		if data, err := json.Marshal(p.Endpoints); err == nil {
+			endpointsJSON = datatypes.JSON(data)
+		}
+	}
+
 	isModerated := p.IsModerated
 	active := p.Active
 	return &Provider{
@@ -49,6 +57,7 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 		DisplayName:     p.DisplayName,
 		Kind:            string(p.Kind),
 		BaseURL:         p.BaseURL,
+		Endpoints:       endpointsJSON,
 		EncryptedAPIKey: p.EncryptedAPIKey,
 		APIKeyHint:      p.APIKeyHint,
 		IsModerated:     &isModerated,
@@ -69,6 +78,17 @@ func (p *Provider) EtoD() *domainmodel.Provider {
 		}
 	}
 
+	var endpoints domainmodel.EndpointList
+	if len(p.Endpoints) > 0 {
+		if err := json.Unmarshal(p.Endpoints, &endpoints); err != nil {
+			log := logger.GetLogger()
+			log.Error().Msgf("failed to unmarshal provider endpoints for provider ID %d: %v", p.ID, err)
+		}
+	}
+	if len(endpoints) == 0 && p.BaseURL != "" {
+		endpoints = domainmodel.EndpointList{{URL: p.BaseURL, Weight: 1, Healthy: true}}
+	}
+
 	isModerated := false
 	if p.IsModerated != nil {
 		isModerated = *p.IsModerated
@@ -84,6 +104,7 @@ func (p *Provider) EtoD() *domainmodel.Provider {
 		DisplayName:     p.DisplayName,
 		Kind:            domainmodel.ProviderKind(p.Kind),
 		BaseURL:         p.BaseURL,
+		Endpoints:       endpoints,
 		EncryptedAPIKey: p.EncryptedAPIKey,
 		APIKeyHint:      p.APIKeyHint,
 		IsModerated:     isModerated,
