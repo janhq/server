@@ -4,6 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/rs/zerolog/log"
+
 	"jan-server/services/llm-api/internal/domain/model"
 )
 
@@ -38,6 +40,14 @@ func (r *RoundRobinRouter) NextEndpoint(providerID string, endpoints model.Endpo
 	counter := r.getOrCreateCounter(providerID)
 	idx := atomic.AddUint64(counter, 1) - 1
 	selected := healthy[idx%uint64(len(healthy))]
+
+	log.Info().
+		Str("provider_id", providerID).
+		Str("endpoint_url", selected.URL).
+		Int("healthy_count", len(healthy)).
+		Int("total_count", len(endpoints)).
+		Uint64("round_robin_index", idx).
+		Msg("selected endpoint for request")
 
 	return selected.URL, nil
 }
