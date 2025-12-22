@@ -26,6 +26,9 @@ type Context struct {
 	ProjectInstruction string
 	AppliedModules     []string
 	Profile            *usersettings.ProfileSettings
+
+	// Model context for model-specific template resolution
+	ModelCatalogID *string
 }
 
 // Module represents a prompt module that can be applied

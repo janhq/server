@@ -32,6 +32,13 @@ type ConversationDeletedResponse struct {
 	Deleted bool   `json:"deleted"`
 }
 
+// BulkConversationsDeletedResponse represents the response for bulk deletion of conversations
+type BulkConversationsDeletedResponse struct {
+	Object       string `json:"object"`
+	Deleted      bool   `json:"deleted"`
+	DeletedCount int64  `json:"deleted_count"`
+}
+
 // ItemListResponse represents the OpenAI-compatible item list response
 type ItemListResponse struct {
 	Object  string              `json:"object"`
@@ -91,6 +98,15 @@ func NewConversationDeletedResponse(publicID string) *ConversationDeletedRespons
 		ID:      publicID,
 		Object:  "conversation.deleted",
 		Deleted: true,
+	}
+}
+
+// NewBulkConversationsDeletedResponse creates a bulk delete response
+func NewBulkConversationsDeletedResponse(deletedCount int64) *BulkConversationsDeletedResponse {
+	return &BulkConversationsDeletedResponse{
+		Object:       "conversations.deleted",
+		Deleted:      true,
+		DeletedCount: deletedCount,
 	}
 }
 

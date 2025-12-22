@@ -19,6 +19,7 @@ import (
 	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
 	sandboxfusionclient "jan-server/services/mcp-tools/internal/infrastructure/sandboxfusion"
 	searchclient "jan-server/services/mcp-tools/internal/infrastructure/search"
+	"jan-server/services/mcp-tools/internal/infrastructure/toolconfig"
 	vectorstoreclient "jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/middlewares"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/routes/mcp"
@@ -140,7 +141,24 @@ func main() {
 			Msg("LLM-API tool tracking disabled or not configured")
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient)
+	// Initialize tool config cache for dynamic descriptions
+	var toolConfigCache *toolconfig.Cache
+	if cfg.LLMAPIBaseURL != "" {
+		// Create a client specifically for tool config if not already created
+		configClient := llmClient
+		if configClient == nil {
+			configClient = llmapi.NewClient(cfg.LLMAPIBaseURL)
+		}
+		toolConfigCache = toolconfig.NewCache(configClient)
+		log.Info().Msg("Tool config cache initialized for dynamic descriptions")
+	}
+
+	// Set tool config cache on serperMCP
+	if toolConfigCache != nil {
+		serperMCP.SetToolConfigCache(toolConfigCache)
+	}
+
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient, toolConfigCache)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

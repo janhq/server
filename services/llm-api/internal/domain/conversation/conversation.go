@@ -90,6 +90,7 @@ type ConversationRepository interface {
 	FindByPublicID(ctx context.Context, publicID string) (*Conversation, error)
 	Update(ctx context.Context, conversation *Conversation) error
 	Delete(ctx context.Context, id uint) error
+	DeleteAllByUserID(ctx context.Context, userID uint) (int64, error)
 
 	// Item operations (legacy - assumes MAIN branch)
 	AddItem(ctx context.Context, conversationID uint, item *Item) error

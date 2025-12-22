@@ -206,3 +206,100 @@ func (c *Client) UpdateToolCallResult(
 
 	return result
 }
+
+// MCPToolConfig represents the configuration of an MCP tool from LLM-API
+type MCPToolConfig struct {
+	ID                 string   `json:"id"`
+	PublicID           string   `json:"public_id"`
+	ToolKey            string   `json:"tool_key"`
+	Name               string   `json:"name"`
+	Description        string   `json:"description"`
+	Category           string   `json:"category"`
+	IsActive           bool     `json:"is_active"`
+	DisallowedKeywords []string `json:"disallowed_keywords,omitempty"`
+	CreatedAt          string   `json:"created_at"`
+	UpdatedAt          string   `json:"updated_at"`
+}
+
+// MCPToolsResponse represents the response from the ListActive endpoint
+type MCPToolsResponse struct {
+	Data []MCPToolConfig `json:"data"`
+}
+
+// SingleMCPToolResponse represents the response for a single tool
+type SingleMCPToolResponse struct {
+	Data MCPToolConfig `json:"data"`
+}
+
+// GetActiveMCPTools fetches all active MCP tool configurations from LLM-API
+// This is used by mcp-tools to populate tool descriptions dynamically
+func (c *Client) GetActiveMCPTools(ctx context.Context) ([]MCPToolConfig, error) {
+	endpoint := fmt.Sprintf("%s/v1/mcp-tools", c.baseURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	log.Debug().
+		Str("endpoint", endpoint).
+		Msg("Fetching active MCP tools from LLM-API")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call LLM-API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("LLM-API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var toolsResp MCPToolsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&toolsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	log.Debug().
+		Int("count", len(toolsResp.Data)).
+		Msg("Fetched active MCP tools")
+
+	return toolsResp.Data, nil
+}
+
+// GetMCPToolByKey fetches a single MCP tool configuration by its key
+func (c *Client) GetMCPToolByKey(ctx context.Context, toolKey string) (*MCPToolConfig, error) {
+	endpoint := fmt.Sprintf("%s/v1/mcp-tools/%s", c.baseURL, toolKey)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call LLM-API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil // Tool not found or inactive
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("LLM-API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var toolResp SingleMCPToolResponse
+	if err := json.NewDecoder(resp.Body).Decode(&toolResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &toolResp.Data, nil
+}

@@ -305,7 +305,7 @@ func (h *PromptTemplateHandler) Delete(c *gin.Context) {
 
 // Duplicate godoc
 // @Summary Duplicate a prompt template
-// @Description Create a copy of an existing prompt template with a new key
+// @Description Create a copy of an existing prompt template with a new name (key is auto-generated)
 // @Tags Admin - Prompt Templates
 // @Accept json
 // @Produce json
@@ -322,13 +322,8 @@ func (h *PromptTemplateHandler) Duplicate(c *gin.Context) {
 
 	var req DuplicateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": err.Error()})
-		return
-	}
-
-	if req.NewKey == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "validation_failed", "message": "new_key is required"})
-		return
+		// Allow empty body - new_name is optional
+		req = DuplicateRequest{}
 	}
 
 	principal, hasPrincipal := middleware.PrincipalFromContext(c)
@@ -337,7 +332,7 @@ func (h *PromptTemplateHandler) Duplicate(c *gin.Context) {
 		createdBy = &principal.ID
 	}
 
-	template, err := h.service.Duplicate(c.Request.Context(), publicID, req.NewKey, createdBy)
+	template, err := h.service.Duplicate(c.Request.Context(), publicID, req.NewName, createdBy)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -349,7 +344,7 @@ func (h *PromptTemplateHandler) Duplicate(c *gin.Context) {
 
 // DuplicateRequest is the request body for duplicating a template
 type DuplicateRequest struct {
-	NewKey string `json:"new_key" validate:"required,min=1,max=100"`
+	NewName string `json:"new_name" validate:"omitempty,max=200"`
 }
 
 func (h *PromptTemplateHandler) handleError(c *gin.Context, err error) {

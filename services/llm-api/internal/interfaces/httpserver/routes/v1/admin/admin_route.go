@@ -2,6 +2,7 @@ package admin
 
 import (
 	adminhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/admin"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/mcptoolhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	middleware "jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
 	adminmodel "jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin/model"
@@ -18,6 +19,7 @@ type AdminRoute struct {
 	groupHandler            *adminhandler.AdminGroupHandler
 	featureFlagHandler      *adminhandler.FeatureFlagHandler
 	promptTemplateHandler   *prompttemplatehandler.PromptTemplateHandler
+	mcpToolHandler          *mcptoolhandler.MCPToolHandler
 }
 
 // NewAdminRoute creates a new AdminRoute
@@ -28,6 +30,7 @@ func NewAdminRoute(
 	groupHandler *adminhandler.AdminGroupHandler,
 	featureFlagHandler *adminhandler.FeatureFlagHandler,
 	promptTemplateHandler *prompttemplatehandler.PromptTemplateHandler,
+	mcpToolHandler *mcptoolhandler.MCPToolHandler,
 ) *AdminRoute {
 	return &AdminRoute{
 		adminModelRoute:         adminModelRoute,
@@ -36,6 +39,7 @@ func NewAdminRoute(
 		groupHandler:            groupHandler,
 		featureFlagHandler:      featureFlagHandler,
 		promptTemplateHandler:   promptTemplateHandler,
+		mcpToolHandler:          mcpToolHandler,
 	}
 }
 
@@ -85,5 +89,10 @@ func (r *AdminRoute) RegisterRouter(router gin.IRouter) {
 		adminGroup.PATCH("/prompt-templates/:id", r.promptTemplateHandler.Update)
 		adminGroup.DELETE("/prompt-templates/:id", r.promptTemplateHandler.Delete)
 		adminGroup.POST("/prompt-templates/:id/duplicate", r.promptTemplateHandler.Duplicate)
+
+		// MCP tool management
+		adminGroup.GET("/mcp-tools", r.mcpToolHandler.List)
+		adminGroup.GET("/mcp-tools/:id", r.mcpToolHandler.Get)
+		adminGroup.PATCH("/mcp-tools/:id", r.mcpToolHandler.Update)
 	}
 }
