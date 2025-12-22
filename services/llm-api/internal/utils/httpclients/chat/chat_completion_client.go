@@ -13,7 +13,6 @@ import (
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 	"github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -168,13 +167,6 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 
 	start := time.Now()
 
-	log.Debug().
-		Str("provider", c.name).
-		Str("base_url", c.baseURL).
-		Str("model", request.Model).
-		Int("message_count", len(request.Messages)).
-		Msg("[DEBUG] CreateChatCompletion: sending request to provider")
-
 	var respBody openai.ChatCompletionResponse
 	resp, err := c.prepareRequest(ctx, apiKey).
 		SetBody(request).
@@ -184,40 +176,12 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 	duration := time.Since(start)
 
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("provider", c.name).
-			Str("base_url", c.baseURL).
-			Str("model", request.Model).
-			Dur("duration", duration).
-			Str("error_type", fmt.Sprintf("%T", err)).
-			Msg("[DEBUG] CreateChatCompletion: HTTP request failed")
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		span.SetAttributes(attribute.Int64("llm.duration_ms", duration.Milliseconds()))
 		return nil, err
 	}
 	if resp.IsError() {
-		// Try to get response body for more error details
-		respBodyStr := ""
-		if resp.RawResponse != nil && resp.RawResponse.Body != nil {
-			bodyBytes, _ := io.ReadAll(resp.RawResponse.Body)
-			respBodyStr = string(bodyBytes)
-		}
-		// Also try String() method
-		if respBodyStr == "" {
-			respBodyStr = resp.String()
-		}
-
-		log.Error().
-			Str("provider", c.name).
-			Str("base_url", c.baseURL).
-			Str("model", request.Model).
-			Int("status_code", resp.StatusCode()).
-			Str("response_body", respBodyStr).
-			Dur("duration", duration).
-			Msg("[DEBUG] CreateChatCompletion: provider returned error response")
-
 		reqErr := c.errorFromResponse(ctx, resp, "request failed")
 		span.RecordError(reqErr)
 		span.SetStatus(codes.Error, reqErr.Error())
@@ -227,14 +191,6 @@ func (c *ChatCompletionClient) CreateChatCompletion(ctx context.Context, apiKey 
 		)
 		return nil, reqErr
 	}
-
-	log.Debug().
-		Str("provider", c.name).
-		Str("model", request.Model).
-		Int("status_code", resp.StatusCode()).
-		Int("total_tokens", respBody.Usage.TotalTokens).
-		Dur("duration", duration).
-		Msg("[DEBUG] CreateChatCompletion: request successful")
 
 	// Record token usage and timing in span
 	span.SetAttributes(
@@ -564,13 +520,6 @@ func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey st
 		request.ToolChoice = nil
 	}
 
-	log.Debug().
-		Str("provider", c.name).
-		Str("base_url", c.baseURL).
-		Str("model", request.Model).
-		Int("message_count", len(request.Messages)).
-		Msg("[DEBUG] doStreamingRequest: starting streaming request")
-
 	req := c.prepareRequest(ctx, apiKey).
 		SetBody(request).
 		SetDoNotParseResponse(true)
@@ -588,49 +537,15 @@ func (c *ChatCompletionClient) doStreamingRequest(ctx context.Context, apiKey st
 
 	resp, err := req.Post(c.endpoint("/chat/completions"))
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("provider", c.name).
-			Str("base_url", c.baseURL).
-			Str("model", request.Model).
-			Str("error_type", fmt.Sprintf("%T", err)).
-			Msg("[DEBUG] doStreamingRequest: HTTP request failed")
 		return nil, err
 	}
 
 	if resp.IsError() {
-		// Try to read response body for error details
-		respBodyStr := ""
-		if resp.RawResponse != nil && resp.RawResponse.Body != nil {
-			bodyBytes, _ := io.ReadAll(resp.RawResponse.Body)
-			respBodyStr = string(bodyBytes)
-		}
-		if respBodyStr == "" {
-			respBodyStr = resp.String()
-		}
-
-		log.Error().
-			Str("provider", c.name).
-			Str("base_url", c.baseURL).
-			Str("model", request.Model).
-			Int("status_code", resp.StatusCode()).
-			Str("response_body", respBodyStr).
-			Msg("[DEBUG] doStreamingRequest: provider returned error response")
 		return nil, c.errorFromResponse(ctx, resp, "streaming request failed")
 	}
 	if resp.RawResponse == nil || resp.RawResponse.Body == nil {
-		log.Error().
-			Str("provider", c.name).
-			Str("model", request.Model).
-			Msg("[DEBUG] doStreamingRequest: empty response body")
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeExternal, "streaming request failed: empty response body", nil, "1b3ab461-dbf9-4034-8abb-dfc6ea8486c5")
 	}
-
-	log.Debug().
-		Str("provider", c.name).
-		Str("model", request.Model).
-		Int("status_code", resp.StatusCode()).
-		Msg("[DEBUG] doStreamingRequest: streaming started successfully")
 
 	return resp, nil
 }
@@ -923,16 +838,10 @@ func SanitizeMessages(messages []openai.ChatCompletionMessage) []openai.ChatComp
 			for _, part := range msg.MultiContent {
 				// Skip empty text parts (would serialize as {"type": "text"} without text field)
 				if part.Type == openai.ChatMessagePartTypeText && part.Text == "" {
-					log.Debug().
-						Str("role", string(msg.Role)).
-						Msg("[DEBUG] SanitizeMessages: skipping empty text part")
 					continue
 				}
 				// Skip empty image parts (no URL)
 				if part.Type == openai.ChatMessagePartTypeImageURL && (part.ImageURL == nil || part.ImageURL.URL == "") {
-					log.Debug().
-						Str("role", string(msg.Role)).
-						Msg("[DEBUG] SanitizeMessages: skipping empty image part")
 					continue
 				}
 				sanitizedParts = append(sanitizedParts, part)

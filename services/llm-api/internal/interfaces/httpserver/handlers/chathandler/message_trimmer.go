@@ -7,8 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"jan-server/services/llm-api/internal/infrastructure/logger"
-
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -115,7 +113,6 @@ func EstimateToolsTokens(tools []openai.Tool) int {
 		return 0
 	}
 
-	log := logger.GetLogger()
 	total := 50 // Base overhead for tools array structure
 
 	for _, tool := range tools {
@@ -128,21 +125,12 @@ func EstimateToolsTokens(tools []openai.Tool) int {
 			if tool.Function.Parameters != nil {
 				paramsJSON, err := json.Marshal(tool.Function.Parameters)
 				if err != nil {
-					log.Warn().
-						Str("tool", tool.Function.Name).
-						Err(err).
-						Msg("failed to marshal tool parameters, using fallback estimate")
 					total += 200 // Conservative fallback
 					continue
 				}
 
 				// Cap schema size to prevent extremely large schemas
 				if len(paramsJSON) > MaxToolSchemaBytes {
-					log.Warn().
-						Str("tool", tool.Function.Name).
-						Int("schema_bytes", len(paramsJSON)).
-						Int("cap_bytes", MaxToolSchemaBytes).
-						Msg("tool schema exceeds size cap, truncating estimate")
 					paramsJSON = paramsJSON[:MaxToolSchemaBytes]
 				}
 
@@ -150,11 +138,6 @@ func EstimateToolsTokens(tools []openai.Tool) int {
 			}
 		}
 	}
-
-	log.Debug().
-		Int("tool_count", len(tools)).
-		Int("estimated_tokens", total).
-		Msg("estimated tools tokens")
 
 	return total
 }
@@ -445,7 +428,6 @@ func truncateTextPreservingJSON(content string, maxTokens int) (string, bool) {
 // Now with MultiContent-aware JSON parsing to truncate nested text fields properly.
 // Returns the modified messages and a list of truncation events for logging.
 func TruncateLargeToolContent(messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, []TruncationEvent) {
-	log := logger.GetLogger()
 	result := make([]openai.ChatCompletionMessage, len(messages))
 	copy(result, messages)
 
@@ -468,12 +450,6 @@ func TruncateLargeToolContent(messages []openai.ChatCompletionMessage) ([]openai
 						TruncationType:  "tool_result",
 					}
 					events = append(events, event)
-
-					log.Warn().
-						Str("tool_call_id", result[i].ToolCallID).
-						Int("original_tokens", originalTokens).
-						Int("truncated_to", MaxToolResultTokens).
-						Msg("truncated large tool result (JSON-aware)")
 				}
 			}
 		}
@@ -498,23 +474,10 @@ func TruncateLargeToolContent(messages []openai.ChatCompletionMessage) ([]openai
 							TruncationType:  "tool_argument",
 						}
 						events = append(events, event)
-
-						log.Warn().
-							Str("tool_name", tc.Function.Name).
-							Str("tool_call_id", tc.ID).
-							Int("original_tokens", originalTokens).
-							Int("truncated_to", MaxToolArgumentTokens).
-							Msg("truncated large tool arguments")
 					}
 				}
 			}
 		}
-	}
-
-	if len(events) > 0 {
-		log.Debug().
-			Int("total_truncations", len(events)).
-			Msg("tool content truncation summary")
 	}
 
 	return result, events
@@ -591,7 +554,6 @@ func ValidateUserInputSize(messages []openai.ChatCompletionMessage) error {
 // Handles both plain string content and MultiContent arrays.
 // Returns the modified messages and a list of truncation events for logging.
 func TruncateLargeUserContent(messages []openai.ChatCompletionMessage) ([]openai.ChatCompletionMessage, []TruncationEvent) {
-	log := logger.GetLogger()
 	result := make([]openai.ChatCompletionMessage, len(messages))
 	copy(result, messages)
 
@@ -617,12 +579,6 @@ func TruncateLargeUserContent(messages []openai.ChatCompletionMessage) ([]openai
 						TruncationType:  "user_content",
 					}
 					events = append(events, event)
-
-					log.Warn().
-						Int("message_index", i).
-						Int("original_tokens", originalTokens).
-						Int("truncated_to", MaxUserContentTokens).
-						Msg("truncated large user content")
 				}
 			}
 		}
@@ -646,24 +602,11 @@ func TruncateLargeUserContent(messages []openai.ChatCompletionMessage) ([]openai
 								TruncationType:  "user_multicontent_text",
 							}
 							events = append(events, event)
-
-							log.Warn().
-								Int("message_index", i).
-								Int("part_index", j).
-								Int("original_tokens", originalTokens).
-								Int("truncated_to", MaxMultiContentTextTokens).
-								Msg("truncated large user multi-content text part")
 						}
 					}
 				}
 			}
 		}
-	}
-
-	if len(events) > 0 {
-		log.Debug().
-			Int("total_user_truncations", len(events)).
-			Msg("user content truncation summary")
 	}
 
 	return result, events
@@ -688,8 +631,6 @@ type imageLocation struct {
 // - maxUserImages: maximum images across all user messages (default: MaxUserImages = 15)
 // Images are removed from oldest messages first.
 func LimitImagesInMessages(messages []openai.ChatCompletionMessage) []openai.ChatCompletionMessage {
-	log := logger.GetLogger()
-
 	// Create a deep copy to avoid modifying the original
 	result := make([]openai.ChatCompletionMessage, len(messages))
 	for i := range messages {
@@ -763,17 +704,6 @@ func LimitImagesInMessages(messages []openai.ChatCompletionMessage) []openai.Cha
 		}
 	}
 
-	if toolImagesRemoved > 0 || userImagesRemoved > 0 {
-		log.Debug().
-			Int("tool_images_before", len(toolImages)).
-			Int("tool_images_removed", toolImagesRemoved).
-			Int("tool_images_after", len(toolImages)-toolImagesRemoved).
-			Int("user_images_before", len(userImages)).
-			Int("user_images_removed", userImagesRemoved).
-			Int("user_images_after", len(userImages)-userImagesRemoved).
-			Msg("limited images in messages to prevent context overflow")
-	}
-
 	return result
 }
 
@@ -829,13 +759,6 @@ func trimMessagesInternal(messages []openai.ChatCompletionMessage, maxTokens int
 		}
 	}
 
-	log := logger.GetLogger()
-	log.Debug().
-		Int("initial_messages", len(messages)).
-		Int("initial_tokens", currentTokens).
-		Int("max_tokens", maxTokens).
-		Msg("starting message trimming")
-
 	// Create a working copy
 	result := make([]openai.ChatCompletionMessage, len(messages))
 	copy(result, messages)
@@ -870,24 +793,10 @@ func trimMessagesInternal(messages []openai.ChatCompletionMessage, maxTokens int
 		removedTokens := messageTokens[removedIdx]
 		currentTokens -= removedTokens
 
-		log.Debug().
-			Str("role", result[removedIdx].Role).
-			Int("index", removedIdx).
-			Int("message_tokens", removedTokens).
-			Int("remaining_tokens", currentTokens).
-			Int("remaining_messages", len(result)-1).
-			Msg("trimmed oldest message")
-
 		result = append(result[:removedIdx], result[removedIdx+1:]...)
 		messageTokens = append(messageTokens[:removedIdx], messageTokens[removedIdx+1:]...)
 		trimmedCount++
 	}
-
-	log.Debug().
-		Int("trimmed_count", trimmedCount).
-		Int("final_messages", len(result)).
-		Int("final_tokens", currentTokens).
-		Msg("message trimming completed")
 
 	return TrimMessagesResult{
 		Messages:        result,
