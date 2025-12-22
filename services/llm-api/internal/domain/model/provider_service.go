@@ -38,29 +38,32 @@ func NewProviderService(
 }
 
 type RegisterProviderInput struct {
-	Name     string
-	Vendor   string
-	BaseURL  string
-	APIKey   string
-	Metadata map[string]string
-	Active   bool
+	Name      string
+	Vendor    string
+	BaseURL   string
+	Endpoints EndpointList
+	APIKey    string
+	Metadata  map[string]string
+	Active    bool
 }
 
 type UpdateProviderInput struct {
-	Name     *string
-	BaseURL  *string
-	APIKey   *string
-	Metadata *map[string]string
-	Active   *bool
+	Name      *string
+	BaseURL   *string
+	Endpoints *EndpointList
+	APIKey    *string
+	Metadata  *map[string]string
+	Active    *bool
 }
 
 type UpsertProviderInput struct {
-	Name     string
-	Vendor   string
-	BaseURL  string
-	APIKey   string
-	Metadata map[string]string
-	Active   bool
+	Name      string
+	Vendor    string
+	BaseURL   string
+	Endpoints EndpointList
+	APIKey    string
+	Metadata  map[string]string
+	Active    bool
 }
 
 func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterProviderInput) (*Provider, error) {
@@ -69,12 +72,22 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "provider name is required", nil, "c86f2bc3-5ea3-41d3-b450-e86adb33352c")
 	}
 
-	baseURL := strings.TrimSpace(input.BaseURL)
-	if baseURL == "" {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "base_url is required", nil, "c80a4867-6c8b-4adb-878d-41fe1b5e96ae")
+	endpoints, err := normalizeAndValidateEndpoints(input.Endpoints)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "invalid endpoints")
 	}
-	if _, err := url.ParseRequestURI(baseURL); err != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("invalid base_url format: %v", err), nil, "9e944ba1-c849-4959-957f-cb3de40e2eb1")
+	baseURL := strings.TrimSpace(input.BaseURL)
+	if len(endpoints) == 0 {
+		if baseURL == "" {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "base_url is required", nil, "c80a4867-6c8b-4adb-878d-41fe1b5e96ae")
+		}
+		if _, err := url.ParseRequestURI(baseURL); err != nil {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("invalid base_url format: %v", err), nil, "9e944ba1-c849-4959-957f-cb3de40e2eb1")
+		}
+		baseURL = normalizeURL(baseURL)
+		endpoints = EndpointList{{URL: baseURL, Weight: 1, Healthy: true}}
+	} else {
+		baseURL = endpoints[0].URL
 	}
 
 	kind := ProviderKindFromVendor(input.Vendor)
@@ -117,13 +130,14 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 		PublicID:        publicID,
 		DisplayName:     name,
 		Kind:            kind,
-		BaseURL:         normalizeURL(baseURL),
 		EncryptedAPIKey: encryptedAPIKey,
 		APIKeyHint:      apiKeyHint,
 		IsModerated:     false,
 		Active:          input.Active,
 		Metadata:        metadata,
 	}
+	// SetEndpoints updates both Endpoints and BaseURL (for backward compat)
+	provider.SetEndpoints(endpoints)
 
 	if err := s.providerRepo.Create(ctx, provider); err != nil {
 		return nil, err
@@ -283,22 +297,24 @@ func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProvid
 	if existing != nil {
 		// Update existing provider
 		updateInput := UpdateProviderInput{
-			BaseURL:  &input.BaseURL,
-			APIKey:   &input.APIKey,
-			Metadata: &input.Metadata,
-			Active:   &input.Active,
+			BaseURL:   &input.BaseURL,
+			Endpoints: &input.Endpoints,
+			APIKey:    &input.APIKey,
+			Metadata:  &input.Metadata,
+			Active:    &input.Active,
 		}
 		return s.UpdateProvider(ctx, existing, updateInput)
 	}
 
 	// Register new provider
 	registerInput := RegisterProviderInput{
-		Name:     input.Name,
-		Vendor:   input.Vendor,
-		BaseURL:  input.BaseURL,
-		APIKey:   input.APIKey,
-		Metadata: input.Metadata,
-		Active:   input.Active,
+		Name:      input.Name,
+		Vendor:    input.Vendor,
+		BaseURL:   input.BaseURL,
+		Endpoints: input.Endpoints,
+		APIKey:    input.APIKey,
+		Metadata:  input.Metadata,
+		Active:    input.Active,
 	}
 	return s.RegisterProvider(ctx, registerInput)
 }
@@ -311,7 +327,15 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		}
 		provider.DisplayName = name
 	}
-	if input.BaseURL != nil {
+	if input.Endpoints != nil {
+		endpoints, err := normalizeAndValidateEndpoints(*input.Endpoints)
+		if err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "invalid endpoints")
+		}
+		// Always delegate to SetEndpoints to keep BaseURL in sync
+		provider.SetEndpoints(endpoints)
+	}
+	if input.BaseURL != nil && (input.Endpoints == nil || len(*input.Endpoints) == 0) {
 		baseURL := strings.TrimSpace(*input.BaseURL)
 		if baseURL == "" {
 			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "base_url is required", nil, "302ffb5e-243f-4112-99ec-e4f9bfbc331a")
@@ -319,7 +343,8 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		if _, err := url.ParseRequestURI(baseURL); err != nil {
 			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, fmt.Sprintf("invalid base_url format: %v", err), nil, "0037a0ec-1342-49e9-8479-cda7db9d1ce8")
 		}
-		provider.BaseURL = normalizeURL(baseURL)
+		normalized := normalizeURL(baseURL)
+		provider.SetEndpoints(EndpointList{{URL: normalized, Weight: 1, Healthy: true}})
 	}
 	if input.APIKey != nil {
 		key := strings.TrimSpace(*input.APIKey)
@@ -366,6 +391,30 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 	}
 
 	return provider, nil
+}
+
+func normalizeAndValidateEndpoints(endpoints EndpointList) (EndpointList, error) {
+	if len(endpoints) == 0 {
+		return endpoints, nil
+	}
+
+	normalized := make(EndpointList, 0, len(endpoints))
+	for _, ep := range endpoints {
+		urlStr := strings.TrimSpace(ep.URL)
+		if urlStr == "" {
+			continue
+		}
+		if _, err := url.ParseRequestURI(urlStr); err != nil {
+			return nil, fmt.Errorf("invalid endpoint url %q: %w", urlStr, err)
+		}
+		if ep.Weight <= 0 {
+			ep.Weight = 1
+		}
+		ep.URL = normalizeURL(urlStr)
+		ep.Healthy = true
+		normalized = append(normalized, ep)
+	}
+	return normalized, nil
 }
 
 func (s *ProviderService) SyncProviderModelsWithOptions(ctx context.Context, provider *Provider, models []chat.Model, autoEnableNewModels bool) ([]*ProviderModel, error) {

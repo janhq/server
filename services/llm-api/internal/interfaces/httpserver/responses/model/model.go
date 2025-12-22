@@ -52,33 +52,36 @@ type ModelWithProviderResponseList struct {
 }
 
 type ProviderResponse struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Vendor   string            `json:"vendor"`
-	BaseURL  string            `json:"base_url"`
-	Active   bool              `json:"active"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	Vendor    string             `json:"vendor"`
+	BaseURL   string             `json:"base_url"`
+	Endpoints []EndpointResponse `json:"endpoints,omitempty"`
+	Active    bool               `json:"active"`
+	Metadata  map[string]string  `json:"metadata,omitempty"`
 }
 
 type ProviderWithModelCountResponse struct {
-	ID               string            `json:"id"`
-	Name             string            `json:"name"`
-	Vendor           string            `json:"vendor"`
-	BaseURL          string            `json:"base_url"`
-	Active           bool              `json:"active"`
-	ModelCount       int64             `json:"model_count"`
-	ModelActiveCount int64             `json:"model_active_count"`
-	Metadata         map[string]string `json:"metadata,omitempty"`
+	ID               string             `json:"id"`
+	Name             string             `json:"name"`
+	Vendor           string             `json:"vendor"`
+	BaseURL          string             `json:"base_url"`
+	Endpoints        []EndpointResponse `json:"endpoints,omitempty"`
+	Active           bool               `json:"active"`
+	ModelCount       int64              `json:"model_count"`
+	ModelActiveCount int64              `json:"model_active_count"`
+	Metadata         map[string]string  `json:"metadata,omitempty"`
 }
 
 type ProviderWithModelsResponse struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Vendor   string            `json:"vendor"`
-	BaseURL  string            `json:"base_url"`
-	Models   []ModelResponse   `json:"models"`
-	Active   bool              `json:"active"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	Vendor    string             `json:"vendor"`
+	BaseURL   string             `json:"base_url"`
+	Endpoints []EndpointResponse `json:"endpoints,omitempty"`
+	Models    []ModelResponse    `json:"models"`
+	Active    bool               `json:"active"`
+	Metadata  map[string]string  `json:"metadata,omitempty"`
 }
 
 type ProviderResponseList struct {
@@ -122,7 +125,7 @@ func BuildModelResponseListWithProvider(
 		catJ := items[j].CategoryOrderNumber
 		modelI := items[i].ModelOrderNumber
 		modelJ := items[j].ModelOrderNumber
-		
+
 		// If both category order numbers are 0, treat as undefined - compare by model order
 		if catI == 0 && catJ == 0 {
 			// If both model orders are also 0, keep original order (stable)
@@ -138,7 +141,7 @@ func BuildModelResponseListWithProvider(
 			}
 			return modelI < modelJ
 		}
-		
+
 		// Put category order 0 at the end
 		if catI == 0 {
 			return false
@@ -146,12 +149,12 @@ func BuildModelResponseListWithProvider(
 		if catJ == 0 {
 			return true
 		}
-		
+
 		// Normal comparison: category first, then model order
 		if catI != catJ {
 			return catI < catJ
 		}
-		
+
 		// Within same category, put model order 0 at the end
 		if modelI == 0 {
 			return false
@@ -198,7 +201,7 @@ func BuildModelResponseList(
 		catJ := items[j].CategoryOrderNumber
 		modelI := items[i].ModelOrderNumber
 		modelJ := items[j].ModelOrderNumber
-		
+
 		// If both category order numbers are 0, treat as undefined - compare by model order
 		if catI == 0 && catJ == 0 {
 			// If both model orders are also 0, keep original order (stable)
@@ -214,7 +217,7 @@ func BuildModelResponseList(
 			}
 			return modelI < modelJ
 		}
-		
+
 		// Put category order 0 at the end
 		if catI == 0 {
 			return false
@@ -222,12 +225,12 @@ func BuildModelResponseList(
 		if catJ == 0 {
 			return true
 		}
-		
+
 		// Normal comparison: category first, then model order
 		if catI != catJ {
 			return catI < catJ
 		}
-		
+
 		// Within same category, put model order 0 at the end
 		if modelI == 0 {
 			return false
@@ -243,12 +246,13 @@ func BuildModelResponseList(
 
 func BuildProviderResponse(provider *domainmodel.Provider) ProviderResponse {
 	return ProviderResponse{
-		ID:       provider.PublicID,
-		Name:     provider.DisplayName,
-		Vendor:   strings.ToLower(string(provider.Kind)),
-		BaseURL:  provider.BaseURL,
-		Active:   provider.Active,
-		Metadata: provider.Metadata,
+		ID:        provider.PublicID,
+		Name:      provider.DisplayName,
+		Vendor:    strings.ToLower(string(provider.Kind)),
+		BaseURL:   provider.BaseURL,
+		Endpoints: buildEndpointResponses(provider.GetEndpoints()),
+		Active:    provider.Active,
+		Metadata:  provider.Metadata,
 	}
 }
 
@@ -262,6 +266,7 @@ func BuildProviderWithModelCountResponse(
 		Name:             provider.DisplayName,
 		Vendor:           strings.ToLower(string(provider.Kind)),
 		BaseURL:          provider.BaseURL,
+		Endpoints:        buildEndpointResponses(provider.GetEndpoints()),
 		Active:           provider.Active,
 		ModelCount:       modelCount,
 		ModelActiveCount: activeCount,
@@ -294,13 +299,14 @@ func BuildProviderWithModelsResponse(
 		})
 	}
 	return &ProviderWithModelsResponse{
-		ID:       provider.PublicID,
-		Name:     provider.DisplayName,
-		Vendor:   strings.ToLower(string(provider.Kind)),
-		BaseURL:  provider.BaseURL,
-		Models:   modelResponses,
-		Active:   provider.Active,
-		Metadata: provider.Metadata,
+		ID:        provider.PublicID,
+		Name:      provider.DisplayName,
+		Vendor:    strings.ToLower(string(provider.Kind)),
+		BaseURL:   provider.BaseURL,
+		Endpoints: buildEndpointResponses(provider.GetEndpoints()),
+		Models:    modelResponses,
+		Active:    provider.Active,
+		Metadata:  provider.Metadata,
 	}
 }
 
@@ -322,6 +328,29 @@ func BuildProviderResponseList(providers []*domainmodel.Provider) []ProviderResp
 	}
 
 	return items
+}
+
+type EndpointResponse struct {
+	URL      string `json:"url"`
+	Weight   int    `json:"weight"`
+	Priority int    `json:"priority"`
+	Healthy  bool   `json:"healthy"`
+}
+
+func buildEndpointResponses(endpoints domainmodel.EndpointList) []EndpointResponse {
+	if len(endpoints) == 0 {
+		return nil
+	}
+	result := make([]EndpointResponse, 0, len(endpoints))
+	for _, ep := range endpoints {
+		result = append(result, EndpointResponse{
+			URL:      ep.URL,
+			Weight:   ep.Weight,
+			Priority: ep.Priority,
+			Healthy:  ep.Healthy,
+		})
+	}
+	return result
 }
 
 type ModelCatalogResponse struct {

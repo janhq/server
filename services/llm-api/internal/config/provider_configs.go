@@ -1,8 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,6 +22,7 @@ type ProviderBootstrapEntry struct {
 	Name                string
 	Vendor              string
 	BaseURL             string
+	Endpoints           []EndpointConfig
 	APIKey              string
 	Active              bool
 	Metadata            map[string]string
@@ -134,6 +137,7 @@ type providerConfigEntry struct {
 	Vendor      string            `yaml:"vendor"`
 	URL         string            `yaml:"url"`
 	BaseURL     string            `yaml:"base_url"`
+	Endpoints   []EndpointConfig  `yaml:"endpoints"`
 	APIKey      string            `yaml:"api_key"`
 	Key         string            `yaml:"key"`
 	Active      *bool             `yaml:"active"`
@@ -155,11 +159,27 @@ func normalizeProviderEntry(entry providerConfigEntry) (ProviderBootstrapEntry, 
 		return ProviderBootstrapEntry{}, errors.New("provider type is required")
 	}
 
+	endpoints, err := parseEndpointConfigs(entry.Endpoints)
+	if err != nil {
+		return ProviderBootstrapEntry{}, err
+	}
 	baseURL := firstNonEmpty(entry.URL, entry.BaseURL)
 	baseURL = strings.TrimSpace(os.ExpandEnv(baseURL))
-	if baseURL == "" {
-		return ProviderBootstrapEntry{}, errors.New("provider url is required")
+	if len(endpoints) == 0 {
+		if baseURL == "" {
+			return ProviderBootstrapEntry{}, errors.New("provider url is required")
+		}
+		parsed, err := parseEndpointString(baseURL)
+		if err != nil {
+			return ProviderBootstrapEntry{}, fmt.Errorf("provider url: %w", err)
+		}
+		if len(parsed) == 0 {
+			return ProviderBootstrapEntry{}, errors.New("provider url is required")
+		}
+		endpoints = parsed
 	}
+
+	baseURL = endpoints[0].URL
 
 	name := strings.TrimSpace(entry.Name)
 	if name == "" {
@@ -202,6 +222,7 @@ func normalizeProviderEntry(entry providerConfigEntry) (ProviderBootstrapEntry, 
 		Name:                name,
 		Vendor:              vendor,
 		BaseURL:             baseURL,
+		Endpoints:           endpoints,
 		APIKey:              apiKey,
 		Active:              active && enabled,
 		Metadata:            metadata,
@@ -243,6 +264,89 @@ func ensureStringMap(in map[string]string) map[string]string {
 		return make(map[string]string)
 	}
 	return in
+}
+
+type EndpointConfig struct {
+	URL      string `yaml:"url"`
+	Weight   int    `yaml:"weight"`
+	Priority int    `yaml:"priority"`
+}
+
+func parseEndpointConfigs(raw []EndpointConfig) ([]EndpointConfig, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+
+	endpoints := make([]EndpointConfig, 0, len(raw))
+	for idx, ep := range raw {
+		normalized, err := normalizeEndpointURL(ep.URL)
+		if err != nil {
+			return nil, fmt.Errorf("endpoints[%d]: %w", idx, err)
+		}
+		if normalized == "" {
+			continue
+		}
+		weight := ep.Weight
+		if weight <= 0 {
+			weight = 1
+		}
+		endpoints = append(endpoints, EndpointConfig{
+			URL:      normalized,
+			Weight:   weight,
+			Priority: ep.Priority,
+		})
+	}
+	return endpoints, nil
+}
+
+func parseEndpointString(input string) ([]EndpointConfig, error) {
+	trimmed := strings.TrimSpace(os.ExpandEnv(input))
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	if strings.HasPrefix(trimmed, "[") {
+		var parsed []EndpointConfig
+		if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+			return nil, fmt.Errorf("invalid endpoint array: %w", err)
+		}
+		return parseEndpointConfigs(parsed)
+	}
+
+	parts := strings.Split(trimmed, ",")
+	endpoints := make([]EndpointConfig, 0, len(parts))
+	for idx, part := range parts {
+		normalized, err := normalizeEndpointURL(part)
+		if err != nil {
+			return nil, fmt.Errorf("endpoints[%d]: %w", idx, err)
+		}
+		if normalized == "" {
+			continue
+		}
+		endpoints = append(endpoints, EndpointConfig{
+			URL:    normalized,
+			Weight: 1,
+		})
+	}
+	return endpoints, nil
+}
+
+func normalizeEndpointURL(raw string) (string, error) {
+	trimmed := strings.TrimSpace(os.ExpandEnv(raw))
+	if trimmed == "" {
+		return "", nil
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return "", fmt.Errorf("invalid endpoint url %q: %w", trimmed, err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", fmt.Errorf("endpoint url must have http or https scheme: %s", trimmed)
+	}
+	if parsed.Host == "" {
+		return "", fmt.Errorf("endpoint url must include host: %s", trimmed)
+	}
+	return strings.TrimSuffix(parsed.String(), "/"), nil
 }
 
 func parseEnabled(raw string) (bool, error) {

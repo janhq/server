@@ -191,6 +191,9 @@ definitions:
         $ref: '#/definitions/openai.ServiceTier'
       system_fingerprint:
         type: string
+      trimmed:
+        description: True if messages were trimmed to fit context
+        type: boolean
       usage:
         $ref: '#/definitions/openai.Usage'
     type: object
@@ -803,6 +806,124 @@ definitions:
       token:
         type: string
     type: object
+  conversationhandler.ActivateBranchResponse:
+    properties:
+      active_branch:
+        type: string
+      message:
+        type: string
+    type: object
+  conversationhandler.BranchResponse:
+    properties:
+      created_at:
+        type: integer
+      description:
+        type: string
+      forked_at:
+        type: integer
+      forked_from_item_id:
+        type: string
+      is_active:
+        type: boolean
+      item_count:
+        type: integer
+      name:
+        type: string
+      parent_branch:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  conversationhandler.CreateBranchRequest:
+    properties:
+      description:
+        type: string
+      fork_from_item_id:
+        type: string
+      name:
+        type: string
+      parent_branch:
+        type: string
+    required:
+    - name
+    type: object
+  conversationhandler.DeleteItemResponse:
+    properties:
+      branch:
+        description: Always "MAIN" after swap
+        type: string
+      branch_created:
+        type: boolean
+      deleted:
+        type: boolean
+      old_main_backup:
+        description: Backup name for old MAIN
+        type: string
+    type: object
+  conversationhandler.EditMessageRequest:
+    properties:
+      content:
+        type: string
+      regenerate:
+        description: 'Auto-trigger new response (default: true)'
+        type: boolean
+    required:
+    - content
+    type: object
+  conversationhandler.EditMessageResponse:
+    properties:
+      branch:
+        description: Always "MAIN" after swap
+        type: string
+      branch_created:
+        type: boolean
+      new_branch:
+        $ref: '#/definitions/conversationhandler.BranchResponse'
+      old_main_backup:
+        description: Backup name for old MAIN
+        type: string
+      user_item:
+        $ref: '#/definitions/conversation.Item'
+    type: object
+  conversationhandler.ListBranchesResponse:
+    properties:
+      active_branch:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/conversationhandler.BranchResponse'
+        type: array
+      object:
+        description: '"list"'
+        type: string
+    type: object
+  conversationhandler.RegenerateMessageRequest:
+    properties:
+      max_tokens:
+        description: Override max tokens
+        type: integer
+      model:
+        description: Override model
+        type: string
+      temperature:
+        description: Override temperature
+        type: number
+    type: object
+  conversationhandler.RegenerateMessageResponse:
+    properties:
+      branch:
+        description: Always "MAIN" after swap
+        type: string
+      branch_created:
+        type: boolean
+      new_branch:
+        $ref: '#/definitions/conversationhandler.BranchResponse'
+      old_main_backup:
+        description: Backup name for old MAIN
+        type: string
+      user_item_id:
+        type: string
+    type: object
   conversationrequests.CreateConversationRequest:
     properties:
       items:
@@ -865,6 +986,15 @@ definitions:
         type: string
     required:
     - status
+    type: object
+  conversationresponses.BulkConversationsDeletedResponse:
+    properties:
+      deleted:
+        type: boolean
+      deleted_count:
+        type: integer
+      object:
+        type: string
     type: object
   conversationresponses.ConversationDeletedResponse:
     properties:
@@ -1153,6 +1283,17 @@ definitions:
       updated_count:
         type: integer
     type: object
+  modelresponses.EndpointResponse:
+    properties:
+      healthy:
+        type: boolean
+      priority:
+        type: integer
+      url:
+        type: string
+      weight:
+        type: integer
+    type: object
   modelresponses.ModelCatalogResponse:
     properties:
       active:
@@ -1331,6 +1472,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1357,6 +1502,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1378,6 +1527,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1820,16 +1973,21 @@ definitions:
         type: string
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/requestmodels.EndpointDTO'
+        type: array
       metadata:
         additionalProperties:
           type: string
         type: object
       name:
         type: string
+      url:
+        type: string
       vendor:
         type: string
     required:
-    - base_url
     - name
     - vendor
     type: object
@@ -1868,6 +2026,15 @@ definitions:
         type: array
     required:
     - enable
+    type: object
+  requestmodels.EndpointDTO:
+    properties:
+      priority:
+        type: integer
+      url:
+        type: string
+      weight:
+        type: integer
     type: object
   requestmodels.UpdateModelCatalogRequest:
     properties:
@@ -1957,11 +2124,17 @@ definitions:
         type: string
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/requestmodels.EndpointDTO'
+        type: array
       metadata:
         additionalProperties:
           type: string
         type: object
       name:
+        type: string
+      url:
         type: string
     type: object
   responses.ErrorResponse:
@@ -2927,6 +3100,42 @@ paths:
       tags:
       - Chat Completions API
   /v1/conversations:
+    delete:
+      description: |-
+        Permanently delete all conversations for the authenticated user
+
+        **WARNING: This is a destructive operation that cannot be undone.**
+
+        **Features:**
+        - Deletes ALL conversations owned by the authenticated user
+        - Automatically cascades to delete all associated items and shares
+        - Returns the count of deleted conversations
+        - Requires valid authentication to ensure ownership verification
+
+        **Security:**
+        - Only deletes conversations owned by the authenticated user
+        - Cannot delete other users' conversations
+        - Authentication is mandatory
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully deleted all conversations
+          schema:
+            $ref: '#/definitions/conversationresponses.BulkConversationsDeletedResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - deletion failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete all conversations
+      tags:
+      - Conversations API
     get:
       description: List conversations for the authenticated user with optional referrer
         filtering.
@@ -3176,6 +3385,178 @@ paths:
       summary: Update a conversation
       tags:
       - Conversations API
+  /v1/conversations/{conv_public_id}/branches:
+    get:
+      description: List all branches for a conversation
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved branches
+          schema:
+            $ref: '#/definitions/conversationhandler.ListBranchesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List branches
+      tags:
+      - Conversation Branches
+    post:
+      consumes:
+      - application/json
+      description: Create a new branch in a conversation, optionally forking from
+        an existing item
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Create branch request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationhandler.CreateBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created branch
+          schema:
+            $ref: '#/definitions/conversationhandler.BranchResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a branch
+      tags:
+      - Conversation Branches
+  /v1/conversations/{conv_public_id}/branches/{branch_name}:
+    delete:
+      description: Delete a branch from a conversation (cannot delete MAIN or active
+        branch)
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Branch name
+        in: path
+        name: branch_name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Branch deleted successfully
+        "400":
+          description: Cannot delete MAIN or active branch
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Branch not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a branch
+      tags:
+      - Conversation Branches
+    get:
+      description: Get details of a specific branch
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Branch name
+        in: path
+        name: branch_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved branch
+          schema:
+            $ref: '#/definitions/conversationhandler.BranchResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Branch not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get branch details
+      tags:
+      - Conversation Branches
+  /v1/conversations/{conv_public_id}/branches/{branch_name}/activate:
+    post:
+      description: Set a branch as the active branch for a conversation
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Branch name
+        in: path
+        name: branch_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Branch activated successfully
+          schema:
+            $ref: '#/definitions/conversationhandler.ActivateBranchResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Branch not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Activate a branch
+      tags:
+      - Conversation Branches
   /v1/conversations/{conv_public_id}/items:
     get:
       description: |-
@@ -3331,22 +3712,22 @@ paths:
   /v1/conversations/{conv_public_id}/items/{item_id}:
     delete:
       description: |-
-        Delete an item from a conversation. The item will be removed from the conversation.
+        Delete an item from a conversation by creating a new MAIN branch without it.
+        The old MAIN branch is preserved as a backup.
 
         **Features:**
-        - Remove specific item from conversation
+        - Creates a new branch without the deleted item
+        - New branch becomes MAIN, old MAIN becomes backup
         - Automatic ownership verification
-        - Returns updated conversation object after deletion
-        - Items are permanently removed (not soft delete)
+        - Preserves conversation history in backup branch
 
         **Important:**
-        - Deleting an item may affect conversation flow
-        - Item IDs are not reused after deletion
-        - Other items in conversation remain unchanged
-        - Consider creating a new branch instead of deleting items
+        - The old MAIN branch is renamed to MAIN_YYYYMMDDHHMMSS
+        - You can switch back to the backup branch if needed
+        - This is a non-destructive delete operation
 
         **Response:**
-        Returns the conversation object (not the deleted item)
+        Returns branch information including the backup branch name
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
@@ -3362,9 +3743,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Successfully deleted item, returns conversation
+          description: Successfully deleted item, returns branch info
           schema:
-            $ref: '#/definitions/conversationresponses.ConversationResponse'
+            $ref: '#/definitions/conversationhandler.DeleteItemResponse'
         "400":
           description: Invalid conversation ID or item ID format
           schema:
@@ -3449,6 +3830,97 @@ paths:
       summary: Get a conversation item
       tags:
       - Conversations API
+  /v1/conversations/{conv_public_id}/items/{item_id}/edit:
+    post:
+      consumes:
+      - application/json
+      description: Edit a user message and create a new branch with the edited content
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Message item ID (format: msg_xxxxx)'
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Edit message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationhandler.EditMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message edited successfully
+          schema:
+            $ref: '#/definitions/conversationhandler.EditMessageResponse'
+        "400":
+          description: Invalid request or not a user message
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Edit a message
+      tags:
+      - Message Actions
+  /v1/conversations/{conv_public_id}/items/{item_id}/regenerate:
+    post:
+      consumes:
+      - application/json
+      description: Regenerate an assistant response by creating a new branch
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Assistant message item ID (format: msg_xxxxx)'
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Regenerate options
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/conversationhandler.RegenerateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Regeneration initiated
+          schema:
+            $ref: '#/definitions/conversationhandler.RegenerateMessageResponse'
+        "400":
+          description: Invalid request or not an assistant message
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Regenerate a response
+      tags:
+      - Message Actions
   /v1/conversations/{conv_public_id}/items/by-call-id/{call_id}:
     patch:
       consumes:

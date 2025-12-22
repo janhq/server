@@ -77,6 +77,10 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	// Share routes (authenticated, under /conversations)
 	conversations := v1Router.Group("/conversations")
 	v1Route.share.RegisterConversationShareRoutes(conversations)
+
+	// User share routes (authenticated, under /shares)
+	shares := v1Router.Group("/shares")
+	v1Route.share.RegisterUserShareRoutes(shares)
 }
 
 // RegisterPublicRouter registers endpoints that do not require authentication
