@@ -153,28 +153,28 @@ services:
     environment:
       # HTTP Server (using service-specific port)
       RESPONSE_API_PORT: ${RESPONSE_API_PORT:-8082}
-      
+
       # Database (using default account)
       DB_POSTGRESQL_WRITE_DSN: ${RESPONSE_DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
       DB_POSTGRESQL_READ1_DSN: ${RESPONSE_DB_POSTGRESQL_READ1_DSN:-}
-      
+
       # Service URLs (with prefixes for clarity)
       RESPONSE_LLM_API_URL: ${RESPONSE_LLM_API_URL:-http://llm-api:8080}
       RESPONSE_MCP_TOOLS_URL: ${RESPONSE_MCP_TOOLS_URL:-http://mcp-tools:8091}
-      
+
       # Tool Execution
       RESPONSE_MAX_TOOL_DEPTH: ${RESPONSE_MAX_TOOL_DEPTH:-8}
       RESPONSE_TOOL_TIMEOUT: ${RESPONSE_TOOL_TIMEOUT:-45s}
-      
+
       # Logging
       RESPONSE_LOG_LEVEL: ${RESPONSE_LOG_LEVEL:-info}
-      
+
       # Authentication
       AUTH_ENABLED: "true"
       AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
       ACCOUNT: ${ACCOUNT:-account}
       AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
-      
+
       # Observability
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}

@@ -16,6 +16,114 @@
       },
       "type": "object"
     },
+    "Realtime_session.ClientSecret": {
+      "properties": {
+        "expires_at": {
+          "description": "actual token expiry timestamp",
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.DeleteSessionResponse": {
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "object": {
+          "description": "\"realtime.session.deleted\"",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.ListSessionsResponse": {
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/Realtime_session.Session"
+          },
+          "type": "array"
+        },
+        "object": {
+          "description": "\"list\"",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.Session": {
+      "properties": {
+        "client_secret": {
+          "$ref": "#/definitions/Realtime_session.ClientSecret"
+        },
+        "id": {
+          "type": "string"
+        },
+        "object": {
+          "description": "\"realtime.session\"",
+          "type": "string"
+        },
+        "room_id": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/Realtime_session.SessionState"
+            }
+          ],
+          "description": "connection status for GET responses"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "ws_url": {
+          "description": "LiveKit WebSocket URL",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_session.SessionState": {
+      "enum": [
+        "created",
+        "connected"
+      ],
+      "type": "string",
+      "x-enum-varnames": [
+        "StateCreated",
+        "StateConnected"
+      ]
+    },
+    "Realtime_v1.errorDetail": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Realtime_v1.errorResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/Realtime_v1.errorDetail"
+        }
+      },
+      "type": "object"
+    },
     "chatrequests.ChatCompletionRequest": {
       "properties": {
         "chat_template_kwargs": {
@@ -2794,8 +2902,8 @@
       "name": "Jan Server Team",
       "url": "https://github.com/janhq/jan-server"
     },
-    "description": "Unified API documentation for Jan Server including LLM API (OpenAI-compatible) and MCP Tools",
-    "title": "Jan Server API (LLM API + MCP Tools)",
+    "description": "Unified API documentation for Jan Server including LLM API (OpenAI-compatible), MCP Tools, and Realtime API",
+    "title": "Jan Server API (LLM API + MCP Tools + Realtime API)",
     "version": "2.0"
   },
   "paths": {
@@ -3427,7 +3535,7 @@
         ]
       }
     },
-    "/mcp/v1/mcp": {
+    "/mcp": {
       "post": {
         "consumes": [
           "application/json"
@@ -5414,6 +5522,174 @@
         ]
       }
     },
+    "/v1/realtime/sessions": {
+      "get": {
+        "description": "Lists all active sessions for the current user",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.ListSessionsResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List realtime sessions",
+        "tags": [
+          "Realtime API"
+        ]
+      },
+      "post": {
+        "description": "Creates a new realtime session with LiveKit token",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.Session"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create a realtime session",
+        "tags": [
+          "Realtime API"
+        ]
+      }
+    },
+    "/v1/realtime/sessions/{id}": {
+      "delete": {
+        "description": "Ends a session and invalidates its token",
+        "parameters": [
+          {
+            "description": "Session ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.DeleteSessionResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a realtime session",
+        "tags": [
+          "Realtime API"
+        ]
+      },
+      "get": {
+        "description": "Retrieves a specific session by ID",
+        "parameters": [
+          {
+            "description": "Session ID",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Realtime_session.Session"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/Realtime_v1.errorResponse"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a realtime session",
+        "tags": [
+          "Realtime API"
+        ]
+      }
+    },
     "/v1/version": {
       "get": {
         "description": "Returns the current build version of the API server and environment reload timestamp.",
@@ -5449,8 +5725,39 @@
   "swagger": "2.0",
   "tags": [
     {
+      "name": "Authentication API"
+    },
+    {
+      "name": "Server API"
+    },
+    {
+      "name": "Model API"
+    },
+    {
+      "name": "Admin Model API"
+    },
+    {
+      "name": "Admin Provider API"
+    },
+    {
+      "name": "Chat Completions API"
+    },
+    {
+      "name": "Conversations API"
+    },
+    {
+      "name": "Projects API"
+    },
+    {
+      "name": "MCP API"
+    },
+    {
       "description": "Model Context Protocol tools",
       "name": "MCP Tools"
+    },
+    {
+      "description": "Realtime API for audio/video communication via LiveKit",
+      "name": "Realtime API"
     }
   ]
 }
