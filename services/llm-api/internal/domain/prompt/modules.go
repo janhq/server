@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	texttemplate "text/template"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 
+	"jan-server/services/llm-api/internal/domain/modelprompttemplate"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 )
@@ -92,9 +94,16 @@ func PrependProjectInstruction(messages []openai.ChatCompletionMessage, instruct
 //   - baseContent is the base system content (if non-empty) when creating a new message.
 func appendSystemContent(
 	messages []openai.ChatCompletionMessage,
-	additional, moduleName, baseContent string,
+	baseContent, moduleName, additional string,
 ) []openai.ChatCompletionMessage {
 	additional = strings.TrimSpace(additional)
+
+	log.Info().
+		Str("module", moduleName).
+		Int("base_content_length", len(baseContent)).
+		Int("additional_length", len(additional)).
+		Int("input_messages_count", len(messages)).
+		Msg("appendSystemContent: called")
 
 	result := make([]openai.ChatCompletionMessage, 0, len(messages)+1)
 	applied := false
@@ -105,7 +114,11 @@ func appendSystemContent(
 		if msg.Role == openai.ChatMessageRoleSystem {
 			if firstSystemIdx == -1 {
 				firstSystemIdx = i
-				// Don't modify the first system message (may contain project instructions)
+				log.Info().
+					Str("module", moduleName).
+					Int("first_system_idx", i).
+					Int("content_length", len(msg.Content)).
+					Msg("appendSystemContent: found first system message (not modifying)")
 			} else if !applied && additional != "" {
 				// Append to subsequent system messages
 				var b strings.Builder
@@ -114,6 +127,10 @@ func appendSystemContent(
 				b.WriteString(additional)
 				msg.Content = b.String()
 				applied = true
+				log.Info().
+					Str("module", moduleName).
+					Int("system_msg_idx", i).
+					Msg("appendSystemContent: appended additional to existing system message")
 			}
 		}
 		result = append(result, msg)
@@ -121,11 +138,17 @@ func appendSystemContent(
 
 	// If we successfully appended to an existing system message, we're done.
 	if applied {
+		log.Info().
+			Str("module", moduleName).
+			Msg("appendSystemContent: done (appended to existing)")
 		return result
 	}
 
 	// If we have nothing to say and no base content, just return.
 	if additional == "" && strings.TrimSpace(baseContent) == "" {
+		log.Info().
+			Str("module", moduleName).
+			Msg("appendSystemContent: nothing to add, returning unchanged")
 		return result
 	}
 
@@ -134,6 +157,9 @@ func appendSystemContent(
 	baseText := strings.TrimSpace(baseContent)
 	if baseText == "" {
 		baseText = "You are Jan, a helpful AI assistant.  Jan is trained by Menlo Research (https://www.menlo.ai) - a fame research lab. "
+		log.Warn().
+			Str("module", moduleName).
+			Msg("appendSystemContent: baseContent was empty, using hardcoded fallback!")
 	}
 	builder.WriteString(baseText)
 
@@ -142,9 +168,16 @@ func appendSystemContent(
 		builder.WriteString(additional)
 	}
 
+	finalContent := builder.String()
+	log.Info().
+		Str("module", moduleName).
+		Int("final_content_length", len(finalContent)).
+		Str("final_content_preview", truncateString(finalContent, 200)).
+		Msg("appendSystemContent: creating new system message")
+
 	systemMsg := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: builder.String(),
+		Content: finalContent,
 	}
 
 	// Insert AFTER first system message if it exists,
@@ -154,12 +187,26 @@ func appendSystemContent(
 		insertIdx = firstSystemIdx + 1
 	}
 
+	log.Info().
+		Str("module", moduleName).
+		Int("insert_idx", insertIdx).
+		Int("first_system_idx", firstSystemIdx).
+		Msg("appendSystemContent: inserting new system message")
+
 	// Insert at insertIdx
 	result = append(result, openai.ChatCompletionMessage{}) // grow slice
 	copy(result[insertIdx+1:], result[insertIdx:])
 	result[insertIdx] = systemMsg
 
 	return result
+}
+
+// truncateString truncates a string to maxLen characters
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 func disabledModules(preferences map[string]interface{}) map[string]struct{} {
@@ -245,7 +292,8 @@ func (m *ProjectInstructionModule) Apply(ctx context.Context, promptCtx *Context
 
 // TimingModule injects the AI assistant intro and current date into the system prompt.
 type TimingModule struct {
-	templateService *prompttemplate.Service
+	templateService    *prompttemplate.Service
+	modelPromptService *modelprompttemplate.Service
 }
 
 // NewTimingModule creates a new timing module without template service (uses fallback).
@@ -257,6 +305,14 @@ func NewTimingModule() *TimingModule {
 func NewTimingModuleWithService(service *prompttemplate.Service) *TimingModule {
 	return &TimingModule{
 		templateService: service,
+	}
+}
+
+// NewTimingModuleWithModelPrompts creates a new timing module with model-specific template support.
+func NewTimingModuleWithModelPrompts(templateService *prompttemplate.Service, modelPromptService *modelprompttemplate.Service) *TimingModule {
+	return &TimingModule{
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -288,9 +344,46 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 	currentDate := time.Now().Format("January 2, 2006")
 
 	var timingText string
+	var templateSource string
 
-	// Try to fetch timing template from database and render with current date
-	if m.templateService != nil {
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("TimingModule: Attempting to load model-specific template")
+
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyTiming)
+		if err == nil && template != nil && template.IsActive {
+			// Render template with current date variable
+			rendered, renderErr := renderTemplateContent(template.Content, map[string]any{
+				"CurrentDate": currentDate,
+			})
+			if renderErr == nil {
+				timingText = rendered
+				templateSource = source
+				log.Info().
+					Str("module", "timing").
+					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", source).
+					Str("model_catalog_id", *promptCtx.ModelCatalogID).
+					Str("current_date", currentDate).
+					Int("content_length", len(timingText)).
+					Int("template_version", template.Version).
+					Msg("TimingModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "timing").
+					Str("rendered_content", timingText).
+					Msg("TimingModule: Rendered prompt content")
+			} else {
+				log.Warn().Err(renderErr).Msg("TimingModule: Failed to render model-specific template")
+			}
+		}
+	}
+
+	// Fall back to global template if model-specific not found
+	if timingText == "" && m.templateService != nil {
 		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyTiming)
 		if err == nil && template != nil && template.IsActive {
 			// Render template with current date variable
@@ -299,10 +392,21 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 			})
 			if renderErr == nil {
 				timingText = rendered
+				templateSource = "global_default"
 				log.Info().
+					Str("module", "timing").
 					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", templateSource).
 					Str("current_date", currentDate).
+					Int("content_length", len(timingText)).
+					Int("template_version", template.Version).
 					Msg("TimingModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "timing").
+					Str("rendered_content", timingText).
+					Msg("TimingModule: Rendered prompt content")
 			} else {
 				log.Warn().Err(renderErr).Msg("TimingModule: Failed to render template, using fallback")
 			}
@@ -313,6 +417,8 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 		}
 	}
 
+	_ = templateSource // used in logging
+
 	// Fallback to hardcoded timing text if template not loaded
 	if timingText == "" {
 		timingText = fmt.Sprintf(
@@ -321,16 +427,21 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 				"Always treat this as the current date.",
 			currentDate,
 		)
-		log.Info().Msg("TimingModule: Using fallback hardcoded prompt")
+		log.Info().
+			Str("module", "timing").
+			Str("source", "hardcoded_fallback").
+			Int("content_length", len(timingText)).
+			Msg("TimingModule: Using fallback hardcoded prompt")
 	}
 
-	result := appendSystemContent(messages, "", m.Name(), timingText)
+	result := appendSystemContent(messages, timingText, m.Name(), "")
 	return result, nil
 }
 
 // UserProfileModule injects user profile personalization into the system prompt.
-type UserProfileModule struct{
-	templateService *prompttemplate.Service
+type UserProfileModule struct {
+	templateService    *prompttemplate.Service
+	modelPromptService *modelprompttemplate.Service
 }
 
 // NewUserProfileModule creates a new user profile module without template service (uses fallback).
@@ -342,6 +453,14 @@ func NewUserProfileModule() *UserProfileModule {
 func NewUserProfileModuleWithService(service *prompttemplate.Service) *UserProfileModule {
 	return &UserProfileModule{
 		templateService: service,
+	}
+}
+
+// NewUserProfileModuleWithModelPrompts creates a new user profile module with model-specific template support.
+func NewUserProfileModuleWithModelPrompts(templateService *prompttemplate.Service, modelPromptService *modelprompttemplate.Service) *UserProfileModule {
+	return &UserProfileModule{
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -400,27 +519,72 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 	}
 
 	var instruction string
+	var templateSource string
 
-	// Try to fetch user_profile template from database first
-	if m.templateService != nil {
+	// Build variables for template rendering
+	vars := map[string]any{
+		"BaseStyle":          string(promptCtx.Profile.BaseStyle),
+		"CustomInstructions": promptCtx.Profile.CustomInstructions,
+		"NickName":           promptCtx.Profile.NickName,
+		"Occupation":         promptCtx.Profile.Occupation,
+		"MoreAboutYou":       promptCtx.Profile.MoreAboutYou,
+	}
+
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("UserProfileModule: Attempting to load model-specific template")
+
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyUserProfile)
+		if err == nil && template != nil && template.IsActive {
+			// Render template with user profile variables
+			rendered, renderErr := renderTemplateContent(template.Content, vars)
+			if renderErr == nil {
+				instruction = rendered
+				templateSource = source
+				log.Info().
+					Str("module", "user_profile").
+					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", source).
+					Str("model_catalog_id", *promptCtx.ModelCatalogID).
+					Int("content_length", len(instruction)).
+					Int("template_version", template.Version).
+					Msg("UserProfileModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "user_profile").
+					Str("rendered_content", instruction).
+					Msg("UserProfileModule: Rendered prompt content")
+			} else {
+				log.Warn().Err(renderErr).Msg("UserProfileModule: Failed to render model-specific template")
+			}
+		}
+	}
+
+	// Fall back to global template if model-specific not found
+	if instruction == "" && m.templateService != nil {
 		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyUserProfile)
 		if err == nil && template != nil && template.IsActive {
-			// Build variables for template rendering
-			vars := map[string]any{
-				"BaseStyle":          string(promptCtx.Profile.BaseStyle),
-				"CustomInstructions": promptCtx.Profile.CustomInstructions,
-				"NickName":           promptCtx.Profile.NickName,
-				"Occupation":         promptCtx.Profile.Occupation,
-				"MoreAboutYou":       promptCtx.Profile.MoreAboutYou,
-			}
-
 			// Render template with user profile variables
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyUserProfile, vars)
 			if renderErr == nil {
 				instruction = rendered
+				templateSource = "global_default"
 				log.Info().
+					Str("module", "user_profile").
 					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", templateSource).
+					Int("content_length", len(instruction)).
+					Int("template_version", template.Version).
 					Msg("UserProfileModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "user_profile").
+					Str("rendered_content", instruction).
+					Msg("UserProfileModule: Rendered prompt content")
 			} else {
 				log.Warn().Err(renderErr).Msg("UserProfileModule: Failed to render template, using fallback")
 			}
@@ -430,6 +594,8 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 			}
 		}
 	}
+
+	_ = templateSource // used in logging
 
 	// Fallback to hardcoded logic if template not loaded
 	if instruction == "" {
@@ -502,8 +668,9 @@ func WithDisabledModules(ctx *Context, disable []string) *Context {
 
 // MemoryModule adds user memory to system prompts.
 type MemoryModule struct {
-	enabled         bool
-	templateService *prompttemplate.Service
+	enabled            bool
+	templateService    *prompttemplate.Service
+	modelPromptService *modelprompttemplate.Service
 }
 
 // NewMemoryModule creates a new memory module without template service (uses fallback).
@@ -516,6 +683,15 @@ func NewMemoryModuleWithService(enabled bool, service *prompttemplate.Service) *
 	return &MemoryModule{
 		enabled:         enabled,
 		templateService: service,
+	}
+}
+
+// NewMemoryModuleWithModelPrompts creates a new memory module with model-specific template support.
+func NewMemoryModuleWithModelPrompts(enabled bool, templateService *prompttemplate.Service, modelPromptService *modelprompttemplate.Service) *MemoryModule {
+	return &MemoryModule{
+		enabled:            enabled,
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -551,21 +727,48 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 
 	var memoryText string
 
-	// Try to fetch memory template from database first
-	if m.templateService != nil {
+	// Build memory items for template rendering
+	vars := map[string]any{
+		"MemoryItems": promptCtx.Memory,
+	}
+
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("MemoryModule: Attempting to load model-specific template")
+
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyMemory)
+		if err == nil && template != nil && template.IsActive {
+			rendered, renderErr := renderTemplateContent(template.Content, vars)
+			if renderErr == nil {
+				memoryText = rendered
+				log.Info().
+					Str("module", "memory").
+					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", source).
+					Str("model_catalog_id", *promptCtx.ModelCatalogID).
+					Int("memory_count", len(promptCtx.Memory)).
+					Msg("MemoryModule: Loaded and rendered template from database")
+			} else {
+				log.Warn().Err(renderErr).Msg("MemoryModule: Failed to render model-specific template")
+			}
+		}
+	}
+
+	// Fall back to global template if model-specific not found
+	if memoryText == "" && m.templateService != nil {
 		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyMemory)
 		if err == nil && template != nil && template.IsActive {
-			// Build memory items for template rendering
-			vars := map[string]any{
-				"MemoryItems": promptCtx.Memory,
-			}
-
-			// Render template with memory variables
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyMemory, vars)
 			if renderErr == nil {
 				memoryText = rendered
 				log.Info().
+					Str("module", "memory").
 					Str("template_key", template.TemplateKey).
+					Str("source", "global_default").
 					Int("memory_count", len(promptCtx.Memory)).
 					Msg("MemoryModule: Loaded and rendered template from database")
 			} else {
@@ -597,8 +800,9 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 
 // ToolInstructionsModule adds tool usage instructions.
 type ToolInstructionsModule struct {
-	enabled         bool
-	templateService *prompttemplate.Service
+	enabled            bool
+	templateService    *prompttemplate.Service
+	modelPromptService *modelprompttemplate.Service
 }
 
 // NewToolInstructionsModule creates a new tool instructions module without template service (uses fallback).
@@ -611,6 +815,15 @@ func NewToolInstructionsModuleWithService(enabled bool, service *prompttemplate.
 	return &ToolInstructionsModule{
 		enabled:         enabled,
 		templateService: service,
+	}
+}
+
+// NewToolInstructionsModuleWithModelPrompts creates a new tool instructions module with model-specific template support.
+func NewToolInstructionsModuleWithModelPrompts(enabled bool, templateService *prompttemplate.Service, modelPromptService *modelprompttemplate.Service) *ToolInstructionsModule {
+	return &ToolInstructionsModule{
+		enabled:            enabled,
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -650,22 +863,62 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 
 	var toolText string
 
-	// Try to fetch tool_instructions template from database first
-	if m.templateService != nil {
+	// Build variables for template rendering
+	vars := map[string]any{
+		"ToolDescriptions": promptCtx.Preferences["tool_descriptions"],
+	}
+
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("ToolInstructionsModule: Attempting to load model-specific template")
+
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyToolInstructions)
+		if err == nil && template != nil && template.IsActive {
+			rendered, renderErr := renderTemplateContent(template.Content, vars)
+			if renderErr == nil {
+				toolText = rendered
+				log.Info().
+					Str("module", "tool_instructions").
+					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", source).
+					Str("model_catalog_id", *promptCtx.ModelCatalogID).
+					Int("content_length", len(rendered)).
+					Int("template_version", template.Version).
+					Msg("ToolInstructionsModule: Loaded and rendered template from database")
+				log.Debug().
+					Str("module", "tool_instructions").
+					Str("rendered_content", rendered).
+					Msg("ToolInstructionsModule: Rendered prompt content")
+			} else {
+				log.Warn().Err(renderErr).Msg("ToolInstructionsModule: Failed to render model-specific template")
+			}
+		}
+	}
+
+	// Fall back to global template if model-specific not found
+	if toolText == "" && m.templateService != nil {
 		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyToolInstructions)
 		if err == nil && template != nil && template.IsActive {
-			// Build variables for template rendering
-			vars := map[string]any{
-				"ToolDescriptions": promptCtx.Preferences["tool_descriptions"],
-			}
-
-			// Render template with tool variables
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyToolInstructions, vars)
 			if renderErr == nil {
 				toolText = rendered
 				log.Info().
+					Str("module", "tool_instructions").
 					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", "global_default").
+					Int("content_length", len(rendered)).
+					Int("template_version", template.Version).
 					Msg("ToolInstructionsModule: Loaded and rendered template from database")
+				log.Debug().
+					Str("module", "tool_instructions").
+					Str("rendered_content", rendered).
+					Msg("ToolInstructionsModule: Rendered prompt content")
 			} else {
 				log.Warn().Err(renderErr).Msg("ToolInstructionsModule: Failed to render template, using fallback")
 			}
@@ -706,8 +959,9 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 }
 
 // CodeAssistantModule adds code-specific instructions.
-type CodeAssistantModule struct{
-	templateService *prompttemplate.Service
+type CodeAssistantModule struct {
+	templateService    *prompttemplate.Service
+	modelPromptService *modelprompttemplate.Service
 }
 
 // NewCodeAssistantModule creates a new code assistant module without template service (uses fallback).
@@ -719,6 +973,14 @@ func NewCodeAssistantModule() *CodeAssistantModule {
 func NewCodeAssistantModuleWithService(service *prompttemplate.Service) *CodeAssistantModule {
 	return &CodeAssistantModule{
 		templateService: service,
+	}
+}
+
+// NewCodeAssistantModuleWithModelPrompts creates a new code assistant module with model-specific template support.
+func NewCodeAssistantModuleWithModelPrompts(templateService *prompttemplate.Service, modelPromptService *modelprompttemplate.Service) *CodeAssistantModule {
+	return &CodeAssistantModule{
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -758,17 +1020,57 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 
 	var codeText string
 
-	// Try to fetch code_assistant template from database first
-	if m.templateService != nil {
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("CodeAssistantModule: Attempting to load model-specific template")
+
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyCodeAssistant)
+		if err == nil && template != nil && template.IsActive {
+			rendered, renderErr := renderTemplateContent(template.Content, map[string]any{})
+			if renderErr == nil {
+				codeText = rendered
+				log.Info().
+					Str("module", "code_assistant").
+					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", source).
+					Str("model_catalog_id", *promptCtx.ModelCatalogID).
+					Int("content_length", len(rendered)).
+					Int("template_version", template.Version).
+					Msg("CodeAssistantModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "code_assistant").
+					Str("rendered_content", rendered).
+					Msg("CodeAssistantModule: Rendered prompt content")
+			} else {
+				log.Warn().Err(renderErr).Msg("CodeAssistantModule: Failed to render model-specific template")
+			}
+		}
+	}
+
+	// Fall back to global template if model-specific not found
+	if codeText == "" && m.templateService != nil {
 		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyCodeAssistant)
 		if err == nil && template != nil && template.IsActive {
-			// Render template (no variables needed for code assistant)
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyCodeAssistant, map[string]any{})
 			if renderErr == nil {
 				codeText = rendered
 				log.Info().
+					Str("module", "code_assistant").
 					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", "global_default").
+					Int("content_length", len(rendered)).
+					Int("template_version", template.Version).
 					Msg("CodeAssistantModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "code_assistant").
+					Str("rendered_content", rendered).
+					Msg("CodeAssistantModule: Rendered prompt content")
 			} else {
 				log.Warn().Err(renderErr).Msg("CodeAssistantModule: Failed to render template, using fallback")
 			}
@@ -798,8 +1100,9 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 }
 
 // ChainOfThoughtModule adds chain-of-thought reasoning instructions.
-type ChainOfThoughtModule struct{
-	templateService *prompttemplate.Service
+type ChainOfThoughtModule struct {
+	templateService    *prompttemplate.Service
+	modelPromptService *modelprompttemplate.Service
 }
 
 // NewChainOfThoughtModule creates a new chain-of-thought module without template service (uses fallback).
@@ -811,6 +1114,14 @@ func NewChainOfThoughtModule() *ChainOfThoughtModule {
 func NewChainOfThoughtModuleWithService(service *prompttemplate.Service) *ChainOfThoughtModule {
 	return &ChainOfThoughtModule{
 		templateService: service,
+	}
+}
+
+// NewChainOfThoughtModuleWithModelPrompts creates a new chain-of-thought module with model-specific template support.
+func NewChainOfThoughtModuleWithModelPrompts(templateService *prompttemplate.Service, modelPromptService *modelprompttemplate.Service) *ChainOfThoughtModule {
+	return &ChainOfThoughtModule{
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -850,17 +1161,57 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 
 	var cotText string
 
-	// Try to fetch chain_of_thought template from database first
-	if m.templateService != nil {
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("ChainOfThoughtModule: Attempting to load model-specific template")
+
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyChainOfThought)
+		if err == nil && template != nil && template.IsActive {
+			rendered, renderErr := renderTemplateContent(template.Content, map[string]any{})
+			if renderErr == nil {
+				cotText = rendered
+				log.Info().
+					Str("module", "chain_of_thought").
+					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", source).
+					Str("model_catalog_id", *promptCtx.ModelCatalogID).
+					Int("content_length", len(rendered)).
+					Int("template_version", template.Version).
+					Msg("ChainOfThoughtModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "chain_of_thought").
+					Str("rendered_content", rendered).
+					Msg("ChainOfThoughtModule: Rendered prompt content")
+			} else {
+				log.Warn().Err(renderErr).Msg("ChainOfThoughtModule: Failed to render model-specific template")
+			}
+		}
+	}
+
+	// Fall back to global template if model-specific not found
+	if cotText == "" && m.templateService != nil {
 		template, err := m.templateService.GetByKey(ctx, prompttemplate.TemplateKeyChainOfThought)
 		if err == nil && template != nil && template.IsActive {
-			// Render template (no variables needed for chain of thought)
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyChainOfThought, map[string]any{})
 			if renderErr == nil {
 				cotText = rendered
 				log.Info().
+					Str("module", "chain_of_thought").
 					Str("template_key", template.TemplateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", "global_default").
+					Int("content_length", len(rendered)).
+					Int("template_version", template.Version).
 					Msg("ChainOfThoughtModule: Loaded and rendered template from database")
+				log.Info().
+					Str("module", "chain_of_thought").
+					Str("rendered_content", rendered).
+					Msg("ChainOfThoughtModule: Rendered prompt content")
 			} else {
 				log.Warn().Err(renderErr).Msg("ChainOfThoughtModule: Failed to render template, using fallback")
 			}
@@ -904,6 +1255,25 @@ func detectToolUsage(promptCtx *Context, messages []openai.ChatCompletionMessage
 		}
 	}
 	return false
+}
+
+// renderTemplateContent renders a template content string with the given variables
+func renderTemplateContent(content string, variables map[string]any) (string, error) {
+	if len(variables) == 0 {
+		return content, nil
+	}
+
+	tmpl, err := texttemplate.New("prompt").Parse(content)
+	if err != nil {
+		return "", err
+	}
+
+	var result strings.Builder
+	if err := tmpl.Execute(&result, variables); err != nil {
+		return "", err
+	}
+
+	return result.String(), nil
 }
 
 func isLikelyCodeQuery(content string) bool {

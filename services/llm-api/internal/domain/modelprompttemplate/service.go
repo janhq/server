@@ -198,35 +198,81 @@ func (s *Service) GetTemplateForModelByKey(
 	modelCatalogID string,
 	templateKey string,
 ) (*prompttemplate.PromptTemplate, string, error) {
+	log.Debug().
+		Str("model_catalog_id", modelCatalogID).
+		Str("template_key", templateKey).
+		Msg("Resolving prompt template for model")
+
 	// 1. Try model-specific template
 	if modelCatalogID != "" {
 		assignment, err := s.repo.FindByModelAndKey(ctx, modelCatalogID, templateKey)
 		if err == nil && assignment != nil && assignment.IsActive {
-			// Fetch the actual prompt template
-			template, err := s.promptTemplateRepo.FindByPublicID(ctx, assignment.PromptTemplateID)
+			log.Debug().
+				Str("model_catalog_id", modelCatalogID).
+				Str("template_key", templateKey).
+				Str("prompt_template_uuid", assignment.PromptTemplateID).
+				Bool("assignment_active", assignment.IsActive).
+				Msg("Found model-specific template assignment")
+
+			// Fetch the actual prompt template using UUID (not public_id)
+			template, err := s.promptTemplateRepo.FindByID(ctx, assignment.PromptTemplateID)
 			if err == nil && template != nil && template.IsActive {
+				log.Info().
+					Str("model_catalog_id", modelCatalogID).
+					Str("template_key", templateKey).
+					Str("template_public_id", template.PublicID).
+					Str("template_name", template.Name).
+					Str("source", "model_specific").
+					Int("content_length", len(template.Content)).
+					Msg("Using model-specific template override")
+				return template, "model_specific", nil
+			} else if err != nil {
+				log.Warn().
+					Err(err).
+					Str("model_catalog_id", modelCatalogID).
+					Str("template_key", templateKey).
+					Str("prompt_template_uuid", assignment.PromptTemplateID).
+					Msg("Failed to fetch assigned template, falling back to global")
+			} else if template != nil && !template.IsActive {
 				log.Debug().
 					Str("model_catalog_id", modelCatalogID).
 					Str("template_key", templateKey).
-					Str("template_id", template.PublicID).
-					Msg("Using model-specific template")
-				return template, "model_specific", nil
+					Str("template_public_id", template.PublicID).
+					Msg("Model-specific template is inactive, falling back to global")
 			}
+		} else if err != nil && !platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+			log.Warn().
+				Err(err).
+				Str("model_catalog_id", modelCatalogID).
+				Str("template_key", templateKey).
+				Msg("Error finding model-specific template assignment")
+		} else {
+			log.Debug().
+				Str("model_catalog_id", modelCatalogID).
+				Str("template_key", templateKey).
+				Msg("No model-specific template assignment found")
 		}
 	}
 
 	// 2. Fall back to global default
 	template, err := s.promptTemplateRepo.FindByTemplateKey(ctx, templateKey)
 	if err == nil && template != nil && template.IsActive {
-		log.Debug().
+		log.Info().
 			Str("model_catalog_id", modelCatalogID).
 			Str("template_key", templateKey).
-			Str("template_id", template.PublicID).
+			Str("template_public_id", template.PublicID).
+			Str("template_name", template.Name).
+			Str("source", "global_default").
+			Int("content_length", len(template.Content)).
 			Msg("Using global default template")
 		return template, "global_default", nil
 	}
 
 	// 3. Return nil (caller should use hardcoded fallback)
+	log.Debug().
+		Str("model_catalog_id", modelCatalogID).
+		Str("template_key", templateKey).
+		Msg("No template found, caller should use hardcoded fallback")
 	return nil, "", err
 }
 

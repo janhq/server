@@ -4,6 +4,12 @@
 
 SET search_path TO llm_api;
 
+-- Remove unique constraint on template_key to allow duplicate templates for model-specific prompts
+ALTER TABLE llm_api.prompt_templates DROP CONSTRAINT IF EXISTS prompt_templates_template_key_key;
+
+-- Update comment to reflect the change
+COMMENT ON COLUMN llm_api.prompt_templates.template_key IS 'Key used to reference this template in code (e.g., deep_research). Multiple templates can share the same key for model-specific variants.';
+
 -- Junction table for model-specific prompt template assignments
 CREATE TABLE IF NOT EXISTS llm_api.model_prompt_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
