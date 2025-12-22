@@ -34,6 +34,7 @@ func (route *ConversationRoute) RegisterRouter(router gin.IRouter) {
 	conversations := router.Group("/conversations")
 	conversations.GET("", route.authHandler.WithAppUserAuthChain(route.listConversations)...)
 	conversations.POST("", route.authHandler.WithAppUserAuthChain(route.createConversation)...)
+	conversations.DELETE("", route.authHandler.WithAppUserAuthChain(route.deleteAllConversations)...)
 	conversations.GET("/:conv_public_id", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.getConversation)...)
 	conversations.POST("/:conv_public_id", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.updateConversation)...)
 	conversations.DELETE("/:conv_public_id", route.authHandler.WithAppUserAuthChain(route.handler.ConversationMiddleware(), route.deleteConversation)...)
@@ -166,6 +167,46 @@ func (route *ConversationRoute) createConversation(reqCtx *gin.Context) {
 	response, err := route.handler.CreateConversation(ctx, user.ID, req)
 	if err != nil {
 		responses.HandleError(reqCtx, err, "Failed to create conversation")
+		return
+	}
+	reqCtx.JSON(http.StatusOK, response)
+}
+
+// deleteAllConversations godoc
+// @Summary Delete all conversations
+// @Description Permanently delete all conversations for the authenticated user
+// @Description
+// @Description **WARNING: This is a destructive operation that cannot be undone.**
+// @Description
+// @Description **Features:**
+// @Description - Deletes ALL conversations owned by the authenticated user
+// @Description - Automatically cascades to delete all associated items and shares
+// @Description - Returns the count of deleted conversations
+// @Description - Requires valid authentication to ensure ownership verification
+// @Description
+// @Description **Security:**
+// @Description - Only deletes conversations owned by the authenticated user
+// @Description - Cannot delete other users' conversations
+// @Description - Authentication is mandatory
+// @Tags Conversations API
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} conversationresponses.BulkConversationsDeletedResponse "Successfully deleted all conversations"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error - deletion failed"
+// @Router /v1/conversations [delete]
+func (route *ConversationRoute) deleteAllConversations(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+
+	user, ok := authhandler.GetUserFromContext(reqCtx)
+	if !ok {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeUnauthorized, "authentication required", "delete-all-convs-unauthorized")
+		return
+	}
+
+	response, err := route.handler.DeleteAllConversations(ctx, user.ID)
+	if err != nil {
+		responses.HandleError(reqCtx, err, "Failed to delete all conversations")
 		return
 	}
 	reqCtx.JSON(http.StatusOK, response)

@@ -190,6 +190,24 @@ func (s *ConversationService) DeleteConversationByID(ctx context.Context, userID
 	return s.DeleteConversation(ctx, conversation)
 }
 
+// DeleteAllConversationsByUserID deletes all conversations for a specific user.
+// This is a destructive operation that removes all conversations owned by the user.
+// Returns the count of deleted conversations.
+func (s *ConversationService) DeleteAllConversationsByUserID(ctx context.Context, userID uint) (int64, error) {
+	// Validate userID
+	if userID == 0 {
+		return 0, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "invalid user ID", nil, "delete-all-convs-invalid-user")
+	}
+
+	// Delete all conversations for this user
+	deletedCount, err := s.repo.DeleteAllByUserID(ctx, userID)
+	if err != nil {
+		return 0, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to delete all conversations")
+	}
+
+	return deletedCount, nil
+}
+
 // ===============================================
 // Item Management Methods
 // ===============================================

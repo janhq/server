@@ -19,6 +19,7 @@ jobs:
       response-api: ${{ steps.filter.outputs.response-api }}
       memory-tools: ${{ steps.filter.outputs.memory-tools }}
       vector-store: ${{ steps.filter.outputs.vector-store }}
+      realtime-api: ${{ steps.filter.outputs.realtime-api }}
       pkg: ${{ steps.filter.outputs.pkg }}
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +40,8 @@ jobs:
               - 'services/memory-tools/**'
             vector-store:
               - 'services/mcp-tools/tools/vector-store-service/**'
+            realtime-api:
+              - 'services/realtime-api/**'
             pkg:
               - 'pkg/**'
 
@@ -128,6 +131,21 @@ jobs:
       context: services/mcp-tools/tools/vector-store-service
       registry-url: registry.menlo.ai
       tags: registry.menlo.ai/jan-server/vector-store-service:dev-${{ github.sha }}
+      is_push: ${{ github.event_name == 'push' }}
+      build-args: |
+        VERSION_TAG=dev-${{ github.sha }}
+
+  build-realtime-api:
+    needs: changes
+    if: needs.changes.outputs.realtime-api == 'true' || needs.changes.outputs.pkg == 'true'
+    uses: ./.github/workflows/template-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/realtime-api/Dockerfile
+      context: services/realtime-api
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/realtime-api:dev-${{ github.sha }}
       is_push: ${{ github.event_name == 'push' }}
       build-args: |
         VERSION_TAG=dev-${{ github.sha }}

@@ -10,6 +10,7 @@ import (
 	domainsearch "jan-server/services/mcp-tools/internal/domain/search"
 	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
 	"jan-server/services/mcp-tools/internal/infrastructure/metrics"
+	"jan-server/services/mcp-tools/internal/infrastructure/toolconfig"
 	"jan-server/services/mcp-tools/internal/infrastructure/vectorstore"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -103,7 +104,8 @@ type scrapeToolPayload struct {
 type SerperMCP struct {
 	searchService         *domainsearch.SearchService
 	vectorStore           *vectorstore.Client
-	llmClient             *llmapi.Client // LLM-API client for tool tracking
+	llmClient             *llmapi.Client          // LLM-API client for tool tracking
+	toolConfigCache       *toolconfig.Cache       // Cache for dynamic tool configurations
 	fileIndexMu           sync.Mutex
 	fileIndex             map[string]FileSearchIndexArgs
 	maxSnippetChars       int
@@ -152,13 +154,82 @@ func (s *SerperMCP) SetLLMClient(client *llmapi.Client) {
 	s.llmClient = client
 }
 
+// SetToolConfigCache sets the tool config cache for dynamic descriptions
+func (s *SerperMCP) SetToolConfigCache(cache *toolconfig.Cache) {
+	s.toolConfigCache = cache
+}
+
+// Tool key constants (matching llm-api mcptool domain)
+const (
+	ToolKeyGoogleSearch    = "google_search"
+	ToolKeyScrape          = "scrape"
+	ToolKeyFileSearchIndex = "file_search_index"
+	ToolKeyFileSearchQuery = "file_search_query"
+)
+
+// Default tool descriptions (fallback when cache is unavailable)
+var defaultToolDescriptions = map[string]string{
+	ToolKeyGoogleSearch:    "Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
+	ToolKeyScrape:          "Scrape a webpage and retrieve the text with optional markdown formatting.",
+	ToolKeyFileSearchIndex: "Index arbitrary text into the lightweight vector store used for MCP automations.",
+	ToolKeyFileSearchQuery: "Run a semantic query against documents indexed via file_search_index.",
+}
+
+// getToolDescription gets the description for a tool, using cached config if available
+func (s *SerperMCP) getToolDescription(ctx context.Context, toolKey string) string {
+	if s.toolConfigCache != nil {
+		tool, err := s.toolConfigCache.GetToolByKey(ctx, toolKey)
+		if err == nil && tool != nil {
+			return tool.Config.Description
+		}
+	}
+	// Fallback to default
+	if desc, ok := defaultToolDescriptions[toolKey]; ok {
+		return desc
+	}
+	return ""
+}
+
+// isToolActive checks if a tool is active (should be listed/callable)
+func (s *SerperMCP) isToolActive(ctx context.Context, toolKey string) bool {
+	if s.toolConfigCache != nil {
+		tool, err := s.toolConfigCache.GetToolByKey(ctx, toolKey)
+		if err == nil && tool != nil {
+			return tool.Config.IsActive
+		}
+	}
+	// Default to active if no config found
+	return true
+}
+
+// getToolConfig gets the full cached tool config
+func (s *SerperMCP) getToolConfig(ctx context.Context, toolKey string) *toolconfig.CachedTool {
+	if s.toolConfigCache != nil {
+		tool, _ := s.toolConfigCache.GetToolByKey(ctx, toolKey)
+		return tool
+	}
+	return nil
+}
+
 // RegisterTools registers Serper tools with the MCP server
+// Note: Tool descriptions are fetched dynamically from cache when available
 func (s *SerperMCP) RegisterTools(server *mcp.Server) {
+	// Use background context for initial description fetch
+	ctx := context.Background()
+
 	// Register google_search tool
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "google_search",
-		Description: "Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
+		Name:        ToolKeyGoogleSearch,
+		Description: s.getToolDescription(ctx, ToolKeyGoogleSearch),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperSearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
+		// Check if tool is active
+		if !s.isToolActive(ctx, ToolKeyGoogleSearch) {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "tool is disabled"}},
+				IsError: true,
+			}, searchToolPayload{}, nil
+		}
+
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
 
@@ -221,6 +292,9 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		} else {
 			payload = s.buildSearchPayload(searchReq.Q, searchReq, searchResp)
 		}
+
+		// Apply disallowed keyword filtering
+		payload = s.filterSearchResults(ctx, ToolKeyGoogleSearch, payload)
 
 		// If tracking is enabled, save result to LLM-API (single PATCH call)
 		if trackingEnabled && s.llmClient != nil {
@@ -286,9 +360,17 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 
 	// Register scrape tool
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "scrape",
-		Description: "Scrape a webpage and retrieve the text with optional markdown formatting.",
+		Name:        ToolKeyScrape,
+		Description: s.getToolDescription(ctx, ToolKeyScrape),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
+		// Check if tool is active
+		if !s.isToolActive(ctx, ToolKeyScrape) {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: "tool is disabled"}},
+				IsError: true,
+			}, scrapeToolPayload{}, nil
+		}
+
 		startTime := time.Now()
 		callCtx := extractAllContext(req)
 
@@ -396,13 +478,21 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		log.Warn().Msg("file_search_index and file_search_query MCP tools disabled via config")
 	} else {
 		mcp.AddTool(server, &mcp.Tool{
-			Name:        "file_search_index",
-			Description: "Index arbitrary text into the lightweight vector store used for MCP automations.",
+			Name:        ToolKeyFileSearchIndex,
+			Description: s.getToolDescription(ctx, ToolKeyFileSearchIndex),
 		}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchIndexArgs) (*mcp.CallToolResult, map[string]any, error) {
+			// Check if tool is active
+			if !s.isToolActive(ctx, ToolKeyFileSearchIndex) {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{&mcp.TextContent{Text: "tool is disabled"}},
+					IsError: true,
+				}, nil, nil
+			}
+
 			startTime := time.Now()
 			callCtx := extractAllContext(req)
 			log.Info().
-				Str("tool", "file_search_index").
+				Str("tool", ToolKeyFileSearchIndex).
 				Str("tool_call_id", callCtx["tool_call_id"]).
 				Str("request_id", callCtx["request_id"]).
 				Str("conversation_id", callCtx["conversation_id"]).
@@ -455,9 +545,17 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		})
 
 		mcp.AddTool(server, &mcp.Tool{
-			Name:        "file_search_query",
-			Description: "Run a semantic query against documents indexed via file_search_index.",
+			Name:        ToolKeyFileSearchQuery,
+			Description: s.getToolDescription(ctx, ToolKeyFileSearchQuery),
 		}, func(ctx context.Context, req *mcp.CallToolRequest, input FileSearchQueryArgs) (*mcp.CallToolResult, map[string]any, error) {
+			// Check if tool is active
+			if !s.isToolActive(ctx, ToolKeyFileSearchQuery) {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{&mcp.TextContent{Text: "tool is disabled"}},
+					IsError: true,
+				}, nil, nil
+			}
+
 			startTime := time.Now()
 			callCtx := extractAllContext(req)
 			log.Info().
@@ -744,4 +842,51 @@ func (s *SerperMCP) buildFallbackSearchPayload(query string, req domainsearch.Se
 		Citations: []string{result.SourceURL},
 		Raw:       nil,
 	}
+}
+
+// filterSearchResults applies disallowed keyword filtering to search results
+func (s *SerperMCP) filterSearchResults(ctx context.Context, toolKey string, payload searchToolPayload) searchToolPayload {
+	toolConfig := s.getToolConfig(ctx, toolKey)
+	if toolConfig == nil || len(toolConfig.CompiledFilters) == 0 {
+		return payload
+	}
+
+	filteredResults := make([]searchToolResult, 0, len(payload.Results))
+	filteredCitations := make([]string, 0, len(payload.Citations))
+	removedCount := 0
+	filteredURLs := make([]string, 0)
+
+	for _, result := range payload.Results {
+		// Check if any field matches disallowed keywords
+		contentToCheck := result.Title + " " + result.Snippet + " " + result.SourceURL
+		if toolConfig.MatchesDisallowedKeyword(contentToCheck) {
+			removedCount++
+			filteredURLs = append(filteredURLs, result.SourceURL)
+			log.Info().
+				Str("tool_key", toolKey).
+				Str("source_url", result.SourceURL).
+				Str("title", result.Title).
+				Msg("Filtered search result due to disallowed keyword")
+			continue
+		}
+		// Re-number the position
+		result.Position = len(filteredResults) + 1
+		filteredResults = append(filteredResults, result)
+		if result.SourceURL != "" {
+			filteredCitations = append(filteredCitations, result.SourceURL)
+		}
+	}
+
+	if removedCount > 0 {
+		log.Info().
+			Str("tool_key", toolKey).
+			Int("removed", removedCount).
+			Int("remaining", len(filteredResults)).
+			Strs("filtered_urls", filteredURLs).
+			Msg("Filtered search results due to disallowed keywords")
+	}
+
+	payload.Results = filteredResults
+	payload.Citations = filteredCitations
+	return payload
 }

@@ -11,7 +11,9 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/chathandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
 	guestauth "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/guesthandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/mcptoolhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelprompthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/projecthandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/prompttemplatehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/sharehandler"
@@ -53,7 +55,9 @@ var RouteProvider = wire.NewSet(
 	projecthandler.NewProjectHandler,
 	usersettingshandler.NewUserSettingsHandler,
 	prompttemplatehandler.NewPromptTemplateHandler,
+	modelprompthandler.NewModelPromptTemplateHandler,
 	sharehandler.NewShareHandler,
+	mcptoolhandler.NewMCPToolHandler,
 
 	// Bind ModelHandler to ModelProvider interface for usersettings
 	wire.Bind(new(usersettings.ModelProvider), new(*modelhandler.ModelHandler)),

@@ -100,6 +100,10 @@ services:
       SANDBOXFUSION_URL: ${SANDBOXFUSION_URL:-http://sandboxfusion:8080}
       MEMORY_TOOLS_URL: ${MEMORY_TOOLS_URL:-http://memory-tools:8090}
 
+      # LLM-API for tool tracking and dynamic descriptions
+      LLM_API_BASE_URL: ${LLM_API_BASE_URL:-http://llm-api:8080}
+      MCP_TRACKING_ENABLED: ${MCP_TRACKING_ENABLED:-true}
+
       # Optional tool toggles
       MCP_ENABLE_MEMORY_RETRIEVE: ${MCP_ENABLE_MEMORY_RETRIEVE:-true}
       

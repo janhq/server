@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 
+	"jan-server/services/llm-api/internal/domain/modelprompttemplate"
 	"jan-server/services/llm-api/internal/domain/prompttemplate"
 )
 
@@ -17,13 +18,25 @@ const (
 
 // DeepResearchModule injects the Deep Research system prompt when enabled
 type DeepResearchModule struct {
-	templateService *prompttemplate.Service
+	templateService      *prompttemplate.Service
+	modelPromptService   *modelprompttemplate.Service
 }
 
 // NewDeepResearchModule creates a new deep research module
 func NewDeepResearchModule(templateService *prompttemplate.Service) *DeepResearchModule {
 	return &DeepResearchModule{
 		templateService: templateService,
+	}
+}
+
+// NewDeepResearchModuleWithModelPrompts creates a new deep research module with model-specific prompt support
+func NewDeepResearchModuleWithModelPrompts(
+	templateService *prompttemplate.Service,
+	modelPromptService *modelprompttemplate.Service,
+) *DeepResearchModule {
+	return &DeepResearchModule{
+		templateService:    templateService,
+		modelPromptService: modelPromptService,
 	}
 }
 
@@ -92,16 +105,39 @@ func (m *DeepResearchModule) Apply(ctx context.Context, promptCtx *Context, mess
 	}
 
 	var promptContent string
+	var templateSource string
 
-	// Try to fetch the Deep Research prompt template from the database/service
-	if m.templateService != nil {
+	// Try to fetch model-specific template first, then fall back to global
+	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
+		log.Debug().
+			Str("model_catalog_id", *promptCtx.ModelCatalogID).
+			Msg("DeepResearchModule: Attempting to load model-specific template")
+		
+		template, source, err := m.modelPromptService.GetTemplateForModelByKey(ctx, *promptCtx.ModelCatalogID, prompttemplate.TemplateKeyDeepResearch)
+		if err == nil && template != nil && template.IsActive {
+			promptContent = template.Content
+			templateSource = source
+			log.Debug().
+				Str("template_key", template.TemplateKey).
+				Str("template_name", template.Name).
+				Str("source", source).
+				Str("model_catalog_id", *promptCtx.ModelCatalogID).
+				Int("content_length", len(promptContent)).
+				Msg("DeepResearchModule: Loaded prompt template")
+		}
+	}
+
+	// Fall back to regular template service if model-specific not found
+	if promptContent == "" && m.templateService != nil {
 		log.Debug().Msg("DeepResearchModule: Attempting to load template from database")
 		template, err := m.templateService.GetDeepResearchPrompt(ctx)
 		if err == nil && template != nil && template.IsActive {
 			promptContent = template.Content
-			log.Info().
+			templateSource = "global_default"
+			log.Debug().
 				Str("template_key", template.TemplateKey).
 				Str("template_name", template.Name).
+				Str("source", templateSource).
 				Int("content_length", len(promptContent)).
 				Msg("DeepResearchModule: Loaded prompt template from database")
 		} else {
@@ -111,15 +147,17 @@ func (m *DeepResearchModule) Apply(ctx context.Context, promptCtx *Context, mess
 				log.Warn().Msg("DeepResearchModule: Template is inactive or nil, using fallback")
 			}
 		}
-	} else {
+	} else if promptContent == "" {
 		log.Warn().Msg("DeepResearchModule: templateService is nil, using fallback")
 	}
 
 	// Fallback to the default constant if no template was found
 	if promptContent == "" {
 		promptContent = prompttemplate.DefaultDeepResearchPrompt
-		log.Info().
+		templateSource = "hardcoded"
+		log.Debug().
 			Int("fallback_content_length", len(promptContent)).
+			Str("source", templateSource).
 			Msg("DeepResearchModule: Using fallback default prompt")
 	}
 

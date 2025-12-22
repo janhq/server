@@ -31,6 +31,7 @@ The `quickstart` target wraps `jan-cli` and guides you through:
 - Selecting the LLM provider (local vLLM vs remote OpenAI-compatible endpoint)
 - Choosing the MCP search provider (Serper, SearXNG, or disabled)
 - Enabling or disabling the Media API
+- Enabling or disabling the Realtime API (LiveKit-based real-time communication)
 
 Need to rerun the wizard? Execute `make quickstart` again and accept the prompt to update your `.env`.
 
@@ -108,9 +109,10 @@ jan-server/
 |   |-- response-api/
 |   |-- media-api/
 |   |-- mcp-tools/
+|   |-- realtime-api/
 |   |-- template-api/
 |-- docs/                  # Documentation hub
-|-- docker/                # Compose profiles (infra, api, mcp, inference)
+|-- docker/                # Compose profiles (infra, api, mcp, realtime, inference)
 |-- monitoring/            # Grafana, Prometheus, OTEL configs
 |-- k8s/                   # Helm chart + setup guide
 |-- config/                # Environment templates and helpers
@@ -138,6 +140,7 @@ Key directories:
 | Response API | Multi-step orchestration using MCP tools | 8082 | `services/response-api` | `docs/api/response-api/README.md` |
 | Media API | jan_* IDs, S3 ingest, media resolution | 8285 | `services/media-api` | `docs/api/media-api/README.md` |
 | MCP Tools | Model Context Protocol tools (search, scrape, file search, python) | 8091 | `services/mcp-tools` | `docs/api/mcp-tools/README.md` |
+| Realtime API | LiveKit-based real-time audio/video sessions (optional) | 8186 | `services/realtime-api` | `services/realtime-api/README.md` |
 
 See [docs/architecture/services.md](docs/architecture/services.md) for dependency graphs and integration notes.
 
@@ -180,6 +183,7 @@ make build-llm-api        # Build LLM API
 make build-response-api   # Build Response API
 make build-media-api      # Build Media API
 make build-mcp            # Build MCP Tools
+make build-realtime-api   # Build Realtime API
 
 # Development
 make test-all             # Run all test suites
@@ -202,6 +206,7 @@ make logs-llm-api         # View LLM API logs
 make logs-response-api    # View Response API logs
 make logs-media-api       # View Media API logs
 make logs-mcp             # View MCP Tools logs
+make logs-realtime-api    # View Realtime API logs
 make health-check         # Check all services health
 
 # Database
@@ -415,10 +420,14 @@ More examples: [API Documentation ->](docs/api/)
 ### Docker Compose Profiles
 
 ```bash
-make up-full              # All services
+make up-full              # All services (including optional ones)
 make up-gpu               # With GPU inference
 make up-cpu               # CPU-only inference
 make monitor-up           # Add monitoring stack
+
+# Optional services (enabled via profiles)
+docker compose --profile realtime up -d  # Start Realtime API
+docker compose --profile memory up -d    # Start Memory Tools
 ```
 
 ### Environment Configuration
@@ -511,6 +520,7 @@ See [Monitoring Guide](docs/guides/monitoring.md) for configuration.
 - Response API: Go 1.21+ with Gin, GORM, Wire DI
 - Media API: Go 1.21+ with Gin, GORM, S3 SDK
 - MCP Tools: Go 1.21+ with JSON-RPC 2.0
+- Realtime API: Go 1.21+ with Gin, LiveKit SDK
 
 ## Contributing
 

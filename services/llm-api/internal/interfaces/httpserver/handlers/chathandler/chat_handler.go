@@ -281,6 +281,12 @@ func (h *ChatHandler) CreateChatCompletion(
 			profileSettings = &userSettings.ProfileSettings
 		}
 
+		// Get model catalog ID for model-specific template resolution
+		var modelCatalogID *string
+		if modelCatalog != nil && modelCatalog.PublicID != "" {
+			modelCatalogID = &modelCatalog.PublicID
+		}
+
 		promptCtx := &prompt.Context{
 			UserID:             userID,
 			ConversationID:     conversationID,
@@ -289,6 +295,7 @@ func (h *ChatHandler) CreateChatCompletion(
 			Memory:             loadedMemory,
 			ProjectInstruction: projectInstruction,
 			Profile:            profileSettings,
+			ModelCatalogID:     modelCatalogID,
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
@@ -356,7 +363,7 @@ func (h *ChatHandler) CreateChatCompletion(
 	} else {
 		// Log budget for debugging
 		budgetLog := logger.GetLogger()
-		budgetLog.Info().
+		budgetLog.Debug().
 			Int("context_length", budget.ContextLength).
 			Int("tools_tokens", budget.ToolsTokens).
 			Int("response_reserve", budget.ResponseReserve).
@@ -410,7 +417,7 @@ func (h *ChatHandler) CreateChatCompletion(
 		}
 	}
 	trimLog := logger.GetLogger()
-	trimLog.Info().
+	trimLog.Debug().
 		Str("route", "/v1/chat/completions").
 		Str("model", request.Model).
 		Str("conversation_id", conversationID).
@@ -1648,9 +1655,6 @@ func min(a, b int) int {
 // debugLogLLMRequest logs the full LLM request with truncated text content (100 chars) and full image URLs
 func debugLogLLMRequest(request chat.CompletionRequest, conversationID string) {
 	log := logger.GetLogger()
-	if !log.Debug().Enabled() {
-		return
-	}
 
 	log.Debug().
 		Str("model", request.Model).
@@ -1663,30 +1667,17 @@ func debugLogLLMRequest(request chat.CompletionRequest, conversationID string) {
 
 	for i, msg := range request.Messages {
 		// Log message header
-		msgLog := log.Debug().
+		contentPreview := msg.Content
+		if len(contentPreview) > 300 {
+			contentPreview = contentPreview[:300] + "..."
+		}
+		
+		log.Debug().
 			Int("msg_index", i).
-			Str("role", msg.Role)
-
-		// Handle simple content (string)
-		if msg.Content != "" {
-			contentPreview := msg.Content
-			remaining := 0
-			if len(contentPreview) > 100 {
-				remaining = len(contentPreview) - 100
-				contentPreview = contentPreview[:100]
-			}
-			msgLog.Str("content", contentPreview)
-			if remaining > 0 {
-				msgLog.Int("content_remaining_chars", remaining)
-			}
-		}
-
-		// Handle MultiContent (array of parts)
-		if len(msg.MultiContent) > 0 {
-			msgLog.Int("parts_count", len(msg.MultiContent))
-		}
-
-		msgLog.Msg("[DEBUG] LLM Request - Message")
+			Str("role", msg.Role).
+			Str("content_preview", contentPreview).
+			Int("content_length", len(msg.Content)).
+			Msg("[DEBUG] LLM Request - Message")
 
 		// Log each part in MultiContent
 		for j, part := range msg.MultiContent {

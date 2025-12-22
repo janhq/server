@@ -2,6 +2,7 @@ package model
 
 import (
 	modelHandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelhandler"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/modelprompthandler"
 
 	"jan-server/services/llm-api/internal/interfaces/httpserver/requests"
 	requestmodels "jan-server/services/llm-api/internal/interfaces/httpserver/requests/models"
@@ -17,20 +18,23 @@ const HeaderIncludeProviderData = "X-PROVIDER-DATA"
 const MaxExceptModelsLimit = 1000
 
 type AdminModelRoute struct {
-	modelHandler         *modelHandler.ModelHandler
-	modelCatalogHandler  *modelHandler.ModelCatalogHandler
-	providerModelHandler *modelHandler.ProviderModelHandler
+	modelHandler              *modelHandler.ModelHandler
+	modelCatalogHandler       *modelHandler.ModelCatalogHandler
+	providerModelHandler      *modelHandler.ProviderModelHandler
+	modelPromptTemplateHandler *modelprompthandler.ModelPromptTemplateHandler
 }
 
 func NewAdminModelRoute(
 	modelHandler *modelHandler.ModelHandler,
 	modelCatalogHandler *modelHandler.ModelCatalogHandler,
 	providerModelHandler *modelHandler.ProviderModelHandler,
+	modelPromptTemplateHandler *modelprompthandler.ModelPromptTemplateHandler,
 ) *AdminModelRoute {
 	return &AdminModelRoute{
-		modelHandler:         modelHandler,
-		modelCatalogHandler:  modelCatalogHandler,
-		providerModelHandler: providerModelHandler,
+		modelHandler:              modelHandler,
+		modelCatalogHandler:       modelCatalogHandler,
+		providerModelHandler:      providerModelHandler,
+		modelPromptTemplateHandler: modelPromptTemplateHandler,
 	}
 }
 
@@ -41,6 +45,17 @@ func (route *AdminModelRoute) RegisterRouter(router *gin.RouterGroup) {
 	catalogRoute := modelsRoute.Group("catalogs")
 	catalogRoute.GET("", route.ListModelCatalogs)
 	catalogRoute.POST("/bulk-toggle", route.BulkToggleModelCatalogs)
+	
+	// Model Prompt Template endpoints - using dedicated sub-routes with action prefix
+	// Format: /prompt-templates/list/*model_id, /prompt-templates/assign/*model_id, etc.
+	promptTemplatesRoute := modelsRoute.Group("prompt-templates")
+	promptTemplatesRoute.GET("/list/*model_id", route.modelPromptTemplateHandler.List)
+	promptTemplatesRoute.POST("/assign/*model_id", route.modelPromptTemplateHandler.Assign)
+	promptTemplatesRoute.GET("/effective/*model_id", route.modelPromptTemplateHandler.GetEffective)
+	promptTemplatesRoute.PATCH("/update/:template_key/*model_id", route.modelPromptTemplateHandler.Update)
+	promptTemplatesRoute.DELETE("/unassign/:template_key/*model_id", route.modelPromptTemplateHandler.Unassign)
+	
+	// Model Catalog detail endpoints (wildcard for IDs with slashes)
 	catalogRoute.GET("/*model_public_id", route.GetModelCatalog)
 	catalogRoute.PATCH("/*model_public_id", route.UpdateModelCatalog)
 

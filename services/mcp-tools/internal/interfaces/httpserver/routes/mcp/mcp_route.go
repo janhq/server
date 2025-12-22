@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/rs/zerolog/log"
 
 	"jan-server/services/mcp-tools/internal/infrastructure/llmapi"
+	"jan-server/services/mcp-tools/internal/infrastructure/toolconfig"
 	"jan-server/services/mcp-tools/internal/interfaces/httpserver/responses"
 	"jan-server/services/mcp-tools/utils/platformerrors"
 )
@@ -38,13 +41,14 @@ var allowedMCPMethods = map[string]bool{
 }
 
 type MCPRoute struct {
-	serperMCP   *SerperMCP
-	providerMCP *ProviderMCP
-	sandboxMCP  *SandboxFusionMCP
-	memoryMCP   *MemoryMCP
-	llmClient   *llmapi.Client // LLM-API client for tool call tracking
-	mcpServer   *mcp.Server
-	httpHandler http.Handler
+	serperMCP       *SerperMCP
+	providerMCP     *ProviderMCP
+	sandboxMCP      *SandboxFusionMCP
+	memoryMCP       *MemoryMCP
+	llmClient       *llmapi.Client      // LLM-API client for tool call tracking
+	toolConfigCache *toolconfig.Cache   // Cache for dynamic tool descriptions
+	mcpServer       *mcp.Server
+	httpHandler     http.Handler
 }
 
 func NewMCPRoute(
@@ -53,6 +57,7 @@ func NewMCPRoute(
 	sandboxMCP *SandboxFusionMCP,
 	memoryMCP *MemoryMCP,
 	llmClient *llmapi.Client,
+	toolConfigCache *toolconfig.Cache,
 ) *MCPRoute {
 	impl := &mcp.Implementation{
 		Name:    "menlo-platform",
@@ -92,12 +97,13 @@ func NewMCPRoute(
 	}
 
 	return &MCPRoute{
-		serperMCP:   serperMCP,
-		providerMCP: providerMCP,
-		sandboxMCP:  sandboxMCP,
-		memoryMCP:   memoryMCP,
-		llmClient:   llmClient,
-		mcpServer:   server,
+		serperMCP:       serperMCP,
+		providerMCP:     providerMCP,
+		sandboxMCP:      sandboxMCP,
+		memoryMCP:       memoryMCP,
+		llmClient:       llmClient,
+		toolConfigCache: toolConfigCache,
+		mcpServer:       server,
 		httpHandler: mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 			return server
 		}, &mcp.StreamableHTTPOptions{Stateless: true}),
@@ -137,9 +143,184 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /v1/mcp [post]
 func (route *MCPRoute) serveMCP(reqCtx *gin.Context) {
+	// Check if this is a tools/list request and intercept it to provide dynamic descriptions
+	if route.toolConfigCache != nil {
+		// Read body to check method
+		bodyBytes, err := io.ReadAll(reqCtx.Request.Body)
+		if err == nil && len(bodyBytes) > 0 {
+			// Restore body for potential re-use
+			reqCtx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+			var payload struct {
+				Method string      `json:"method"`
+				ID     interface{} `json:"id"`
+			}
+			if json.Unmarshal(bodyBytes, &payload) == nil && payload.Method == "tools/list" {
+				route.handleToolsListWithDynamicDescriptions(reqCtx, payload.ID)
+				return
+			}
+		}
+	}
+
 	// Force acceptable content types for go-sdk streamable handler even if client omits Accept.
 	reqCtx.Request.Header.Set("Accept", "application/json, text/event-stream")
 	route.httpHandler.ServeHTTP(reqCtx.Writer, reqCtx.Request)
+}
+
+// handleToolsListWithDynamicDescriptions handles tools/list with descriptions from the cache
+func (route *MCPRoute) handleToolsListWithDynamicDescriptions(reqCtx *gin.Context, requestID interface{}) {
+	ctx := reqCtx.Request.Context()
+
+	// Get descriptions from cache
+	descriptionMap := make(map[string]string)
+	if route.toolConfigCache != nil {
+		tools, err := route.toolConfigCache.GetAllTools(ctx)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to get tools from config cache")
+		} else {
+			log.Debug().Int("tool_count", len(tools)).Msg("Fetched tools from cache for description override")
+			for _, tool := range tools {
+				if tool.Config.Description != "" {
+					descriptionMap[tool.Config.ToolKey] = tool.Config.Description
+					log.Debug().
+						Str("tool_key", tool.Config.ToolKey).
+						Str("description", tool.Config.Description).
+						Msg("Loaded description from cache")
+				}
+			}
+		}
+	} else {
+		log.Debug().Msg("Tool config cache is nil, skipping description override")
+	}
+
+	// Get the base response from the MCP server by calling it directly
+	// We need to use a custom response writer to capture the response
+	captureWriter := &responseCapture{header: make(http.Header)}
+	captureReq := reqCtx.Request.Clone(ctx)
+
+	// Restore body for the SDK handler
+	bodyBytes, _ := io.ReadAll(reqCtx.Request.Body)
+	captureReq.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	reqCtx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	captureReq.Header.Set("Accept", "application/json, text/event-stream")
+	route.httpHandler.ServeHTTP(captureWriter, captureReq)
+
+	// Parse and modify the response
+	responseBody := captureWriter.body.Bytes()
+
+	// The response might be in SSE format (event: message\ndata: {...}\n\n)
+	// or plain JSON. Try to extract JSON from SSE format first.
+	jsonData := extractJSONFromSSE(responseBody)
+	if jsonData == nil {
+		jsonData = responseBody // Assume it's plain JSON
+	}
+
+	// For JSON-RPC over HTTP, the response format is: {"jsonrpc":"2.0","id":...,"result":{"tools":[...]}}
+	var rpcResponse struct {
+		Jsonrpc string      `json:"jsonrpc"`
+		ID      interface{} `json:"id"`
+		Result  struct {
+			Tools []struct {
+				Name        string                 `json:"name"`
+				Description string                 `json:"description"`
+				InputSchema map[string]interface{} `json:"inputSchema,omitempty"`
+			} `json:"tools"`
+			NextCursor string `json:"nextCursor,omitempty"`
+		} `json:"result"`
+		Error interface{} `json:"error,omitempty"`
+	}
+
+	if err := json.Unmarshal(jsonData, &rpcResponse); err != nil {
+		// If parsing fails, just forward the original response
+		log.Warn().Err(err).Str("response_preview", string(responseBody[:min(200, len(responseBody))])).Msg("Failed to parse tools/list response for description override")
+		for k, v := range captureWriter.header {
+			reqCtx.Writer.Header()[k] = v
+		}
+		reqCtx.Writer.WriteHeader(captureWriter.statusCode)
+		reqCtx.Writer.Write(responseBody)
+		return
+	}
+
+	// Override descriptions from cache
+	for i := range rpcResponse.Result.Tools {
+		toolName := rpcResponse.Result.Tools[i].Name
+		if desc, ok := descriptionMap[toolName]; ok && desc != "" {
+			log.Debug().
+				Str("tool_name", toolName).
+				Str("old_desc", rpcResponse.Result.Tools[i].Description[:min(50, len(rpcResponse.Result.Tools[i].Description))]).
+				Str("new_desc", desc[:min(50, len(desc))]).
+				Msg("Overriding tool description from cache")
+			rpcResponse.Result.Tools[i].Description = desc
+		} else {
+			log.Debug().
+				Str("tool_name", toolName).
+				Bool("found_in_map", ok).
+				Msg("No description override for tool")
+		}
+	}
+
+	// Send modified response
+	modifiedBody, err := json.Marshal(rpcResponse)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to marshal modified tools/list response")
+		for k, v := range captureWriter.header {
+			reqCtx.Writer.Header()[k] = v
+		}
+		reqCtx.Writer.WriteHeader(captureWriter.statusCode)
+		reqCtx.Writer.Write(responseBody)
+		return
+	}
+
+	reqCtx.Writer.Header().Set("Content-Type", "application/json")
+	reqCtx.Writer.WriteHeader(http.StatusOK)
+	reqCtx.Writer.Write(modifiedBody)
+}
+
+// responseCapture captures HTTP response for modification
+type responseCapture struct {
+	header     http.Header
+	body       bytes.Buffer
+	statusCode int
+}
+
+func (r *responseCapture) Header() http.Header {
+	return r.header
+}
+
+func (r *responseCapture) Write(b []byte) (int, error) {
+	return r.body.Write(b)
+}
+
+func (r *responseCapture) WriteHeader(statusCode int) {
+	r.statusCode = statusCode
+}
+
+// extractJSONFromSSE extracts JSON data from SSE (Server-Sent Events) format.
+// SSE format is: "event: message\ndata: {...}\n\n"
+// Returns nil if the input is not in SSE format.
+func extractJSONFromSSE(data []byte) []byte {
+	str := string(data)
+
+	// Check if this looks like SSE format
+	if !strings.HasPrefix(str, "event:") && !strings.HasPrefix(str, "data:") {
+		return nil
+	}
+
+	// Split by newlines and find the data line
+	lines := strings.Split(str, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "data:") {
+			jsonStr := strings.TrimPrefix(line, "data:")
+			jsonStr = strings.TrimSpace(jsonStr)
+			if jsonStr != "" {
+				return []byte(jsonStr)
+			}
+		}
+	}
+
+	return nil
 }
 
 // InjectUserContext extracts user_id from JWT token and injects it into request context

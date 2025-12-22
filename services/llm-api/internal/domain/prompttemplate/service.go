@@ -172,20 +172,12 @@ func (s *Service) Delete(ctx context.Context, publicID string) error {
 	return s.repo.Delete(ctx, template.ID)
 }
 
-// Duplicate creates a copy of an existing prompt template with a new key
-func (s *Service) Duplicate(ctx context.Context, publicID string, newKey string, createdBy *string) (*PromptTemplate, error) {
+// Duplicate creates a copy of an existing prompt template
+// It keeps the same template_key and only adds suffix to the name
+func (s *Service) Duplicate(ctx context.Context, publicID string, newName string, createdBy *string) (*PromptTemplate, error) {
 	original, err := s.repo.FindByPublicID(ctx, publicID)
 	if err != nil {
 		return nil, err
-	}
-
-	// Check if new key already exists
-	existing, err := s.repo.FindByTemplateKey(ctx, newKey)
-	if err != nil && !platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
-		return nil, err
-	}
-	if existing != nil {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeConflict, "template key already exists", nil, "01e2f3a4-5678-9abc-def0-123456789012")
 	}
 
 	newPublicID, err := idgen.GenerateSecureID("pt", 24)
@@ -193,13 +185,19 @@ func (s *Service) Duplicate(ctx context.Context, publicID string, newKey string,
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeInternal, "failed to generate ID", err, "01e2f3a4-5678-9abc-def0-123456789013")
 	}
 
-	// Create duplicate
+	// Use provided name or generate one
+	duplicateName := newName
+	if duplicateName == "" {
+		duplicateName = fmt.Sprintf("%s - Copy", original.Name)
+	}
+
+	// Create duplicate - keep the same template_key
 	duplicate := &PromptTemplate{
 		PublicID:    newPublicID,
-		Name:        fmt.Sprintf("%s (Copy)", original.Name),
+		Name:        duplicateName,
 		Description: original.Description,
 		Category:    original.Category,
-		TemplateKey: newKey,
+		TemplateKey: original.TemplateKey, // Keep the same template_key
 		Content:     original.Content,
 		Variables:   original.Variables,
 		Metadata:    original.Metadata,

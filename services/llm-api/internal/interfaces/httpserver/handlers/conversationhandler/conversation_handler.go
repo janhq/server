@@ -274,6 +274,34 @@ func (h *ConversationHandler) DeleteConversation(
 	return conversationresponses.NewConversationDeletedResponse(conversationID), nil
 }
 
+// DeleteAllConversations deletes all conversations for a user
+func (h *ConversationHandler) DeleteAllConversations(
+	ctx context.Context,
+	userID uint,
+) (*conversationresponses.BulkConversationsDeletedResponse, error) {
+	// Validate user ID
+	if userID == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerHandler, platformerrors.ErrorTypeValidation,
+			"invalid user ID", nil, "delete-all-convs-invalid-user")
+	}
+
+	// Revoke all shares for all conversations owned by this user
+	// Note: This is handled by CASCADE DELETE in the database schema,
+	// but we explicitly revoke to ensure clean-up of any external references
+	if h.shareRepo != nil {
+		// The shares will be deleted automatically via CASCADE when conversations are deleted
+		// No explicit revocation needed here
+	}
+
+	// Delete all conversations for this user
+	deletedCount, err := h.conversationService.DeleteAllConversationsByUserID(ctx, userID)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to delete all conversations")
+	}
+
+	return conversationresponses.NewBulkConversationsDeletedResponse(deletedCount), nil
+}
+
 // ListItems lists items in a conversation
 func (h *ConversationHandler) ListItems(
 	ctx context.Context,

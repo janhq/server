@@ -126,11 +126,13 @@ install-deps:
 # SECTION 3: BUILD TARGETS
 # ============================================================================================================
 
-.PHONY: build build-api build-mcp build-memory build-all clean-build build-llm-api build-media-api build-response-api build-memory-tools
+.PHONY: build build-api build-mcp build-memory build-realtime build-all clean-build build-llm-api build-media-api build-response-api build-realtime-api build-memory-tools
 
 build: build-api build-mcp build-memory
 
 build-api: build-llm-api build-media-api build-response-api
+
+build-realtime: build-realtime-api
 
 build-memory: build-memory-tools
 
@@ -160,6 +162,15 @@ else
 	@cd services/response-api && go build -o bin/response-api ./cmd/server
 endif
 	@echo " Response API built: services/response-api/bin/response-api"
+
+build-realtime-api:
+	@echo "Building Realtime API..."
+ifeq ($(OS),Windows_NT)
+	@cd services/realtime-api && go build -o bin/realtime-api.exe ./cmd/server
+else
+	@cd services/realtime-api && go build -o bin/realtime-api ./cmd/server
+endif
+	@echo " Realtime API built: services/realtime-api/bin/realtime-api"
 
 build-mcp:
 	@echo "Building MCP Tools..."
@@ -239,7 +250,7 @@ cli-clean:
 
 # --- Swagger Documentation ---
 
-.PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-response-api swagger-combine swagger-install
+.PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-response-api swagger-realtime-api swagger-combine swagger-install
 
 swagger:
 	@echo "Generating Swagger documentation for all services..."
@@ -285,8 +296,17 @@ else
 endif
 	@echo " response-api swagger generated at services/response-api/docs/swagger"
 
+swagger-realtime-api:
+	@echo "Generating Swagger for realtime-api service..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate -s realtime-api
+else
+	@bash jan-cli.sh swagger generate -s realtime-api
+endif
+	@echo " realtime-api swagger generated at services/realtime-api/docs/swagger"
+
 swagger-combine:
-	@echo \"Merging LLM API and MCP Tools swagger specs...\"
+	@echo \"Merging LLM API, MCP Tools, and Realtime API swagger specs...\"
 ifeq ($(OS),Windows_NT)
 	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger combine
 else
@@ -438,6 +458,8 @@ up-full: ## Start full stack (all services in Docker)
 	@echo ""
 	@echo "Services:"
 	@echo "  - LLM API:        http://localhost:8080"
+	@echo "  - Media API:      http://localhost:8285"
+	@echo "  - Realtime API:   http://localhost:8186"
 	@echo "  - MCP Tools:      http://localhost:8091"
 	@echo "  - Vector Store:   http://localhost:3015"
 	@echo "  - vLLM (if enabled): http://localhost:8101"
@@ -775,8 +797,9 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "try { $$null = docker compose exec -T api-db pg_isready -U jan_user 2>&1 | Out-Null; if ($$LASTEXITCODE -eq 0) { Write-Host '  PostgreSQL: healthy' } else { Write-Host '  PostgreSQL: unhealthy' } } catch { Write-Host '  PostgreSQL: unhealthy' }"
 	@echo.
 	@echo [API Services]
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8080/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  LLM API:    healthy' } catch { Write-Host '  LLM API:    unhealthy' }"
-	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8285/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Media API:  healthy' } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 401) { Write-Host '  Media API:  healthy' } else { Write-Host '  Media API:  unhealthy' } } catch { Write-Host '  Media API:  unhealthy' } }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8080/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  LLM API:      healthy' } catch { Write-Host '  LLM API:      unhealthy' }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8285/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Media API:    healthy' } catch { try { if ($$PSItem.Exception.Response.StatusCode.Value__ -eq 401) { Write-Host '  Media API:    healthy' } else { Write-Host '  Media API:    unhealthy' } } catch { Write-Host '  Media API:    unhealthy' } }"
+	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8186/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  Realtime API: healthy' } catch { Write-Host '  Realtime API: not running' }"
 	@echo.
 	@echo [MCP Services]
 	@powershell -Command "try { $$null = Invoke-WebRequest -Uri http://localhost:8091/healthz -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; Write-Host '  MCP Tools:      healthy' } catch { Write-Host '  MCP Tools:      unhealthy' }"
@@ -798,8 +821,9 @@ else
 	@$(COMPOSE) exec -T api-db pg_isready -U jan_user >/dev/null 2>&1 && echo "  PostgreSQL: healthy" || echo "  PostgreSQL: unhealthy"
 	@echo ""
 	@echo "[API Services]"
-	@curl -sf http://localhost:8080/healthz >/dev/null && echo "  LLM API:    healthy" || echo "  LLM API:    unhealthy"
-	@curl -s http://localhost:8285/healthz >/dev/null && echo "  Media API:  healthy" || (curl -s -w "%{http_code}" -o /dev/null http://localhost:8285/healthz | grep -q "401" && echo "  Media API:  healthy" || echo "  Media API:  unhealthy")
+	@curl -sf http://localhost:8080/healthz >/dev/null && echo "  LLM API:      healthy" || echo "  LLM API:      unhealthy"
+	@curl -s http://localhost:8285/healthz >/dev/null && echo "  Media API:    healthy" || (curl -s -w "%{http_code}" -o /dev/null http://localhost:8285/healthz | grep -q "401" && echo "  Media API:    healthy" || echo "  Media API:    unhealthy")
+	@curl -sf http://localhost:8186/healthz >/dev/null && echo "  Realtime API: healthy" || echo "  Realtime API: not running"
 	@echo ""
 	@echo "[MCP Services]"
 	@curl -sf http://localhost:8091/healthz >/dev/null && echo "  MCP Tools:      healthy" || echo "  MCP Tools:      unhealthy"

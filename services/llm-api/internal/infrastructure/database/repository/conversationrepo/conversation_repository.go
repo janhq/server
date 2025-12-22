@@ -112,6 +112,17 @@ func (repo *ConversationGormRepository) Delete(ctx context.Context, id uint) err
 	return nil
 }
 
+// DeleteAllByUserID implements conversation.ConversationRepository.
+// It deletes all conversations for a specific user and returns the count of deleted conversations.
+func (repo *ConversationGormRepository) DeleteAllByUserID(ctx context.Context, userID uint) (int64, error) {
+	q := repo.db.GetQuery(ctx)
+	result, err := q.Conversation.WithContext(ctx).Where(q.Conversation.UserID.Eq(userID)).Delete()
+	if err != nil {
+		return 0, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to delete all conversations for user")
+	}
+	return result.RowsAffected, nil
+}
+
 // AddItem implements conversation.ConversationRepository.
 func (repo *ConversationGormRepository) AddItem(ctx context.Context, conversationID uint, item *conversation.Item) error {
 	// Verify conversation exists

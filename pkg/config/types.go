@@ -220,7 +220,7 @@ type PromptOrchestrationConfig struct {
 	EnableTemplates bool `yaml:"enable_templates" json:"enable_templates" env:"PROMPT_ORCHESTRATION_TEMPLATES" envDefault:"true" description:"Enable template-based prompts"`
 
 	// Enable tools module
-	EnableTools bool `yaml:"enable_tools" json:"enable_tools" env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"false" description:"Enable tool usage instructions"`
+	EnableTools bool `yaml:"enable_tools" json:"enable_tools" env:"PROMPT_ORCHESTRATION_TOOLS" envDefault:"true" description:"Enable tool usage instructions"`
 }
 
 // APIKeyConfig contains API key management settings
