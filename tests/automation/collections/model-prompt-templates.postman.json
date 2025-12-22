@@ -1,32 +1,8 @@
 {
   "info": {
-    "_postman_id": "model-prompt-templates-tests-001",
     "name": "Model Prompt Templates API Tests",
-    "description": "Tests for Model-specific Prompt Template override endpoints",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8000"
-    },
-    {
-      "key": "admin_token",
-      "value": ""
-    },
-    {
-      "key": "model_catalog_id",
-      "value": ""
-    },
-    {
-      "key": "prompt_template_id",
-      "value": ""
-    },
-    {
-      "key": "template_key",
-      "value": "deep_research_system"
-    }
-  ],
   "item": [
     {
       "name": "Setup",
@@ -87,8 +63,17 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/realms/jan/protocol/openid-connect/token",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "realms", "jan", "protocol", "openid-connect", "token"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "jan",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
             }
           },
           "response": []
@@ -128,8 +113,16 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalogs?limit=1",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs"
+              ],
               "query": [
                 {
                   "key": "limit",
@@ -180,8 +173,15 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/prompt-templates?limit=10&is_active=true",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "prompt-templates"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "prompt-templates"
+              ],
               "query": [
                 {
                   "key": "limit",
@@ -240,8 +240,18 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -300,8 +310,18 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -345,8 +365,18 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -394,8 +424,19 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}/effective",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates", "effective"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates",
+                "effective"
+              ]
             }
           },
           "response": []
@@ -440,8 +481,19 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}/{{template_key}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates", "{{template_key}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates",
+                "{{template_key}}"
+              ]
             }
           },
           "response": []
@@ -486,8 +538,19 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}/{{template_key}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates", "{{template_key}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates",
+                "{{template_key}}"
+              ]
             }
           },
           "response": []
@@ -528,8 +591,19 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}/effective",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates", "effective"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates",
+                "effective"
+              ]
             }
           },
           "response": []
@@ -560,8 +634,19 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}/{{template_key}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates", "{{template_key}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates",
+                "{{template_key}}"
+              ]
             }
           },
           "response": []
@@ -597,8 +682,18 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -643,8 +738,18 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalogs/non-existent-model-id/prompt-templates",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "non-existent-model-id", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "non-existent-model-id",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -684,8 +789,18 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -730,8 +845,18 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []
@@ -762,8 +887,19 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}/non_existent_key",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates", "non_existent_key"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates",
+                "non_existent_key"
+              ]
             }
           },
           "response": []
@@ -788,8 +924,18 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/models/catalog-prompt-templates/{{model_catalog_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["llm", "v1", "admin", "models", "catalogs", "{{model_catalog_id}}", "prompt-templates"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "llm",
+                "v1",
+                "admin",
+                "models",
+                "catalogs",
+                "{{model_catalog_id}}",
+                "prompt-templates"
+              ]
             }
           },
           "response": []

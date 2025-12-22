@@ -1,11 +1,116 @@
 {
   "info": {
-    "name": "jan-server Auth & LLM API Flows",
-    "_postman_id": "e3b5366c-069a-4d2a-8491-ae9916bd3df1",
-    "description": "Automated tests for jan-server authentication flows: JWT (guest/registered), API keys (create/validate/revoke), and Kong gateway validation. All API requests go through Kong gateway.",
+    "name": "jan-server auth",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "01-operations",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{gateway_url}}/healthz"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guest Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{gateway_url}}/auth/guest-login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('guest_access_token', data.access_token);",
+                  "pm.collectionVariables.set('access_token', data.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "admin-cli",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "{{keycloak_admin}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{keycloak_admin_password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{keycloak_base_url}}/realms/master/protocol/openid-connect/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('kc_admin_access_token', data.access_token);",
+                  "pm.collectionVariables.set('access_token', data.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "Health Checks",
       "item": [
@@ -1191,8 +1296,13 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/auth/login?redirect_url=http://localhost:3000/auth/callback",
-              "host": ["{{kong_url}}"],
-              "path": ["auth", "login"],
+              "host": [
+                "{{kong_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
               "query": [
                 {
                   "key": "redirect_url",
@@ -1279,9 +1389,6 @@
             }
           ]
         },
-        
-        
-        
         {
           "name": "Integration Test - Full OAuth Flow with Real Keycloak",
           "request": {
@@ -1768,112 +1875,6 @@
           }
         }
       ]
-    }
-  ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "if (!pm.collectionVariables.get('collection_timestamp')) {",
-          "    pm.collectionVariables.set('collection_timestamp', new Date().toISOString());",
-          "}",
-          "if (!pm.collectionVariables.get('test_user_username')) {",
-          "    pm.collectionVariables.set('test_user_username', `automation-user-${Date.now()}`);",
-          "}",
-          "if (!pm.collectionVariables.get('test_user_password')) {",
-          "    pm.collectionVariables.set('test_user_password', `Passw0rd!${Math.floor(Math.random() * 10000)}`);",
-          "}",
-          "if (!pm.collectionVariables.get('test_user_email')) {",
-          "    pm.collectionVariables.set('test_user_email', `${pm.collectionVariables.get('test_user_username')}@example.com`);",
-          "}",
-          "if (!pm.collectionVariables.get('test_user_pid')) {",
-          "    pm.collectionVariables.set('test_user_pid', pm.collectionVariables.get('test_user_username'));",
-          "}",
-          "const modelId = pm.collectionVariables.get('model_id');",
-          "if (modelId) {",
-          "    pm.collectionVariables.set('model_id_encoded', encodeURIComponent(modelId));",
-          "}"
-        ]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "try {",
-          "const request = pm.request;",
-          "if (request) {",
-          "    const url = request.url && request.url.toString ? request.url.toString() : String(request.url || '');",
-          "    console.log('>>> Request:', request.method, url);",
-          "    if (request.body) {",
-          "        let bodyText = '';",
-          "        if (request.body.mode === 'raw') {",
-          "            bodyText = request.body.raw || '';",
-          "        } else if (typeof request.body.toJSON === 'function') {",
-          "            try {",
-          "                bodyText = JSON.stringify(request.body.toJSON(), null, 2);",
-          "            } catch (err) {",
-          "                bodyText = String(request.body);",
-          "            }",
-          "        }",
-          "        if (bodyText) {",
-          "            console.log('>>> Request Body:', bodyText);",
-          "        }",
-          "    }",
-          "}",
-          "if (pm.response) {",
-          "    console.log('<<< Response:', pm.response.code, pm.response.status);",
-          "    const raw = pm.response.text();",
-          "    if (raw) {",
-          "        console.log('<<< Response Body:', raw);",
-          "    }",
-          "}",
-          "} catch (err) {",
-          "    console.error('logger failed:', err && err.message ? err.message : err);",
-          "}"
-        ]
-      }
-    }
-  ],
-  "variable": [
-    {
-      "key": "kong_url",
-      "value": "http://localhost:8000",
-      "type": "string",
-      "description": "Kong Gateway URL. All API requests go through Kong for authentication validation."
-    },
-    {
-      "key": "keycloak_base_url",
-      "value": "http://localhost:8085",
-      "type": "string",
-      "description": "Base URL (scheme + host + port) for Keycloak."
-    },
-    {
-      "key": "realm",
-      "value": "jan",
-      "type": "string",
-      "description": "Keycloak realm used by jan-server."
-    },
-    {
-      "key": "client_id_public",
-      "value": "llm-api",
-      "type": "string",
-      "description": "Public client ID used for direct access grants."
-    },
-    {
-      "key": "keycloak_admin",
-      "value": "admin",
-      "type": "string",
-      "description": "Keycloak master realm admin username."
-    },
-    {
-      "key": "keycloak_admin_password",
-      "value": "admin",
-      "type": "string",
-      "description": "Keycloak master realm admin password."
     }
   ]
 }

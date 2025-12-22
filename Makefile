@@ -49,33 +49,6 @@ COMPOSE = docker compose
 COMPOSE_DEV_FULL = docker compose -f docker-compose.yml -f docker-compose.dev-full.yml
 MONITOR_COMPOSE = docker compose -f docker/observability.yml
 
-# API Testing
-ifeq ($(OS),Windows_NT)
-API_TEST = powershell -ExecutionPolicy Bypass -File jan-cli.ps1 api-test run
-else
-API_TEST = bash jan-cli.sh api-test run
-endif
-
-# Test Collections
-API_TEST_AUTH_COLLECTION = tests/automation/auth-postman-scripts.json
-API_TEST_CONVERSATION_COLLECTION = tests/automation/conversations-postman-scripts.json
-API_TEST_RESPONSES_COLLECTION = tests/automation/responses-postman-scripts.json
-API_TEST_MEDIA_COLLECTION = tests/automation/media-postman-scripts.json
-API_TEST_MCP_COLLECTION = tests/automation/mcp-postman-scripts.json
-API_TEST_MEMORY_COLLECTION = tests/automation/memory-postman-scripts.json
-API_TEST_MODEL_MANAGEMENT_COLLECTION = tests/automation/model-management-postman-scripts.json
-API_TEST_USER_MANAGEMENT_COLLECTION = tests/automation/user-management-postman-scripts.json
-API_TEST_E2E_COLLECTION = tests/automation/test-all.postman.json
-
-# Test Options
-TEST_API_DEBUG ?= true
-ifeq ($(TEST_API_DEBUG),true)
-API_TEST_FLAGS = --debug --verbose
-else
-API_TEST_FLAGS = --verbose
-endif
-
-
 MEDIA_SERVICE_KEY ?= changeme-media-key
 MEDIA_API_KEY ?= changeme-media-key
 
@@ -595,128 +568,62 @@ endif
 
 
 
-# --- Integration Tests (API Test) ---
 
-.PHONY: test-all test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e api-test-debug
+# =============================================================================
+# API Test Targets
+# =============================================================================
 
-test-all: test-auth test-conversations test-response test-media test-mcp-integration test-memory test-e2e
-	@echo ""
-	@echo " All integration tests passed!"
+ifeq ($(OS),Windows_NT)
+API_TEST := cmd/jan-cli/jan-cli.exe api-test run
+else
+API_TEST := cmd/jan-cli/jan-cli api-test run
+endif
+
+GATEWAY_URL ?= http://localhost:8000
+TIMEOUT_MS ?= 30000
+COLLECTIONS_DIR := tests/automation/collections
+AUTH_MODE ?= guest
+# Exclude memory.postman.json (no memory service), model-prompt-templates.postman.json (API not implemented),
+# and user-management.postman.json (requires manual admin token setup)
+COLLECTION_FILES := $(filter-out $(COLLECTIONS_DIR)/memory.postman.json $(COLLECTIONS_DIR)/model-prompt-templates.postman.json $(COLLECTIONS_DIR)/user-management.postman.json,$(wildcard $(COLLECTIONS_DIR)/*.postman.json))
+
+API_TEST_FLAGS := --env-file tests/automation/.env \
+  --env-var gateway_url=$(GATEWAY_URL) \
+  --auto-auth $(AUTH_MODE) \
+  --auto-models \
+  --timeout-request $(TIMEOUT_MS)
+
+.PHONY: test-all test-auth test-conversation test-response test-model test-media test-mcp test-user-management test-model-prompts test-dev
+
+test-all:
+	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS)
 
 test-auth:
-	@echo "Running authentication tests..."
-	@$(API_TEST) $(API_TEST_AUTH_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "keycloak_base_url=http://localhost:8085" \
-		--env-var "keycloak_admin=admin" \
-		--env-var "keycloak_admin_password=admin" \
-		--env-var "realm=jan" \
-		--env-var "client_id_public=jan-client" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Authentication tests passed"
+	$(API_TEST) $(COLLECTIONS_DIR)/auth.postman.json $(API_TEST_FLAGS)
 
-test-conversations:
-	@echo "Running conversation API tests..."
-	@$(API_TEST) $(API_TEST_CONVERSATION_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "keycloak_base_url=http://localhost:8085" \
-		--env-var "keycloak_admin=admin" \
-		--env-var "keycloak_admin_password=admin" \
-		--env-var "realm=jan" \
-		--env-var "client_id_public=jan-client" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Conversation API tests passed"
+test-conversation:
+	$(API_TEST) $(COLLECTIONS_DIR)/conversation.postman.json $(API_TEST_FLAGS)
 
 test-response:
-	@echo "Running response API tests..."
-	@$(API_TEST) $(API_TEST_RESPONSES_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "response_api_url=http://localhost:8000/responses" \
-		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
-		--timeout-request 120000 \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Response API tests passed"
+	$(API_TEST) $(COLLECTIONS_DIR)/response.postman.json $(API_TEST_FLAGS)
+
+test-model:
+	$(API_TEST) $(COLLECTIONS_DIR)/model.postman.json $(API_TEST_FLAGS) --auto-auth admin
 
 test-media:
-	@echo "Running media API tests..."
-	@$(API_TEST) $(API_TEST_MEDIA_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "media_api_url=http://localhost:8000/media" \
-		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Media API tests passed"
+	$(API_TEST) $(COLLECTIONS_DIR)/media.postman.json $(API_TEST_FLAGS)
 
-test-mcp-integration:
-	@echo "Running MCP integration tests..."
-	@$(API_TEST) $(API_TEST_MCP_COLLECTION) \
-		--env-var "kong_url=http://localhost:8080" \
-		--env-var "mcp_tools_url=http://localhost:8091/v1/mcp" \
-		--env-var "searxng_url=http://localhost:8086" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " MCP integration tests passed"
-
-test-memory:
-	@echo "Running memory-tools integration tests..."
-	@$(API_TEST) $(API_TEST_MEMORY_COLLECTION) \
-		--env-var "base_url=http://localhost:8090" \
-		--env-var "embedding_url=http://localhost:8091" \
-		--env-var "llm_api_url=http://localhost:8080" \
-		--env-var "user_id=user_test_001" \
-		--env-var "project_id=proj_test_001" \
-		--env-var "conversation_id=conv_test_001" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Memory-tools integration tests passed"
+test-mcp:
+	$(API_TEST) $(COLLECTIONS_DIR)/mcp-runtime.postman.json $(COLLECTIONS_DIR)/mcp-admin.postman.json $(API_TEST_FLAGS)
 
 test-user-management:
-	@echo "Running user management tests..."
-ifeq ($(OS),Windows_NT)
-	@set ADMIN_BYPASS=true && set DISABLE_ADMIN_AUTH=true && $(API_TEST) $(API_TEST_USER_MANAGEMENT_COLLECTION) \
-		--env-var "base_url=http://localhost:8000" \
-		--env-var "kong_url=http://localhost:8000" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-else
-	@ADMIN_BYPASS=true DISABLE_ADMIN_AUTH=true $(API_TEST) $(API_TEST_USER_MANAGEMENT_COLLECTION) \
-		--env-var "base_url=http://localhost:8000" \
-		--env-var "kong_url=http://localhost:8000" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-endif
-	@echo " User management tests passed"
+	$(API_TEST) $(COLLECTIONS_DIR)/user-management.postman.json $(API_TEST_FLAGS)
 
+test-model-prompts:
+	$(API_TEST) $(COLLECTIONS_DIR)/model-prompt-templates.postman.json $(API_TEST_FLAGS)
 
-test-model-management:
-	@echo "Running model management tests..."
-	@$(API_TEST) $(API_TEST_MODEL_MANAGEMENT_COLLECTION) \
-		--env-var "base_url=http://localhost:8000" \
-		--env-var "kong_url=http://localhost:8000" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Model management tests passed"
-
-test-e2e:
-	@echo "Running gateway end-to-end tests..."
-	@$(API_TEST) $(API_TEST_E2E_COLLECTION) \
-		--env-var "kong_url=http://localhost:8000" \
-		--env-var "gateway_url=http://localhost:8000" \
-		--env-var "media_api_url=http://localhost:8000/media" \
-		--env-var "response_api_url=http://localhost:8000/responses" \
-		--env-var "mcp_tools_url=http://localhost:8000/mcp" \
-		--env-var "media_service_key=$(MEDIA_SERVICE_KEY)" \
-		$(API_TEST_FLAGS) \
-		--reporters cli
-	@echo " Gateway end-to-end tests passed"
-
-# Deprecated: Use TEST_API_DEBUG=true make test-auth instead
-api-test-debug:
-	@echo "Running authentication tests with debug output..."
-	@$(MAKE) test-auth TEST_API_DEBUG=true
+test-dev:
+	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS) --bail
 
 
 # ============================================================================================================
