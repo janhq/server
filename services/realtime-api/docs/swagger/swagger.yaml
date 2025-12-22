@@ -1,63 +1,6 @@
 basePath: /v1
 definitions:
-  session.ClientSecret:
-    properties:
-      expires_at:
-        description: actual token expiry timestamp
-        type: integer
-      value:
-        type: string
-    type: object
-  session.DeleteSessionResponse:
-    properties:
-      deleted:
-        type: boolean
-      id:
-        type: string
-      object:
-        description: '"realtime.session.deleted"'
-        type: string
-    type: object
-  session.ListSessionsResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/session.Session'
-        type: array
-      object:
-        description: '"list"'
-        type: string
-    type: object
-  session.Session:
-    properties:
-      client_secret:
-        $ref: '#/definitions/session.ClientSecret'
-      id:
-        type: string
-      object:
-        description: '"realtime.session"'
-        type: string
-      room_id:
-        type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/session.SessionState'
-        description: connection status for GET responses
-      user_id:
-        type: string
-      ws_url:
-        description: LiveKit WebSocket URL
-        type: string
-    type: object
-  session.SessionState:
-    enum:
-    - created
-    - connected
-    type: string
-    x-enum-varnames:
-    - StateCreated
-    - StateConnected
-  v1.errorDetail:
+  responses.ErrorDetail:
     properties:
       code:
         type: string
@@ -66,10 +9,52 @@ definitions:
       type:
         type: string
     type: object
-  v1.errorResponse:
+  responses.ErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/v1.errorDetail'
+        $ref: '#/definitions/responses.ErrorDetail'
+    type: object
+  sessionres.ClientSecretDetail:
+    properties:
+      expires_at:
+        type: integer
+      value:
+        type: string
+    type: object
+  sessionres.DeleteSessionResponse:
+    properties:
+      deleted:
+        type: boolean
+      id:
+        type: string
+      object:
+        type: string
+    type: object
+  sessionres.ListSessionsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/sessionres.SessionResponse'
+        type: array
+      object:
+        type: string
+    type: object
+  sessionres.SessionResponse:
+    properties:
+      client_secret:
+        $ref: '#/definitions/sessionres.ClientSecretDetail'
+      id:
+        type: string
+      object:
+        type: string
+      room_id:
+        type: string
+      status:
+        type: string
+      user_id:
+        type: string
+      ws_url:
+        type: string
     type: object
 host: localhost:8186
 info:
@@ -94,37 +79,40 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/session.ListSessionsResponse'
+            $ref: '#/definitions/sessionres.ListSessionsResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List realtime sessions
       tags:
       - Realtime API
     post:
-      description: Creates a new realtime session with LiveKit token
+      consumes:
+      - application/json
+      description: Creates a new realtime session with LiveKit token. No request body
+        required.
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/session.Session'
+            $ref: '#/definitions/sessionres.SessionResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a realtime session
@@ -132,7 +120,8 @@ paths:
       - Realtime API
   /realtime/sessions/{id}:
     delete:
-      description: Ends a session and invalidates its token
+      description: Ends a session and invalidates its token. Users can only delete
+        their own sessions.
       parameters:
       - description: Session ID
         in: path
@@ -145,22 +134,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/session.DeleteSessionResponse'
+            $ref: '#/definitions/sessionres.DeleteSessionResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a realtime session
       tags:
       - Realtime API
     get:
-      description: Retrieves a specific session by ID
+      description: Retrieves a specific session by ID. Users can only access their
+        own sessions.
       parameters:
       - description: Session ID
         in: path
@@ -173,19 +167,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/session.Session'
+            $ref: '#/definitions/sessionres.SessionResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/v1.errorResponse'
-        "410":
-          description: Gone
-          schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/v1.errorResponse'
+            $ref: '#/definitions/responses.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get a realtime session

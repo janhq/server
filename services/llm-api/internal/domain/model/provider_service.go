@@ -130,14 +130,13 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 		PublicID:        publicID,
 		DisplayName:     name,
 		Kind:            kind,
-		BaseURL:         baseURL,
-		Endpoints:       endpoints,
 		EncryptedAPIKey: encryptedAPIKey,
 		APIKeyHint:      apiKeyHint,
 		IsModerated:     false,
 		Active:          input.Active,
 		Metadata:        metadata,
 	}
+	// SetEndpoints updates both Endpoints and BaseURL (for backward compat)
 	provider.SetEndpoints(endpoints)
 
 	if err := s.providerRepo.Create(ctx, provider); err != nil {
@@ -333,11 +332,8 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		if err != nil {
 			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "invalid endpoints")
 		}
-		if len(endpoints) == 0 {
-			provider.Endpoints = nil
-		} else {
-			provider.SetEndpoints(endpoints)
-		}
+		// Always delegate to SetEndpoints to keep BaseURL in sync
+		provider.SetEndpoints(endpoints)
 	}
 	if input.BaseURL != nil && (input.Endpoints == nil || len(*input.Endpoints) == 0) {
 		baseURL := strings.TrimSpace(*input.BaseURL)

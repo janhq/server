@@ -234,6 +234,21 @@ func (s *ShareService) ListSharesByConversation(ctx context.Context, conversatio
 	return shares, nil
 }
 
+// ListUserShares lists all shares for a user across all conversations
+func (s *ShareService) ListUserShares(ctx context.Context, ownerUserID uint, includeRevoked bool) ([]*Share, error) {
+	filter := ShareFilter{
+		OwnerUserID:    &ownerUserID,
+		IncludeRevoked: includeRevoked,
+	}
+
+	shares, err := s.repo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, platformerrors.AsErrorWithUUID(ctx, platformerrors.LayerDomain, err, "failed to list user shares", "7e8f9a0b-1c2d-4e3f-5a6b-7c8d9e0f1a2b")
+	}
+
+	return shares, nil
+}
+
 // RevokeShare revokes a share
 func (s *ShareService) RevokeShare(ctx context.Context, sharePublicID string, ownerUserID uint) error {
 	share, err := s.repo.FindByPublicID(ctx, sharePublicID)

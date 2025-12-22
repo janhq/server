@@ -8,11 +8,23 @@ var (
 )
 
 // EndpointRouter selects the next endpoint for a request.
+//
+// Implementations must be safe for concurrent use by multiple goroutines.
+// Calls to NextEndpoint and Reset may occur concurrently without causing
+// data races or corrupting internal state.
 type EndpointRouter interface {
 	// NextEndpoint returns the next endpoint URL for the given provider.
-	// Returns ErrNoEndpoints if the slice is empty, ErrNoHealthyEndpoints if none are healthy.
+	//
+	// The endpoints slice must not be mutated by the implementation.
+	//
+	// Error semantics:
+	//   - ErrNoEndpoints: the provided endpoints slice is empty
+	//   - ErrNoHealthyEndpoints: none of the endpoints are healthy (may return fallback URL)
+	//
+	// Thread-safe: may be called from multiple goroutines concurrently.
 	NextEndpoint(providerID string, endpoints EndpointList) (string, error)
 
-	// Reset clears router state.
+	// Reset clears any internal router state (counters, health cache, etc.).
+	// Thread-safe: may be called concurrently with NextEndpoint.
 	Reset()
 }

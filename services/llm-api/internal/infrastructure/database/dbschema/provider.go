@@ -40,7 +40,11 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 
 	var endpointsJSON datatypes.JSON
 	if len(p.Endpoints) > 0 {
-		if data, err := json.Marshal(p.Endpoints); err == nil {
+		data, err := json.Marshal(p.Endpoints)
+		if err != nil {
+			log := logger.GetLogger()
+			log.Error().Err(err).Str("provider_id", p.PublicID).Msg("failed to marshal endpoints to JSON")
+		} else {
 			endpointsJSON = datatypes.JSON(data)
 		}
 	}

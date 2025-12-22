@@ -30,9 +30,9 @@ func RegisterRealtimeRoutes(router gin.IRoutes, handler *handlers.SessionHandler
 // @Tags         Realtime API
 // @Accept       json
 // @Produce      json
-// @Success      201 {object} session.Session
-// @Failure      401 {object} errorResponse
-// @Failure      500 {object} errorResponse
+// @Success      201 {object} sessionres.SessionResponse
+// @Failure      401 {object} responses.ErrorResponse
+// @Failure      500 {object} responses.ErrorResponse
 // @Security     BearerAuth
 // @Router       /realtime/sessions [post]
 func createSession(handler *handlers.SessionHandler) gin.HandlerFunc {
@@ -54,9 +54,9 @@ func createSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 // @Description  Lists all active sessions for the current user
 // @Tags         Realtime API
 // @Produce      json
-// @Success      200 {object} session.ListSessionsResponse
-// @Failure      401 {object} errorResponse
-// @Failure      500 {object} errorResponse
+// @Success      200 {object} sessionres.ListSessionsResponse
+// @Failure      401 {object} responses.ErrorResponse
+// @Failure      500 {object} responses.ErrorResponse
 // @Security     BearerAuth
 // @Router       /realtime/sessions [get]
 func listSessions(handler *handlers.SessionHandler) gin.HandlerFunc {
@@ -79,10 +79,10 @@ func listSessions(handler *handlers.SessionHandler) gin.HandlerFunc {
 // @Tags         Realtime API
 // @Produce      json
 // @Param        id path string true "Session ID"
-// @Success      200 {object} session.Session
-// @Failure      403 {object} errorResponse
-// @Failure      404 {object} errorResponse
-// @Failure      500 {object} errorResponse
+// @Success      200 {object} sessionres.SessionResponse
+// @Failure      403 {object} responses.ErrorResponse
+// @Failure      404 {object} responses.ErrorResponse
+// @Failure      500 {object} responses.ErrorResponse
 // @Security     BearerAuth
 // @Router       /realtime/sessions/{id} [get]
 func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
@@ -112,10 +112,10 @@ func getSession(handler *handlers.SessionHandler) gin.HandlerFunc {
 // @Tags         Realtime API
 // @Produce      json
 // @Param        id path string true "Session ID"
-// @Success      200 {object} session.DeleteSessionResponse
-// @Failure      403 {object} errorResponse
-// @Failure      404 {object} errorResponse
-// @Failure      500 {object} errorResponse
+// @Success      200 {object} sessionres.DeleteSessionResponse
+// @Failure      403 {object} responses.ErrorResponse
+// @Failure      404 {object} responses.ErrorResponse
+// @Failure      500 {object} responses.ErrorResponse
 // @Security     BearerAuth
 // @Router       /realtime/sessions/{id} [delete]
 func deleteSession(handler *handlers.SessionHandler) gin.HandlerFunc {

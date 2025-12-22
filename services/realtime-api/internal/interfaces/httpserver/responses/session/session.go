@@ -1,5 +1,5 @@
-// Package session contains HTTP response DTOs for session endpoints.
-package session
+// Package sessionres contains HTTP response DTOs for session endpoints.
+package sessionres
 
 import (
 	domainsession "jan-server/services/realtime-api/internal/domain/session"

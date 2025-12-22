@@ -5,14 +5,21 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Endpoint represents a single backend URL for a provider.
 type Endpoint struct {
-	URL      string `json:"url"`
-	Weight   int    `json:"weight,omitempty"`
-	Healthy  bool   `json:"healthy,omitempty"`
-	Priority int    `json:"priority,omitempty"`
+	URL string `json:"url"`
+	// Weight is reserved for future weighted round-robin routing.
+	// Currently ignored by routers; all endpoints are treated equally.
+	Weight int `json:"weight,omitempty"`
+	// Healthy indicates endpoint availability. Read-only: set by health checker only.
+	Healthy bool `json:"healthy,omitempty"`
+	// Priority is reserved for future priority-based routing (lower = higher priority).
+	// Currently ignored by routers.
+	Priority int `json:"priority,omitempty"`
 }
 
 // EndpointList manages multiple endpoints for a provider.
@@ -45,6 +52,7 @@ func parseEndpointsJSON(input string) (EndpointList, error) {
 	for _, ep := range raw {
 		normalized, err := normalizeAndValidateURL(ep.URL)
 		if err != nil {
+			log.Warn().Str("url", ep.URL).Err(err).Msg("skipping invalid endpoint URL")
 			continue
 		}
 		ep.URL = normalized
@@ -64,6 +72,9 @@ func parseEndpointsCSV(input string) (EndpointList, error) {
 	for _, part := range parts {
 		normalized, err := normalizeAndValidateURL(part)
 		if err != nil {
+			if strings.TrimSpace(part) != "" {
+				log.Warn().Str("url", part).Err(err).Msg("skipping invalid endpoint URL")
+			}
 			continue
 		}
 		result = append(result, Endpoint{

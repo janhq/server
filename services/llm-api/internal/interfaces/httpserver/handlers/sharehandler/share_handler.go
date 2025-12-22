@@ -165,6 +165,99 @@ func (h *ShareHandler) ListShares(reqCtx *gin.Context) {
 	reqCtx.JSON(http.StatusOK, resp)
 }
 
+// ListUserShares handles GET /v1/shares
+// @Summary List all shares for the authenticated user
+// @Description Lists all shares (active and revoked) for the authenticated user across all conversations
+// @Tags Shares API
+// @Security BearerAuth
+// @Produce json
+// @Param include_revoked query bool false "Include revoked shares" default(true)
+// @Success 200 {object} shareresponses.ShareListResponse "List of shares"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 403 {object} responses.ErrorResponse "Forbidden"
+// @Router /v1/shares [get]
+func (h *ShareHandler) ListUserShares(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+
+	// Check feature flag
+	if !h.cfg.ConversationSharingEnabled {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeForbidden,
+			"conversation sharing is not enabled", "share-disabled-004")
+		return
+	}
+
+	user, ok := authhandler.GetUserFromContext(reqCtx)
+	if !ok {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeUnauthorized,
+			"authentication required", "share-auth-004")
+		return
+	}
+
+	// Parse include_revoked query param (default true)
+	includeRevoked := true
+	if incRevokedParam := reqCtx.Query("include_revoked"); incRevokedParam == "false" {
+		includeRevoked = false
+	}
+
+	shares, err := h.shareService.ListUserShares(ctx, user.ID, includeRevoked)
+	if err != nil {
+		responses.HandleError(reqCtx, err, "failed to list user shares")
+		return
+	}
+
+	resp := shareresponses.NewShareListResponse(shares, h.getBaseURL(reqCtx))
+	reqCtx.JSON(http.StatusOK, resp)
+}
+
+// RevokeUserShare handles DELETE /v1/shares/:share_id
+// @Summary Revoke a share by share ID
+// @Description Revokes an active share by its ID, making it inaccessible
+// @Tags Shares API
+// @Security BearerAuth
+// @Produce json
+// @Param share_id path string true "Share public ID"
+// @Success 200 {object} shareresponses.ShareDeletedResponse "Share revoked successfully"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
+// @Failure 403 {object} responses.ErrorResponse "Forbidden"
+// @Failure 404 {object} responses.ErrorResponse "Share not found"
+// @Router /v1/shares/{share_id} [delete]
+func (h *ShareHandler) RevokeUserShare(reqCtx *gin.Context) {
+	ctx := reqCtx.Request.Context()
+
+	// Check feature flag
+	if !h.cfg.ConversationSharingEnabled {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeForbidden,
+			"conversation sharing is not enabled", "share-disabled-005")
+		return
+	}
+
+	user, ok := authhandler.GetUserFromContext(reqCtx)
+	if !ok {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeUnauthorized,
+			"authentication required", "share-auth-005")
+		return
+	}
+
+	shareID := reqCtx.Param("share_id")
+	if shareID == "" {
+		metrics.RecordShare("unknown", "error")
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation,
+			"share_id is required", "share-id-002")
+		return
+	}
+
+	err := h.shareService.RevokeShare(ctx, shareID, user.ID)
+	if err != nil {
+		metrics.RecordShare("unknown", "error")
+		responses.HandleError(reqCtx, err, "failed to revoke share")
+		return
+	}
+
+	metrics.RecordShare("unknown", "success")
+	resp := shareresponses.NewShareDeletedResponse(shareID)
+	reqCtx.JSON(http.StatusOK, resp)
+}
+
 // RevokeShare handles DELETE /v1/conversations/:conv_public_id/shares/:share_id
 // @Summary Revoke a share
 // @Description Revokes an active share, making it inaccessible

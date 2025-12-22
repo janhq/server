@@ -28,6 +28,22 @@ func NewShareRoute(
 	}
 }
 
+// RegisterUserShareRoutes registers share routes under /shares
+// These routes require authentication and operate on all user shares
+func (route *ShareRoute) RegisterUserShareRoutes(router gin.IRouter) {
+	// GET /v1/shares - List all shares for the authenticated user
+	router.GET("",
+		route.authHandler.WithAppUserAuthChain(
+			route.handler.ListUserShares,
+		)...)
+
+	// DELETE /v1/shares/:share_id - Revoke a share by ID
+	router.DELETE("/:share_id",
+		route.authHandler.WithAppUserAuthChain(
+			route.handler.RevokeUserShare,
+		)...)
+}
+
 // RegisterConversationShareRoutes registers share routes under /conversations/:conv_public_id
 // These routes require authentication
 func (route *ShareRoute) RegisterConversationShareRoutes(router gin.IRouter) {
