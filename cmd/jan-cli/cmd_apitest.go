@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/janhq/jan-server/pkg/testhelpers"
 	"github.com/spf13/cobra"
 )
 
@@ -33,19 +34,24 @@ Examples:
 }
 
 var runApiTestCmd = &cobra.Command{
-	Use:   "run [collection-file]",
+	Use:   "run [collection-file...]",
 	Short: "Run a Postman collection",
-	Long:  `Execute all requests in a Postman collection file and report results.`,
-	Args:  cobra.ExactArgs(1),
+	Long:  `Execute all requests in one or more Postman collection files and report results.`,
+	Args:  cobra.MinimumNArgs(1),
 	RunE:  runApiTest,
 }
 
 var (
-	envVars   []string
-	verbose   bool
-	debug     bool
-	reporters []string
-	timeout   int
+	envVars    []string
+	verbose    bool
+	debug      bool
+	reporters  []string
+	timeout    int
+	autoAuth   string
+	autoModels bool
+	envFile    string
+	folder     string
+	bail       bool
 )
 
 func init() {
@@ -56,6 +62,11 @@ func init() {
 	runApiTestCmd.Flags().BoolVar(&debug, "debug", false, "Debug mode - print full request and response details")
 	runApiTestCmd.Flags().StringArrayVar(&reporters, "reporters", []string{"cli"}, "Reporters to use")
 	runApiTestCmd.Flags().IntVar(&timeout, "timeout-request", 30000, "Request timeout in milliseconds")
+	runApiTestCmd.Flags().StringVar(&autoAuth, "auto-auth", "", "Auto-login: 'guest' or 'admin'")
+	runApiTestCmd.Flags().BoolVar(&autoModels, "auto-models", false, "Auto-fetch model IDs before running")
+	runApiTestCmd.Flags().StringVar(&envFile, "env-file", "", "Load environment variables from file")
+	runApiTestCmd.Flags().StringVar(&folder, "folder", "", "Run only requests in this folder")
+	runApiTestCmd.Flags().BoolVar(&bail, "bail", false, "Stop on first failure")
 }
 
 type PostmanCollection struct {
@@ -124,18 +135,31 @@ type TestResult struct {
 }
 
 func runApiTest(cmd *cobra.Command, args []string) error {
-	collectionFile := args[0]
-
-	// Parse environment variables
-	envMap := make(map[string]string)
+	baseEnv := make(map[string]string)
 	for _, ev := range envVars {
 		parts := strings.SplitN(ev, "=", 2)
 		if len(parts) == 2 {
-			envMap[parts[0]] = parts[1]
+			baseEnv[parts[0]] = parts[1]
 		}
 	}
 
-	// Load collection
+	if envFile != "" {
+		if err := loadEnvFile(envFile, baseEnv); err != nil {
+			return fmt.Errorf("failed to load env file: %w", err)
+		}
+	}
+
+	for _, collectionFile := range args {
+		envMap := cloneEnvMap(baseEnv)
+		if err := runCollection(collectionFile, envMap); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runCollection(collectionFile string, envMap map[string]string) error {
 	data, err := os.ReadFile(collectionFile)
 	if err != nil {
 		return fmt.Errorf("failed to read collection file: %w", err)
@@ -146,17 +170,53 @@ func runApiTest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse collection: %w", err)
 	}
 
-	fmt.Printf("\n┌─────────────────────────────────────────────────────────────────────┐\n")
-	fmt.Printf("│ Jan API Test Runner                                                 │\n")
-	fmt.Printf("└─────────────────────────────────────────────────────────────────────┘\n\n")
-	fmt.Printf("→ %s\n\n", collection.Info.Name)
+	fmt.Printf("\n==============================\n")
+	fmt.Printf(" Jan API Test Runner\n")
+	fmt.Printf("==============================\n\n")
+	fmt.Printf("Collection: %s\n\n", collection.Info.Name)
 
-	// Process collection-level prerequest scripts
 	processCollectionEvents(collection.Event, envMap)
+
+	if autoAuth != "" {
+		gatewayURL := envMap["gateway_url"]
+		if gatewayURL == "" {
+			gatewayURL = envMap["kong_url"]
+		}
+		if gatewayURL == "" {
+			gatewayURL = "http://localhost:8000"
+		}
+
+		if autoAuth == "admin" || autoAuth == "both" {
+			kcURL := firstNonEmpty(envMap["keycloak_base_url"], "http://localhost:8085")
+			kcUser := firstNonEmpty(envMap["keycloak_admin"], os.Getenv("KEYCLOAK_ADMIN"))
+			kcPass := firstNonEmpty(envMap["keycloak_admin_password"], os.Getenv("KEYCLOAK_ADMIN_PASSWORD"))
+			if kcUser != "" && kcPass != "" {
+				if token, err := testhelpers.AdminLogin(kcURL, kcUser, kcPass); err == nil && token != "" {
+					envMap["kc_admin_access_token"] = token
+					envMap["access_token"] = token
+				}
+			}
+		}
+
+		if token, err := testhelpers.GuestLogin(gatewayURL); err == nil && token != "" {
+			envMap["guest_access_token"] = token
+			if envMap["access_token"] == "" {
+				envMap["access_token"] = token
+			}
+		}
+	}
 
 	ensureDefaultTokens(envMap)
 
-	// Run tests
+	if autoModels && envMap["access_token"] != "" {
+		gatewayURL := firstNonEmpty(envMap["gateway_url"], envMap["kong_url"], "http://localhost:8000")
+		if model, err := testhelpers.GetDefaultModel(gatewayURL, envMap["access_token"]); err == nil && model != "" {
+			envMap["model_id"] = model
+			envMap["model_id_encoded"] = testhelpers.GetModelEncoded(model)
+			envMap["default_model_id"] = model
+		}
+	}
+
 	results := []TestResult{}
 	totalStart := time.Now()
 
@@ -167,10 +227,8 @@ func runApiTest(cmd *cobra.Command, args []string) error {
 
 	totalDuration := time.Since(totalStart)
 
-	// Report results
 	printResults(results, totalDuration)
 
-	// Check for failures
 	for _, result := range results {
 		if !result.Passed {
 			return fmt.Errorf("tests failed")
@@ -192,8 +250,15 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string, parentAu
 
 	// If this item has nested items (folder), run them
 	if len(item.Item) > 0 {
+		if folder != "" && item.Name != folder && prefix == "" {
+			if verbose {
+				fmt.Printf("Skipping folder %s (--folder=%s)\n", item.Name, folder)
+			}
+			return results
+		}
+
 		if verbose {
-			fmt.Printf("\n📁 %s\n", item.Name)
+			fmt.Printf("\n[folder] %s\n", item.Name)
 		}
 		effectiveAuth := parentAuth
 		if item.Auth != nil {
@@ -369,6 +434,11 @@ func runItem(item PostmanItem, envMap map[string]string, prefix string, parentAu
 	} else {
 		// Extract variables from test scripts if the response matched expectations
 		extractVariablesFromScripts(item, respBody, resp, envMap)
+	}
+
+	if bail && !result.Passed {
+		fmt.Printf("\nBail: stopping after first failure\n")
+		os.Exit(1)
 	}
 
 	results = append(results, result)
@@ -908,6 +978,44 @@ func ensureAdminToken(envMap map[string]string) {
 	if envMap["access_token"] == "" {
 		envMap["access_token"] = token
 	}
+}
+
+func loadEnvFile(path string, envMap map[string]string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	var jsonEnv map[string]string
+	if err := json.Unmarshal(data, &jsonEnv); err == nil {
+		for k, v := range jsonEnv {
+			envMap[k] = v
+		}
+		return nil
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			envMap[key] = value
+		}
+	}
+	return nil
+}
+
+func cloneEnvMap(source map[string]string) map[string]string {
+	clone := make(map[string]string, len(source))
+	for k, v := range source {
+		clone[k] = v
+	}
+	return clone
 }
 
 func firstNonEmpty(values ...string) string {

@@ -1,11 +1,33 @@
 {
   "info": {
-    "name": "Media API Automation",
-    "description": "Comprehensive Postman collection for media-api endpoints including upload, deduplication, resolution, presigning, and download flows via Kong gateway. All requests go through kong_url.",
-    "_postman_id": "media-api-automation-collection",
+    "name": "jan-server media",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "01-operations",
+      "item": [
+        {
+          "name": "Media Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{media_url}}/healthz"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect(pm.response.code).to.be.oneOf([200, 401]);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "Authentication",
       "item": [
@@ -800,56 +822,6 @@
         }
       ],
       "response": []
-    }
-  ],
-  "variable": [
-    {
-      "key": "kong_url",
-      "value": "http://localhost:8000"
-    },
-    {
-      "key": "media_service_key",
-      "value": "changeme-media-key"
-    },
-    {
-      "key": "latest_media_id",
-      "value": ""
-    },
-    {
-      "key": "latest_media_mime",
-      "value": ""
-    },
-    {
-      "key": "latest_media_bytes",
-      "value": ""
-    },
-    {
-      "key": "dataurl_media_id",
-      "value": ""
-    },
-    {
-      "key": "dataurl_deduped_first",
-      "value": ""
-    },
-    {
-      "key": "latest_presigned_url",
-      "value": ""
-    },
-    {
-      "key": "presigned_upload_id",
-      "value": ""
-    },
-    {
-      "key": "presigned_upload_url",
-      "value": ""
-    },
-    {
-      "key": "media_access_token",
-      "value": ""
-    },
-    {
-      "key": "media_user_id",
-      "value": ""
     }
   ]
 }

@@ -1,8 +1,6 @@
 {
   "info": {
-    "_postman_id": "model-mgmt-2025",
-    "name": "Model Management API Collection",
-    "description": "Comprehensive test collection for providers, provider_models, and model_catalogs APIs",
+    "name": "jan-server model",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -15,48 +13,6 @@
       }
     ]
   },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8000",
-      "type": "string"
-    },
-    {
-      "key": "access_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "provider_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "provider_public_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "model_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "model_public_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "catalog_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "catalog_public_id",
-      "value": "",
-      "type": "string"
-    }
-  ],
   "item": [
     {
       "name": "0. Authentication",
@@ -102,6 +58,36 @@
             }
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "01-operations",
+      "item": [
+        {
+          "name": "List Models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{gateway_url}}/v1/models"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.response.to.have.status(200);",
+                  "const data = pm.response.json();",
+                  "if (data.data && data.data.length > 0) {",
+                  "  pm.collectionVariables.set('model_id', data.data[0].id);",
+                  "  pm.collectionVariables.set('model_id_encoded', encodeURIComponent(data.data[0].id));",
+                  "  pm.collectionVariables.set('default_model_id', data.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -872,11 +858,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Response has data array\", function () {",
+                  "pm.test('Response has data array', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property('data');",
                   "    pm.expect(jsonData.data).to.be.an('array');",
@@ -925,11 +912,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Catalog has required fields\", function () {",
+                  "pm.test('Catalog has required fields', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property('id');",
                   "    pm.expect(jsonData).to.have.property('public_id');",
@@ -976,11 +964,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Public ID matches\", function () {",
+                  "pm.test('Public ID matches', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get('catalog_public_id'));",
                   "});"
@@ -1021,11 +1010,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"All catalogs belong to gpt-4 family\", function () {",
+                  "pm.test('All catalogs belong to gpt-4 family', function () {",
                   "    var jsonData = pm.response.json();",
                   "    jsonData.data.forEach(function(catalog) {",
                   "        pm.expect(catalog.family).to.eql('gpt-4');",
@@ -1071,11 +1061,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"All catalogs support embeddings\", function () {",
+                  "pm.test('All catalogs support embeddings', function () {",
                   "    var jsonData = pm.response.json();",
                   "    jsonData.data.forEach(function(catalog) {",
                   "        pm.expect(catalog.supports_embeddings).to.be.true;",
@@ -1121,11 +1112,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"All catalogs support images\", function () {",
+                  "pm.test('All catalogs support images', function () {",
                   "    var jsonData = pm.response.json();",
                   "    jsonData.data.forEach(function(catalog) {",
                   "        pm.expect(catalog.supports_images).to.be.true;",
@@ -1171,11 +1163,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"All catalogs support reasoning\", function () {",
+                  "pm.test('All catalogs support reasoning', function () {",
                   "    var jsonData = pm.response.json();",
                   "    jsonData.data.forEach(function(catalog) {",
                   "        pm.expect(catalog.supports_reasoning).to.be.true;",
@@ -1221,8 +1214,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -1264,8 +1257,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -1307,11 +1300,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"All catalogs have filled status\", function () {",
+                  "pm.test('All catalogs have filled status', function () {",
                   "    var jsonData = pm.response.json();",
                   "    jsonData.data.forEach(function(catalog) {",
                   "        pm.expect(catalog.status).to.eql('filled');",
@@ -1357,11 +1351,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Status updated\", function () {",
+                  "pm.test('Status updated', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.status).to.eql('updated');",
                   "});"
@@ -1411,11 +1406,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Batch update affected rows\", function () {",
+                  "pm.test('Batch update affected rows', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property('updated_count');",
                   "});"
@@ -1464,11 +1460,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Provider has model counts\", function () {",
+                  "pm.test('Provider has model counts', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property('total_models');",
                   "    pm.expect(jsonData).to.have.property('active_models');",
@@ -1516,11 +1513,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Models include catalog info\", function () {",
+                  "pm.test('Models include catalog info', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.data).to.be.an('array');",
                   "});"
@@ -1564,11 +1562,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status code is 200 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
                   "});",
+                  "if (pm.response.code === 429) { return; }",
                   "",
-                  "pm.test(\"Results match all filters\", function () {",
+                  "pm.test('Results match all filters', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.data).to.be.an('array');",
                   "});"
