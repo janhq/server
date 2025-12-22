@@ -73,7 +73,7 @@ type Config struct {
 	ServiceName      string        `env:"SERVICE_NAME" envDefault:"llm-api"`
 	ServiceNamespace string        `env:"SERVICE_NAMESPACE" envDefault:"jan"`
 	Environment      string        `env:"ENVIRONMENT" envDefault:"development"`
-	LogLevel         string        `env:"LOG_LEVEL" envDefault:"debug"`
+	LogLevel         string        `env:"LOG_LEVEL" envDefault:"info"`
 	LogFormat        string        `env:"LOG_FORMAT" envDefault:"console"`
 
 	// Features

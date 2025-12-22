@@ -363,7 +363,7 @@ func (h *ChatHandler) CreateChatCompletion(
 	} else {
 		// Log budget for debugging
 		budgetLog := logger.GetLogger()
-		budgetLog.Info().
+		budgetLog.Debug().
 			Int("context_length", budget.ContextLength).
 			Int("tools_tokens", budget.ToolsTokens).
 			Int("response_reserve", budget.ResponseReserve).
@@ -417,7 +417,7 @@ func (h *ChatHandler) CreateChatCompletion(
 		}
 	}
 	trimLog := logger.GetLogger()
-	trimLog.Info().
+	trimLog.Debug().
 		Str("route", "/v1/chat/completions").
 		Str("model", request.Model).
 		Str("conversation_id", conversationID).
@@ -1656,7 +1656,7 @@ func min(a, b int) int {
 func debugLogLLMRequest(request chat.CompletionRequest, conversationID string) {
 	log := logger.GetLogger()
 
-	log.Info().
+	log.Debug().
 		Str("model", request.Model).
 		Str("conversation_id", conversationID).
 		Int("message_count", len(request.Messages)).
@@ -1672,7 +1672,7 @@ func debugLogLLMRequest(request chat.CompletionRequest, conversationID string) {
 			contentPreview = contentPreview[:300] + "..."
 		}
 		
-		log.Info().
+		log.Debug().
 			Int("msg_index", i).
 			Str("role", msg.Role).
 			Str("content_preview", contentPreview).

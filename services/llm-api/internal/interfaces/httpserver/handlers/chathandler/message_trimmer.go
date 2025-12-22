@@ -512,7 +512,7 @@ func TruncateLargeToolContent(messages []openai.ChatCompletionMessage) ([]openai
 	}
 
 	if len(events) > 0 {
-		log.Info().
+		log.Debug().
 			Int("total_truncations", len(events)).
 			Msg("tool content truncation summary")
 	}
@@ -661,7 +661,7 @@ func TruncateLargeUserContent(messages []openai.ChatCompletionMessage) ([]openai
 	}
 
 	if len(events) > 0 {
-		log.Info().
+		log.Debug().
 			Int("total_user_truncations", len(events)).
 			Msg("user content truncation summary")
 	}
@@ -764,7 +764,7 @@ func LimitImagesInMessages(messages []openai.ChatCompletionMessage) []openai.Cha
 	}
 
 	if toolImagesRemoved > 0 || userImagesRemoved > 0 {
-		log.Info().
+		log.Debug().
 			Int("tool_images_before", len(toolImages)).
 			Int("tool_images_removed", toolImagesRemoved).
 			Int("tool_images_after", len(toolImages)-toolImagesRemoved).
@@ -830,7 +830,7 @@ func trimMessagesInternal(messages []openai.ChatCompletionMessage, maxTokens int
 	}
 
 	log := logger.GetLogger()
-	log.Info().
+	log.Debug().
 		Int("initial_messages", len(messages)).
 		Int("initial_tokens", currentTokens).
 		Int("max_tokens", maxTokens).
@@ -883,7 +883,7 @@ func trimMessagesInternal(messages []openai.ChatCompletionMessage, maxTokens int
 		trimmedCount++
 	}
 
-	log.Info().
+	log.Debug().
 		Int("trimmed_count", trimmedCount).
 		Int("final_messages", len(result)).
 		Int("final_tokens", currentTokens).

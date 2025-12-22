@@ -98,7 +98,7 @@ func appendSystemContent(
 ) []openai.ChatCompletionMessage {
 	additional = strings.TrimSpace(additional)
 
-	log.Info().
+	log.Debug().
 		Str("module", moduleName).
 		Int("base_content_length", len(baseContent)).
 		Int("additional_length", len(additional)).
@@ -114,7 +114,7 @@ func appendSystemContent(
 		if msg.Role == openai.ChatMessageRoleSystem {
 			if firstSystemIdx == -1 {
 				firstSystemIdx = i
-				log.Info().
+				log.Debug().
 					Str("module", moduleName).
 					Int("first_system_idx", i).
 					Int("content_length", len(msg.Content)).
@@ -127,7 +127,7 @@ func appendSystemContent(
 				b.WriteString(additional)
 				msg.Content = b.String()
 				applied = true
-				log.Info().
+				log.Debug().
 					Str("module", moduleName).
 					Int("system_msg_idx", i).
 					Msg("appendSystemContent: appended additional to existing system message")
@@ -138,7 +138,7 @@ func appendSystemContent(
 
 	// If we successfully appended to an existing system message, we're done.
 	if applied {
-		log.Info().
+		log.Debug().
 			Str("module", moduleName).
 			Msg("appendSystemContent: done (appended to existing)")
 		return result
@@ -146,7 +146,7 @@ func appendSystemContent(
 
 	// If we have nothing to say and no base content, just return.
 	if additional == "" && strings.TrimSpace(baseContent) == "" {
-		log.Info().
+		log.Debug().
 			Str("module", moduleName).
 			Msg("appendSystemContent: nothing to add, returning unchanged")
 		return result
@@ -169,7 +169,7 @@ func appendSystemContent(
 	}
 
 	finalContent := builder.String()
-	log.Info().
+	log.Debug().
 		Str("module", moduleName).
 		Int("final_content_length", len(finalContent)).
 		Str("final_content_preview", truncateString(finalContent, 200)).
@@ -187,7 +187,7 @@ func appendSystemContent(
 		insertIdx = firstSystemIdx + 1
 	}
 
-	log.Info().
+	log.Debug().
 		Str("module", moduleName).
 		Int("insert_idx", insertIdx).
 		Int("first_system_idx", firstSystemIdx).
@@ -361,7 +361,7 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 			if renderErr == nil {
 				timingText = rendered
 				templateSource = source
-				log.Info().
+				log.Debug().
 					Str("module", "timing").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -372,7 +372,7 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 					Int("content_length", len(timingText)).
 					Int("template_version", template.Version).
 					Msg("TimingModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "timing").
 					Str("rendered_content", timingText).
 					Msg("TimingModule: Rendered prompt content")
@@ -393,7 +393,7 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 			if renderErr == nil {
 				timingText = rendered
 				templateSource = "global_default"
-				log.Info().
+				log.Debug().
 					Str("module", "timing").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -403,7 +403,7 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 					Int("content_length", len(timingText)).
 					Int("template_version", template.Version).
 					Msg("TimingModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "timing").
 					Str("rendered_content", timingText).
 					Msg("TimingModule: Rendered prompt content")
@@ -427,7 +427,7 @@ func (m *TimingModule) Apply(ctx context.Context, promptCtx *Context, messages [
 				"Always treat this as the current date.",
 			currentDate,
 		)
-		log.Info().
+		log.Debug().
 			Str("module", "timing").
 			Str("source", "hardcoded_fallback").
 			Int("content_length", len(timingText)).
@@ -543,7 +543,7 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 			if renderErr == nil {
 				instruction = rendered
 				templateSource = source
-				log.Info().
+				log.Debug().
 					Str("module", "user_profile").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -553,7 +553,7 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 					Int("content_length", len(instruction)).
 					Int("template_version", template.Version).
 					Msg("UserProfileModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "user_profile").
 					Str("rendered_content", instruction).
 					Msg("UserProfileModule: Rendered prompt content")
@@ -572,7 +572,7 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 			if renderErr == nil {
 				instruction = rendered
 				templateSource = "global_default"
-				log.Info().
+				log.Debug().
 					Str("module", "user_profile").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -581,7 +581,7 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 					Int("content_length", len(instruction)).
 					Int("template_version", template.Version).
 					Msg("UserProfileModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "user_profile").
 					Str("rendered_content", instruction).
 					Msg("UserProfileModule: Rendered prompt content")
@@ -637,7 +637,7 @@ func (m *UserProfileModule) Apply(ctx context.Context, promptCtx *Context, messa
 		}
 
 		instruction = strings.TrimSpace(strings.Join(sections, "\n\n"))
-		log.Info().Msg("UserProfileModule: Using fallback hardcoded prompt")
+		log.Debug().Msg("UserProfileModule: Using fallback hardcoded prompt")
 	}
 
 	if instruction == "" {
@@ -743,7 +743,7 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 			rendered, renderErr := renderTemplateContent(template.Content, vars)
 			if renderErr == nil {
 				memoryText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "memory").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -765,7 +765,7 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyMemory, vars)
 			if renderErr == nil {
 				memoryText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "memory").
 					Str("template_key", template.TemplateKey).
 					Str("source", "global_default").
@@ -791,7 +791,7 @@ func (m *MemoryModule) Apply(ctx context.Context, promptCtx *Context, messages [
 			builder.WriteString("\n")
 		}
 		memoryText = strings.TrimSpace(builder.String())
-		log.Info().Msg("MemoryModule: Using fallback hardcoded prompt")
+		log.Debug().Msg("MemoryModule: Using fallback hardcoded prompt")
 	}
 
 	result := appendSystemContent(messages, memoryText, m.Name(), "")
@@ -879,7 +879,7 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 			rendered, renderErr := renderTemplateContent(template.Content, vars)
 			if renderErr == nil {
 				toolText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "tool_instructions").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -906,7 +906,7 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyToolInstructions, vars)
 			if renderErr == nil {
 				toolText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "tool_instructions").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -951,7 +951,7 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 			}
 		}
 		toolText = strings.TrimSpace(builder.String())
-		log.Info().Msg("ToolInstructionsModule: Using fallback hardcoded prompt")
+		log.Debug().Msg("ToolInstructionsModule: Using fallback hardcoded prompt")
 	}
 
 	result := appendSystemContent(messages, toolText, m.Name(), "")
@@ -1031,7 +1031,7 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 			rendered, renderErr := renderTemplateContent(template.Content, map[string]any{})
 			if renderErr == nil {
 				codeText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "code_assistant").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -1041,7 +1041,7 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 					Int("content_length", len(rendered)).
 					Int("template_version", template.Version).
 					Msg("CodeAssistantModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "code_assistant").
 					Str("rendered_content", rendered).
 					Msg("CodeAssistantModule: Rendered prompt content")
@@ -1058,7 +1058,7 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyCodeAssistant, map[string]any{})
 			if renderErr == nil {
 				codeText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "code_assistant").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -1067,7 +1067,7 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 					Int("content_length", len(rendered)).
 					Int("template_version", template.Version).
 					Msg("CodeAssistantModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "code_assistant").
 					Str("rendered_content", rendered).
 					Msg("CodeAssistantModule: Rendered prompt content")
@@ -1092,7 +1092,7 @@ func (m *CodeAssistantModule) Apply(ctx context.Context, promptCtx *Context, mes
 		builder.WriteString("5. Suggest testing approaches when relevant.\n")
 		builder.WriteString("6. Respect project instructions and user constraints; never violate them to simplify code.")
 		codeText = builder.String()
-		log.Info().Msg("CodeAssistantModule: Using fallback hardcoded prompt")
+		log.Debug().Msg("CodeAssistantModule: Using fallback hardcoded prompt")
 	}
 
 	result := appendSystemContent(messages, codeText, m.Name(), "")
@@ -1172,7 +1172,7 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 			rendered, renderErr := renderTemplateContent(template.Content, map[string]any{})
 			if renderErr == nil {
 				cotText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "chain_of_thought").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -1182,7 +1182,7 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 					Int("content_length", len(rendered)).
 					Int("template_version", template.Version).
 					Msg("ChainOfThoughtModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "chain_of_thought").
 					Str("rendered_content", rendered).
 					Msg("ChainOfThoughtModule: Rendered prompt content")
@@ -1199,7 +1199,7 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 			rendered, renderErr := m.templateService.RenderTemplate(ctx, prompttemplate.TemplateKeyChainOfThought, map[string]any{})
 			if renderErr == nil {
 				cotText = rendered
-				log.Info().
+				log.Debug().
 					Str("module", "chain_of_thought").
 					Str("template_key", template.TemplateKey).
 					Str("template_public_id", template.PublicID).
@@ -1208,7 +1208,7 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 					Int("content_length", len(rendered)).
 					Int("template_version", template.Version).
 					Msg("ChainOfThoughtModule: Loaded and rendered template from database")
-				log.Info().
+				log.Debug().
 					Str("module", "chain_of_thought").
 					Str("rendered_content", rendered).
 					Msg("ChainOfThoughtModule: Rendered prompt content")
@@ -1232,7 +1232,7 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 		builder.WriteString("4. Synthesize your conclusion\n")
 		builder.WriteString("5. Provide a clear, structured answer")
 		cotText = builder.String()
-		log.Info().Msg("ChainOfThoughtModule: Using fallback hardcoded prompt")
+		log.Debug().Msg("ChainOfThoughtModule: Using fallback hardcoded prompt")
 	}
 
 	result := appendSystemContent(messages, cotText, m.Name(), "")

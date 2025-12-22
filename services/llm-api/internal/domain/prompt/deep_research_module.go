@@ -117,7 +117,7 @@ func (m *DeepResearchModule) Apply(ctx context.Context, promptCtx *Context, mess
 		if err == nil && template != nil && template.IsActive {
 			promptContent = template.Content
 			templateSource = source
-			log.Info().
+			log.Debug().
 				Str("template_key", template.TemplateKey).
 				Str("template_name", template.Name).
 				Str("source", source).
@@ -134,7 +134,7 @@ func (m *DeepResearchModule) Apply(ctx context.Context, promptCtx *Context, mess
 		if err == nil && template != nil && template.IsActive {
 			promptContent = template.Content
 			templateSource = "global_default"
-			log.Info().
+			log.Debug().
 				Str("template_key", template.TemplateKey).
 				Str("template_name", template.Name).
 				Str("source", templateSource).
@@ -155,7 +155,7 @@ func (m *DeepResearchModule) Apply(ctx context.Context, promptCtx *Context, mess
 	if promptContent == "" {
 		promptContent = prompttemplate.DefaultDeepResearchPrompt
 		templateSource = "hardcoded"
-		log.Info().
+		log.Debug().
 			Int("fallback_content_length", len(promptContent)).
 			Str("source", templateSource).
 			Msg("DeepResearchModule: Using fallback default prompt")

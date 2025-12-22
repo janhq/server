@@ -74,10 +74,10 @@ func NewProcessorWithServices(config ProcessorConfig, log zerolog.Logger, templa
 	// Always register timing module for AI assistant intro and current date
 	// Use model-specific template service if available
 	if templateService != nil && modelPromptService != nil {
-		processor.log.Info().Msg("registering TimingModule with model-specific template support")
+		processor.log.Debug().Msg("registering TimingModule with model-specific template support")
 		processor.RegisterModule(NewTimingModuleWithModelPrompts(templateService, modelPromptService))
 	} else if templateService != nil {
-		processor.log.Info().Msg("registering TimingModule with template service")
+		processor.log.Debug().Msg("registering TimingModule with template service")
 		processor.RegisterModule(NewTimingModuleWithService(templateService))
 	} else {
 		processor.RegisterModule(NewTimingModule())
@@ -87,10 +87,10 @@ func NewProcessorWithServices(config ProcessorConfig, log zerolog.Logger, templa
 
 	// Register UserProfileModule with model-specific template service if available
 	if templateService != nil && modelPromptService != nil {
-		processor.log.Info().Msg("registering UserProfileModule with model-specific template support")
+		processor.log.Debug().Msg("registering UserProfileModule with model-specific template support")
 		processor.RegisterModule(NewUserProfileModuleWithModelPrompts(templateService, modelPromptService))
 	} else if templateService != nil {
-		processor.log.Info().Msg("registering UserProfileModule with template service")
+		processor.log.Debug().Msg("registering UserProfileModule with template service")
 		processor.RegisterModule(NewUserProfileModuleWithService(templateService))
 	} else {
 		processor.RegisterModule(NewUserProfileModule())
@@ -99,10 +99,10 @@ func NewProcessorWithServices(config ProcessorConfig, log zerolog.Logger, templa
 	// Register modules based on configuration
 	if config.EnableMemory {
 		if templateService != nil && modelPromptService != nil {
-			processor.log.Info().Msg("registering MemoryModule with model-specific template support")
+			processor.log.Debug().Msg("registering MemoryModule with model-specific template support")
 			processor.RegisterModule(NewMemoryModuleWithModelPrompts(true, templateService, modelPromptService))
 		} else if templateService != nil {
-			processor.log.Info().Msg("registering MemoryModule with template service")
+			processor.log.Debug().Msg("registering MemoryModule with template service")
 			processor.RegisterModule(NewMemoryModuleWithService(true, templateService))
 		} else {
 			processor.RegisterModule(NewMemoryModule(true))
@@ -111,10 +111,10 @@ func NewProcessorWithServices(config ProcessorConfig, log zerolog.Logger, templa
 
 	if config.EnableTools {
 		if templateService != nil && modelPromptService != nil {
-			processor.log.Info().Msg("registering ToolInstructionsModule with model-specific template support")
+			processor.log.Debug().Msg("registering ToolInstructionsModule with model-specific template support")
 			processor.RegisterModule(NewToolInstructionsModuleWithModelPrompts(true, templateService, modelPromptService))
 		} else if templateService != nil {
-			processor.log.Info().Msg("registering ToolInstructionsModule with template service")
+			processor.log.Debug().Msg("registering ToolInstructionsModule with template service")
 			processor.RegisterModule(NewToolInstructionsModuleWithService(true, templateService))
 		} else {
 			processor.RegisterModule(NewToolInstructionsModule(true))
@@ -124,14 +124,14 @@ func NewProcessorWithServices(config ProcessorConfig, log zerolog.Logger, templa
 	// Conditional template-based modules (CoT, code assistant)
 	if config.EnableTemplates {
 		if templateService != nil && modelPromptService != nil {
-			processor.log.Info().Msg("registering CodeAssistantModule with model-specific template support")
+			processor.log.Debug().Msg("registering CodeAssistantModule with model-specific template support")
 			processor.RegisterModule(NewCodeAssistantModuleWithModelPrompts(templateService, modelPromptService))
-			processor.log.Info().Msg("registering ChainOfThoughtModule with model-specific template support")
+			processor.log.Debug().Msg("registering ChainOfThoughtModule with model-specific template support")
 			processor.RegisterModule(NewChainOfThoughtModuleWithModelPrompts(templateService, modelPromptService))
 		} else if templateService != nil {
-			processor.log.Info().Msg("registering CodeAssistantModule with template service")
+			processor.log.Debug().Msg("registering CodeAssistantModule with template service")
 			processor.RegisterModule(NewCodeAssistantModuleWithService(templateService))
-			processor.log.Info().Msg("registering ChainOfThoughtModule with template service")
+			processor.log.Debug().Msg("registering ChainOfThoughtModule with template service")
 			processor.RegisterModule(NewChainOfThoughtModuleWithService(templateService))
 		} else {
 			processor.RegisterModule(NewCodeAssistantModule())

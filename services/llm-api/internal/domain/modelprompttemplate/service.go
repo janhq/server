@@ -71,7 +71,7 @@ func (s *Service) AssignTemplate(
 		// Attach the prompt template to the response
 		existing.PromptTemplate = promptTemplate
 
-		log.Info().
+		log.Debug().
 			Str("model_catalog_id", modelCatalogID).
 			Str("template_key", req.TemplateKey).
 			Str("prompt_template_id", promptTemplate.PublicID).
@@ -108,7 +108,7 @@ func (s *Service) AssignTemplate(
 	// Attach the prompt template to the response
 	mpt.PromptTemplate = promptTemplate
 
-	log.Info().
+	log.Debug().
 		Str("model_catalog_id", modelCatalogID).
 		Str("template_key", req.TemplateKey).
 		Str("prompt_template_id", promptTemplate.PublicID).
@@ -123,7 +123,7 @@ func (s *Service) UnassignTemplate(ctx context.Context, modelCatalogID, template
 		return err
 	}
 
-	log.Info().
+	log.Debug().
 		Str("model_catalog_id", modelCatalogID).
 		Str("template_key", templateKey).
 		Msg("Removed model prompt template assignment")
@@ -217,7 +217,7 @@ func (s *Service) GetTemplateForModelByKey(
 			// Fetch the actual prompt template using UUID (not public_id)
 			template, err := s.promptTemplateRepo.FindByID(ctx, assignment.PromptTemplateID)
 			if err == nil && template != nil && template.IsActive {
-				log.Info().
+				log.Debug().
 					Str("model_catalog_id", modelCatalogID).
 					Str("template_key", templateKey).
 					Str("template_public_id", template.PublicID).
@@ -257,7 +257,7 @@ func (s *Service) GetTemplateForModelByKey(
 	// 2. Fall back to global default
 	template, err := s.promptTemplateRepo.FindByTemplateKey(ctx, templateKey)
 	if err == nil && template != nil && template.IsActive {
-		log.Info().
+		log.Debug().
 			Str("model_catalog_id", modelCatalogID).
 			Str("template_key", templateKey).
 			Str("template_public_id", template.PublicID).
@@ -315,7 +315,7 @@ func (s *Service) UpdateAssignment(
 		return nil, err
 	}
 
-	log.Info().
+	log.Debug().
 		Str("model_catalog_id", modelCatalogID).
 		Str("template_key", templateKey).
 		Msg("Updated model prompt template assignment")
