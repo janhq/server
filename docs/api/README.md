@@ -75,6 +75,16 @@ Provides Model Context Protocol tools for search, scraping, lightweight vector s
 - **[Providers](../services/mcp-tools/mcp-providers.md)** - MCP provider configuration
 - **[Integration](../services/mcp-tools/integration.md)** - Integration guide
 
+## API Guides
+
+- [Endpoint Matrix](endpoint-matrix.md) - Full endpoint inventory.
+- [Error Codes](error-codes.md) - HTTP status codes and handling patterns.
+- [Rate Limiting](rate-limiting.md) - Token buckets, quotas, examples.
+- [Performance](performance.md) - SLAs, latency, scaling, cost levers.
+- [API Versioning](api-versioning.md) - Policy and compatibility.
+- [Patterns](patterns.md) - Streaming, pagination, batching, uploads.
+- [Examples Index](examples/README.md) - cURL/SDK samples across services.
+
 ## Quick Reference
 
 ### Base URLs

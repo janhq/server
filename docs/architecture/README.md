@@ -24,7 +24,6 @@ Jan Server is built from multiple small services (microservices) that work toget
 | **Response API** | 8082 | Internal; streaming SSE via Kong `/responses` |
 | **Media API** | 8285 | Internal; proxied by Kong `/media` |
 | **MCP Tools** | 8091 | Internal; routed through Kong `/mcp` |
-| **Template API** | 8185 | Scaffold service generated from `services/template-api` |
 | **Keycloak** | 8085 | Admin console (protect behind VPN/SSO in production) |
 | **vLLM** | 8101 | Inference backend (local GPU/CPU profile) |
 | **Prometheus** | 9090 | Dev-only monitoring UI (`make monitor-up`) |

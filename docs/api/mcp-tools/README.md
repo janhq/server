@@ -4,6 +4,8 @@ The MCP Tools API provides AI tools for web search, web scraping, and code execu
 
 ## Quick Start
 
+Examples: [API examples index](../examples/README.md) includes discovery and call samples.
+
 ### URLs
 - **Direct access**: http://localhost:8091
 - **Through gateway**: http://localhost:8000/v1/mcp (Kong also exposes `/mcp/*` and forwards to `/v1/...`)

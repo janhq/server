@@ -4,6 +4,8 @@ The Response API executes tools and generates AI responses for complex tasks.
 
 ## Quick Start
 
+Examples: [API examples index](../examples/README.md) includes cURL/SDK snippets for orchestration flows.
+
 ### URLs
 - **Direct access**: http://localhost:8082
 - **Through gateway**: http://localhost:8000/responses (Kong prefixes `/responses`)

@@ -19,6 +19,9 @@ config/production.env
 config/secrets.env
 config/*.local.env
 
+# Todo
+/todos
+
 # Kubernetes secret overrides (never commit these!)
 k8s/**/values-*.local.yaml
 k8s/**/secrets.yaml

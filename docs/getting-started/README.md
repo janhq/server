@@ -37,6 +37,16 @@ make quickstart
 
 `make quickstart` launches the `jan-cli` wizard. It prompts for your LLM provider (local vLLM vs remote API), MCP search provider, and Media API preference, then writes `.env` plus `config/secrets.env`. When configuration finishes it automatically starts Docker Compose. Re-run the command anytime to update settings (answer **Y** when asked to overwrite `.env`).
 
+#### Wizard options at a glance
+- **LLM provider**: Local vLLM (GPU, downloads models) or remote OpenAI-compatible endpoint (no GPU required).
+- **MCP search**: Serper (API key), SearXNG (local, no key), or None (MCP Tools still run without search).
+- **Media API**: Enable for uploads and jan_* IDs, or disable if not needed.
+
+#### Example configurations
+- **Full local (GPU)**: Local vLLM + SearXNG + Media enabled → everything runs locally.
+- **Cloud LLM + Serper**: Remote API endpoint + Serper key + Media enabled → light local footprint, best search.
+- **Minimal**: Remote API endpoint + no search + Media disabled → smallest local runtime.
+
 ### Manual configuration (if you cannot run the wizard)
 
 ```bash
@@ -74,6 +84,12 @@ Wait for all services to start (30-60 seconds). You can monitor progress with:
 make logs
 ```
 
+### What the wizard does
+1. Prompts for LLM/search/media choices.
+2. Writes `.env` and `config/secrets.env`.
+3. Checks Docker availability and networks.
+4. Starts the Compose stack and waits for health (about 30 seconds).
+
 ### 5. Verify Installation
 
 ```bash
@@ -98,6 +114,11 @@ Once running, you can access:
 | **Grafana Dashboards** | http://localhost:3331 | admin/admin (after `make monitor-up`) |
 | **Prometheus** | http://localhost:9090 | - (after `make monitor-up`) |
 | **Jaeger Tracing** | http://localhost:16686 | - (after `make monitor-up`) |
+
+**Service activation**:
+- vLLM starts only if you choose the local provider (GPU). Use the remote provider option for a lighter stack.
+- MCP Tools and Vector Store always run; the search choice only affects which search provider is used.
+- Media API is optional based on the wizard choice.
 
 ## Your First API Call
 
@@ -204,6 +225,7 @@ docker compose ps # Container status
 # Restart services
 make restart-full   # Restart everything
 make restart-api    # Restart API profile
+make restart-llm-api # Restart only LLM API
 
 # Stop services
 make down       # Stop all containers (keeps volumes)
@@ -280,13 +302,21 @@ make db-console
 - Get new guest token: `curl -X POST http://localhost:8000/llm/auth/guest-login`
 - Check `Authorization: Bearer <token>` header is set
 
+## Update configuration later
+
+```bash
+make quickstart  # rerun the wizard and choose Y to overwrite .env
+```
+
+The wizard safely reuses existing values and updates your choices without manual edits.
+
 ## What's Next?
 
 Now that you have Jan Server running:
 
 1. **Explore the API**:
  - [API Reference](../api/README.md)
- - [API Examples](../api/llm-api/examples.md)
+ - [API Examples](../api/examples/README.md)
  - [Swagger UI](http://localhost:8000/api/swagger/index.html)
 
 2. **Learn Development**:

@@ -299,6 +299,9 @@
         }
     },
     "definitions": {
+        "handlers.JSONPayload": {
+            "type": "object"
+        },
         "handlers.ingestResponse": {
             "type": "object",
             "properties": {
@@ -320,27 +323,13 @@
             }
         },
         "handlers.resolveRequest": {
-            "type": "object",
-            "required": [
-                "payload"
-            ],
-            "properties": {
-                "payload": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
+            "type": "object"
         },
         "handlers.resolveResponse": {
             "type": "object",
             "properties": {
                 "payload": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "$ref": "#/definitions/handlers.JSONPayload"
                 }
             }
         },

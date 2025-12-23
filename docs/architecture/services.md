@@ -10,7 +10,7 @@ Jan Server ships four core services plus shared infrastructure. Use this documen
 | **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools | 8082 | `services/response-api` | [api/response-api/README.md](api/response-api/README.md) |
 | **Media API** | Binary ingestion, jan_* IDs, S3 storage and resolution | 8285 | `services/media-api` | [api/media-api/README.md](api/media-api/README.md) |
 | **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091 | `services/mcp-tools` | [api/mcp-tools/README.md](api/mcp-tools/README.md), [services/mcp-tools/README.md](../services/mcp-tools/README.md) |
-| **Template API** | Go microservice scaffold used by new feature teams | 8185 | `services/template-api` | [services/template-api/README.md](../services/template-api/README.md) |
+| **Service Template (scaffold)** | Go microservice blueprint for new services (not deployed) | - | `services/template-api` | [guides/services-template.md](../guides/services-template.md) |
 
 ## Configuration
 
@@ -71,7 +71,7 @@ New services should use the centralized configuration system:
  - Add service to `docker/services-api.yml`
  - Generate K8s values: `jan-cli config k8s-values --env production`
 
-See [Configuration System](configuration/README.md) and [Service Template](../services/template-api/NEW_SERVICE_GUIDE.md) for complete guide.
+See [Configuration System](configuration/README.md) and [Service Template Guide](../guides/services-template.md) for the scaffold and full instructions.
 
 ### Documentation Requirements
 

@@ -4,6 +4,8 @@ The LLM API lets you send messages to AI models and get responses. It works like
 
 ## Quick Start
 
+Examples: [API examples index](../examples/README.md) covers cURL/SDK snippets for every endpoint.
+
 ### URLs
 - **Direct access**: http://localhost:8080
 - **Through gateway** (recommended): http://localhost:8000

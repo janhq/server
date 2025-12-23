@@ -13,11 +13,6 @@
 Major feature release with realtime communication via LiveKit, enhanced MCP capabilities, improved automation testing, multiple vLLM instance support, and refined user experience features.
 
 #### What's New
-- **Realtime API with LiveKit Integration**:
-  - WebRTC-based real-time communication for low-latency interactions
-  - Session management and verification
-  - Code improvements and standardization
-  - Realtime CI/CD pipeline for automated testing
 - **Multi-vLLM Instance Provider**:
   - Round-robin load balancing across multiple vLLM instances
   - Enhanced swagger documentation

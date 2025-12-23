@@ -4,6 +4,8 @@ The Media API handles image uploads and storage.
 
 ## Quick Start
 
+Examples: [API examples index](../examples/README.md) includes uploads, jan_* IDs, and OCR/preview flows.
+
 ### URLs
 - **Direct access**: http://localhost:8285
 - **Through gateway**: http://localhost:8000/media (Kong prefixes `/media` before forwarding)

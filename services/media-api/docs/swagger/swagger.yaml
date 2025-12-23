@@ -1,5 +1,7 @@
 basePath: /
 definitions:
+  handlers.JSONPayload:
+    type: object
   handlers.ingestResponse:
     properties:
       bytes:
@@ -14,20 +16,11 @@ definitions:
         type: string
     type: object
   handlers.resolveRequest:
-    properties:
-      payload:
-        items:
-          type: integer
-        type: array
-    required:
-    - payload
     type: object
   handlers.resolveResponse:
     properties:
       payload:
-        items:
-          type: integer
-        type: array
+        $ref: '#/definitions/handlers.JSONPayload'
     type: object
   media.IngestRequest:
     properties:

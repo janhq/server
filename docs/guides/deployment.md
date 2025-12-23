@@ -266,6 +266,294 @@ Environment-specific configuration files in `config/`:
 - `production.env.example` - Production template (copy and customize)
 - `secrets.env.example` - Secrets template (never commit actual secrets)
 
+## Multi-vLLM Instance Deployment (High Availability)
+
+For production deployments requiring high availability and load-balanced inference across multiple vLLM instances.
+
+### Overview
+
+Jan Server supports running multiple vLLM instances with **automatic round-robin load balancing**. This enables:
+
+- **High Availability**: Continue operating if one vLLM instance fails
+- **Scalability**: Distribute inference load across multiple GPUs/servers
+- **Flexible Resource Allocation**: Deploy vLLM instances independently
+
+### Architecture
+
+```
+LLM API (load balancer)
+  ├── vLLM Instance 1 (Port 8101)
+  ├── vLLM Instance 2 (Port 8102)
+  └── vLLM Instance 3 (Port 8103)
+```
+
+The LLM API uses round-robin scheduling to distribute requests across instances.
+
+### Deployment Steps
+
+#### 1. Configure Multiple vLLM Instances
+
+Add provider instances in `config/defaults.yaml`:
+
+```yaml
+providers:
+  - vendor: vllm
+    enabled: true
+    endpoints:
+      - name: vllm-instance-1
+        base_url: http://localhost:8101/v1
+        api_key: ""
+      - name: vllm-instance-2
+        base_url: http://localhost:8102/v1
+        api_key: ""
+      - name: vllm-instance-3
+        base_url: http://localhost:8103/v1
+        api_key: ""
+```
+
+#### 2. Start Multiple vLLM Instances via Docker
+
+Create a `docker-compose.vllm-multi.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  vllm-1:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-instance-1
+    environment:
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
+      - VLLM_SERVED_MODEL_NAME=meta-llama/Llama-2-7b-hf
+    ports:
+      - "8101:8000"
+    volumes:
+      - vllm-cache-1:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - jan-network
+    restart: unless-stopped
+
+  vllm-2:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-instance-2
+    environment:
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
+      - VLLM_SERVED_MODEL_NAME=meta-llama/Llama-2-7b-hf
+    ports:
+      - "8102:8000"
+    volumes:
+      - vllm-cache-2:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - jan-network
+    restart: unless-stopped
+
+  vllm-3:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-instance-3
+    environment:
+      - VLLM_API_KEY=${VLLM_API_KEY:-}
+      - VLLM_SERVED_MODEL_NAME=meta-llama/Llama-2-7b-hf
+    ports:
+      - "8103:8000"
+    volumes:
+      - vllm-cache-3:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - jan-network
+    restart: unless-stopped
+
+volumes:
+  vllm-cache-1:
+  vllm-cache-2:
+  vllm-cache-3:
+
+networks:
+  jan-network:
+    external: true
+```
+
+Start the instances:
+
+```bash
+# Create shared network
+docker network create jan-network
+
+# Start multi-vLLM stack
+docker compose -f docker-compose.vllm-multi.yml up -d
+
+# Verify instances are healthy
+curl http://localhost:8101/health
+curl http://localhost:8102/health
+curl http://localhost:8103/health
+```
+
+#### 3. Start LLM API with Multi-vLLM Configuration
+
+```bash
+# Set environment to use multiple vLLM endpoints
+export VLLM_ENABLED=true
+export VLLM_PROVIDER_URL=http://localhost:8101/v1,http://localhost:8102/v1,http://localhost:8103/v1
+
+# Start LLM API
+docker compose -f docker-compose.yml -f docker/services-api.yml up -d llm-api
+```
+
+Or in `docker-compose.yml`, set the environment variable:
+
+```yaml
+services:
+  llm-api:
+    environment:
+      VLLM_ENABLED: "true"
+      VLLM_PROVIDER_URL: "http://vllm-1:8000/v1,http://vllm-2:8000/v1,http://vllm-3:8000/v1"
+```
+
+#### 4. Kubernetes Deployment (Helm)
+
+For Kubernetes, deploy vLLM instances as separate StatefulSets:
+
+```bash
+# Create a values override file: k8s/values-multi-vllm.yaml
+cat > k8s/values-multi-vllm.yaml << 'EOF'
+vllmInstances:
+  enabled: true
+  instances: 3
+  resources:
+    requests:
+      memory: "24Gi"
+      nvidia.com/gpu: "1"
+    limits:
+      memory: "32Gi"
+      nvidia.com/gpu: "1"
+
+llmApi:
+  env:
+    VLLM_ENABLED: "true"
+    # Load balancer will handle round-robin
+    VLLM_PROVIDER_URL: "http://vllm-0:8000/v1,http://vllm-1:8000/v1,http://vllm-2:8000/v1"
+  replicaCount: 2
+EOF
+
+# Deploy with multi-vLLM configuration
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --values k8s/values-multi-vllm.yaml
+```
+
+### Load Balancing Strategy
+
+The LLM API implements **round-robin load balancing** across configured vLLM endpoints:
+
+1. **Request Distribution**: Each request is routed to the next vLLM instance in sequence
+2. **Failover**: If a vLLM instance is unavailable, requests retry on the next instance
+3. **Health Checks**: Periodic health checks verify instance availability
+
+### Monitoring Multi-vLLM Setup
+
+Monitor the vLLM instances and load balancing:
+
+```bash
+# Check individual vLLM instance stats
+curl http://localhost:8101/stats
+curl http://localhost:8102/stats
+curl http://localhost:8103/stats
+
+# Monitor LLM API logs for load balancing
+docker logs -f llm-api | grep "vllm\|provider\|load"
+
+# Check request distribution across instances
+docker stats vllm-instance-1 vllm-instance-2 vllm-instance-3
+```
+
+### Troubleshooting Multi-vLLM
+
+#### Uneven Load Distribution
+
+If requests aren't evenly distributed:
+
+1. **Check instance health**: Verify all instances respond to health checks
+2. **Review logs**: Check for error-based failover patterns
+3. **Restart instances**: Clear any stuck states with rolling restarts
+
+```bash
+# Rolling restart (minimizes downtime)
+for i in 1 2 3; do
+  echo "Restarting vllm-instance-$i..."
+  docker restart vllm-instance-$i
+  sleep 30  # Wait for recovery
+done
+```
+
+#### Instance Connection Failures
+
+```bash
+# Test connectivity from LLM API container
+docker exec llm-api curl http://vllm-instance-1:8000/health
+docker exec llm-api curl http://vllm-instance-2:8000/health
+docker exec llm-api curl http://vllm-instance-3:8000/health
+
+# Check Docker network connectivity
+docker network inspect jan-network
+```
+
+#### Memory/GPU Issues
+
+If instances are running out of memory:
+
+1. **Reduce model size**: Use a smaller quantized model
+2. **Reduce batch size**: Set `--max-model-len` in vLLM
+3. **Add more instances**: Distribute load across more nodes
+4. **Scale vertically**: Upgrade to GPUs with more VRAM
+
+```bash
+# Update vLLM docker-compose to use smaller model
+docker compose -f docker-compose.vllm-multi.yml down
+# Edit docker-compose.vllm-multi.yml, change VLLM_SERVED_MODEL_NAME
+docker compose -f docker-compose.vllm-multi.yml up -d
+```
+
+### Performance Tuning
+
+For optimal multi-vLLM performance:
+
+| Setting | Recommendation | Notes |
+|---------|-----------------|-------|
+| **Instances** | 2-4 per operator | Balance cost vs redundancy |
+| **Batch Size** | 1-4 per instance | Depends on VRAM available |
+| **Model Size** | 7B or smaller | For multi-instance on typical GPUs |
+| **Tensor Parallelism** | Enabled if multi-GPU per instance | Reduces latency |
+| **Quantization** | 8-bit or GPTQ | Reduces VRAM usage |
+
+### Cost Optimization
+
+Multi-vLLM enables several cost optimizations:
+
+- **Spot Instances**: Use cheaper spot GPUs with fast failover
+- **Mixed Hardware**: Use different GPU types for different model sizes
+- **Autoscaling**: Add/remove instances based on load
+- **Batch Processing**: Queue requests to maximize GPU utilization
+
 ## Security Considerations
 
 ### Production Checklist
