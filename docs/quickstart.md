@@ -323,7 +323,7 @@ Now that you have Jan Server running:
 
 2. **Learn Development**:
  - [Development Guide](guides/development.md)
- - [Hybrid Mode](guides/hybrid-mode.md) (recommended for development)
+ - [Development Guide - Dev-Full Mode](guides/development.md#dev-full-mode-hybrid-debugging) (recommended for development)
  - [Testing Guide](guides/testing.md)
 
 3. **Understand Architecture**:

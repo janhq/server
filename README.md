@@ -234,7 +234,7 @@ docker compose stop llm-api
 ./scripts/dev-full-run.sh llm-api   # Linux/Mac
 ```
 
-See [Development Guide](docs/guides/development.md) and [Dev-Full Mode](docs/guides/dev-full-mode.md) for details.
+See [Development Guide](docs/guides/development.md) for details on full Docker, dev-full (hybrid), and native execution modes.
 
 ## CLI Tool
 

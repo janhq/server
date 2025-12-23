@@ -195,7 +195,7 @@ make dev-full-stop            # keep containers
 make dev-full-down            # remove containers
 ```
 
-**Complete guide:** See [Hybrid Mode Guide](hybrid-mode.md)
+**Complete guide:** See [Development Guide - Dev-Full Mode](development.md#dev-full-mode-hybrid-debugging)
 
 ## Environment Configuration
 
@@ -716,7 +716,7 @@ kubectl get deployment -n jan-server jan-server-llm-api -o yaml | grep pullPolic
 - [Kubernetes Setup Guide](../../k8s/SETUP.md) - Complete k8s deployment steps
 - [Kubernetes Configuration](../../k8s/README.md) - Helm chart configuration reference
 - [Development Guide](development.md) - Local development setup
-- [Hybrid Mode](hybrid-mode.md) - Native service execution
+- [Development Guide](development.md) - Native service execution and dev-full mode
 - [Monitoring Guide](monitoring.md) - Observability setup
 - [Architecture Overview](../architecture/README.md) - System architecture
 

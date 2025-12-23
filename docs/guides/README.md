@@ -6,7 +6,7 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 
 ### Development
 - **[Development Guide](development.md)** - Complete development workflow, setup, and best practices
-- **[Hybrid Mode](hybrid-mode.md)** - Run services natively for faster iteration and debugging
+- **[Development Guide](development.md)** - Full Docker, dev-full (hybrid), and native execution modes
 - **[Testing Guide](testing.md)** - Unit tests, integration tests, and testing best practices
 
 ### Operations (how-to)
@@ -23,7 +23,7 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 | Task | Guide |
 |------|-------|
 | Setup local environment | [Development Guide](development.md) |
-| Run services natively | [Hybrid Mode](hybrid-mode.md) |
+| Run services natively | [Development Guide - Dev-Full Mode](development.md#dev-full-mode-hybrid-debugging) |
 | Write and run tests | [Testing Guide](testing.md) |
 | Debug issues | [Troubleshooting](troubleshooting.md) |
 
@@ -60,7 +60,7 @@ make test-all                  # jan-cli api-test integration suites
 go test ./services/llm-api/... # Unit tests from source
 ```
 
-Use [Development Guide](development.md) for the end-to-end workflow and [Dev-Full Mode](dev-full-mode.md) when you need host-native debugging.
+Use [Development Guide](development.md) for the complete workflow including full Docker, dev-full (hybrid), and native execution modes.
 
 ### Testing Workflow
 

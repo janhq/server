@@ -43,7 +43,7 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 - [Development Guide](guides/development.md) - Local + hybrid workflows, Make targets.
 - [Configuration System](configuration/README.md) - Precedence rules and env var mapping.
 - [Testing Guide](guides/testing.md) - jan-cli api-test collections, coverage, and best practices.
-- [Hybrid Mode](guides/hybrid-mode.md) - Run select services natively.
+- [Development Guide](guides/development.md) - Full Docker, dev-full (hybrid), and native execution modes.
 - [Service Template](guides/services-template.md) - Generate a new Go microservice (scaffold docs live here).
 
 ### API Consumers
