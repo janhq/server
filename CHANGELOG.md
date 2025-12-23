@@ -6,7 +6,7 @@
 
 ## December 2025
 
-### [v0.0.14] - Realtime API, MCP Enhancements & Advanced Features
+### [v0.0.14] - Multi-vLLM Provider, MCP Tools & User Experience Enhancements
 
 **Status:** ✅ Complete | **Date:** December 2025
 
