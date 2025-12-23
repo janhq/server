@@ -2,29 +2,30 @@
 
 > **Status:** v0.0.14 | **Last Updated:** December 23, 2025
 
-Complete working examples for all Response API endpoints for generating conversational responses.
+Complete working examples for Response API multi-step tool orchestration with Python, JavaScript, and cURL.
 
 ## Table of Contents
 
 - [Authentication](#authentication)
-- [Text Response Generation](#text-response-generation)
-- [Structured Response Generation](#structured-response-generation)
-- [Response Analysis](#response-analysis)
-- [Batch Operations](#batch-operations)
+- [Basic Tool Orchestration](#basic-tool-orchestration)
+- [Multi-Step Workflows](#multi-step-workflows)
+- [Background Mode](#background-mode)
+- [Streaming Responses](#streaming-responses)
+- [Response Management](#response-management)
 - [Error Handling](#error-handling)
+- [Real-World Examples](#real-world-examples)
 
 ---
 
 ## Authentication
 
-### Bearer Token
-
-All Response API calls require authentication:
+All Response API calls require authentication via Kong Gateway.
 
 **Python:**
 ```python
 import requests
 
+# Get guest token
 response = requests.post("http://localhost:8000/llm/auth/guest-login")
 token = response.json()["access_token"]
 headers = {"Authorization": f"Bearer {token}"}
@@ -32,6 +33,7 @@ headers = {"Authorization": f"Bearer {token}"}
 
 **JavaScript:**
 ```javascript
+// Get guest token
 const authResponse = await fetch("http://localhost:8000/llm/auth/guest-login", {
   method: "POST"
 });
@@ -39,67 +41,476 @@ const { access_token: token } = await authResponse.json();
 const headers = { "Authorization": `Bearer ${token}` };
 ```
 
+**cURL:**
+```bash
+# Get and export token
+TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+export TOKEN
+```
+
 ---
 
-## Text Response Generation
+## Basic Tool Orchestration
 
-### Generate Simple Response
+### Simple Tool Execution
+
+Execute a single tool with automatic LLM orchestration.
 
 **Python:**
 ```python
+import requests
+
 response = requests.post(
-    "http://localhost:8000/v1/response/generate",
+    "http://localhost:8000/responses/v1/responses",
     json={
-        "prompt": "Write a welcome message for a new user",
-        "model": "gpt-4",
+        "model": "jan-v2-30b",
+        "input": "What's the weather in San Francisco?",
         "temperature": 0.7,
-        "max_tokens": 200,
         "stream": False
     },
     headers=headers
 )
 
-result = response.json()["data"]
-print(f"Generated: {result['content']}")
-print(f"Tokens: {result['usage']['total_tokens']}")
+result = response.json()
+print(f"Response ID: {result['id']}")
+print(f"Output: {result['output']}")
+print(f"Tools Used: {len(result.get('tool_executions', []))}")
 ```
 
 **JavaScript:**
 ```javascript
-const response = await fetch("http://localhost:8000/v1/response/generate", {
+const response = await fetch("http://localhost:8000/responses/v1/responses", {
   method: "POST",
   headers: {
     ...headers,
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    prompt: "Write a welcome message for a new user",
-    model: "gpt-4",
+    model: "jan-v2-30b",
+    input: "What's the weather in San Francisco?",
     temperature: 0.7,
-    max_tokens: 200,
     stream: false
   })
 });
 
-const { data: result } = await response.json();
-console.log(`Generated: ${result.content}`);
-console.log(`Tokens: ${result.usage.total_tokens}`);
+const result = await response.json();
+console.log(`Response ID: ${result.id}`);
+console.log(`Output: ${result.output}`);
+console.log(`Tools Used: ${result.tool_executions?.length || 0}`);
 ```
 
 **cURL:**
 ```bash
-curl -X POST http://localhost:8000/v1/response/generate \
+curl -X POST http://localhost:8000/responses/v1/responses \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "Write a welcome message",
-    "model": "gpt-4",
+    "model": "jan-v2-30b",
+    "input": "What is the weather in San Francisco?",
     "temperature": 0.7,
-    "max_tokens": 200
-  }'
+    "stream": false
+  }' | jq
 ```
 
-### Stream Response Generation
+**Response:**
+```json
+{
+  "id": "resp_01hqr8v9k2x3f4g5h6j7k8m9n0",
+  "model": "jan-v2-30b",
+  "input": "What's the weather in San Francisco?",
+  "output": "The current weather in San Francisco is partly cloudy with a temperature of 62°F...",
+  "status": "completed",
+  "usage": {
+    "prompt_tokens": 150,
+    "completion_tokens": 45,
+    "total_tokens": 195
+  },
+  "tool_executions": [
+    {
+      "tool_name": "google_search",
+      "input": {"q": "San Francisco weather"},
+      "output": "Current conditions: Partly cloudy, 62°F...",
+      "execution_time_ms": 342,
+      "depth": 0
+    }
+  ],
+  "created_at": "2025-12-23T10:00:00Z",
+  "completed_at": "2025-12-23T10:00:02Z"
+}
+```
+
+---
+
+## Multi-Step Workflows
+
+### Chained Tool Execution
+
+Let the AI orchestrate multiple tools in sequence.
+
+**Python:**
+```python
+# Research and analysis workflow
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": "Research the latest developments in quantum computing and create a summary with key findings",
+        "system_prompt": "You are a research assistant. Use web search and scraping tools to gather information.",
+        "temperature": 0.3,
+        "max_tokens": 1000
+    },
+    headers=headers
+)
+
+result = response.json()
+print(f"\n=== Execution Flow ===")
+for i, tool_exec in enumerate(result['tool_executions'], 1):
+    print(f"{i}. {tool_exec['tool_name']} (depth: {tool_exec['depth']}, {tool_exec['execution_time_ms']}ms)")
+    
+print(f"\n=== Final Output ===")
+print(result['output'])
+```
+
+**JavaScript:**
+```javascript
+// Multi-step data gathering
+const response = await fetch("http://localhost:8000/responses/v1/responses", {
+  method: "POST",
+  headers: {
+    ...headers,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    model: "jan-v2-30b",
+    input: "Find the top 3 AI research papers from this week and summarize their key contributions",
+    system_prompt: "Use search and scraping tools efficiently",
+    temperature: 0.3
+  })
+});
+
+const result = await response.json();
+console.log("Execution Chain:");
+result.tool_executions.forEach((exec, i) => {
+  console.log(`  ${i + 1}. ${exec.tool_name} → depth ${exec.depth}`);
+});
+console.log("\nSummary:", result.output);
+```
+
+**cURL:**
+```bash
+curl -X POST http://localhost:8000/responses/v1/responses \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "jan-v2-30b",
+    "input": "Search for recent AI breakthroughs, scrape the top result, and analyze the key innovations",
+    "system_prompt": "Be thorough and cite sources",
+    "temperature": 0.3,
+    "max_tokens": 800
+  }' | jq '.tool_executions[] | {tool: .tool_name, depth: .depth, time_ms: .execution_time_ms}'
+```
+
+### Controlling Tool Depth
+
+Limit the depth of tool chaining:
+
+**Python:**
+```python
+# Limit to 3 levels of tool chaining
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": "Complex research task",
+        "metadata": {
+            "max_depth": 3  # Application-level depth control
+        }
+    },
+    headers=headers
+)
+```
+
+> **Note:** Server-wide depth limit is controlled by `RESPONSE_MAX_TOOL_DEPTH` environment variable (default: 8). Client requests are bounded by this limit.
+
+---
+
+## Background Mode
+
+### Creating Background Tasks
+
+Submit long-running tasks without holding connection open.
+
+**Python:**
+```python
+# Submit background task
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": "Write a comprehensive 2000-word analysis of AI safety research",
+        "background": True,
+        "store": True,
+        "metadata": {
+            "webhook_url": "https://myapp.com/webhooks/responses",
+            "user_id": "user_123",
+            "task_type": "analysis"
+        }
+    },
+    headers=headers
+)
+
+result = response.json()
+print(f"Task ID: {result['id']}")
+print(f"Status: {result['status']}")  # "queued"
+print(f"Queued at: {result['queued_at']}")
+```
+
+**JavaScript:**
+```javascript
+// Submit background task with webhook
+const response = await fetch("http://localhost:8000/responses/v1/responses", {
+  method: "POST",
+  headers: {
+    ...headers,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    model: "jan-v2-30b",
+    input: "Generate detailed market research report on AI tools",
+    background: true,
+    store: true,
+    metadata: {
+      webhook_url: "https://myapp.com/webhook",
+      callback_token: "secret_token_123"
+    }
+  })
+});
+
+const task = await response.json();
+console.log(`Task ${task.id} queued at ${new Date(task.queued_at * 1000)}`);
+```
+
+**cURL:**
+```bash
+# Submit background task
+TASK_ID=$(curl -s -X POST http://localhost:8000/responses/v1/responses \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "jan-v2-30b",
+    "input": "Create detailed technical documentation for a REST API",
+    "background": true,
+    "store": true,
+    "metadata": {
+      "webhook_url": "https://webhook.site/your-unique-url"
+    }
+  }' | jq -r '.id')
+
+echo "Task ID: $TASK_ID"
+```
+
+### Polling for Status
+
+Check task progress:
+
+**Python:**
+```python
+import time
+
+def wait_for_completion(response_id, headers, max_wait=300):
+    """Poll until task completes or times out"""
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait:
+        response = requests.get(
+            f"http://localhost:8000/responses/v1/responses/{response_id}",
+            headers=headers
+        )
+        result = response.json()
+        status = result['status']
+        
+        print(f"Status: {status}", end='')
+        if status == 'queued':
+            print(f" (waiting...)")
+        elif status == 'in_progress':
+            elapsed = time.time() - result.get('started_at', start_time)
+            print(f" (running for {elapsed:.1f}s)")
+        elif status in ['completed', 'failed', 'cancelled']:
+            print(f"\nFinal status: {status}")
+            return result
+        
+        time.sleep(2)
+    
+    raise TimeoutError(f"Task did not complete within {max_wait}s")
+
+# Usage
+task_id = "resp_abc123"
+result = wait_for_completion(task_id, headers)
+if result['status'] == 'completed':
+    print(f"\nOutput:\n{result['output']}")
+```
+
+**JavaScript:**
+```javascript
+async function pollForCompletion(responseId, headers, maxWait = 300000) {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWait) {
+    const response = await fetch(
+      `http://localhost:8000/responses/v1/responses/${responseId}`,
+      { headers }
+    );
+    const result = await response.json();
+    
+    console.log(`Status: ${result.status}`);
+    
+    if (['completed', 'failed', 'cancelled'].includes(result.status)) {
+      return result;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  
+  throw new Error('Task did not complete in time');
+}
+
+// Usage
+const result = await pollForCompletion('resp_abc123', headers);
+console.log('Output:', result.output);
+```
+
+**cURL:**
+```bash
+# Simple polling loop
+while true; do
+  STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" \
+    http://localhost:8000/responses/v1/responses/$TASK_ID | jq -r '.status')
+  
+  echo "Status: $STATUS"
+  
+  if [[ "$STATUS" == "completed" ]] || [[ "$STATUS" == "failed" ]]; then
+    curl -s -H "Authorization: Bearer $TOKEN" \
+      http://localhost:8000/responses/v1/responses/$TASK_ID | jq
+    break
+  fi
+  
+  sleep 2
+done
+```
+
+### Webhook Notifications
+
+When a background task completes, the Response API sends a POST request to the webhook URL specified in metadata.
+
+**Webhook Payload (Completed):**
+```json
+{
+  "id": "resp_abc123",
+  "status": "completed",
+  "model": "jan-v2-30b",
+  "input": "...",
+  "output": "The comprehensive analysis...",
+  "usage": {
+    "prompt_tokens": 200,
+    "completion_tokens": 800,
+    "total_tokens": 1000
+  },
+  "tool_executions": [...],
+  "queued_at": 1705315800,
+  "started_at": 1705315805,
+  "completed_at": 1705316122,
+  "metadata": {
+    "user_id": "user_123",
+    "webhook_url": "https://myapp.com/webhooks/responses"
+  }
+}
+```
+
+**Webhook Handler (Python/Flask):**
+```python
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/webhooks/responses', methods=['POST'])
+def handle_response_webhook():
+    payload = request.json
+    response_id = payload['id']
+    status = payload['status']
+    
+    if status == 'completed':
+        # Process completed task
+        output = payload['output']
+        user_id = payload['metadata']['user_id']
+        
+        # Store result, notify user, etc.
+        save_to_database(user_id, response_id, output)
+        notify_user(user_id, "Your report is ready!")
+        
+    elif status == 'failed':
+        # Handle failure
+        error = payload.get('error', 'Unknown error')
+        log_error(response_id, error)
+    
+    return jsonify({"received": True}), 200
+```
+
+**Webhook Handler (Node.js/Express):**
+```javascript
+app.post('/webhooks/responses', async (req, res) => {
+  const { id, status, output, metadata } = req.body;
+  
+  if (status === 'completed') {
+    // Process result
+    await database.saveResponse(metadata.user_id, id, output);
+    await notifyUser(metadata.user_id, 'Task completed!');
+  } else if (status === 'failed') {
+    await logError(id, req.body.error);
+  }
+  
+  res.json({ received: true });
+});
+```
+
+### Cancelling Background Tasks
+
+**Python:**
+```python
+# Cancel a queued or running task
+response = requests.post(
+    f"http://localhost:8000/responses/v1/responses/{task_id}/cancel",
+    headers=headers
+)
+
+result = response.json()
+print(f"Status: {result['status']}")  # "cancelled"
+print(f"Cancelled at: {result.get('cancelled_at')}")
+```
+
+**JavaScript:**
+```javascript
+const response = await fetch(
+  `http://localhost:8000/responses/v1/responses/${taskId}/cancel`,
+  { method: "POST", headers }
+);
+
+const result = await response.json();
+console.log(`Task cancelled: ${result.status}`);
+```
+
+**cURL:**
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/responses/v1/responses/$TASK_ID/cancel | jq
+```
+
+---
+
+## Streaming Responses
+
+### Real-time Tool Execution Streaming
+
+Get tool execution updates and output as Server-Sent Events (SSE).
 
 **Python:**
 ```python
@@ -107,12 +518,10 @@ import requests
 import json
 
 response = requests.post(
-    "http://localhost:8000/v1/response/generate",
+    "http://localhost:8000/responses/v1/responses",
     json={
-        "prompt": "Generate a detailed explanation of quantum computing",
-        "model": "gpt-4",
-        "temperature": 0.7,
-        "max_tokens": 500,
+        "model": "jan-v2-30b",
+        "input": "Research AI safety and provide key insights",
         "stream": True
     },
     headers=headers,
@@ -122,27 +531,35 @@ response = requests.post(
 print("Streaming response:")
 for line in response.iter_lines():
     if line:
-        data = json.loads(line.decode().replace("data: ", ""))
-        if "choices" in data:
-            delta = data["choices"][0].get("delta", {})
-            content = delta.get("content", "")
-            print(content, end="", flush=True)
-print()
+        line_str = line.decode('utf-8')
+        if line_str.startswith('data: '):
+            data_str = line_str[6:]  # Remove 'data: ' prefix
+            if data_str == '[DONE]':
+                print("\nStream complete")
+                break
+            
+            try:
+                event = json.loads(data_str)
+                if 'tool_execution' in event:
+                    tool = event['tool_execution']
+                    print(f"\n[Tool: {tool['tool_name']}]")
+                elif 'delta' in event:
+                    print(event['delta'].get('content', ''), end='', flush=True)
+            except json.JSONDecodeError:
+                pass
 ```
 
 **JavaScript:**
 ```javascript
-const response = await fetch("http://localhost:8000/v1/response/generate", {
+const response = await fetch("http://localhost:8000/responses/v1/responses", {
   method: "POST",
   headers: {
     ...headers,
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    prompt: "Generate a detailed explanation of quantum computing",
-    model: "gpt-4",
-    temperature: 0.7,
-    max_tokens: 500,
+    model: "jan-v2-30b",
+    input: "Analyze current tech trends",
     stream: true
   })
 });
@@ -150,21 +567,28 @@ const response = await fetch("http://localhost:8000/v1/response/generate", {
 const reader = response.body.getReader();
 const decoder = new TextDecoder();
 
-console.log("Streaming response:");
-
 while (true) {
   const { done, value } = await reader.read();
   if (done) break;
   
-  const text = decoder.decode(value);
-  const lines = text.split("\n");
+  const chunk = decoder.decode(value);
+  const lines = chunk.split('\n');
   
   for (const line of lines) {
-    if (line.startsWith("data: ")) {
+    if (line.startsWith('data: ')) {
+      const data = line.slice(6);
+      if (data === '[DONE]') {
+        console.log('\nStream complete');
+        break;
+      }
+      
       try {
-        const data = JSON.parse(line.replace("data: ", ""));
-        const content = data.choices[0]?.delta?.content || "";
-        process.stdout.write(content);
+        const event = JSON.parse(data);
+        if (event.tool_execution) {
+          console.log(`\n[Tool: ${event.tool_execution.tool_name}]`);
+        } else if (event.delta?.content) {
+          process.stdout.write(event.delta.content);
+        }
       } catch (e) {
         // Skip invalid JSON
       }
@@ -173,661 +597,380 @@ while (true) {
 }
 ```
 
-### Generate Response with Context
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/response/generate",
-    json={
-        "prompt": "Based on the conversation, suggest next steps",
-        "context": {
-            "conversation_history": [
-                {"role": "user", "content": "How do I optimize my database?"},
-                {"role": "assistant", "content": "Add indexes to frequently queried columns..."}
-            ],
-            "user_profile": {
-                "expertise_level": "intermediate",
-                "focus_area": "database optimization"
-            }
-        },
-        "model": "gpt-4",
-        "temperature": 0.5,
-        "max_tokens": 300
-    },
-    headers=headers
-)
-
-result = response.json()["data"]
-print(result["content"])
+**cURL:**
+```bash
+curl -N -X POST http://localhost:8000/responses/v1/responses \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "jan-v2-30b",
+    "input": "What are the latest developments in AI?",
+    "stream": true
+  }'
 ```
 
-**JavaScript:**
-```javascript
-const response = await fetch("http://localhost:8000/v1/response/generate", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    prompt: "Based on the conversation, suggest next steps",
-    context: {
-      conversation_history: [
-        { role: "user", content: "How do I optimize my database?" },
-        { role: "assistant", content: "Add indexes to frequently queried columns..." }
-      ],
-      user_profile: {
-        expertise_level: "intermediate",
-        focus_area: "database optimization"
-      }
-    },
-    model: "gpt-4",
-    temperature: 0.5,
-    max_tokens: 300
-  })
-});
+**Stream Event Format:**
+```
+data: {"tool_execution":{"tool_name":"google_search","status":"started","depth":0}}
 
-const { data: result } = await response.json();
-console.log(result.content);
+data: {"tool_execution":{"tool_name":"google_search","status":"completed","execution_time_ms":234}}
+
+data: {"delta":{"content":"Based"}}
+
+data: {"delta":{"content":" on"}}
+
+data: {"delta":{"content":" recent"}}
+
+data: [DONE]
 ```
 
 ---
 
-## Structured Response Generation
+## Response Management
 
-### Generate Structured Output
+### Get Response Details
 
 **Python:**
 ```python
-response = requests.post(
-    "http://localhost:8000/v1/response/generate-structured",
-    json={
-        "prompt": "Extract the main topics from this conversation",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "topics": {
-                    "type": "array",
-                    "items": {"type": "string"}
-                },
-                "sentiment": {
-                    "type": "string",
-                    "enum": ["positive", "neutral", "negative"]
-                },
-                "summary": {"type": "string"}
-            },
-            "required": ["topics", "sentiment"]
-        },
-        "context": {
-            "content": "We discussed database optimization and caching strategies..."
-        },
-        "model": "gpt-4"
-    },
+response = requests.get(
+    f"http://localhost:8000/responses/v1/responses/{response_id}",
     headers=headers
 )
 
-result = response.json()["data"]
-print(f"Topics: {result['topics']}")
-print(f"Sentiment: {result['sentiment']}")
-print(f"Summary: {result['summary']}")
+result = response.json()
+print(f"Status: {result['status']}")
+print(f"Model: {result['model']}")
+print(f"Total tokens: {result['usage']['total_tokens']}")
+print(f"Tools executed: {len(result['tool_executions'])}")
 ```
 
 **JavaScript:**
 ```javascript
-const response = await fetch("http://localhost:8000/v1/response/generate-structured", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    prompt: "Extract the main topics from this conversation",
-    schema: {
-      type: "object",
-      properties: {
-        topics: { type: "array", items: { type: "string" } },
-        sentiment: { type: "string", enum: ["positive", "neutral", "negative"] },
-        summary: { type: "string" }
-      },
-      required: ["topics", "sentiment"]
-    },
-    context: {
-      content: "We discussed database optimization and caching strategies..."
-    },
-    model: "gpt-4"
-  })
-});
+const response = await fetch(
+  `http://localhost:8000/responses/v1/responses/${responseId}`,
+  { headers }
+);
 
-const { data: result } = await response.json();
-console.log(`Topics: ${result.topics}`);
-console.log(`Sentiment: ${result.sentiment}`);
-console.log(`Summary: ${result.summary}`);
+const result = await response.json();
+console.log(`Status: ${result.status}`);
+console.log(`Output length: ${result.output?.length || 0} chars`);
 ```
 
-### Generate JSON Response
+**cURL:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/responses/v1/responses/resp_abc123 | jq
+```
+
+### List Input Items (Conversation Replay)
+
+Get the normalized conversation items sent to the LLM:
 
 **Python:**
 ```python
-response = requests.post(
-    "http://localhost:8000/v1/response/generate-json",
-    json={
-        "prompt": "Create a user profile based on the conversation",
-        "template": {
-            "name": "string",
-            "interests": ["string"],
-            "technical_level": "string",
-            "next_topics": ["string"]
-        },
-        "context": {
-            "conversation": "The user mentioned interest in AI, machine learning, and data science...",
-            "user_mentions": ["Python developer", "5 years experience", "interested in NLP"]
-        },
-        "model": "gpt-4"
-    },
+response = requests.get(
+    f"http://localhost:8000/responses/v1/responses/{response_id}/input_items",
     headers=headers
 )
 
-profile = response.json()["data"]
-print(f"Name: {profile['name']}")
-print(f"Interests: {', '.join(profile['interests'])}")
-print(f"Level: {profile['technical_level']}")
+items = response.json()
+for item in items:
+    print(f"Role: {item['role']}")
+    print(f"Content: {item['content'][:100]}...")
+    print("---")
+```
+
+**cURL:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/responses/v1/responses/resp_abc123/input_items | jq
+```
+
+### Delete Response
+
+**Python:**
+```python
+response = requests.delete(
+    f"http://localhost:8000/responses/v1/responses/{response_id}",
+    headers=headers
+)
+
+print(f"Deleted: {response.status_code == 204}")
 ```
 
 **JavaScript:**
 ```javascript
-const response = await fetch("http://localhost:8000/v1/response/generate-json", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    prompt: "Create a user profile based on the conversation",
-    template: {
-      name: "string",
-      interests: ["string"],
-      technical_level: "string",
-      next_topics: ["string"]
-    },
-    context: {
-      conversation: "The user mentioned interest in AI, machine learning, and data science...",
-      user_mentions: ["Python developer", "5 years experience", "interested in NLP"]
-    },
-    model: "gpt-4"
-  })
-});
+const response = await fetch(
+  `http://localhost:8000/responses/v1/responses/${responseId}`,
+  { method: "DELETE", headers }
+);
 
-const profile = await response.json();
-console.log(`Name: ${profile.data.name}`);
-console.log(`Interests: ${profile.data.interests.join(", ")}`);
-console.log(`Level: ${profile.data.technical_level}`);
+console.log(`Deleted: ${response.status === 204}`);
 ```
 
----
-
-## Response Analysis
-
-### Analyze Response Quality
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/response/analyze",
-    json={
-        "content": "Here's a detailed explanation of machine learning...",
-        "analysis_type": "quality",
-        "criteria": [
-            "clarity",
-            "completeness",
-            "technical_accuracy",
-            "helpfulness"
-        ]
-    },
-    headers=headers
-)
-
-analysis = response.json()["data"]
-print("Quality Analysis:")
-for criterion, score in analysis["scores"].items():
-    print(f"  {criterion}: {score}/10")
-print(f"Overall: {analysis['overall_score']}/10")
-print(f"Recommendations: {analysis['recommendations']}")
-```
-
-**JavaScript:**
-```javascript
-const response = await fetch("http://localhost:8000/v1/response/analyze", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    content: "Here's a detailed explanation of machine learning...",
-    analysis_type: "quality",
-    criteria: [
-      "clarity",
-      "completeness",
-      "technical_accuracy",
-      "helpfulness"
-    ]
-  })
-});
-
-const analysis = await response.json();
-console.log("Quality Analysis:");
-for (const [criterion, score] of Object.entries(analysis.data.scores)) {
-  console.log(`  ${criterion}: ${score}/10`);
-}
-console.log(`Overall: ${analysis.data.overall_score}/10`);
-```
-
-### Extract Key Phrases
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/response/extract-phrases",
-    json={
-        "content": "Machine learning enables computers to learn from data without being explicitly programmed.",
-        "phrase_type": "key_concepts",
-        "limit": 5
-    },
-    headers=headers
-)
-
-phrases = response.json()["data"]
-print("Key Concepts:")
-for phrase in phrases:
-    print(f"  - {phrase['text']} (confidence: {phrase['confidence']})")
-```
-
-**JavaScript:**
-```javascript
-const response = await fetch("http://localhost:8000/v1/response/extract-phrases", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    content: "Machine learning enables computers to learn from data without being explicitly programmed.",
-    phrase_type: "key_concepts",
-    limit: 5
-  })
-});
-
-const phrases = await response.json();
-console.log("Key Concepts:");
-phrases.data.forEach(phrase => {
-  console.log(`  - ${phrase.text} (confidence: ${phrase.confidence})`);
-});
-```
-
-### Detect Sentiment
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/response/analyze-sentiment",
-    json={
-        "content": "This is absolutely amazing! I love how simple it is to use.",
-        "detailed": True
-    },
-    headers=headers
-)
-
-sentiment = response.json()["data"]
-print(f"Overall: {sentiment['sentiment']} ({sentiment['confidence']})")
-print(f"Emotions: {sentiment['emotions']}")
-print(f"Tone: {sentiment['tone']}")
-```
-
-**JavaScript:**
-```javascript
-const response = await fetch("http://localhost:8000/v1/response/analyze-sentiment", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    content: "This is absolutely amazing! I love how simple it is to use.",
-    detailed: true
-  })
-});
-
-const sentiment = await response.json();
-console.log(`Overall: ${sentiment.data.sentiment} (${sentiment.data.confidence})`);
-console.log(`Emotions: ${sentiment.data.emotions}`);
-console.log(`Tone: ${sentiment.data.tone}`);
-```
-
----
-
-## Batch Operations
-
-### Batch Generate Responses
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/response/batch-generate",
-    json={
-        "prompts": [
-            {
-                "id": "req_1",
-                "prompt": "Write a thank you email",
-                "temperature": 0.5
-            },
-            {
-                "id": "req_2",
-                "prompt": "Write an apology email",
-                "temperature": 0.6
-            },
-            {
-                "id": "req_3",
-                "prompt": "Write a follow-up email",
-                "temperature": 0.5
-            }
-        ],
-        "model": "gpt-4",
-        "max_tokens": 200
-    },
-    headers=headers
-)
-
-results = response.json()["data"]
-for result in results:
-    print(f"\n{result['id']}:")
-    print(result['content'])
-    print(f"Tokens: {result['tokens_used']}")
-```
-
-**JavaScript:**
-```javascript
-const response = await fetch("http://localhost:8000/v1/response/batch-generate", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    prompts: [
-      { id: "req_1", prompt: "Write a thank you email", temperature: 0.5 },
-      { id: "req_2", prompt: "Write an apology email", temperature: 0.6 },
-      { id: "req_3", prompt: "Write a follow-up email", temperature: 0.5 }
-    ],
-    model: "gpt-4",
-    max_tokens: 200
-  })
-});
-
-const results = await response.json();
-results.data.forEach(result => {
-  console.log(`\n${result.id}:`);
-  console.log(result.content);
-  console.log(`Tokens: ${result.tokens_used}`);
-});
-```
-
-### Batch Analyze Responses
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/v1/response/batch-analyze",
-    json={
-        "analyses": [
-            {
-                "id": "ana_1",
-                "content": "First response...",
-                "type": "quality"
-            },
-            {
-                "id": "ana_2",
-                "content": "Second response...",
-                "type": "sentiment"
-            }
-        ]
-    },
-    headers=headers
-)
-
-analyses = response.json()["data"]
-for analysis in analyses:
-    print(f"{analysis['id']}: Score {analysis['score']}")
-```
-
-**JavaScript:**
-```javascript
-const response = await fetch("http://localhost:8000/v1/response/batch-analyze", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    analyses: [
-      { id: "ana_1", content: "First response...", type: "quality" },
-      { id: "ana_2", content: "Second response...", type: "sentiment" }
-    ]
-  })
-});
-
-const analyses = await response.json();
-analyses.data.forEach(analysis => {
-  console.log(`${analysis.id}: Score ${analysis.score}`);
-});
+**cURL:**
+```bash
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/responses/v1/responses/resp_abc123
 ```
 
 ---
 
 ## Error Handling
 
-### Handle Rate Limiting
+### Common Error Scenarios
 
-**Python:**
-```python
-import time
-
-def generate_with_retry(prompt, max_retries=5):
-    base_wait = 1
-    
-    for attempt in range(max_retries):
-        response = requests.post(
-            "http://localhost:8000/v1/response/generate",
-            json={
-                "prompt": prompt,
-                "model": "gpt-4"
-            },
-            headers=headers
-        )
-        
-        if response.status_code == 429:
-            # Rate limited
-            retry_after = int(response.headers.get('Retry-After', base_wait))
-            wait_time = base_wait * (2 ** attempt) + retry_after
-            print(f"Rate limited, waiting {wait_time}s...")
-            time.sleep(wait_time)
-            continue
-        
-        if response.status_code != 200:
-            print(f"Error: {response.status_code}")
-            break
-        
-        return response.json()["data"]
-    
-    return None
-
-result = generate_with_retry("Write a summary")
-if result:
-    print(result["content"])
-```
-
-**JavaScript:**
-```javascript
-async function generateWithRetry(prompt, maxRetries = 5) {
-  let baseWait = 1;
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const response = await fetch("http://localhost:8000/v1/response/generate", {
-      method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-        model: "gpt-4"
-      })
-    });
-    
-    if (response.status === 429) {
-      const retryAfter = parseInt(response.headers.get("Retry-After") || baseWait);
-      const waitTime = baseWait * Math.pow(2, attempt) + retryAfter;
-      console.log(`Rate limited, waiting ${waitTime}ms...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
-      continue;
-    }
-    
-    if (response.status !== 200) {
-      console.error(`Error: ${response.status}`);
-      break;
-    }
-    
-    const { data: result } = await response.json();
-    return result;
-  }
-  
-  return null;
-}
-
-const result = await generateWithRetry("Write a summary");
-if (result) {
-  console.log(result.content);
-}
-```
-
-### Handle Validation Errors
-
-**Python:**
+**Request Validation Error (400):**
 ```python
 try:
     response = requests.post(
-        "http://localhost:8000/v1/response/generate",
+        "http://localhost:8000/responses/v1/responses",
         json={
-            "prompt": "",  # Invalid: empty prompt
-            "model": "gpt-4"
+            "model": "jan-v2-30b"
+            # Missing required 'input' field
         },
         headers=headers
     )
-    
-    if response.status_code == 422:
-        errors = response.json()["detail"]
-        for error in errors:
-            print(f"Field: {error['loc']}")
-            print(f"Error: {error['msg']}")
-    
-except requests.exceptions.RequestException as e:
-    print(f"Request failed: {e}")
+    response.raise_for_status()
+except requests.exceptions.HTTPError as e:
+    error = response.json()
+    print(f"Error: {error['error']['message']}")
+    print(f"Type: {error['error']['type']}")
 ```
 
-**JavaScript:**
-```javascript
-try {
-  const response = await fetch("http://localhost:8000/v1/response/generate", {
-    method: "POST",
-    headers: {
-      ...headers,
-      "Content-Type": "application/json"
+**Tool Execution Timeout (408):**
+```python
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": "Complex task requiring long tool execution"
     },
-    body: JSON.stringify({
-      prompt: "",  // Invalid: empty prompt
-      model: "gpt-4"
-    })
-  });
-  
-  if (response.status === 422) {
-    const { detail: errors } = await response.json();
-    errors.forEach(error => {
-      console.log(`Field: ${error.loc}`);
-      console.log(`Error: ${error.msg}`);
-    });
+    headers=headers
+)
+
+result = response.json()
+if result.get('status') == 'failed':
+    print(f"Failure reason: {result.get('error')}")
+    # Handle timeout, possibly retry with simpler prompt
+```
+
+**Max Depth Exceeded:**
+```json
+{
+  "error": {
+    "message": "Tool execution exceeded maximum depth of 8",
+    "type": "execution_error",
+    "code": "max_depth_exceeded"
   }
-} catch (error) {
-  console.error(`Request failed: ${error}`);
+}
+```
+
+**Response Not Found (404):**
+```python
+response = requests.get(
+    "http://localhost:8000/responses/v1/responses/invalid_id",
+    headers=headers
+)
+
+if response.status_code == 404:
+    print("Response not found or deleted")
+```
+
+---
+
+## Real-World Examples
+
+### Example 1: Research Assistant
+
+Comprehensive research with multiple tool calls:
+
+```python
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": """Research the following and provide a detailed report:
+        1. Latest quantum computing breakthroughs
+        2. Key companies and research labs involved
+        3. Timeline projections for practical applications
+        
+        Use multiple sources and cite them.""",
+        "system_prompt": "You are a thorough research assistant. Use search and scraping tools extensively.",
+        "temperature": 0.3,
+        "max_tokens": 2000,
+        "background": True,
+        "store": True,
+        "metadata": {
+            "webhook_url": "https://myapp.com/research-complete",
+            "project_id": "quantum-research-2025"
+        }
+    },
+    headers=headers
+)
+
+print(f"Research task queued: {response.json()['id']}")
+```
+
+### Example 2: Competitive Analysis
+
+Multi-step analysis with data gathering:
+
+```python
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": "Analyze the top 3 AI coding assistants: features, pricing, and user reception",
+        "system_prompt": "Provide factual, up-to-date information with sources",
+        "temperature": 0.4,
+        "stream": False
+    },
+    headers=headers
+)
+
+result = response.json()
+print(f"Tools used: {[t['tool_name'] for t in result['tool_executions']]}")
+print(f"\nAnalysis:\n{result['output']}")
+```
+
+### Example 3: Content Generation with Research
+
+Generate blog post with cited sources:
+
+```python
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": "Write a 1000-word blog post about 'The Future of AI in Healthcare' with current examples and statistics",
+        "system_prompt": "Research current information first, then write an engaging article with proper citations",
+        "temperature": 0.7,
+        "max_tokens": 1500,
+        "background": True,
+        "store": True
+    },
+    headers=headers
+)
+
+task_id = response.json()['id']
+print(f"Content generation task: {task_id}")
+```
+
+### Example 4: Data Extraction Pipeline
+
+Extract structured data from web sources:
+
+```python
+response = requests.post(
+    "http://localhost:8000/responses/v1/responses",
+    json={
+        "model": "jan-v2-30b",
+        "input": """Find the top 5 AI conferences in 2025 and extract:
+        - Name
+        - Date
+        - Location
+        - Website
+        - Key topics
+        
+        Return as structured JSON.""",
+        "system_prompt": "Use search and scraping to gather accurate information",
+        "temperature": 0.1,
+        "stream": False
+    },
+    headers=headers
+)
+
+result = response.json()
+print(result['output'])
+```
+
+---
+
+## Configuration Reference
+
+### Environment Variables
+
+Key configuration options for Response API behavior:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RESPONSE_MAX_TOOL_DEPTH` | 8 | Maximum depth for tool chaining |
+| `TOOL_EXECUTION_TIMEOUT` | 45s | Per-tool execution timeout |
+| `BACKGROUND_WORKER_COUNT` | 4 | Number of background workers |
+| `BACKGROUND_POLL_INTERVAL` | 2s | Worker polling frequency |
+| `BACKGROUND_TASK_TIMEOUT` | 600s | Max time for background tasks |
+| `WEBHOOK_MAX_RETRIES` | 3 | Webhook delivery retry attempts |
+| `WEBHOOK_TIMEOUT` | 10s | Webhook HTTP timeout |
+
+### Response Object Schema
+
+Complete response object structure:
+
+```typescript
+interface Response {
+  id: string;                    // resp_*
+  model: string;                 // Model used
+  input: string | object;        // Original input
+  output?: string;               // Generated output (when completed)
+  status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  background?: boolean;          // Background mode flag
+  store?: boolean;              // Persistence flag
+  
+  // Timestamps
+  created_at: string;           // ISO 8601
+  queued_at?: number;           // Unix timestamp
+  started_at?: number;          // Unix timestamp
+  completed_at?: number;        // Unix timestamp
+  cancelled_at?: number;        // Unix timestamp
+  
+  // Execution details
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  
+  tool_executions?: Array<{
+    tool_name: string;
+    input: object;
+    output: any;
+    execution_time_ms: number;
+    depth: number;
+    status: 'completed' | 'failed';
+  }>;
+  
+  // Additional data
+  metadata?: object;            // Custom client data
+  system_prompt?: string;
+  temperature?: number;
+  max_tokens?: number;
+  error?: string;               // Error message (when failed)
 }
 ```
 
 ---
 
-## Complete Example: Email Draft Generator
+## Related Documentation
 
-**Python:**
-```python
-import requests
+- [Response API Reference](README.md) - Full endpoint documentation
+- [MCP Tools API](../mcp-tools/) - Available tools and capabilities
+- [LLM API](../llm-api/) - Model management and chat completions
+- [Background Mode Guide](../../guides/background-mode.md) - Detailed background processing
+- [Examples Index](../examples/README.md) - Cross-service examples
 
-token = "your-token"
-headers = {"Authorization": f"Bearer {token}"}
+---
 
-def generate_email_draft(email_type: str, context: str):
-    """Generate email draft with analysis"""
-    
-    # 1. Generate initial draft
-    draft_response = requests.post(
-        "http://localhost:8000/v1/response/generate",
-        json={
-            "prompt": f"Write a professional {email_type} email:\n{context}",
-            "model": "gpt-4",
-            "temperature": 0.5,
-            "max_tokens": 300
-        },
-        headers=headers
-    )
-    draft = draft_response.json()["data"]["content"]
-    
-    # 2. Analyze tone and sentiment
-    analysis_response = requests.post(
-        "http://localhost:8000/v1/response/analyze-sentiment",
-        json={
-            "content": draft,
-            "detailed": True
-        },
-        headers=headers
-    )
-    sentiment = analysis_response.json()["data"]
-    
-    # 3. Extract key points
-    phrases_response = requests.post(
-        "http://localhost:8000/v1/response/extract-phrases",
-        json={
-            "content": draft,
-            "phrase_type": "key_concepts",
-            "limit": 3
-        },
-        headers=headers
-    )
-    key_points = phrases_response.json()["data"]
-    
-    return {
-        "draft": draft,
-        "sentiment": sentiment["sentiment"],
-        "confidence": sentiment["confidence"],
-        "key_points": [p["text"] for p in key_points]
-    }
+## Related Documentation
 
-# Usage
-result = generate_email_draft(
-    "follow-up",
-    "We discussed a partnership opportunity last week"
-)
+- [Response API Reference](README.md) - Full endpoint documentation
+- [Decision Guide: When to Use Response API](../decision-guides.md#llm-api-vs-response-api) - Choose between LLM API and Response API
+- [Decision Guide: Background vs Synchronous](../decision-guides.md#synchronous-vs-background-mode) - Choose execution mode
+- [Decision Guide: Tool Depth](../decision-guides.md#tool-execution-depth) - Understand depth parameter
+- [MCP Tools API](../mcp-tools/) - Available tools
+- [LLM API](../llm-api/) - Direct chat completions
+- [Examples Index](../examples/README.md) - Cross-service examples
 
-print("Draft:")
-print(result["draft"])
-print(f"\nTone: {result['sentiment']} ({result['confidence']})")
-print(f"Key points: {', '.join(result['key_points'])}")
-```
+---
 
-See [Error Codes Guide](../error-codes.md) for detailed error responses and [Rate Limiting Guide](../rate-limiting.md) for quota information.
+**Last Updated:** December 23, 2025 | **API Version:** v1 | **Status:** v0.0.14

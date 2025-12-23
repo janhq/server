@@ -6,7 +6,7 @@ Jan Server ships four core services plus shared infrastructure. Use this documen
 
 | Service | Purpose | Port(s) | Source | Primary Docs |
 |---------|---------|---------|--------|--------------|
-| **LLM API** | OpenAI-compatible chat completions, conversation storage, model management | 8080 (direct), 8000 via Kong | `services/llm-api` | [api/llm-api/README.md](api/llm-api/README.md), [api/llm-api/examples.md](api/llm-api/examples.md) |
+| **LLM API** | OpenAI-compatible chat completions, conversation storage, model management | 8080 (direct), 8000 via Kong | `services/llm-api` | [api/llm-api/README.md](api/llm-api/README.md), [Examples](api/llm-api/comprehensive-examples.md) |
 | **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools | 8082 | `services/response-api` | [api/response-api/README.md](api/response-api/README.md) |
 | **Media API** | Binary ingestion, jan_* IDs, S3 storage and resolution | 8285 | `services/media-api` | [api/media-api/README.md](api/media-api/README.md) |
 | **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091 | `services/mcp-tools` | [api/mcp-tools/README.md](api/mcp-tools/README.md), [services/mcp-tools/README.md](../services/mcp-tools/README.md) |

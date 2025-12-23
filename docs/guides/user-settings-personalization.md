@@ -126,7 +126,7 @@ Toggle advanced features and capabilities.
 
 **GET** `/v1/users/me/settings`
 
-Retrieve authenticated user's settings. See [User Settings API](../api/llm-api/user-settings-api.md) for complete reference.
+Retrieve authenticated user's settings. See [User Settings API](../api/llm-api/README.md#user-settings) for complete reference.
 
 ### Update User Settings
 
@@ -199,7 +199,7 @@ await fetch('http://localhost:8000/v1/users/me/settings', {
 
 ## Related Documentation
 
-- [User Settings API Reference](../api/llm-api/user-settings-api.md) - Complete API reference
+- [User Settings API Reference](../api/llm-api/README.md#user-settings) - Complete API reference
 - [Conversation Management](conversation-management.md) - Managing your conversations
 - [LLM API Documentation](../api/llm-api/README.md) - Main API reference
 - [Authentication Guide](authentication.md) - Getting tokens and keys

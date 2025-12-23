@@ -11,12 +11,30 @@ Examples: [API examples index](../examples/README.md) includes cURL/SDK snippets
 - **Through gateway**: http://localhost:8000/responses (Kong prefixes `/responses`)
 - **Inside Docker**: http://response-api:8082
 
+### Authentication
+
+All endpoints require authentication through the Kong gateway.
+
+**For complete authentication documentation, see [Authentication Guide](../README.md#authentication)**
+
+**Quick example:**
+```bash
+# Get guest token
+TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+
+# Use in requests
+curl -H "Authorization: Bearer $TOKEN" \
+ http://localhost:8000/responses/v1/responses
+```
+
 ## What You Can Do
 
 - **Run tools automatically** - AI decides which tools to use
 - **Chain tools together** - Use output from one tool as input to another (up to 8 steps)
 - **Get final answers** - LLM generates natural language response from tool results
 - **Track execution** - See which tools ran and how long they took
+
+**Not sure if you need Response API?** See [Decision Guide: LLM API vs Response API](../decision-guides.md#llm-api-vs-response-api) to choose the right approach.
 
 ## Service Ports & Configuration
 
@@ -71,7 +89,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
  -H "Authorization: Bearer <token>" \
  -H "Content-Type: application/json" \
  -d '{
- "model": "gpt-4o-mini",
+ "model": "jan-v2-30b",
  "input": "Search for the latest AI news and summarize the top 3 results",
  "temperature": 0.3,
  "tool_choice": {"type": "auto"},
@@ -95,7 +113,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
 ```json
 {
  "id": "resp_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "model": "gpt-4o-mini",
+ "model": "jan-v2-30b",
  "input": "Search for the latest AI news and summarize the top 3 results",
  "output": "Here are the latest AI news items...",
  "tool_executions": [
@@ -128,7 +146,7 @@ curl -N http://localhost:8000/responses/v1/responses \
  -H "Content-Type: application/json" \
  -H "Accept: text/event-stream" \
  -d '{
- "model": "gpt-4o-mini",
+ "model": "jan-v2-30b",
  "input": "Search for the latest AI news and summarize the top 3 results",
  "stream": true
  }'
@@ -351,7 +369,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4",
+    "model": "jan-v2-30b",
     "input": "Write a comprehensive analysis of quantum computing trends",
     "background": true,
     "store": true,
@@ -372,7 +390,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
   "store": true,
   "queued_at": 1705315800,
   "created_at": 1705315800,
-  "model": "gpt-4",
+  "model": "jan-v2-30b",
   "input": "Write a comprehensive analysis...",
   "metadata": {
     "webhook_url": "https://example.com/webhooks/responses",
@@ -550,7 +568,7 @@ RESP_ID=$(curl -s -X POST http://localhost:8000/responses/v1/responses \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4",
+    "model": "jan-v2-30b",
     "input": "Write a haiku about coding",
     "background": true,
     "store": true,

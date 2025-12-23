@@ -13,9 +13,9 @@ Examples: [API examples index](../examples/README.md) includes uploads, jan_* ID
 
 ## What You Can Do
 
-- **Upload images** - From URLs or base64 data
-- **Get jan_* IDs** - Unique identifiers for each image
-- **Generate download links** - Temporary URLs that expire after 5 minutes
+- **Upload images** - From URLs or base64 data. See [Upload Method Guide](../decision-guides.md#media-upload-methods) to choose the best approach.
+- **Get jan_* IDs** - Unique identifiers for each image. See [Jan ID System Guide](../decision-guides.md#jan-id-system) to understand how they work.
+- **Generate download links** - Temporary URLs that expire after 5 minutes. See [Presigned URL Workflow](../decision-guides.md#presigned-url-workflow).
 - **Prevent duplicates** - Same image uploaded twice gets same ID
 - **Store in S3** - Images saved to cloud storage
 
@@ -75,9 +75,24 @@ MEDIA_LOCAL_STORAGE_BASE_URL=http://localhost:8285/v1/files
 
 ## Authentication
 
-When accessed through Kong (`http://localhost:8000/media/...`) every request must include either:
-- `Authorization: Bearer <token>` (Keycloak-issued JWT, guest tokens work for dev)
-- `X-API-Key: sk_*` (custom plugin)
+All endpoints require authentication through the Kong gateway.
+
+**For complete authentication documentation, see [Authentication Guide](../README.md#authentication)**
+
+**Quick example:**
+```bash
+# Get guest token
+TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+
+# Use in requests
+curl -H "Authorization: Bearer $TOKEN" \
+ http://localhost:8000/media/v1/media
+```
+
+**Key points:**
+- Use Kong gateway (port 8000) for all client requests: `http://localhost:8000/media/...`
+- Both Bearer tokens and API keys (`X-API-Key`) work through Kong
+- Direct service access (port 8285) requires valid JWT token
 
 Direct calls to port 8285 still honor JWT validation when `AUTH_ENABLED=true` on the service. Use the gateway whenever possible so rate-limiting/cors policies apply consistently.
 
@@ -283,7 +298,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
  -H "Authorization: Bearer <token>" \
  -H "Content-Type: application/json" \
  -d '{
- "model": "gpt-4o-mini",
+ "model": "jan-v2-30b",
  "messages": [{
  "role": "user",
  "content": [

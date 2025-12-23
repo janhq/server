@@ -11,6 +11,24 @@ Examples: [API examples index](../examples/README.md) includes discovery and cal
 - **Through gateway**: http://localhost:8000/v1/mcp (Kong also exposes `/mcp/*` and forwards to `/v1/...`)
 - **Inside Docker**: http://mcp-tools:8091
 
+### Authentication
+
+All endpoints require authentication through the Kong gateway.
+
+**For complete authentication documentation, see [Authentication Guide](../README.md#authentication)**
+
+**Quick example:**
+```bash
+# Get guest token
+TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+
+# Use in requests
+curl -H "Authorization: Bearer $TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' \
+ http://localhost:8000/v1/mcp
+```
+
 ## Available Tools
 - **google_search** - Serper/SearXNG-backed web search with optional filters and location hints
 - **scrape** - Fetch and parse a web page, optionally returning Markdown
@@ -21,6 +39,8 @@ Examples: [API examples index](../examples/README.md) includes discovery and cal
 ## How It Works
 
 All tools use JSON-RPC 2.0 protocol. You send a request with tool name and parameters, get back results.
+
+**Need help with the protocol?** See [MCP Tools Protocol Guide](../decision-guides.md#mcp-tools-protocol) for request format and error handling patterns.
 
 ## Service Ports & Configuration
 
@@ -191,7 +211,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
  -H "Authorization: Bearer <token>" \
  -H "Content-Type: application/json" \
  -d '{
- "model": "gpt-4o-mini",
+ "model": "jan-v2-30b",
  "input": "Search for Python async programming and summarize top 3 results",
  "stream": true
  }'
