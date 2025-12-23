@@ -448,7 +448,7 @@ response2 = client.chat.completions.create(
 For issues with browser capabilities:
 - Check [Troubleshooting Guide](troubleshooting.md)
 - Review [Architecture Documentation](../architecture/README.md)
-- See [Getting Started](../getting-started/README.md)
+- See [Getting Started](../quickstart.md)
 
 ---
 

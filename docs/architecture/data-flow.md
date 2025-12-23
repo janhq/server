@@ -6,12 +6,9 @@
 3. **LLM API**:
  - Validates JWT via Keycloak JWKS.
  - Resolves any `jan_*` media IDs by calling Media API `/v1/media/resolve`.
- - **(Future) Prompt Orchestration Processor**: Applies conditional modules (memory, templates, tool instructions) to compose the final prompt before inference.
  - Selects a provider (local vLLM or configured upstream) and forwards the request.
 4. **Provider** (vLLM) streams tokens back to LLM API.
 5. **LLM API** streams data to the client (SSE) via Kong and persists conversation rows in PostgreSQL.
-
-> **Note**: Prompt orchestration (memory injection, template application, conditional prompt assembly) will be implemented as a processor within LLM API, not as a separate service. See `docs/todo/prompt-orchestration-todo.md` for design details.
 
 ## 2. Response API Orchestration
 1. **Client** calls `POST /v1/responses`.

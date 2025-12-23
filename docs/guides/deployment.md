@@ -723,6 +723,6 @@ kubectl get deployment -n jan-server jan-server-llm-api -o yaml | grep pullPolic
 ## Support
 
 For additional help:
-- Review [Getting Started](../getting-started/README.md)
+- Review [Getting Started](../quickstart.md)
 - Check [Troubleshooting Guide](troubleshooting.md)
 - See [Architecture Documentation](../architecture/README.md)

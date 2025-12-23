@@ -58,6 +58,8 @@ docker compose ps  # status
 | Response API | http://localhost:8082 | Multi-step orchestration |
 | Media API | http://localhost:8285 | File upload/management service |
 | MCP Tools | http://localhost:8091 | Native MCP tool bridge |
+| Memory Tools | http://localhost:8090 | Semantic memory service |
+| Realtime API | http://localhost:8186 | WebRTC session management |
 | Keycloak | http://localhost:8085 | Admin/Admin in development |
 | PostgreSQL | localhost:5432 | Database user `jan_user` / password from `.env` |
 | Grafana | http://localhost:3331 | Start with `make monitor-up` |

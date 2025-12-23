@@ -18,7 +18,7 @@
 ## TL;DR Rules
 
 ### Language & Tooling
-- **Go version:** `1.25` (matches the root `go.mod`). Run `go fmt ./...` and `go test ./...` before committing.
+- **Go version:** `1.25.0` (matches the root `go.mod`). Run `go fmt ./...` and `go test ./...` before committing.
 - **Dependency hygiene:** `go mod tidy` inside the service you changed.
 
 ### Architecture

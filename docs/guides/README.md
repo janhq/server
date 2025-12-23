@@ -6,12 +6,8 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 
 ### Development
 - **[Development Guide](development.md)** - Complete development workflow, setup, and best practices
-- **[VS Code Guide](ide/vscode.md)** - VS Code debugging, tasks, and environment configuration
 - **[Hybrid Mode](hybrid-mode.md)** - Run services natively for faster iteration and debugging
 - **[Testing Guide](testing.md)** - Unit tests, integration tests, and testing best practices
-
-### IDE Setup
-- **[VS Code](ide/vscode.md)** - Complete VS Code configuration, debugging, and tasks
 
 ### Operations (how-to)
 - **[Monitoring](monitoring.md)** - Observability, metrics, traces, and dashboards
@@ -27,7 +23,6 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 | Task | Guide |
 |------|-------|
 | Setup local environment | [Development Guide](development.md) |
-| Debug with VS Code | [VS Code Guide](ide/vscode.md) |
 | Run services natively | [Hybrid Mode](hybrid-mode.md) |
 | Write and run tests | [Testing Guide](testing.md) |
 | Debug issues | [Troubleshooting](troubleshooting.md) |

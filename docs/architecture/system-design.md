@@ -10,8 +10,11 @@ Jan Server is a microservices platform that exposes OpenAI-compatible APIs throu
 - **Response API (8082)** - multi-step orchestration and MCP tool coordination.
 - **Media API (8285)** - binary ingestion, jan_* IDs, presigned URL management.
 - **MCP Tools (8091)** - JSON-RPC endpoint that proxies Serper/SearXNG search, scraping, file search, and SandboxFusion execution.
-- **Template API (8185)** - scaffold for new services (not part of the default stack).
+- **Memory Tools (8090)** - semantic memory using BGE-M3 embeddings with caching and batch processing.
+- **Realtime API (8186)** - WebRTC session management via LiveKit for real-time audio/video communication.
 - **Shared infrastructure** - Kong (8000), Keycloak (8085), PostgreSQL, vLLM (8101), observability stack.
+
+Note: Template API (8185) is a development scaffold and not part of the deployed stack.
 
 Kong terminates TLS (in production), validates JWT/API keys, applies rate limits, and forwards requests to the internal services.
 
@@ -20,7 +23,7 @@ Kong terminates TLS (in production), validates JWT/API keys, applies rate limits
 | Layer | Components | Notes |
 |-------|------------|-------|
 | **Edge** | Kong Gateway, Keycloak | Centralized auth, rate limiting, guest-token endpoint. |
-| **Application** | LLM API, Response API, Media API, MCP Tools | Written in Go using Gin + zerolog, configured via `pkg/config`. |
+| **Application** | LLM API, Response API, Media API, MCP Tools, Memory Tools, Realtime API | Written in Go using Gin + zerolog, configured via `pkg/config`. |
 | **Tooling** | SearXNG, Serper, SandboxFusion, vector-store | Only accessible from MCP Tools. |
 | **Data/Storage** | PostgreSQL (`api-db`, `keycloak-db`), S3-compatible storage | Media files live in object storage; metadata lives in PostgreSQL. |
 | **Inference** | vLLM (local) or remote OpenAI-compatible providers | Selected per request using the provider metadata catalog. |
@@ -49,14 +52,20 @@ Kong terminates TLS (in production), validates JWT/API keys, applies rate limits
         |                  v                     |
         |        +-------------------+           |
         +------->|    MCP Tools      |<----------+
-                 |     (8091)        |
-                 +----+---+----+-----+
-                      |   |    |
-                      |   |    +--> SandboxFusion
-                      |   +-------> Vector Store
-                      +-----------> SearXNG / Serper
+        |        |     (8091)        |
+        |        +----+---+----+-----+
+        |             |   |    |
+        |             |   |    +--> SandboxFusion
+        |             |   +-------> Vector Store
+        |             +-----------> SearXNG / Serper
+        |
+        v
+  +---------------+      +----------------+
+  | Memory Tools  |      | Realtime API   |
+  |   (8090)      |      |    (8186)      |
+  +---------------+      +----------------+
 
-Shared dependencies (not shown): PostgreSQL (api-db), S3/Object storage, Keycloak (JWT issuer), vLLM (8101).
+Shared dependencies (not shown): PostgreSQL (api-db), S3/Object storage, Keycloak (JWT issuer), vLLM (8101), BGE-M3 (embeddings), LiveKit (WebRTC).
 ```
 
 ## 4. Request Lifecycles

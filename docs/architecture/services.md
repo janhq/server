@@ -6,11 +6,13 @@ Jan Server ships four core services plus shared infrastructure. Use this documen
 
 | Service | Purpose | Port(s) | Source | Primary Docs |
 |---------|---------|---------|--------|--------------|
-| **LLM API** | OpenAI-compatible chat completions, conversation storage, model management | 8080 (direct), 8000 via Kong | `services/llm-api` | [api/llm-api/README.md](api/llm-api/README.md), [Examples](api/llm-api/comprehensive-examples.md) |
-| **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools | 8082 | `services/response-api` | [api/response-api/README.md](api/response-api/README.md) |
-| **Media API** | Binary ingestion, jan_* IDs, S3 storage and resolution | 8285 | `services/media-api` | [api/media-api/README.md](api/media-api/README.md) |
-| **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091 | `services/mcp-tools` | [api/mcp-tools/README.md](api/mcp-tools/README.md), [services/mcp-tools/README.md](../services/mcp-tools/README.md) |
-| **Service Template (scaffold)** | Go microservice blueprint for new services (not deployed) | - | `services/template-api` | [guides/services-template.md](../guides/services-template.md) |
+| **LLM API** | OpenAI-compatible chat completions, conversation storage, model management | 8080 (direct), 8000 via Kong | `services/llm-api` | [../api/llm-api/README.md](../api/llm-api/README.md) |
+| **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools | 8082 | `services/response-api` | [../api/response-api/README.md](../api/response-api/README.md) |
+| **Media API** | Binary ingestion, jan_* IDs, S3 storage and resolution | 8285 | `services/media-api` | [../api/media-api/README.md](../api/media-api/README.md) |
+| **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091 | `services/mcp-tools` | [../api/mcp-tools/README.md](../api/mcp-tools/README.md) |
+| **Memory Tools** | Semantic memory with BGE-M3 embeddings, conversation caching | 8090 | `services/memory-tools` | `services/memory-tools/README.md` |
+| **Realtime API** | WebRTC session management via LiveKit for real-time audio/video | 8186 | `services/realtime-api` | `services/realtime-api/README.md` |
+| **Template API (scaffold)** | Go microservice blueprint for new services (not deployed) | 8185 | `services/template-api` | [../guides/services-template.md](../guides/services-template.md) |
 
 ## Configuration
 
@@ -22,15 +24,11 @@ All services use the **centralized configuration system** at `pkg/config/`:
 - **Kubernetes values:** Auto-generated from configuration structs
 - **CLI tool:** `jan-cli config` for validation and inspection
 
-See [Configuration Documentation](configuration/README.md) for details.
+See [Configuration Documentation](../configuration/README.md) for details.
 
 ## Infrastructure Components
-- **Kong Gateway (8000)**: exposes public APIs, enforces rate limits, validates Keycloak JWTs/API keys (custom plugin), and proxies `/llm/auth/guest-login` for guest tokens.
-- **Keycloak (8085)**: handles OAuth2/OIDC flows; see `keycloak/`.
-- **PostgreSQL**: `api-db` (LLM/Response/Media data) and `keycloak-db` (Keycloak state).
-- **vLLM (8101)**: inference backend reachable from llm-api.
-- **Observability stack**: Prometheus (9090), Grafana (3331), Jaeger (16686), OpenTelemetry Collector.
-- **MCP support services**: SearXNG (search), Vector Store (file search), SandboxFusion (python execution).
+
+For detailed infrastructure architecture (Kong, Keycloak, databases, observability), see [System Design](system-design.md#2-architecture-layers).
 
 ## Creating a New Service
 
@@ -71,13 +69,13 @@ New services should use the centralized configuration system:
  - Add service to `docker/services-api.yml`
  - Generate K8s values: `jan-cli config k8s-values --env production`
 
-See [Configuration System](configuration/README.md) and [Service Template Guide](../guides/services-template.md) for the scaffold and full instructions.
+See [Configuration System](../configuration/README.md) and [Service Template Guide](../guides/services-template.md) for the scaffold and full instructions.
 
 ### Documentation Requirements
 
-1. Update `docs/services.md` (this file) with new service row
+1. Update `docs/architecture/services.md` (this file) with new service row
 2. Create `docs/api/<service>/README.md` with API reference
-3. Add service to `docs/index.md` navigation
+3. Add service to `docs/README.md` navigation
 4. Update `k8s/jan-server/values.yaml` if deploying to Kubernetes
 
 ## Service Interactions

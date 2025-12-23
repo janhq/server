@@ -125,6 +125,25 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 - Can share database with other services or use separate database
 - Read replica is optional; falls back to write DSN if not configured
 
+### Realtime API
+
+| Centralized Env Var | Type | Default | Current Var | Status |
+|---------------------|------|---------|-------------|--------|
+| `REALTIME_API_PORT` | int | `8186` | `REALTIME_API_PORT` | OK Aligned |
+| `REALTIME_LOG_LEVEL` | string | `info` | `LOG_LEVEL` | TODO Need prefix |
+| `LIVEKIT_WS_URL` | string | `wss://your-livekit-server.com` | `LIVEKIT_WS_URL` | OK Aligned |
+| `LIVEKIT_API_KEY` | string | (secret) | `LIVEKIT_API_KEY` | OK Aligned |
+| `LIVEKIT_API_SECRET` | string | (secret) | `LIVEKIT_API_SECRET` | OK Aligned |
+| `LIVEKIT_TOKEN_TTL` | duration | `24h` | `LIVEKIT_TOKEN_TTL` | OK Aligned |
+| `SESSION_STALE_TTL` | duration | `10m` | `SESSION_STALE_TTL` | OK Aligned |
+| `SESSION_CLEANUP_INTERVAL` | duration | `15s` | `SESSION_CLEANUP_INTERVAL` | OK Aligned |
+| `REALTIME_AUTH_ENABLED` | bool | `true` | `AUTH_ENABLED` | TODO Need prefix |
+
+**Migration Notes:**
+- LiveKit configuration already uses proper prefixes
+- Session management variables are clear and aligned
+- Only generic LOG_LEVEL and AUTH_ENABLED need REALTIME_ prefix for consistency
+
 ### Media API
 
 | Centralized Env Var | Type | Default | Current Var | Status |

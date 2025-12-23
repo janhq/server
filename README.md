@@ -87,7 +87,7 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 
 Primary entry points:
 - [docs/README.md](docs/README.md) - Documentation hub overview
-- [docs/index.md](docs/index.md) - Navigation map grouped by audience
+- [docs/README.md](docs/README.md) - Navigation map grouped by audience
 - [docs/architecture/services.md](docs/architecture/services.md) - Service responsibilities and ports
 - [docs/api/README.md](docs/api/README.md) - API reference hub
 - [docs/getting-started/README.md](docs/getting-started/README.md) - Five minute setup
