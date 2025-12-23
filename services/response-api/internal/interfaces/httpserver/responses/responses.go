@@ -107,3 +107,8 @@ func FromDomain(r *response.Response) ResponsePayload {
 		Error:              r.Error,
 	}
 }
+
+// ConversationItemsResponse wraps conversation input items for consistent responses.
+type ConversationItemsResponse struct {
+	Data []response.ConversationItem `json:"data"`
+}
