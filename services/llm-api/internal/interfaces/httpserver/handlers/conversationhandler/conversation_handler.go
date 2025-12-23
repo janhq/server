@@ -176,9 +176,10 @@ func (h *ConversationHandler) UpdateConversation(
 	if req.ProjectID != nil {
 		projectID := strings.TrimSpace(*req.ProjectID)
 		if projectID == "" {
-			// Explicitly clear project association
-			input.ProjectID = nil
-			input.ProjectPublicID = nil
+			zeroID := uint(0)
+			emptyStr := ""
+			input.ProjectID = &zeroID
+			input.ProjectPublicID = &emptyStr
 		} else {
 			// Verify project exists and user has access
 			if h.projectService == nil {

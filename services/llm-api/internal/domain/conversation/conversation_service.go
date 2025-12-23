@@ -168,8 +168,13 @@ func (s *ConversationService) UpdateConversationWithInput(ctx context.Context, u
 	}
 
 	if input.ProjectID != nil {
-		conversation.ProjectID = input.ProjectID
-		conversation.ProjectPublicID = input.ProjectPublicID
+		if *input.ProjectID == 0 {
+			conversation.ProjectID = nil
+			conversation.ProjectPublicID = nil
+		} else {
+			conversation.ProjectID = input.ProjectID
+			conversation.ProjectPublicID = input.ProjectPublicID
+		}
 		// Clear cached instruction snapshot so the next request pulls the new project's instruction
 		conversation.EffectiveInstructionSnapshot = nil
 	}
