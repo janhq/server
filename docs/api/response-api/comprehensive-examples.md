@@ -21,16 +21,6 @@ Complete working examples for Response API multi-step tool orchestration with Py
 
 All Response API calls require authentication via Kong Gateway.
 
-**Python:**
-```python
-import requests
-
-# Get guest token
-response = requests.post("http://localhost:8000/llm/auth/guest-login")
-token = response.json()["access_token"]
-headers = {"Authorization": f"Bearer {token}"}
-```
-
 **JavaScript:**
 ```javascript
 // Get guest token
@@ -55,27 +45,6 @@ export TOKEN
 ### Simple Tool Execution
 
 Execute a single tool with automatic LLM orchestration.
-
-**Python:**
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "What's the weather in San Francisco?",
-        "temperature": 0.7,
-        "stream": False
-    },
-    headers=headers
-)
-
-result = response.json()
-print(f"Response ID: {result['id']}")
-print(f"Output: {result['output']}")
-print(f"Tools Used: {len(result.get('tool_executions', []))}")
-```
 
 **JavaScript:**
 ```javascript
@@ -147,30 +116,6 @@ curl -X POST http://localhost:8000/responses/v1/responses \
 
 Let the AI orchestrate multiple tools in sequence.
 
-**Python:**
-```python
-# Research and analysis workflow
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Research the latest developments in quantum computing and create a summary with key findings",
-        "system_prompt": "You are a research assistant. Use web search and scraping tools to gather information.",
-        "temperature": 0.3,
-        "max_tokens": 1000
-    },
-    headers=headers
-)
-
-result = response.json()
-print(f"\n=== Execution Flow ===")
-for i, tool_exec in enumerate(result['tool_executions'], 1):
-    print(f"{i}. {tool_exec['tool_name']} (depth: {tool_exec['depth']}, {tool_exec['execution_time_ms']}ms)")
-    
-print(f"\n=== Final Output ===")
-print(result['output'])
-```
-
 **JavaScript:**
 ```javascript
 // Multi-step data gathering
@@ -214,22 +159,6 @@ curl -X POST http://localhost:8000/responses/v1/responses \
 
 Limit the depth of tool chaining:
 
-**Python:**
-```python
-# Limit to 3 levels of tool chaining
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Complex research task",
-        "metadata": {
-            "max_depth": 3  # Application-level depth control
-        }
-    },
-    headers=headers
-)
-```
-
 > **Note:** Server-wide depth limit is controlled by `RESPONSE_MAX_TOOL_DEPTH` environment variable (default: 8). Client requests are bounded by this limit.
 
 ---
@@ -239,31 +168,6 @@ response = requests.post(
 ### Creating Background Tasks
 
 Submit long-running tasks without holding connection open.
-
-**Python:**
-```python
-# Submit background task
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Write a comprehensive 2000-word analysis of AI safety research",
-        "background": True,
-        "store": True,
-        "metadata": {
-            "webhook_url": "https://myapp.com/webhooks/responses",
-            "user_id": "user_123",
-            "task_type": "analysis"
-        }
-    },
-    headers=headers
-)
-
-result = response.json()
-print(f"Task ID: {result['id']}")
-print(f"Status: {result['status']}")  # "queued"
-print(f"Queued at: {result['queued_at']}")
-```
 
 **JavaScript:**
 ```javascript
@@ -312,43 +216,6 @@ echo "Task ID: $TASK_ID"
 ### Polling for Status
 
 Check task progress:
-
-**Python:**
-```python
-import time
-
-def wait_for_completion(response_id, headers, max_wait=300):
-    """Poll until task completes or times out"""
-    start_time = time.time()
-    
-    while time.time() - start_time < max_wait:
-        response = requests.get(
-            f"http://localhost:8000/responses/v1/responses/{response_id}",
-            headers=headers
-        )
-        result = response.json()
-        status = result['status']
-        
-        print(f"Status: {status}", end='')
-        if status == 'queued':
-            print(f" (waiting...)")
-        elif status == 'in_progress':
-            elapsed = time.time() - result.get('started_at', start_time)
-            print(f" (running for {elapsed:.1f}s)")
-        elif status in ['completed', 'failed', 'cancelled']:
-            print(f"\nFinal status: {status}")
-            return result
-        
-        time.sleep(2)
-    
-    raise TimeoutError(f"Task did not complete within {max_wait}s")
-
-# Usage
-task_id = "resp_abc123"
-result = wait_for_completion(task_id, headers)
-if result['status'] == 'completed':
-    print(f"\nOutput:\n{result['output']}")
-```
 
 **JavaScript:**
 ```javascript
@@ -427,34 +294,6 @@ When a background task completes, the Response API sends a POST request to the w
 ```
 
 **Webhook Handler (Python/Flask):**
-```python
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-@app.route('/webhooks/responses', methods=['POST'])
-def handle_response_webhook():
-    payload = request.json
-    response_id = payload['id']
-    status = payload['status']
-    
-    if status == 'completed':
-        # Process completed task
-        output = payload['output']
-        user_id = payload['metadata']['user_id']
-        
-        # Store result, notify user, etc.
-        save_to_database(user_id, response_id, output)
-        notify_user(user_id, "Your report is ready!")
-        
-    elif status == 'failed':
-        # Handle failure
-        error = payload.get('error', 'Unknown error')
-        log_error(response_id, error)
-    
-    return jsonify({"received": True}), 200
-```
-
 **Webhook Handler (Node.js/Express):**
 ```javascript
 app.post('/webhooks/responses', async (req, res) => {
@@ -473,19 +312,6 @@ app.post('/webhooks/responses', async (req, res) => {
 ```
 
 ### Cancelling Background Tasks
-
-**Python:**
-```python
-# Cancel a queued or running task
-response = requests.post(
-    f"http://localhost:8000/responses/v1/responses/{task_id}/cancel",
-    headers=headers
-)
-
-result = response.json()
-print(f"Status: {result['status']}")  # "cancelled"
-print(f"Cancelled at: {result.get('cancelled_at')}")
-```
 
 **JavaScript:**
 ```javascript
@@ -511,43 +337,6 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ### Real-time Tool Execution Streaming
 
 Get tool execution updates and output as Server-Sent Events (SSE).
-
-**Python:**
-```python
-import requests
-import json
-
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Research AI safety and provide key insights",
-        "stream": True
-    },
-    headers=headers,
-    stream=True
-)
-
-print("Streaming response:")
-for line in response.iter_lines():
-    if line:
-        line_str = line.decode('utf-8')
-        if line_str.startswith('data: '):
-            data_str = line_str[6:]  # Remove 'data: ' prefix
-            if data_str == '[DONE]':
-                print("\nStream complete")
-                break
-            
-            try:
-                event = json.loads(data_str)
-                if 'tool_execution' in event:
-                    tool = event['tool_execution']
-                    print(f"\n[Tool: {tool['tool_name']}]")
-                elif 'delta' in event:
-                    print(event['delta'].get('content', ''), end='', flush=True)
-            except json.JSONDecodeError:
-                pass
-```
 
 **JavaScript:**
 ```javascript
@@ -630,20 +419,6 @@ data: [DONE]
 
 ### Get Response Details
 
-**Python:**
-```python
-response = requests.get(
-    f"http://localhost:8000/responses/v1/responses/{response_id}",
-    headers=headers
-)
-
-result = response.json()
-print(f"Status: {result['status']}")
-print(f"Model: {result['model']}")
-print(f"Total tokens: {result['usage']['total_tokens']}")
-print(f"Tools executed: {len(result['tool_executions'])}")
-```
-
 **JavaScript:**
 ```javascript
 const response = await fetch(
@@ -666,20 +441,6 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 Get the normalized conversation items sent to the LLM:
 
-**Python:**
-```python
-response = requests.get(
-    f"http://localhost:8000/responses/v1/responses/{response_id}/input_items",
-    headers=headers
-)
-
-items = response.json()
-for item in items:
-    print(f"Role: {item['role']}")
-    print(f"Content: {item['content'][:100]}...")
-    print("---")
-```
-
 **cURL:**
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
@@ -687,16 +448,6 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 ### Delete Response
-
-**Python:**
-```python
-response = requests.delete(
-    f"http://localhost:8000/responses/v1/responses/{response_id}",
-    headers=headers
-)
-
-print(f"Deleted: {response.status_code == 204}")
-```
 
 **JavaScript:**
 ```javascript
@@ -721,40 +472,7 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 ### Common Error Scenarios
 
 **Request Validation Error (400):**
-```python
-try:
-    response = requests.post(
-        "http://localhost:8000/responses/v1/responses",
-        json={
-            "model": "jan-v2-30b"
-            # Missing required 'input' field
-        },
-        headers=headers
-    )
-    response.raise_for_status()
-except requests.exceptions.HTTPError as e:
-    error = response.json()
-    print(f"Error: {error['error']['message']}")
-    print(f"Type: {error['error']['type']}")
-```
-
 **Tool Execution Timeout (408):**
-```python
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Complex task requiring long tool execution"
-    },
-    headers=headers
-)
-
-result = response.json()
-if result.get('status') == 'failed':
-    print(f"Failure reason: {result.get('error')}")
-    # Handle timeout, possibly retry with simpler prompt
-```
-
 **Max Depth Exceeded:**
 ```json
 {
@@ -767,16 +485,6 @@ if result.get('status') == 'failed':
 ```
 
 **Response Not Found (404):**
-```python
-response = requests.get(
-    "http://localhost:8000/responses/v1/responses/invalid_id",
-    headers=headers
-)
-
-if response.status_code == 404:
-    print("Response not found or deleted")
-```
-
 ---
 
 ## Real-World Examples
@@ -785,105 +493,17 @@ if response.status_code == 404:
 
 Comprehensive research with multiple tool calls:
 
-```python
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": """Research the following and provide a detailed report:
-        1. Latest quantum computing breakthroughs
-        2. Key companies and research labs involved
-        3. Timeline projections for practical applications
-        
-        Use multiple sources and cite them.""",
-        "system_prompt": "You are a thorough research assistant. Use search and scraping tools extensively.",
-        "temperature": 0.3,
-        "max_tokens": 2000,
-        "background": True,
-        "store": True,
-        "metadata": {
-            "webhook_url": "https://myapp.com/research-complete",
-            "project_id": "quantum-research-2025"
-        }
-    },
-    headers=headers
-)
-
-print(f"Research task queued: {response.json()['id']}")
-```
-
 ### Example 2: Competitive Analysis
 
 Multi-step analysis with data gathering:
-
-```python
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Analyze the top 3 AI coding assistants: features, pricing, and user reception",
-        "system_prompt": "Provide factual, up-to-date information with sources",
-        "temperature": 0.4,
-        "stream": False
-    },
-    headers=headers
-)
-
-result = response.json()
-print(f"Tools used: {[t['tool_name'] for t in result['tool_executions']]}")
-print(f"\nAnalysis:\n{result['output']}")
-```
 
 ### Example 3: Content Generation with Research
 
 Generate blog post with cited sources:
 
-```python
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": "Write a 1000-word blog post about 'The Future of AI in Healthcare' with current examples and statistics",
-        "system_prompt": "Research current information first, then write an engaging article with proper citations",
-        "temperature": 0.7,
-        "max_tokens": 1500,
-        "background": True,
-        "store": True
-    },
-    headers=headers
-)
-
-task_id = response.json()['id']
-print(f"Content generation task: {task_id}")
-```
-
 ### Example 4: Data Extraction Pipeline
 
 Extract structured data from web sources:
-
-```python
-response = requests.post(
-    "http://localhost:8000/responses/v1/responses",
-    json={
-        "model": "jan-v2-30b",
-        "input": """Find the top 5 AI conferences in 2025 and extract:
-        - Name
-        - Date
-        - Location
-        - Website
-        - Key topics
-        
-        Return as structured JSON.""",
-        "system_prompt": "Use search and scraping to gather accurate information",
-        "temperature": 0.1,
-        "stream": False
-    },
-    headers=headers
-)
-
-result = response.json()
-print(result['output'])
-```
 
 ---
 
@@ -906,48 +526,6 @@ Key configuration options for Response API behavior:
 ### Response Object Schema
 
 Complete response object structure:
-
-```typescript
-interface Response {
-  id: string;                    // resp_*
-  model: string;                 // Model used
-  input: string | object;        // Original input
-  output?: string;               // Generated output (when completed)
-  status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
-  background?: boolean;          // Background mode flag
-  store?: boolean;              // Persistence flag
-  
-  // Timestamps
-  created_at: string;           // ISO 8601
-  queued_at?: number;           // Unix timestamp
-  started_at?: number;          // Unix timestamp
-  completed_at?: number;        // Unix timestamp
-  cancelled_at?: number;        // Unix timestamp
-  
-  // Execution details
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-  
-  tool_executions?: Array<{
-    tool_name: string;
-    input: object;
-    output: any;
-    execution_time_ms: number;
-    depth: number;
-    status: 'completed' | 'failed';
-  }>;
-  
-  // Additional data
-  metadata?: object;            // Custom client data
-  system_prompt?: string;
-  temperature?: number;
-  max_tokens?: number;
-  error?: string;               // Error message (when failed)
-}
-```
 
 ---
 

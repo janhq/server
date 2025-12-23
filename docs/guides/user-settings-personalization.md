@@ -136,35 +136,6 @@ Update any combination of settings (partial update supported).
 
 ## Usage Examples
 
-### Python
-
-```python
-import requests
-
-token = "your_token_here"
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json"
-}
-
-# Get settings
-response = requests.get(
-    "http://localhost:8000/v1/users/me/settings",
-    headers=headers
-)
-settings = response.json()
-
-# Update profile settings
-settings['profile_settings']['base_style'] = 'Professional'
-settings['advanced_settings']['web_search'] = True
-
-response = requests.patch(
-    "http://localhost:8000/v1/users/me/settings",
-    headers=headers,
-    json=settings
-)
-```
-
 ### JavaScript
 
 ```javascript

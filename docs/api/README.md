@@ -322,26 +322,6 @@ Official SDKs are coming soon. In the meantime, use OpenAI-compatible clients wi
 
 Contributions welcome! Jan Server is OpenAI-compatible, so most OpenAI client libraries work with minor configuration changes.
 
-#### Python Example (OpenAI SDK)
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
- base_url="http://localhost:8000/v1",
- api_key="your_guest_token_here"
-)
-
-response = client.chat.completions.create(
- model="jan-v1-4b",
- messages=[
- {"role": "user", "content": "Hello!"}
- ]
-)
-
-print(response.choices[0].message.content)
-```
-
 #### JavaScript Example (OpenAI SDK)
 
 ```javascript

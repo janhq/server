@@ -598,24 +598,8 @@ curl -s -H "Authorization: Bearer <token>" \
 3. View received webhooks in the browser
 
 **Local Webhook Server:**
-```python
-# webhook_server.py
-from flask import Flask, request
-import json
 
-app = Flask(__name__)
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    print("\n=== Webhook Received ===")
-    print(f"Event: {request.headers.get('X-Jan-Event')}")
-    print(f"Response ID: {request.headers.get('X-Jan-Response-ID')}")
-    print(json.dumps(request.get_json(), indent=2))
-    return '', 200
-
-if __name__ == '__main__':
-    app.run(port=9000)
-```
+Create a simple HTTP server that accepts POST requests to `/webhook` and logs the received event data.
 
 ```bash
 # Run webhook server

@@ -22,16 +22,6 @@ Complete working examples for Media API uploads, jan_* ID management, and presig
 
 All Media API calls require authentication via Kong Gateway.
 
-**Python:**
-```python
-import requests
-
-# Get guest token
-response = requests.post("http://localhost:8000/llm/auth/guest-login")
-token = response.json()["access_token"]
-headers = {"Authorization": f"Bearer {token}"}
-```
-
 **JavaScript:**
 ```javascript
 // Get guest token
@@ -54,30 +44,6 @@ export TOKEN
 ## Upload from Remote URL
 
 Upload an image from a remote URL. The Media API fetches and stores it in S3.
-
-**Python:**
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8000/media/v1/media",
-    json={
-        "source": {
-            "type": "remote_url",
-            "url": "https://example.com/images/photo.jpg"
-        },
-        "user_id": "user_123"
-    },
-    headers=headers
-)
-
-result = response.json()
-print(f"Jan ID: {result['id']}")
-print(f"MIME type: {result['mime']}")
-print(f"Size: {result['bytes']} bytes")
-print(f"Deduped: {result['deduped']}")
-print(f"Download URL: {result['presigned_url']}")
-```
 
 **JavaScript:**
 ```javascript
@@ -134,32 +100,6 @@ curl -X POST http://localhost:8000/media/v1/media \
 ## Upload from Base64/Data URL
 
 Upload an image from a base64-encoded data URL (useful for canvas captures or base64 images).
-
-**Python:**
-```python
-import base64
-
-# Read image and convert to base64
-with open("image.png", "rb") as f:
-    image_data = base64.b64encode(f.read()).decode()
-    data_url = f"data:image/png;base64,{image_data}"
-
-response = requests.post(
-    "http://localhost:8000/media/v1/media",
-    json={
-        "source": {
-            "type": "data_url",
-            "data_url": data_url
-        },
-        "user_id": "user_456"
-    },
-    headers=headers
-)
-
-result = response.json()
-print(f"Jan ID: {result['id']}")
-print(f"Uploaded: {result['bytes']} bytes")
-```
 
 **JavaScript:**
 ```javascript
@@ -218,26 +158,6 @@ For large files, use presigned URLs to upload directly to S3 (bypassing the Medi
 
 ### Step 1: Request Presigned URL
 
-**Python:**
-```python
-# Request presigned URL for direct upload
-response = requests.post(
-    "http://localhost:8000/media/v1/media/prepare-upload",
-    json={
-        "content_type": "image/jpeg",
-        "user_id": "user_789"
-    },
-    headers=headers
-)
-
-result = response.json()
-jan_id = result['jan_id']
-presigned_post = result['presigned_post']
-
-print(f"Jan ID: {jan_id}")
-print(f"Upload URL: {presigned_post['url']}")
-```
-
 **JavaScript:**
 ```javascript
 const response = await fetch("http://localhost:8000/media/v1/media/prepare-upload", {
@@ -294,24 +214,6 @@ echo "Upload URL: $UPLOAD_URL"
 
 ### Step 2: Upload Directly to S3
 
-**Python:**
-```python
-import requests
-
-# Upload file directly to S3 using presigned POST
-with open("photo.jpg", "rb") as f:
-    files = {"file": f}
-    response = requests.post(
-        presigned_post['url'],
-        data=presigned_post['fields'],
-        files=files
-    )
-
-if response.status_code == 204:
-    print("Upload successful!")
-    print(f"Jan ID: {jan_id}")
-```
-
 **JavaScript:**
 ```javascript
 // Upload file directly to S3
@@ -363,19 +265,6 @@ echo "Jan ID: $JAN_ID"
 
 After uploading to S3, get a presigned download URL:
 
-**Python:**
-```python
-response = requests.get(
-    f"http://localhost:8000/media/v1/media/{jan_id}/presign",
-    headers=headers
-)
-
-result = response.json()
-download_url = result['url']
-print(f"Download URL: {download_url}")
-print(f"Expires in: {result['expires_in']} seconds")
-```
-
 **JavaScript:**
 ```javascript
 const response = await fetch(
@@ -399,28 +288,6 @@ curl -H "Authorization: Bearer $TOKEN" \
 ## Resolve Media IDs
 
 Resolve multiple jan_* IDs to presigned URLs in a single request.
-
-**Python:**
-```python
-response = requests.post(
-    "http://localhost:8000/media/v1/media/resolve",
-    json={
-        "ids": [
-            "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
-            "jan_01hqr8v9k2x3f4g5h6j7k8m9n1",
-            "jan_01hqr8v9k2x3f4g5h6j7k8m9n2"
-        ]
-    },
-    headers=headers
-)
-
-result = response.json()
-for media in result['media']:
-    print(f"ID: {media['id']}")
-    print(f"URL: {media['presigned_url']}")
-    print(f"Expires: {media['expires_at']}")
-    print("---")
-```
 
 **JavaScript:**
 ```javascript
@@ -482,23 +349,6 @@ curl -X POST http://localhost:8000/media/v1/media/resolve \
 
 Get metadata and presigned URL for a single media item.
 
-**Python:**
-```python
-jan_id = "jan_01hqr8v9k2x3f4g5h6j7k8m9n0"
-
-response = requests.get(
-    f"http://localhost:8000/media/v1/media/{jan_id}",
-    headers=headers
-)
-
-result = response.json()
-print(f"ID: {result['id']}")
-print(f"MIME type: {result['mime']}")
-print(f"Size: {result['bytes']} bytes")
-print(f"Created: {result['created_at']}")
-print(f"Download URL: {result['presigned_url']}")
-```
-
 **JavaScript:**
 ```javascript
 const janId = "jan_01hqr8v9k2x3f4g5h6j7k8m9n0";
@@ -538,25 +388,6 @@ curl -H "Authorization: Bearer $TOKEN" \
 ## Get Presigned URL
 
 Get a fresh presigned download URL (useful when URLs expire).
-
-**Python:**
-```python
-jan_id = "jan_01hqr8v9k2x3f4g5h6j7k8m9n0"
-
-response = requests.get(
-    f"http://localhost:8000/media/v1/media/{jan_id}/presign",
-    headers=headers
-)
-
-result = response.json()
-print(f"Download URL: {result['url']}")
-print(f"Expires in: {result['expires_in']} seconds")
-
-# Download the file
-file_response = requests.get(result['url'])
-with open("downloaded_image.jpg", "wb") as f:
-    f.write(file_response.content)
-```
 
 **JavaScript:**
 ```javascript
@@ -599,54 +430,6 @@ curl -o downloaded_image.jpg "$DOWNLOAD_URL"
 Use jan_* IDs in chat completions for vision models.
 
 ### Complete Flow: Upload → Chat
-
-**Python:**
-```python
-# Step 1: Upload image
-upload_response = requests.post(
-    "http://localhost:8000/media/v1/media",
-    json={
-        "source": {
-            "type": "remote_url",
-            "url": "https://example.com/diagram.png"
-        },
-        "user_id": "user_123"
-    },
-    headers=headers
-)
-
-jan_id = upload_response.json()['id']
-print(f"Uploaded: {jan_id}")
-
-# Step 2: Use in chat completion
-chat_response = requests.post(
-    "http://localhost:8000/v1/chat/completions",
-    json={
-        "model": "jan-v2-30b",
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "Explain what this diagram shows"
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": jan_id  # Use jan_* ID directly
-                        }
-                    }
-                ]
-            }
-        ]
-    },
-    headers=headers
-)
-
-result = chat_response.json()
-print(f"\nAI Response:\n{result['choices'][0]['message']['content']}")
-```
 
 **JavaScript:**
 ```javascript
@@ -726,41 +509,6 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 ### Multiple Images in One Request
 
-**Python:**
-```python
-# Upload multiple images
-image_urls = [
-    "https://example.com/image1.jpg",
-    "https://example.com/image2.jpg",
-    "https://example.com/image3.jpg"
-]
-
-jan_ids = []
-for url in image_urls:
-    response = requests.post(
-        "http://localhost:8000/media/v1/media",
-        json={"source": {"type": "remote_url", "url": url}, "user_id": "user_123"},
-        headers=headers
-    )
-    jan_ids.append(response.json()['id'])
-
-# Use all images in chat
-content = [{"type": "text", "text": "Compare these images and identify the differences:"}]
-for jan_id in jan_ids:
-    content.append({"type": "image_url", "image_url": {"url": jan_id}})
-
-chat_response = requests.post(
-    "http://localhost:8000/v1/chat/completions",
-    json={
-        "model": "jan-v2-30b",
-        "messages": [{"role": "user", "content": content}]
-    },
-    headers=headers
-)
-
-print(chat_response.json()['choices'][0]['message']['content'])
-```
-
 ---
 
 ## Error Handling
@@ -768,25 +516,6 @@ print(chat_response.json()['choices'][0]['message']['content'])
 ### Common Error Scenarios
 
 **Invalid URL (400):**
-```python
-try:
-    response = requests.post(
-        "http://localhost:8000/media/v1/media",
-        json={
-            "source": {
-                "type": "remote_url",
-                "url": "not-a-valid-url"
-            },
-            "user_id": "user_123"
-        },
-        headers=headers
-    )
-    response.raise_for_status()
-except requests.exceptions.HTTPError as e:
-    error = response.json()
-    print(f"Error: {error['error']['message']}")
-```
-
 **File Too Large (413):**
 ```json
 {
@@ -799,38 +528,7 @@ except requests.exceptions.HTTPError as e:
 ```
 
 **Media Not Found (404):**
-```python
-response = requests.get(
-    "http://localhost:8000/media/v1/media/jan_invalid_id",
-    headers=headers
-)
-
-if response.status_code == 404:
-    print("Media not found or has been deleted")
-```
-
 **Network/Fetch Error:**
-```python
-try:
-    response = requests.post(
-        "http://localhost:8000/media/v1/media",
-        json={
-            "source": {
-                "type": "remote_url",
-                "url": "https://unreachable-site.com/image.jpg"
-            },
-            "user_id": "user_123"
-        },
-        headers=headers,
-        timeout=30
-    )
-    response.raise_for_status()
-except requests.exceptions.Timeout:
-    print("Timeout fetching remote image")
-except requests.exceptions.RequestException as e:
-    print(f"Network error: {e}")
-```
-
 ### Error Response Format
 
 ```json
@@ -849,38 +547,6 @@ except requests.exceptions.RequestException as e:
 ## Real-World Examples
 
 ### Example 1: Image Gallery with Thumbnails
-
-```python
-# Upload images from URLs
-image_urls = [
-    "https://unsplash.com/photo1.jpg",
-    "https://unsplash.com/photo2.jpg",
-    "https://unsplash.com/photo3.jpg"
-]
-
-gallery = []
-for url in image_urls:
-    response = requests.post(
-        "http://localhost:8000/media/v1/media",
-        json={
-            "source": {"type": "remote_url", "url": url},
-            "user_id": "gallery_user"
-        },
-        headers=headers
-    )
-    
-    result = response.json()
-    gallery.append({
-        "jan_id": result['id'],
-        "download_url": result['presigned_url'],
-        "size": result['bytes'],
-        "mime": result['mime']
-    })
-
-print(f"Gallery created with {len(gallery)} images")
-for item in gallery:
-    print(f"  - {item['jan_id']}: {item['size']} bytes")
-```
 
 ### Example 2: Screenshot Upload from Canvas
 
@@ -910,68 +576,7 @@ console.log(`Screenshot saved: ${janId}`);
 
 ### Example 3: Batch Upload with Progress
 
-```python
-import concurrent.futures
-
-def upload_image(url, user_id):
-    response = requests.post(
-        "http://localhost:8000/media/v1/media",
-        json={
-            "source": {"type": "remote_url", "url": url},
-            "user_id": user_id
-        },
-        headers=headers
-    )
-    return response.json()
-
-# Batch upload with threading
-urls = [f"https://example.com/image{i}.jpg" for i in range(1, 11)]
-results = []
-
-with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-    futures = [executor.submit(upload_image, url, "batch_user") for url in urls]
-    
-    for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
-        result = future.result()
-        results.append(result['id'])
-        print(f"Uploaded {i}/{len(urls)}: {result['id']}")
-
-print(f"\nAll {len(results)} images uploaded successfully")
-```
-
 ### Example 4: Deduplication Check
-
-```python
-# Upload same image twice
-url = "https://example.com/unique-image.jpg"
-
-# First upload
-response1 = requests.post(
-    "http://localhost:8000/media/v1/media",
-    json={
-        "source": {"type": "remote_url", "url": url},
-        "user_id": "dedup_user"
-    },
-    headers=headers
-)
-
-result1 = response1.json()
-print(f"First upload: {result1['id']}, deduped={result1['deduped']}")
-
-# Second upload (same image)
-response2 = requests.post(
-    "http://localhost:8000/media/v1/media",
-    json={
-        "source": {"type": "remote_url", "url": url},
-        "user_id": "dedup_user"
-    },
-    headers=headers
-)
-
-result2 = response2.json()
-print(f"Second upload: {result2['id']}, deduped={result2['deduped']}")
-print(f"Same ID: {result1['id'] == result2['id']}")  # True
-```
 
 ---
 

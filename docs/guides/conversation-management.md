@@ -409,69 +409,6 @@ curl -H "Authorization: Bearer <token>" \
 
 ## Python Examples
 
-### Basic Conversation Flow
-
-```python
-import requests
-
-token = "your_token_here"
-headers = {"Authorization": f"Bearer {token}"}
-
-# Create conversation
-response = requests.post(
-    "http://localhost:8000/v1/conversations",
-    headers=headers,
-    json={"title": "Chat with AI"}
-)
-conv_id = response.json()["id"]
-
-# Send message
-requests.post(
-    f"http://localhost:8000/v1/conversations/{conv_id}/items",
-    headers=headers,
-    json={"role": "user", "content": "Hello!"}
-)
-
-# Get conversation
-response = requests.get(
-    f"http://localhost:8000/v1/conversations/{conv_id}",
-    headers=headers
-)
-conversation = response.json()
-print(f"Messages: {len(conversation['items'])}")
-```
-
-### Bulk Delete Old Conversations
-
-```python
-import requests
-from datetime import datetime, timedelta
-
-token = "your_token_here"
-headers = {"Authorization": f"Bearer {token}"}
-
-# Get all conversations
-response = requests.get(
-    "http://localhost:8000/v1/conversations?limit=100",
-    headers=headers
-)
-
-# Find old conversations (older than 30 days)
-old_date = datetime.now() - timedelta(days=30)
-old_convs = [
-    c["id"] for c in response.json()["data"]
-    if datetime.fromisoformat(c["created_at"]) < old_date
-]
-
-# Delete in bulk
-if old_convs:
-    requests.post(
-        "http://localhost:8000/v1/conversations/bulk-delete",
-        headers=headers,
-        json={"conversation_ids": old_convs}
-    )
-```
-
 ## JavaScript Examples
 
 ### Share a Conversation
