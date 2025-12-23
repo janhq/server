@@ -2,7 +2,6 @@ package chathandler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -509,40 +508,8 @@ func (h *ChatHandler) streamCompletion(
 	conv *conversation.Conversation,
 	request chat.CompletionRequest,
 ) (*openai.ChatCompletionResponse, error) {
-	// Create callback to send conversation data before [DONE]
-	var beforeDoneCallback chat.BeforeDoneCallback
-	if conv != nil && conv.PublicID != "" {
-		beforeDoneCallback = func(reqCtx *gin.Context) error {
-			// Build conversation data with ID and title
-			conversationData := map[string]interface{}{
-				"id": conv.PublicID,
-			}
-
-			// Include title if available
-			if conv.Title != nil && *conv.Title != "" {
-				conversationData["title"] = *conv.Title
-			}
-
-			conversationChunk := map[string]interface{}{
-				"conversation": conversationData,
-				"created":      time.Now().Unix(),
-				"id":           "", // Empty for conversation-only chunk
-				"model":        request.Model,
-				"object":       "chat.completion.chunk",
-			}
-
-			chunkJSON, err := json.Marshal(conversationChunk)
-			if err != nil {
-				return err
-			}
-
-			// Write conversation context as an SSE event BEFORE [DONE]
-			return h.writeSSEData(reqCtx, string(chunkJSON))
-		}
-	}
-
 	// Stream completion response to context with callback
-	resp, err := chatClient.StreamChatCompletionToContextWithCallback(reqCtx, "", request, beforeDoneCallback)
+	resp, err := chatClient.StreamChatCompletionToContextWithCallback(reqCtx, "", request, nil)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "streaming completion failed")
 	}
@@ -1138,13 +1105,13 @@ func (h *ChatHandler) addCompletionToConversation(
 
 	// Build the user input item
 	userItem := h.buildInputConversationItem(newMessages, storeReasoning, askItemID)
-	
+
 	// Check if we should skip adding the user message (avoid duplicates after regenerate)
 	// This happens when regenerate creates a branch with the user message, then frontend
 	// triggers a new completion which would add the same user message again
 	if userItem != nil {
 		skipUserItem := false
-		
+
 		// Get the last item in the branch to check for duplicates
 		existingItems, err := h.conversationService.GetConversationItems(ctx, conv, branchName, nil)
 		if err == nil && len(existingItems) > 0 {
@@ -1157,7 +1124,7 @@ func (h *ChatHandler) addCompletionToConversation(
 				}
 			}
 		}
-		
+
 		if !skipUserItem {
 			items = append(items, *userItem)
 		}
@@ -1193,11 +1160,11 @@ func (h *ChatHandler) isSameMessageContent(newItem *conversation.Item, existingI
 	if newItem == nil || existingItem == nil {
 		return false
 	}
-	
+
 	// Extract text content from both items
 	newText := extractTextFromContent(newItem.Content)
 	existingText := extractTextFromContent(existingItem.Content)
-	
+
 	// Compare normalized text (trim whitespace)
 	return strings.TrimSpace(newText) == strings.TrimSpace(existingText)
 }
