@@ -61,6 +61,19 @@ func (repo *ProjectGormRepository) GetByPublicIDAndUserID(ctx context.Context, p
 	return dbProject.EtoD(), nil
 }
 
+// GetByNameAndUserID implements project.ProjectRepository.
+func (repo *ProjectGormRepository) GetByNameAndUserID(ctx context.Context, name string, userID uint) (*project.Project, error) {
+	var dbProject dbschema.Project
+	err := repo.db.WithContext(ctx).
+		Where("name = ? AND user_id = ? AND deleted_at IS NULL", name, userID).
+		First(&dbProject).Error
+
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerRepository, err, "failed to find project by name and user ID")
+	}
+	return dbProject.EtoD(), nil
+}
+
 // ListByUserID implements project.ProjectRepository.
 func (repo *ProjectGormRepository) ListByUserID(ctx context.Context, userID uint, pagination *query.Pagination) ([]*project.Project, int64, error) {
 	// Build base query
