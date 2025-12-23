@@ -1,298 +1,347 @@
-# Jan Server Quick Start Guide
+# Getting Started with Jan Server
 
-Get Jan Server running in minutes with the interactive setup wizard.
+Welcome! This guide will help you get Jan Server up and running in minutes.
+
+> **Note:** This guide covers Docker Compose setup for local development. For Kubernetes deployment (production/staging), see:
+> - [Kubernetes Setup Guide](../k8s/SETUP.md) - Complete step-by-step Kubernetes deployment
+> - [Deployment Guide](guides/deployment.md) - All deployment options (Kubernetes, Docker Compose, Hybrid)
 
 ## Prerequisites
 
-- **Docker Desktop** (Windows/macOS) or **Docker + Docker Compose** (Linux)
-- **Make** (pre-installed on Linux/macOS, [install on Windows](https://gnuwin32.sourceforge.net/packages/make.htm))
-- At least **8GB RAM** available
-- Optional: **NVIDIA GPU** with CUDA support for local inference
+Before you begin, ensure you have:
 
-## One-Command Setup
+- **Docker Desktop** (Windows/macOS) or **Docker Engine + Docker Compose** (Linux)
+- **Make** (usually pre-installed on macOS/Linux, [install on Windows](https://gnuwin32.sourceforge.net/packages/make.htm))
+- **Git**
+- At least 8GB RAM available
+- For GPU inference: NVIDIA GPU with CUDA support
 
-### Windows (PowerShell)
+Optional (for development):
+- Go 1.21+ 
+- Go 1.23+ (for jan-cli api-test)
 
-```powershell
+## Quick Setup
+
+### 1. Clone the Repository
+
+```bash
 git clone https://github.com/janhq/jan-server.git
 cd jan-server
+```
+
+### 2. Run the Setup Wizard (Recommended)
+
+```bash
 make quickstart
 ```
 
-### Linux / macOS
+`make quickstart` launches the `jan-cli` wizard. It prompts for your LLM provider (local vLLM vs remote API), MCP search provider, and Media API preference, then writes `.env` plus `config/secrets.env`. When configuration finishes it automatically starts Docker Compose. Re-run the command anytime to update settings (answer **Y** when asked to overwrite `.env`).
+
+#### Wizard options at a glance
+- **LLM provider**: Local vLLM (GPU, downloads models) or remote OpenAI-compatible endpoint (no GPU required).
+- **MCP search**: Serper (API key), SearXNG (local, no key), or None (MCP Tools still run without search).
+- **Media API**: Enable for uploads and jan_* IDs, or disable if not needed.
+
+#### Example configurations
+- **Full local (GPU)**: Local vLLM + SearXNG + Media enabled → everything runs locally.
+- **Cloud LLM + Serper**: Remote API endpoint + Serper key + Media enabled → light local footprint, best search.
+- **Minimal**: Remote API endpoint + no search + Media disabled → smallest local runtime.
+
+### Manual configuration (if you cannot run the wizard)
 
 ```bash
-git clone https://github.com/janhq/jan-server.git
-cd jan-server
-make quickstart
+# Copy templates
+cp .env.template .env
+cp config/secrets.env.example config/secrets.env
+
+# Edit with your values
+nano .env
+nano config/secrets.env
+
+# Populate defaults and validate
+make setup
 ```
 
-## Interactive Configuration Wizard
+`make setup` uses `jan-cli` in non-interactive mode to check dependencies, ensure directories exist, and pull base images.
 
-The setup wizard will guide you through:
+**Configuration details:**
+- Canonical defaults live in `config/defaults.yaml` (generated from Go structs)
+- Secrets belong in `config/secrets.env` (copied from `config/secrets.env.example`)
+- Environment templates (Docker/Kubernetes) are documented in [Configuration System](configuration/README.md)
 
-### 1. LLM Provider Setup
-
-Choose your inference provider:
-
-**Option 1: Local vLLM (GPU required)**
-- Uses local GPU for inference
-- Requires HuggingFace token for model downloads
-- Models run in Docker container
-- Default model: `Qwen/Qwen2.5-0.5B-Instruct`
-
-**Option 2: Remote API Endpoint**
-- Use any OpenAI-compatible API
-- Options: OpenAI, Azure OpenAI, Anthropic, Groq, etc.
-- Provide URL and API key
-- No GPU or HuggingFace token needed
-- **vLLM service will not be started** (uses less resources)
-
-### 2. MCP Search Tool Configuration
-
-**Note**: MCP Tools and Vector Store always run. This choice only affects the search functionality.
-
-Choose search provider for MCP tools:
-
-**Option 1: Serper (Recommended)**
-- Google search API
-- Requires API key from [serper.dev](https://serper.dev)
-- Best search results
-
-**Option 2: SearXNG (Local)**
-- Privacy-focused meta-search engine
-- Runs locally in Docker
-- No API key required
-- Slightly slower
-
-**Option 3: None**
-- Disable search functionality only
-- MCP Tools and Vector Store still available for other features
-
-### 3. Media API Setup
-
-**Enable Media API**: For file uploads, image handling, and media management
-
-**Disable Media API**: If you don't need media functionality
-
-## Example Configuration Flows
-
-### Flow 1: Full Local Setup (GPU)
-
-```
-LLM Provider Setup
-Choose: [1] Local vLLM
-HF_TOKEN: hf_xxxxxxxxxxxxx
-
-MCP Search Tool Setup
-Choose: [2] SearXNG (no API key needed)
-
-Media API Setup
-Enable: [Y] Yes
-
-Result: Fully local, privacy-focused setup
-```
-
-### Flow 2: Cloud API + Serper
-
-```
-LLM Provider Setup
-Choose: [2] Remote API endpoint
-URL: https://api.openai.com/v1
-API Key: sk-xxxxxxxxxxxxx
-
-MCP Search Tool Setup
-Choose: [1] Serper
-SERPER_API_KEY: xxxxxxxxxxxxx
-
-Media API Setup
-Enable: [Y] Yes
-
-Result: Cloud-based inference with best search
-```
-
-### Flow 3: Minimal Setup (No Search, No Media)
-
-```
-LLM Provider Setup
-Choose: [2] Remote API endpoint
-URL: https://api.groq.com/openai/v1
-API Key: gsk_xxxxxxxxxxxxx
-
-MCP Search Tool Setup
-Choose: [3] None (MCP Tools/Vector Store still run)
-
-Media API Setup
-Enable: [N] No
-
-Result: Remote LLM + MCP Tools (no search) + No Media
-```
-
-## What Happens During Setup
-
-1. **Configuration Wizard** - Interactive prompts for your choices
-2. **Environment Setup** - Creates `.env` with your configuration
-3. **Dependency Check** - Verifies Docker is running
-4. **Network Creation** - Sets up Docker networks
-5. **Service Start** - Launches all configured services
-6. **Health Wait** - Waits 30s for services to be ready
-
-## Services Started
-
-Depending on your configuration:
-
-| Service | Port | When Active |
-|---------|------|-------------|
-| Kong API Gateway | 8000 | Always |
-| LLM API | 8080 | Always |
-| Keycloak Auth | 8085 | Always |
-| PostgreSQL | 5432 | Always |
-| **MCP Tools** | 8091 | **Always** |
-| **Vector Store** | 3015 | **Always** |
-| **vLLM Inference** | 8101 | **If Local vLLM chosen** |
-| Media API | 8285 | If Media enabled |
-
-**Note**: 
-- MCP Tools and Vector Store always run regardless of search engine choice
-- SearXNG and SandboxFusion are currently disabled in this phase
-- vLLM only starts if you choose "Local vLLM" as your provider
-
-## First API Call
-
-### 1. Get Guest Token
+### 3. Start Services (skip if quickstart already did this)
 
 ```bash
-# Windows (PowerShell)
-$response = Invoke-RestMethod -Method Post -Uri http://localhost:8000/llm/auth/guest-login
-$token = $response.access_token
+# Start full stack (CPU inference)
+make up-full
 
-# Linux / macOS
-TOKEN=$(curl -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+# Optional: start monitoring stack
+make monitor-up
 ```
 
-### 2. Chat Completion
+Wait for all services to start (30-60 seconds). You can monitor progress with:
+```bash
+make logs
+```
+
+### What the wizard does
+1. Prompts for LLM/search/media choices.
+2. Writes `.env` and `config/secrets.env`.
+3. Checks Docker availability and networks.
+4. Starts the Compose stack and waits for health (about 30 seconds).
+
+### 5. Verify Installation
 
 ```bash
-# Windows (PowerShell)
-Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/chat/completions `
- -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
- -Body '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
+make health-check
+```
 
-# Linux / macOS
+You should see all services reporting as healthy.
+
+## Access Services
+
+Once running, you can access:
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **API Gateway** | http://localhost:8000 | - |
+| **API Documentation** | http://localhost:8000/api/swagger/index.html | - |
+| **LLM API** | http://localhost:8080 | `Authorization: Bearer <token>` |
+| **Response API** | http://localhost:8082 | `Authorization: Bearer <token>` |
+| **Media API** | http://localhost:8285 | `Authorization: Bearer <token>` |
+| **MCP Tools** | http://localhost:8091 | `Authorization: Bearer <token>` |
+| **Memory Tools** | http://localhost:8090 | `Authorization: Bearer <token>` |
+| **Realtime API** | http://localhost:8186 | `Authorization: Bearer <token>` |
+| **Keycloak Console** | http://localhost:8085 | admin/admin |
+| **Grafana Dashboards** | http://localhost:3331 | admin/admin (after `make monitor-up`) |
+| **Prometheus** | http://localhost:9090 | - (after `make monitor-up`) |
+| **Jaeger Tracing** | http://localhost:16686 | - (after `make monitor-up`) |
+
+**Service activation**:
+- vLLM starts only if you choose the local provider (GPU). Use the remote provider option for a lighter stack.
+- MCP Tools and Vector Store always run; the search choice only affects which search provider is used.
+- Media API is optional based on the wizard choice.
+
+## Your First API Call
+
+### 1. Get a Guest Token via Kong
+
+```bash
+curl -X POST http://localhost:8000/llm/auth/guest-login
+```
+
+All traffic to `http://localhost:8000` flows through the Kong gateway, which validates Keycloak-issued JWTs or API keys (use `Authorization: Bearer <token>` or `X-API-Key: sk_*` headers).
+
+Response:
+```json
+{
+ "access_token": "eyJhbGci...",
+ "refresh_token": "eyJhbGci...",
+ "expires_in": 300
+}
+```
+
+### 2. Make a Chat Completion Request
+
+```bash
 curl -X POST http://localhost:8000/v1/chat/completions \
- -H "Authorization: Bearer $TOKEN" \
+ -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
  -H "Content-Type: application/json" \
- -d '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
+ -d '{
+ "model": "jan-v1-4b",
+ "messages": [
+ {"role": "user", "content": "What is the capital of France?"}
+ ],
+ "stream": false
+ }'
 ```
+
+### 3. Try Streaming
+
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+ -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "model": "jan-v1-4b",
+ "messages": [
+ {"role": "user", "content": "Tell me a short story"}
+ ],
+ "stream": true
+ }'
+```
+
+### 4. Use MCP Tools
+
+```bash
+# List available tools
+curl -X POST http://localhost:8000/v1/mcp \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 1,
+ "method": "tools/list"
+ }'
+
+# Google search
+curl -X POST http://localhost:8000/v1/mcp \
+ -H "Content-Type: application/json" \
+ -d '{
+ "jsonrpc": "2.0",
+ "id": 2,
+ "method": "tools/call",
+ "params": {
+ "name": "google_search",
+ "arguments": {
+ "q": "latest AI news"
+ }
+ }
+ }'
+```
+
+## Enable Monitoring (Optional)
+
+To enable full observability stack:
+
+```bash
+make monitor-up
+```
+
+Access:
+- **Grafana**: http://localhost:3331 (admin/admin)
+- **Prometheus**: http://localhost:9090
+- **Jaeger**: http://localhost:16686
 
 ## Common Commands
 
 ```bash
-# Check service health
-make health-check
-
 # View logs
-make logs-llm-api # LLM API logs
-make logs-mcp # MCP tools logs
-make logs # All logs
+make logs        # All services
+make logs-api    # API profile (LLM, Response, Media)
+make logs-mcp    # MCP Tools profile
+
+# Check status
+make health-check # Hit health endpoints
+docker compose ps # Container status
 
 # Restart services
-make restart # Restart all
-make restart-llm-api # Restart specific service
+make restart-full   # Restart everything
+make restart-api    # Restart API profile
+make restart-llm-api # Restart only LLM API
 
 # Stop services
-make down # Stop and remove containers
-make stop # Stop but keep containers
-```
-
-## Updating Configuration
-
-To reconfigure after initial setup:
-
-```bash
-# Re-run interactive setup
-make quickstart
-
-# When prompted "Found existing .env, update?", choose [Y]
-```
-
-## Manual Configuration
-
-If you prefer manual setup:
-
-```bash
-# 1. Copy templates
-cp .env.template .env
-cp config/secrets.env.example config/secrets.env
-
-# 2. Edit .env / config/secrets.env with your values
-nano .env
-nano config/secrets.env
-
-# 3. Run setup without prompts
-# Windows
-powershell -ExecutionPolicy Bypass -File .\jan-cli.ps1 dev setup
-# Linux / macOS
-./jan-cli.sh dev setup
-
-# 4. Start services
-make up-full
+make down       # Stop all containers (keeps volumes)
+make down-clean # Stop containers and remove volumes
 ```
 
 ## Troubleshooting
 
-### Port Conflicts
-
-If you see port binding errors:
-
-```bash
-# Windows
-netstat -ano | findstr "8000 8080 8085"
-
-# Linux/macOS
-lsof -i:8000
-lsof -i:8080
-```
-
-### Services Not Starting
+### Services won't start
 
 ```bash
 # Check Docker
 docker --version
 docker compose version
 
+# Check status
+make health-check
+docker compose ps
+
 # View errors
-make logs-error
+make logs
 
 # Full reset
 make down
-make clean
-docker system prune -a # Warning: removes all Docker data
-make quickstart
+make down-clean
+make setup
+make up-full
 ```
 
-### GPU Not Detected
+### Port conflicts
 
-If vLLM can't find your GPU:
+If you get port binding errors:
 
 ```bash
-# Check NVIDIA drivers
-nvidia-smi
+# Check what's using ports
+# Windows PowerShell:
+netstat -ano | findstr "8000 8080 8085"
 
-# Use CPU inference instead
-# Choose option [2] Remote API in setup wizard
-# Or manually set VLLM_PORT=8102 for CPU mode
+# macOS/Linux:
+lsof -i:8000
+lsof -i:8080
+lsof -i:8085
+
+# Kill conflicting processes or change ports in .env
 ```
 
-## Next Steps
+### vLLM GPU issues
 
-- [API Documentation](http://localhost:8000/api/swagger/index.html)
-- [Development Guide](guides/development.md)
-- [Deployment Guide](guides/deployment.md)
-- [Testing Guide](guides/testing.md)
+```bash
+# Verify GPU availability
+docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+```
 
-## Getting Help
+If no GPU is detected:
+- Rerun `make quickstart` and choose the remote API option (skips local vLLM)
+- Or run `make up-vllm-cpu` to start the CPU-only vLLM profile when testing locally
 
-- **Issues**: [GitHub Issues](https://github.com/janhq/jan-server/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/janhq/jan-server/discussions)
-- **Documentation**: [Documentation Hub](README.md)
+### Database connection errors
+
+```bash
+# Reset database
+make db-reset
+
+# Check database logs
+docker compose logs api-db
+
+# Verify connection
+make db-console
+```
+
+### API returns 401 Unauthorized
+
+- Check token hasn't expired (default: 5 minutes)
+- Get new guest token: `curl -X POST http://localhost:8000/llm/auth/guest-login`
+- Check `Authorization: Bearer <token>` header is set
+
+## Update configuration later
+
+```bash
+make quickstart  # rerun the wizard and choose Y to overwrite .env
+```
+
+The wizard safely reuses existing values and updates your choices without manual edits.
+
+## What's Next?
+
+Now that you have Jan Server running:
+
+1. **Explore the API**:
+ - [API Reference](api/README.md)
+ - [API Examples](api/examples/README.md)
+ - [Swagger UI](http://localhost:8000/api/swagger/index.html)
+
+2. **Learn Development**:
+ - [Development Guide](guides/development.md)
+ - [Development Guide - Dev-Full Mode](guides/development.md#dev-full-mode-hybrid-debugging) (recommended for development)
+ - [Testing Guide](guides/testing.md)
+
+3. **Understand Architecture**:
+ - [Architecture Overview](architecture/README.md)
+ - [System Design](architecture/system-design.md)
+ - [Security Model](architecture/security.md)
+
+4. **Deploy to Production**:
+ - [Deployment Guide](guides/deployment.md)
+ - [Monitoring Guide](guides/monitoring.md)
+
+## Need Help?
+
+- [Full Documentation](README.md)
+- [Report Issues](https://github.com/janhq/jan-server/issues)
+- [Discussions](https://github.com/janhq/jan-server/discussions)
+- [Troubleshooting Guide](guides/troubleshooting.md)
+
+---
+
+**Quick Reference**: `make help` | **All Commands**: `make help-all`

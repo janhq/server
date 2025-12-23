@@ -300,34 +300,25 @@ kubectl logs -l app=otel-collector | grep -i error
 # View classifier metrics
 curl http://response-api:8081/metrics | grep classifier_errors
 
-# Check Template API (dependency)
-curl http://template-api:8082/health
-
 # Review error logs
 kubectl logs -l app=response-api | grep classifier
 ```
 
 ### Remediation
 
-1. **Verify Template API is accessible**
-   ```bash
-   make health-check
-   kubectl get pods -l app=template-api
-   ```
-
-2. **Check for malformed prompt data**
+1. **Check for malformed prompt data**
    ```bash
    # Review recent requests
    kubectl logs -l app=response-api --tail=100 | grep -A5 "classifier error"
    ```
 
-3. **Review recent classifier configuration changes**
+2. **Review recent classifier configuration changes**
    ```bash
    git log --since="1 day ago" --grep="classifier" --oneline
    kubectl describe configmap response-api-config
    ```
 
-4. **Disable classifier temporarily (if persistent)**
+3. **Disable classifier temporarily (if persistent)**
    ```bash
    kubectl set env deployment/response-api CLASSIFIER_ENABLED=false
    ```

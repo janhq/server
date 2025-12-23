@@ -55,8 +55,6 @@ make up-full # Starts every service defined in docker-compose.yml
 
 > Keycloak now runs directly from the official `quay.io/keycloak/keycloak:24.0.5` image with our realm/import scripts bind-mounted at runtime - no bundled Keycloak source tree is required.
 
-**Full setup guide**: [Getting Started](docs/getting-started/README.md)
-
 ## What is Jan Server?
 
 Jan Server is an enterprise-grade LLM API platform that provides:
@@ -86,17 +84,14 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 ## Documentation
 
 Primary entry points:
-- [docs/README.md](docs/README.md) - Documentation hub overview
-- [docs/index.md](docs/index.md) - Navigation map grouped by audience
+- [docs/README.md](docs/README.md) - Documentation hub overview and navigation map grouped by audience
 - [docs/architecture/services.md](docs/architecture/services.md) - Service responsibilities and ports
 - [docs/api/README.md](docs/api/README.md) - API reference hub
 - [docs/getting-started/README.md](docs/getting-started/README.md) - Five minute setup
 - [docs/quickstart.md](docs/quickstart.md) - Interactive setup walkthrough and commands
 
 Governance and quality:
-- [DOCUMENTATION_QUALITY_REPORT.md](DOCUMENTATION_QUALITY_REPORT.md) - Recent audit summary and metrics
 - [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
-- [docs-improve.todo](docs-improve.todo) - Active documentation improvement tracker
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow expectations
 - [docs/architecture/security.md](docs/architecture/security.md) - Security posture and hardening guidance
 
@@ -164,8 +159,7 @@ Create new microservices quickly with the template system:
 ```
 
 **Documentation:**
-- Template guide: `docs/guides/services-template.md`
-- Template README: `docs/guides/services-template.md`
+- Template guide: [docs/guides/services-template.md](docs/guides/services-template.md)
 
 ## Development
 
@@ -234,7 +228,7 @@ docker compose stop llm-api
 ./scripts/dev-full-run.sh llm-api   # Linux/Mac
 ```
 
-See [Development Guide](docs/guides/development.md) and [Dev-Full Mode](docs/guides/dev-full-mode.md) for details.
+See [Development Guide](docs/guides/development.md) for details on full Docker, dev-full (hybrid), and native execution modes.
 
 ## CLI Tool
 

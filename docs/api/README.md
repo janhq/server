@@ -23,7 +23,7 @@ OpenAI-compatible API for chat completions, conversations, and models.
 - **[Projects](llm-api/#projects)** - Project management for organizing conversations
 - **[Admin Endpoints](llm-api/#admin-endpoints)** - Provider and model catalog management
 - **[With Media](llm-api/#with-media-visual-input)** - Media references using `jan_*` IDs
-- **[Examples](llm-api/examples.md)** - cURL, Python, and JavaScript snippets
+- **[Examples](llm-api/comprehensive-examples.md)** - cURL, Python, and JavaScript snippets
 
 ### 2. Response API (Port 8082)
 Executes tools and generates AI responses for complex tasks.
@@ -75,6 +75,17 @@ Provides Model Context Protocol tools for search, scraping, lightweight vector s
 - **[Providers](../services/mcp-tools/mcp-providers.md)** - MCP provider configuration
 - **[Integration](../services/mcp-tools/integration.md)** - Integration guide
 
+## API Guides
+
+- **[Decision Guides](decision-guides.md)** - When to use which API, choosing upload methods, memory configuration
+- [Endpoint Matrix](endpoint-matrix.md) - Full endpoint inventory.
+- [Error Codes](error-codes.md) - HTTP status codes and handling patterns.
+- [Rate Limiting](rate-limiting.md) - Token buckets, quotas, examples.
+- [Performance](performance.md) - SLAs, latency, scaling, cost levers.
+- [API Versioning](api-versioning.md) - Policy and compatibility.
+- [Patterns](patterns.md) - Streaming, pagination, batching, uploads.
+- [Examples Index](examples/README.md) - cURL/SDK samples across services.
+
 ## Quick Reference
 
 ### Base URLs
@@ -88,15 +99,13 @@ Provides Model Context Protocol tools for search, scraping, lightweight vector s
 
 ### Authentication
 
-Most API endpoints require authentication. The Kong gateway (port 8000) validates your credentials.
+All API endpoints require authentication. The Kong gateway (port 8000) validates your credentials and forwards requests to backend services.
 
-**Two ways to authenticate:**
-1. **Bearer Token**: Get a token from `/llm/auth/guest-login`, then use `Authorization: Bearer <token>` header
-2. **API Key**: Use `X-API-Key: sk_*` header
+#### Authentication Methods
 
-> Note: API key + JWT validation happens at the Kong gateway. When you call a service directly (8080/8082/8285/8091) you still need to forward a valid JWT issued by Keycloak.
+**1. Bearer Token (Recommended for Development)**
 
-**Quick guest access:**
+Get a guest token from Keycloak and use it in the `Authorization` header:
 
 ```bash
 # Request a guest token
@@ -106,13 +115,64 @@ curl -X POST http://localhost:8000/llm/auth/guest-login
 {
  "access_token": "eyJhbGci...",
  "refresh_token": "eyJhbGci...",
- "expires_in": 300
+ "expires_in": 300,
+ "token_type": "Bearer"
 }
 
-# Use the token
-curl -H "Authorization: Bearer <access_token>" \
- http://localhost:8000/v1/models
+# Use the token in requests
+curl -H "Authorization: Bearer eyJhbGci..." \
+ http://localhost:8000/v1/chat/completions
 ```
+
+**2. API Key (For Production Clients)**
+
+Use the `X-API-Key` header with your API key:
+
+```bash
+curl -H "X-API-Key: sk_your_api_key_here" \
+ http://localhost:8000/v1/chat/completions
+```
+
+#### Token Management
+
+**Refresh Tokens:**
+```bash
+curl -X POST http://localhost:8000/llm/auth/refresh \
+ -H "Content-Type: application/json" \
+ -d '{"refresh_token": "eyJhbGci..."}'
+```
+
+**Revoke Tokens:**
+```bash
+curl -X POST http://localhost:8000/llm/auth/revoke \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{"token": "eyJhbGci..."}'
+```
+
+#### Direct Service Access
+
+When calling services directly (ports 8080/8082/8285/8091) instead of through Kong:
+- You still need a valid Keycloak JWT
+- Use the same `Authorization: Bearer <token>` header
+- API key authentication is NOT available (Kong-only feature)
+
+**Example direct call:**
+```bash
+# Still requires JWT token from Keycloak
+curl -H "Authorization: Bearer <token>" \
+ http://localhost:8080/v1/chat/completions
+```
+
+#### Authentication Flow
+
+1. Client requests guest login or uses API key
+2. Kong validates credentials (JWT signature + expiry, or API key lookup)
+3. Kong forwards request to backend service with JWT in header
+4. Backend service validates JWT signature and claims
+5. Request is processed and response returned
+
+> **Best Practice**: Always use the Kong gateway (port 8000) for client applications. Direct service ports are for internal communication and debugging only.
 
 ### Quick Examples
 
@@ -261,26 +321,6 @@ Official SDKs are coming soon. In the meantime, use OpenAI-compatible clients wi
 ### Community SDKs
 
 Contributions welcome! Jan Server is OpenAI-compatible, so most OpenAI client libraries work with minor configuration changes.
-
-#### Python Example (OpenAI SDK)
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
- base_url="http://localhost:8000/v1",
- api_key="your_guest_token_here"
-)
-
-response = client.chat.completions.create(
- model="jan-v1-4b",
- messages=[
- {"role": "user", "content": "Hello!"}
- ]
-)
-
-print(response.choices[0].message.content)
-```
 
 #### JavaScript Example (OpenAI SDK)
 

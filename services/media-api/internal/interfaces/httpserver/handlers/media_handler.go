@@ -58,6 +58,7 @@ type JSONPayload = json.RawMessage
 // @Param        request  body      domain.IngestRequest  true  "Media request"
 // @Success      200      {object}  ingestResponse
 // @Failure      400      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
 // @Security     ApiKeyAuth
 // @Router       /v1/media [post]
 func (h *MediaHandler) Ingest(c *gin.Context) {
@@ -99,6 +100,7 @@ func (h *MediaHandler) Ingest(c *gin.Context) {
 // @Param        request  body      resolveRequest  true  "Payload to resolve"
 // @Success      200      {object}  resolveResponse
 // @Failure      400      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
 // @Security     ApiKeyAuth
 // @Router       /v1/media/resolve [post]
 func (h *MediaHandler) Resolve(c *gin.Context) {
@@ -128,6 +130,7 @@ func (h *MediaHandler) Resolve(c *gin.Context) {
 // @Success      200      {object}  domain.UploadPreparation
 // @Failure      400      {object}  map[string]string
 // @Failure      501      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
 // @Security     ApiKeyAuth
 // @Router       /v1/media/prepare-upload [post]
 func (h *MediaHandler) PrepareUpload(c *gin.Context) {
@@ -164,6 +167,7 @@ func (h *MediaHandler) PrepareUpload(c *gin.Context) {
 // @Param        id   path      string  true  "Media ID (jan_xxx)"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
 // @Security     ApiKeyAuth
 // @Router       /v1/media/{id}/presign [get]
 func (h *MediaHandler) GetPresignedURL(c *gin.Context) {
@@ -185,11 +189,12 @@ func (h *MediaHandler) GetPresignedURL(c *gin.Context) {
 
 // Proxy godoc
 // @Summary      Stream media bytes
-// @Description  Streams the object through the media API without exposing storage URLs.
+// @Description  Streams the object through the media API without exposing storage URLs. If proxying is disabled, returns a presigned download URL instead.
 // @Tags         media
+// @Produce      json
 // @Produce      octet-stream
 // @Param        id   path      string  true  "Media ID"
-// @Success      200  "binary data"
+// @Success      200  {object}  map[string]interface{} "Presigned URL response when proxying is disabled; otherwise binary stream"
 // @Failure      404  {object}  map[string]string
 // @Security     ApiKeyAuth
 // @Router       /v1/media/{id} [get]

@@ -82,7 +82,7 @@ func generateSwaggerForService(service string) error {
 	case "llm-api":
 		swaggerArgs = []string{
 			"run", "github.com/swaggo/swag/cmd/swag@v1.8.12", "init",
-			"--dir", "./cmd/server,./internal/interfaces/httpserver/routes",
+			"--dir", "./cmd/server,./internal/interfaces/httpserver/routes,./internal/interfaces/httpserver/handlers",
 			"--generalInfo", "server.go",
 			"--output", "./docs/swagger",
 			"--parseDependency",

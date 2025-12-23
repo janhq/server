@@ -103,6 +103,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - ApiKeyAuth: []
       summary: Upload media
@@ -111,7 +117,7 @@ paths:
   /v1/media/{id}:
     get:
       description: Streams the object through the media API without exposing storage
-        URLs.
+        URLs. If proxying is disabled, returns a presigned download URL instead.
       parameters:
       - description: Media ID
         in: path
@@ -119,10 +125,15 @@ paths:
         required: true
         type: string
       produces:
+      - application/json
       - application/octet-stream
       responses:
         "200":
-          description: binary data
+          description: Presigned URL response when proxying is disabled; otherwise
+            binary stream
+          schema:
+            additionalProperties: true
+            type: object
         "404":
           description: Not Found
           schema:
@@ -157,6 +168,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - ApiKeyAuth: []
       summary: Get presigned download URL
@@ -184,6 +201,12 @@ paths:
             $ref: '#/definitions/media.UploadPreparation'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
@@ -220,6 +243,12 @@ paths:
             $ref: '#/definitions/handlers.resolveResponse'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string

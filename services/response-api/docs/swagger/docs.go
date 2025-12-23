@@ -21,12 +21,13 @@ const docTemplate = `{
     "paths": {
         "/v1/responses": {
             "post": {
-                "description": "Creates a response and orchestrates MCP tool calls when required.",
+                "description": "Creates a response and orchestrates MCP tool calls when required. When ` + "`" + `stream=true` + "`" + `, results are streamed as SSE events instead of a single JSON payload.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
-                    "application/json"
+                    "application/json",
+                    "text/event-stream"
                 ],
                 "tags": [
                     "Responses"
@@ -45,13 +46,22 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "SSE event stream when stream=true",
                         "schema": {
-                            "$ref": "#/definitions/responses.ResponsePayload"
+                            "type": "string"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -121,6 +131,15 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/responses.ResponsePayload"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
@@ -149,6 +168,15 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/responses.ResponsePayload"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
@@ -175,9 +203,15 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/response.ConversationItem"
+                            "$ref": "#/definitions/responses.ConversationItemsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -290,6 +324,17 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "responses.ConversationItemsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.ConversationItem"
+                    }
                 }
             }
         },

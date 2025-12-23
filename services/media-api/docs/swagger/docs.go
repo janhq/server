@@ -60,6 +60,15 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
@@ -102,6 +111,15 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -159,6 +177,15 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -228,8 +255,9 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Streams the object through the media API without exposing storage URLs.",
+                "description": "Streams the object through the media API without exposing storage URLs. If proxying is disabled, returns a presigned download URL instead.",
                 "produces": [
+                    "application/json",
                     "application/octet-stream"
                 ],
                 "tags": [
@@ -247,7 +275,11 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "binary data"
+                        "description": "Presigned URL response when proxying is disabled; otherwise binary stream",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     },
                     "404": {
                         "description": "Not Found",
@@ -295,6 +327,15 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

@@ -32,7 +32,7 @@ Thanks for taking the time to improve Jan Server! This guide explains how to pro
 - **Static analysis**: run `make lint` to execute vet, golangci-lint, and other configured linters.
 - **Swagger/OpenAPI**: update specs with `make swagger` after changing HTTP handlers.
 - **Configuration**: add new env vars to `.env.template`, `config/defaults.env`, and mention them in `config/README.md`.
-- **Documentation**: update relevant guides plus `docs/index.md` when adding or moving features.
+- **Documentation**: update relevant guides plus `docs/README.md` when adding or moving features.
 
 ## Required Test Matrix
 Run the smallest set that covers your change:
@@ -68,7 +68,7 @@ git status -sb         # no unexpected files
 ## Documentation Expectations
 - `README.md` must stay aligned with the default Docker Compose workflow.
 - `docs/getting-started/README.md` is the canonical setup guide; keep it in sync with the Makefile targets.
-- `docs/index.md` acts as the sitemap; add or move entries there whenever you add documentation elsewhere.
+- `docs/README.md` acts as the sitemap; add or move entries there whenever you add documentation elsewhere.
 - If you introduce a new service or API, create or update:
   - `docs/services.md`
   - `docs/api/<service>/README.md`

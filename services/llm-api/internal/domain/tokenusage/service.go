@@ -20,8 +20,8 @@ func NewService(repo Repository) *Service {
 // RecordUsage records a new token usage event
 func (s *Service) RecordUsage(ctx context.Context, usage *TokenUsage) error {
 	// Calculate cost if not provided
-	if usage.Cost.IsZero() {
-		usage.Cost = CalculateCost(usage.Model, usage.PromptTokens, usage.CompletionTokens)
+	if usage.EstimatedCostUSD.IsZero() {
+		usage.EstimatedCostUSD = CalculateCost(usage.Model, usage.PromptTokens, usage.CompletionTokens)
 	}
 
 	// Ensure total tokens is calculated
@@ -125,7 +125,7 @@ func (s *Service) buildUsageResponse(summaries []UsageSummary, startDate, endDat
 		totalPrompt += summary.TotalPromptTokens
 		totalCompletion += summary.TotalCompletionTokens
 		totalTokens += summary.TotalTokens
-		totalCost = totalCost.Add(summary.TotalCost)
+		totalCost = totalCost.Add(summary.EstimatedCostUSD)
 		totalRequests += summary.RequestCount
 
 		// Aggregate by model
@@ -133,7 +133,7 @@ func (s *Service) buildUsageResponse(summaries []UsageSummary, startDate, endDat
 			existing.TotalPromptTokens += summary.TotalPromptTokens
 			existing.TotalCompletionTokens += summary.TotalCompletionTokens
 			existing.TotalTokens += summary.TotalTokens
-			existing.TotalCost = existing.TotalCost.Add(summary.TotalCost)
+			existing.EstimatedCostUSD = existing.EstimatedCostUSD.Add(summary.EstimatedCostUSD)
 			existing.RequestCount += summary.RequestCount
 		} else {
 			modelSummary := summary
@@ -146,7 +146,7 @@ func (s *Service) buildUsageResponse(summaries []UsageSummary, startDate, endDat
 			existing.TotalPromptTokens += summary.TotalPromptTokens
 			existing.TotalCompletionTokens += summary.TotalCompletionTokens
 			existing.TotalTokens += summary.TotalTokens
-			existing.TotalCost = existing.TotalCost.Add(summary.TotalCost)
+			existing.EstimatedCostUSD = existing.EstimatedCostUSD.Add(summary.EstimatedCostUSD)
 			existing.RequestCount += summary.RequestCount
 		} else {
 			providerSummary := summary
@@ -159,7 +159,7 @@ func (s *Service) buildUsageResponse(summaries []UsageSummary, startDate, endDat
 		TotalPromptTokens:     totalPrompt,
 		TotalCompletionTokens: totalCompletion,
 		TotalTokens:           totalTokens,
-		TotalCost:             totalCost,
+		EstimatedCostUSD:      totalCost,
 		RequestCount:          totalRequests,
 	}
 

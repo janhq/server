@@ -266,6 +266,143 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/keycloak/callback": {
+            "get": {
+                "description": "Handles the OAuth2 callback from Keycloak, exchanges authorization code for tokens using PKCE",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Handle Keycloak OAuth2 callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code from Keycloak",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "State parameter for CSRF protection",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Frontend URL to redirect after successful authentication",
+                        "name": "redirect_url",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Error from Keycloak (if authentication failed)",
+                        "name": "error",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Error description from Keycloak",
+                        "name": "error_description",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirects to frontend URL with tokens in URL fragment"
+                    },
+                    "400": {
+                        "description": "Missing code or state, or Keycloak error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid state parameter",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to exchange code for tokens",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/keycloak/login": {
+            "get": {
+                "description": "Redirects the user to Keycloak's authorization endpoint to authenticate. Returns the authorization URL for frontend redirection with PKCE.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Initiate Keycloak OAuth2 login",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "URL to redirect after successful login",
+                        "name": "redirect_url",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Authorization URL and state parameter",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "authorization_url": {
+                                    "type": "string"
+                                },
+                                "state": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to generate state or PKCE parameters",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "get": {
                 "description": "Returns the Keycloak authorization URL for frontend to redirect users. Supports OAuth2 authorization code flow with PKCE.",
@@ -647,6 +784,188 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/mcp-tools": {
+            "get": {
+                "description": "Get a paginated list of MCP tools with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - MCP Tools"
+                ],
+                "summary": "List MCP tools",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by category",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in name, description, and tool_key",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mcptoolhandler.ListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/mcp-tools/{id}": {
+            "get": {
+                "description": "Get an MCP tool by public ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - MCP Tools"
+                ],
+                "summary": "Get an MCP tool",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mcptoolhandler.MCPToolResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update an existing MCP tool configuration (Name is read-only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - MCP Tools"
+                ],
+                "summary": "Update an MCP tool",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mcptool.UpdateMCPToolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mcptoolhandler.MCPToolResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/models/catalogs": {
             "get": {
                 "security": [
@@ -882,6 +1201,309 @@ const docTemplate = `{
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/prompt-templates/assign/{model_id}": {
+            "post": {
+                "description": "Assign or update a prompt template assignment for a model catalog",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Model Prompt Templates"
+                ],
+                "summary": "Assign a prompt template to a model",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Model Catalog Public ID",
+                        "name": "model_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignment request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.AssignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.ModelPromptTemplateResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.ModelPromptTemplateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/prompt-templates/effective/{model_id}": {
+            "get": {
+                "description": "Get all resolved templates for a model, including global defaults",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Model Prompt Templates"
+                ],
+                "summary": "Get effective templates for a model",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Model Catalog Public ID",
+                        "name": "model_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.EffectiveTemplatesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/prompt-templates/list/{model_id}": {
+            "get": {
+                "description": "Get all prompt template assignments for a model catalog",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Model Prompt Templates"
+                ],
+                "summary": "List model prompt template assignments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Model Catalog Public ID",
+                        "name": "model_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.ListResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/prompt-templates/unassign/{template_key}/{model_id}": {
+            "delete": {
+                "description": "Remove a prompt template assignment, reverting to global default",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Model Prompt Templates"
+                ],
+                "summary": "Remove a prompt template assignment from a model",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Model Catalog Public ID",
+                        "name": "model_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Template Key (e.g., deep_research, timing)",
+                        "name": "template_key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/prompt-templates/update/{template_key}/{model_id}": {
+            "patch": {
+                "description": "Update an existing prompt template assignment",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Model Prompt Templates"
+                ],
+                "summary": "Update a prompt template assignment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Model Catalog Public ID",
+                        "name": "model_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Template Key",
+                        "name": "template_key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelprompthandler.ModelPromptTemplateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1133,6 +1755,384 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/prompt-templates": {
+            "get": {
+                "description": "Get a paginated list of prompt templates with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Prompt Templates"
+                ],
+                "summary": "List prompt templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by category",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by system status",
+                        "name": "is_system",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in name and description",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.ListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new prompt template",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Prompt Templates"
+                ],
+                "summary": "Create a prompt template",
+                "parameters": [
+                    {
+                        "description": "Request body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplate.CreatePromptTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.PromptTemplateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/prompt-templates/{id}": {
+            "get": {
+                "description": "Get a prompt template by public ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Prompt Templates"
+                ],
+                "summary": "Get a prompt template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.PromptTemplateResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a prompt template (system templates cannot be deleted)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Prompt Templates"
+                ],
+                "summary": "Delete a prompt template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update an existing prompt template",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Prompt Templates"
+                ],
+                "summary": "Update a prompt template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplate.UpdatePromptTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.PromptTemplateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/prompt-templates/{id}/duplicate": {
+            "post": {
+                "description": "Create a copy of an existing prompt template with a new name (key is auto-generated)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - Prompt Templates"
+                ],
+                "summary": "Duplicate a prompt template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.DuplicateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.PromptTemplateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/providers": {
             "get": {
                 "security": [
@@ -1358,6 +2358,242 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to update provider",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/usage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns total platform token usage including top users and breakdown by model/provider",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage"
+                ],
+                "summary": "Get platform-wide token usage (Admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD), defaults to 30 days ago",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD), defaults to today",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tokenusage.PlatformUsageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/logout": {
+            "get": {
+                "description": "Remove refresh tokens to perform logout and invalidate Keycloak session. Accepts refresh token from cookie, Authorization header, or request body.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Logout",
+                "parameters": [
+                    {
+                        "description": "Refresh token to revoke",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer refresh_token",
+                        "name": "Authorization",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully logged out",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Remove refresh tokens to perform logout and invalidate Keycloak session. Accepts refresh token from cookie, Authorization header, or request body.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Logout",
+                "parameters": [
+                    {
+                        "description": "Refresh token to revoke",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer refresh_token",
+                        "name": "Authorization",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully logged out",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves the profile of the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved user profile",
+                        "schema": {
+                            "$ref": "#/definitions/authhandler.GetMeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/refresh-token": {
+            "post": {
+                "description": "Use a valid refresh token to obtain a new access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication API"
+                ],
+                "summary": "Refresh an access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token (can also be in Authorization header)",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully refreshed the access token",
+                        "schema": {
+                            "$ref": "#/definitions/authhandler.AccessTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/responses.ErrorResponse"
                         }
@@ -2563,6 +3799,193 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/conversations/{conv_public_id}/share": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a public share link for a conversation or a single message",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shares API"
+                ],
+                "summary": "Create a share for a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation public ID",
+                        "name": "conv_public_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Share creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/sharerequests.CreateShareRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Share created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/shareresponses.ShareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Snapshot too large",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/conversations/{conv_public_id}/shares": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists all shares (active and revoked) for a conversation",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shares API"
+                ],
+                "summary": "List shares for a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation public ID",
+                        "name": "conv_public_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of shares",
+                        "schema": {
+                            "$ref": "#/definitions/shareresponses.ShareListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/conversations/{conv_public_id}/shares/{share_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revokes an active share, making it inaccessible",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shares API"
+                ],
+                "summary": "Revoke a share",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation public ID",
+                        "name": "conv_public_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Share public ID",
+                        "name": "share_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Share revoked successfully",
+                        "schema": {
+                            "$ref": "#/definitions/shareresponses.ShareDeletedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Share not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/healthz": {
             "get": {
                 "description": "Returns the health status of the API server. Used by orchestrators and monitoring systems.",
@@ -2576,6 +3999,88 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Health status OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/mcp-tools": {
+            "get": {
+                "description": "Get all active MCP tools (public endpoint for mcp-tools service)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MCP Tools"
+                ],
+                "summary": "List all active MCP tools",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mcptoolhandler.ActiveToolsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/mcp-tools/{key}": {
+            "get": {
+                "description": "Get an MCP tool by its unique tool key (public endpoint for mcp-tools service)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MCP Tools"
+                ],
+                "summary": "Get an MCP tool by key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tool Key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mcptoolhandler.MCPToolResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3006,6 +4511,124 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/prompt-templates/{key}": {
+            "get": {
+                "description": "Get a prompt template by its unique template key (public endpoint)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prompt Templates"
+                ],
+                "summary": "Get a prompt template by key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template Key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/prompttemplatehandler.PromptTemplateResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/public/shares/{slug}": {
+            "get": {
+                "description": "Retrieves a publicly shared conversation or message by its slug",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public Shares API"
+                ],
+                "summary": "Get a public share by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Share slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Public share content",
+                        "schema": {
+                            "$ref": "#/definitions/shareresponses.PublicShareResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Share not found or revoked",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "Share has been revoked",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "head": {
+                "description": "Checks if a share exists and is accessible (for preloading)",
+                "tags": [
+                    "Public Shares API"
+                ],
+                "summary": "Check if a public share exists",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Share slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Share exists and is accessible"
+                    },
+                    "404": {
+                        "description": "Share not found"
+                    },
+                    "410": {
+                        "description": "Share has been revoked"
+                    }
+                }
+            }
+        },
         "/v1/readyz": {
             "get": {
                 "description": "Returns the readiness status of the API server. Indicates if the service is ready to accept traffic.",
@@ -3024,6 +4647,478 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shares": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists all shares (active and revoked) for the authenticated user across all conversations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shares API"
+                ],
+                "summary": "List all shares for the authenticated user",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Include revoked shares",
+                        "name": "include_revoked",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of shares",
+                        "schema": {
+                            "$ref": "#/definitions/shareresponses.ShareListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shares/{share_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Revokes an active share by its ID, making it inaccessible",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shares API"
+                ],
+                "summary": "Revoke a share by share ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Share public ID",
+                        "name": "share_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Share revoked successfully",
+                        "schema": {
+                            "$ref": "#/definitions/shareresponses.ShareDeletedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Share not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/usage/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns token usage summary for the authenticated user within a date range",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage"
+                ],
+                "summary": "Get current user's token usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD), defaults to 30 days ago",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD), defaults to today",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tokenusage.UsageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/usage/me/daily": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns daily aggregated token usage for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage"
+                ],
+                "summary": "Get current user's daily token usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD), defaults to 30 days ago",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD), defaults to today",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/tokenusage.DailyAggregate"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/usage/projects/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns token usage summary for a specific project",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage"
+                ],
+                "summary": "Get project's token usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD), defaults to 30 days ago",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD), defaults to today",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/tokenusage.UsageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/users/me/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve current user's settings including memory preferences",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Settings"
+                ],
+                "summary": "Get user settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usersettingshandler.UserSettingsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update current user's settings (partial update supported)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Settings"
+                ],
+                "summary": "Update user settings",
+                "parameters": [
+                    {
+                        "description": "Settings to update",
+                        "name": "settings",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usersettings.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usersettingshandler.UserSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/users/me/settings/preferences": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve current user's preferences only",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Settings"
+                ],
+                "summary": "Get user preferences",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usersettingshandler.PreferencesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update current user's preferences only",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Settings"
+                ],
+                "summary": "Update user preferences",
+                "parameters": [
+                    {
+                        "description": "Preferences to update",
+                        "name": "preferences",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usersettingshandler.UpdatePreferencesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usersettingshandler.PreferencesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
                         }
                     }
                 }
@@ -3054,6 +5149,58 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "authhandler.AccessTokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "authhandler.GetMeResponse": {
+            "type": "object",
+            "properties": {
+                "auth_method": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_admin": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "chatrequests.ChatCompletionRequest": {
             "type": "object",
             "properties": {
@@ -4681,6 +6828,98 @@ const docTemplate = `{
                 }
             }
         },
+        "mcptool.UpdateMCPToolRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "disallowed_keywords": {
+                    "description": "Regex patterns",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
+        "mcptoolhandler.ActiveToolsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mcptoolhandler.MCPToolResponse"
+                    }
+                }
+            }
+        },
+        "mcptoolhandler.ListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mcptoolhandler.MCPToolResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "mcptoolhandler.MCPToolResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "disallowed_keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "name": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "tool_key": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Architecture": {
             "type": "object",
             "properties": {
@@ -4804,6 +7043,175 @@ const docTemplate = `{
                 "max_completion_tokens": {
                     "description": "e.g., 128000",
                     "type": "integer"
+                }
+            }
+        },
+        "modelprompthandler.AssignRequest": {
+            "type": "object",
+            "required": [
+                "prompt_template_id",
+                "template_key"
+            ],
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "prompt_template_id": {
+                    "type": "string"
+                },
+                "template_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelprompthandler.EffectiveTemplateResponse": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "description": "\"model_specific\", \"global_default\", \"hardcoded\"",
+                    "type": "string"
+                },
+                "template": {
+                    "$ref": "#/definitions/modelprompthandler.FullPromptTemplateResponse"
+                }
+            }
+        },
+        "modelprompthandler.EffectiveTemplatesResponse": {
+            "type": "object",
+            "properties": {
+                "templates": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/modelprompthandler.EffectiveTemplateResponse"
+                    }
+                }
+            }
+        },
+        "modelprompthandler.FullPromptTemplateResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_system": {
+                    "type": "boolean"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "name": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "template_key": {
+                    "type": "string"
+                },
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelprompthandler.ListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/modelprompthandler.ModelPromptTemplateResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelprompthandler.ModelPromptTemplateResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "model_catalog_id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "prompt_template": {
+                    "$ref": "#/definitions/modelprompthandler.PromptTemplateResponse"
+                },
+                "prompt_template_id": {
+                    "type": "string"
+                },
+                "template_key": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelprompthandler.PromptTemplateResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "template_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelprompthandler.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "prompt_template_id": {
+                    "type": "string"
                 }
             }
         },
@@ -5813,6 +8221,158 @@ const docTemplate = `{
                 }
             }
         },
+        "prompttemplate.CreatePromptTemplateRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "content",
+                "name",
+                "template_key"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "content": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "template_key": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "prompttemplate.UpdatePromptTemplateRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "content": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "prompttemplatehandler.DuplicateRequest": {
+            "type": "object",
+            "properties": {
+                "new_name": {
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
+        "prompttemplatehandler.ListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/prompttemplatehandler.PromptTemplateResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "prompttemplatehandler.PromptTemplateResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_system": {
+                    "type": "boolean"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "name": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "template_key": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
         "requestmodels.AddProviderRequest": {
             "type": "object",
             "required": [
@@ -6083,6 +8643,552 @@ const docTemplate = `{
                 },
                 "request_id": {
                     "type": "string"
+                }
+            }
+        },
+        "sharerequests.CreateShareRequest": {
+            "type": "object",
+            "required": [
+                "scope"
+            ],
+            "properties": {
+                "branch": {
+                    "description": "Branch to share from (defaults to active branch)",
+                    "type": "string"
+                },
+                "include_context_messages": {
+                    "description": "For single-message share",
+                    "type": "boolean"
+                },
+                "include_images": {
+                    "type": "boolean"
+                },
+                "item_id": {
+                    "description": "Required if scope is \"item\"",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "\"conversation\" or \"item\"",
+                    "type": "string",
+                    "enum": [
+                        "conversation",
+                        "item"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.AnnotationResp": {
+            "type": "object",
+            "properties": {
+                "end_index": {
+                    "type": "integer"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "start_index": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.FileRefResp": {
+            "type": "object",
+            "properties": {
+                "file_id": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.PublicShareResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "snapshot": {
+                    "$ref": "#/definitions/shareresponses.SnapshotResp"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.ShareDeletedResponse": {
+            "type": "object",
+            "properties": {
+                "deleted": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.ShareListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/shareresponses.ShareResponse"
+                    }
+                },
+                "object": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.ShareOptionsResp": {
+            "type": "object",
+            "properties": {
+                "include_context_messages": {
+                    "type": "boolean"
+                },
+                "include_images": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "shareresponses.ShareResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "last_viewed_at": {
+                    "type": "integer"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "revoked_at": {
+                    "type": "integer"
+                },
+                "share_options": {
+                    "$ref": "#/definitions/shareresponses.ShareOptionsResp"
+                },
+                "share_url": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "snapshot_version": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "view_count": {
+                    "type": "integer"
+                },
+                "visibility": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.SnapshotContentResp": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/shareresponses.AnnotationResp"
+                    }
+                },
+                "file_ref": {
+                    "$ref": "#/definitions/shareresponses.FileRefResp"
+                },
+                "output_text": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.SnapshotItemResp": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/shareresponses.SnapshotContentResp"
+                    }
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.SnapshotResp": {
+            "type": "object",
+            "properties": {
+                "assistant_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/shareresponses.SnapshotItemResp"
+                    }
+                },
+                "model_name": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "tokenusage.DailyAggregate": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "estimated_cost_usd": {
+                    "type": "number"
+                },
+                "request_count": {
+                    "type": "integer"
+                },
+                "total_completion_tokens": {
+                    "type": "integer"
+                },
+                "total_prompt_tokens": {
+                    "type": "integer"
+                },
+                "total_tokens": {
+                    "type": "integer"
+                }
+            }
+        },
+        "tokenusage.Period": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "tokenusage.PlatformUsageResponse": {
+            "type": "object",
+            "properties": {
+                "by_model": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tokenusage.UsageSummary"
+                    }
+                },
+                "by_provider": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tokenusage.UsageSummary"
+                    }
+                },
+                "period": {
+                    "$ref": "#/definitions/tokenusage.Period"
+                },
+                "top_users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tokenusage.UserUsage"
+                    }
+                },
+                "total_usage": {
+                    "$ref": "#/definitions/tokenusage.UsageSummary"
+                }
+            }
+        },
+        "tokenusage.UsageResponse": {
+            "type": "object",
+            "properties": {
+                "by_model": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tokenusage.UsageSummary"
+                    }
+                },
+                "by_provider": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tokenusage.UsageSummary"
+                    }
+                },
+                "period": {
+                    "$ref": "#/definitions/tokenusage.Period"
+                },
+                "total_usage": {
+                    "$ref": "#/definitions/tokenusage.UsageSummary"
+                }
+            }
+        },
+        "tokenusage.UsageSummary": {
+            "type": "object",
+            "properties": {
+                "estimated_cost_usd": {
+                    "type": "number"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "request_count": {
+                    "type": "integer"
+                },
+                "total_completion_tokens": {
+                    "type": "integer"
+                },
+                "total_prompt_tokens": {
+                    "type": "integer"
+                },
+                "total_tokens": {
+                    "type": "integer"
+                }
+            }
+        },
+        "tokenusage.UserUsage": {
+            "type": "object",
+            "properties": {
+                "estimated_cost_usd": {
+                    "type": "number"
+                },
+                "request_count": {
+                    "type": "integer"
+                },
+                "total_completion_tokens": {
+                    "type": "integer"
+                },
+                "total_prompt_tokens": {
+                    "type": "integer"
+                },
+                "total_tokens": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "usersettings.AdvancedSettings": {
+            "type": "object",
+            "properties": {
+                "code_enabled": {
+                    "description": "Enable code execution features",
+                    "type": "boolean"
+                },
+                "web_search": {
+                    "description": "Let Jan automatically search the web for answers",
+                    "type": "boolean"
+                }
+            }
+        },
+        "usersettings.BaseStyle": {
+            "type": "string",
+            "enum": [
+                "Concise",
+                "Friendly",
+                "Professional"
+            ],
+            "x-enum-varnames": [
+                "BaseStyleConcise",
+                "BaseStyleFriendly",
+                "BaseStyleProfessional"
+            ]
+        },
+        "usersettings.MemoryConfig": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "inject_episodic": {
+                    "type": "boolean"
+                },
+                "inject_semantic": {
+                    "type": "boolean"
+                },
+                "inject_user_core": {
+                    "type": "boolean"
+                },
+                "max_episodic_items": {
+                    "type": "integer"
+                },
+                "max_project_items": {
+                    "type": "integer"
+                },
+                "max_user_items": {
+                    "type": "integer"
+                },
+                "min_similarity": {
+                    "type": "number"
+                },
+                "observe_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "usersettings.ProfileSettings": {
+            "type": "object",
+            "properties": {
+                "base_style": {
+                    "description": "Conversation style: Concise, Friendly, or Professional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/usersettings.BaseStyle"
+                        }
+                    ]
+                },
+                "custom_instructions": {
+                    "description": "Additional behavior, style, and tone preferences",
+                    "type": "string"
+                },
+                "more_about_you": {
+                    "description": "Additional information about the user",
+                    "type": "string"
+                },
+                "nick_name": {
+                    "description": "What should Jan call you? (alias: nickname)",
+                    "type": "string"
+                },
+                "occupation": {
+                    "description": "User's occupation",
+                    "type": "string"
+                }
+            }
+        },
+        "usersettings.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "advanced_settings": {
+                    "$ref": "#/definitions/usersettings.AdvancedSettings"
+                },
+                "enable_tools": {
+                    "type": "boolean"
+                },
+                "enable_trace": {
+                    "type": "boolean"
+                },
+                "memory_config": {
+                    "$ref": "#/definitions/usersettings.MemoryConfig"
+                },
+                "preferences": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "profile_settings": {
+                    "$ref": "#/definitions/usersettings.ProfileSettings"
+                }
+            }
+        },
+        "usersettingshandler.PreferencesResponse": {
+            "type": "object",
+            "properties": {
+                "preferences": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "usersettingshandler.UpdatePreferencesRequest": {
+            "type": "object",
+            "properties": {
+                "preferences": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "usersettingshandler.UserSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "advanced_settings": {
+                    "$ref": "#/definitions/usersettings.AdvancedSettings"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "enable_tools": {
+                    "type": "boolean"
+                },
+                "enable_trace": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "memory_config": {
+                    "$ref": "#/definitions/usersettings.MemoryConfig"
+                },
+                "preferences": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "profile_settings": {
+                    "$ref": "#/definitions/usersettings.ProfileSettings"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         }

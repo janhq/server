@@ -4,31 +4,35 @@ The LLM API lets you send messages to AI models and get responses. It works like
 
 ## Quick Start
 
+Examples: [API examples index](../examples/README.md) covers cURL/SDK snippets for every endpoint.
+
 ### URLs
 - **Direct access**: http://localhost:8080
 - **Through gateway** (recommended): http://localhost:8000
 - **Inside Docker**: http://llm-api:8080
 
 ### Authentication
-All endpoints need authentication through the Kong gateway at port 8000.
 
-**Get a guest token:**
+All endpoints require authentication through the Kong gateway.
+
+**For complete authentication documentation, see [Authentication Guide](../README.md#authentication)**
+
+**Quick guest token:**
 
 ```bash
 # Get guest token
 curl -X POST http://localhost:8000/llm/auth/guest-login
 
-# Response:
-{
- "access_token": "eyJhbGc...",
- "token_type": "Bearer",
- "expires_in": 3600,
- "refresh_token": "..."
-}
-
 # Use token in requests
-curl -H "Authorization: Bearer <token>" http://localhost:8000/v1/chat/completions
+curl -H "Authorization: Bearer <token>" \
+ http://localhost:8000/v1/chat/completions
 ```
+
+**Key points:**
+- Use Kong gateway (port 8000) for all client requests
+- Bearer tokens from `/llm/auth/guest-login` work for development
+- API keys (`X-API-Key: sk_*`) available via Kong for production
+- Direct service access (port 8080) still requires valid JWT
 
 ## What You Can Do
 
@@ -373,6 +377,101 @@ Get API version and build information.
 curl http://localhost:8080/v1/version
 ```
 
+### User Settings
+
+**GET** `/v1/users/me/settings`
+
+Retrieves the current user's settings. If no settings exist, returns defaults.
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+ http://localhost:8000/v1/users/me/settings
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "user_id": 123,
+  "memory_config": {
+    "enabled": true,
+    "observe_enabled": true,
+    "inject_user_core": true,
+    "inject_semantic": true,
+    "inject_episodic": false,
+    "max_user_items": 3,
+    "max_project_items": 5,
+    "max_episodic_items": 3,
+    "min_similarity": 0.75
+  },
+  "profile_settings": {
+    "base_style": "Friendly",
+    "custom_instructions": "",
+    "nick_name": "",
+    "occupation": "",
+    "more_about_you": ""
+  },
+  "advanced_settings": {
+    "web_search": false,
+    "code_enabled": false
+  },
+  "enable_trace": false,
+  "enable_tools": true,
+  "preferences": {}
+}
+```
+
+**PATCH** `/v1/users/me/settings`
+
+Updates user settings. Only provided fields are updated (partial update).
+
+```bash
+curl -X PATCH http://localhost:8000/v1/users/me/settings \
+ -H "Authorization: Bearer <token>" \
+ -H "Content-Type: application/json" \
+ -d '{
+   "memory_config": {
+     "enabled": true,
+     "max_user_items": 5
+   },
+   "profile_settings": {
+     "base_style": "Professional",
+     "nick_name": "Dev"
+   }
+ }'
+```
+
+**Settings Groups:**
+
+| Group | Fields | Purpose |
+|-------|--------|---------|
+| `memory_config` | `enabled`, `observe_enabled`, `inject_*`, `max_*`, `min_similarity` | Memory and retrieval controls |
+| `profile_settings` | `base_style`, `custom_instructions`, `nick_name`, `occupation`, `more_about_you` | User profile and preferences |
+| `advanced_settings` | `web_search`, `code_enabled` | Advanced feature toggles |
+| Top-level | `enable_trace`, `enable_tools`, `preferences` | System features |
+
+**Memory Configuration:**
+- `enabled` - Master toggle for all memory features
+- `observe_enabled` - Automatically learn from conversations
+- `inject_user_core` - Include user core facts in prompts
+- `inject_semantic` - Include semantic project facts
+- `inject_episodic` - Include episodic conversation history
+- `max_user_items` (0-20) - Maximum user memory items to retrieve
+- `max_project_items` (0-50) - Maximum project facts to retrieve
+- `max_episodic_items` (0-20) - Maximum episodic events to retrieve
+- `min_similarity` (0.0-1.0) - Minimum relevance score for memory retrieval
+
+**Profile Settings:**
+- `base_style` - Conversation style: `"Concise"`, `"Friendly"`, or `"Professional"`
+- `custom_instructions` - Additional behavior and tone preferences
+- `nick_name` - What should Jan call you? (alias: `nickname` accepted on input)
+- `occupation` - Your occupation or role
+- `more_about_you` - Additional information about yourself
+
+**Advanced Settings:**
+- `web_search` - Enable automatic web search (privacy consideration)
+- `code_enabled` - Enable code execution features (security consideration)
+
 ## With Media (Visual Input)
 
 Reference media using `jan_*` IDs from the Media API:
@@ -382,7 +481,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
  -H "Authorization: Bearer <token>" \
  -H "Content-Type: application/json" \
  -d '{
- "model": "gpt-4o-mini",
+ "model": "jan-v2-30b",
  "messages": [
  {
  "role": "user",
@@ -404,10 +503,10 @@ Use any vision-capable model you have configured (for local-only setups, point `
 
 ## Related Services
 
-- **Response API** (Port 8082) - Multi-step orchestration using this service
-- **Media API** (Port 8285) - Media resolution for `jan_*` IDs
-- **MCP Tools** (Port 8091) - Tool integration for LLM responses
-- **Kong Gateway** (Port 8000) - API routing and load balancing
+- **Response API** (Port 8082) - Multi-step orchestration using this service. See [Decision Guide](../decision-guides.md#llm-api-vs-response-api) for when to use each.
+- **Media API** (Port 8285) - Media resolution for `jan_*` IDs. See [Media Upload Guide](../decision-guides.md#media-upload-methods) and [Jan ID System](../decision-guides.md#jan-id-system).
+- **MCP Tools** (Port 8091) - Tool integration for LLM responses. See [MCP Tools Documentation](../mcp-tools/).
+- **Kong Gateway** (Port 8000) - API routing and load balancing. See [Authentication Guide](../README.md#authentication).
 
 ## Error Handling
 

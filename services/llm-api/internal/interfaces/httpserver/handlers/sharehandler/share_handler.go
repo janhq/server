@@ -37,21 +37,6 @@ func NewShareHandler(
 }
 
 // CreateShare handles POST /v1/conversations/:conv_public_id/share
-// @Summary Create a share for a conversation
-// @Description Creates a public share link for a conversation or a single message
-// @Tags Shares API
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param conv_public_id path string true "Conversation public ID"
-// @Param request body sharerequests.CreateShareRequest true "Share creation request"
-// @Success 201 {object} shareresponses.ShareResponse "Share created successfully"
-// @Failure 400 {object} responses.ErrorResponse "Invalid request"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Forbidden"
-// @Failure 404 {object} responses.ErrorResponse "Conversation not found"
-// @Failure 413 {object} responses.ErrorResponse "Snapshot too large"
-// @Router /v1/conversations/{conv_public_id}/share [post]
 func (h *ShareHandler) CreateShare(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -120,17 +105,6 @@ func (h *ShareHandler) CreateShare(reqCtx *gin.Context) {
 }
 
 // ListShares handles GET /v1/conversations/:conv_public_id/shares
-// @Summary List shares for a conversation
-// @Description Lists all shares (active and revoked) for a conversation
-// @Tags Shares API
-// @Security BearerAuth
-// @Produce json
-// @Param conv_public_id path string true "Conversation public ID"
-// @Success 200 {object} shareresponses.ShareListResponse "List of shares"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Forbidden"
-// @Failure 404 {object} responses.ErrorResponse "Conversation not found"
-// @Router /v1/conversations/{conv_public_id}/shares [get]
 func (h *ShareHandler) ListShares(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -166,16 +140,6 @@ func (h *ShareHandler) ListShares(reqCtx *gin.Context) {
 }
 
 // ListUserShares handles GET /v1/shares
-// @Summary List all shares for the authenticated user
-// @Description Lists all shares (active and revoked) for the authenticated user across all conversations
-// @Tags Shares API
-// @Security BearerAuth
-// @Produce json
-// @Param include_revoked query bool false "Include revoked shares" default(true)
-// @Success 200 {object} shareresponses.ShareListResponse "List of shares"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Forbidden"
-// @Router /v1/shares [get]
 func (h *ShareHandler) ListUserShares(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -210,17 +174,6 @@ func (h *ShareHandler) ListUserShares(reqCtx *gin.Context) {
 }
 
 // RevokeUserShare handles DELETE /v1/shares/:share_id
-// @Summary Revoke a share by share ID
-// @Description Revokes an active share by its ID, making it inaccessible
-// @Tags Shares API
-// @Security BearerAuth
-// @Produce json
-// @Param share_id path string true "Share public ID"
-// @Success 200 {object} shareresponses.ShareDeletedResponse "Share revoked successfully"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Forbidden"
-// @Failure 404 {object} responses.ErrorResponse "Share not found"
-// @Router /v1/shares/{share_id} [delete]
 func (h *ShareHandler) RevokeUserShare(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -259,18 +212,6 @@ func (h *ShareHandler) RevokeUserShare(reqCtx *gin.Context) {
 }
 
 // RevokeShare handles DELETE /v1/conversations/:conv_public_id/shares/:share_id
-// @Summary Revoke a share
-// @Description Revokes an active share, making it inaccessible
-// @Tags Shares API
-// @Security BearerAuth
-// @Produce json
-// @Param conv_public_id path string true "Conversation public ID"
-// @Param share_id path string true "Share public ID"
-// @Success 200 {object} shareresponses.ShareDeletedResponse "Share revoked successfully"
-// @Failure 401 {object} responses.ErrorResponse "Unauthorized"
-// @Failure 403 {object} responses.ErrorResponse "Forbidden"
-// @Failure 404 {object} responses.ErrorResponse "Share not found"
-// @Router /v1/conversations/{conv_public_id}/shares/{share_id} [delete]
 func (h *ShareHandler) RevokeShare(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -309,15 +250,6 @@ func (h *ShareHandler) RevokeShare(reqCtx *gin.Context) {
 }
 
 // GetPublicShare handles GET /v1/public/shares/:slug
-// @Summary Get a public share by slug
-// @Description Retrieves a publicly shared conversation or message by its slug
-// @Tags Public Shares API
-// @Produce json
-// @Param slug path string true "Share slug"
-// @Success 200 {object} shareresponses.PublicShareResponse "Public share content"
-// @Failure 404 {object} responses.ErrorResponse "Share not found or revoked"
-// @Failure 410 {object} responses.ErrorResponse "Share has been revoked"
-// @Router /v1/public/shares/{slug} [get]
 func (h *ShareHandler) GetPublicShare(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 
@@ -358,14 +290,6 @@ func (h *ShareHandler) GetPublicShare(reqCtx *gin.Context) {
 }
 
 // HeadPublicShare handles HEAD /v1/public/shares/:slug
-// @Summary Check if a public share exists
-// @Description Checks if a share exists and is accessible (for preloading)
-// @Tags Public Shares API
-// @Param slug path string true "Share slug"
-// @Success 200 "Share exists and is accessible"
-// @Failure 404 "Share not found"
-// @Failure 410 "Share has been revoked"
-// @Router /v1/public/shares/{slug} [head]
 func (h *ShareHandler) HeadPublicShare(reqCtx *gin.Context) {
 	ctx := reqCtx.Request.Context()
 

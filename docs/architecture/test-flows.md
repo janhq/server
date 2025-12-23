@@ -1,6 +1,6 @@
 # Test Flows Architecture & Diagrams
 
-**Generated**: November 11, 2025
+**Generated**: December 2025
 
 This document provides visual representations of test flows, dependencies, and service interactions across the jan-server test suite. See [System Design](system-design.md) for the complete system architecture.
 
@@ -8,13 +8,14 @@ This document provides visual representations of test flows, dependencies, and s
 
 ## Overview
 
-The jan-server test suite consists of **6** Postman collections with 100+ individual test cases covering:
+The jan-server test suite consists of Postman collections with 100+ individual test cases covering:
 - Authentication flows (guest, JWT, API keys)
-- Conversation management and projects
-- Tool orchestration via MCP
+- Conversation and project management
+- Model catalog and prompt templates
+- Tool orchestration via MCP (admin and runtime)
 - Media file operations
 - Response generation with tool calling
-- Full regression sweep (`test-all.postman.json`)
+- User management
 
 All tests follow dependency chains: Health -> Auth -> Setup -> Main Tests -> Cleanup
 
@@ -24,9 +25,9 @@ For complete system architecture diagrams, see [System Design](system-design.md)
 
 ## Test Collections Overview
 
-### 1. Auth & LLM API Tests (`auth-postman-scripts.json`)
+### 1. Auth Tests (`auth.postman.json`)
 
-**Focus**: Authentication flows and LLM API validation
+**Focus**: Authentication flows and token management
 
 ```
 Health Checks
@@ -34,8 +35,6 @@ Health Checks
 Setup [Guest Token] -> [Keycloak Admin] -> [Create User] -> [Set Password]
  v
 Main Tests (Parallel)
-+- LLM API - Guest Token [List Models, Get Details, Chat]
-+- LLM API - User Token [List Models]
 +- Guest Login Flow [Request Token, Upgrade Account]
 +- JWT Login Flow [Keycloak Auth, User Management]
 +- API Key Flow [Create, List, Use, Revoke]
@@ -43,11 +42,11 @@ Main Tests (Parallel)
 Cleanup [Delete User]
 ```
 
-**8 Flows, 20+ Test Cases**
+**20+ Test Cases**
 
 ---
 
-### 2. Conversations Tests (`conversations-postman-scripts.json`)
+### 2. Conversation Tests (`conversation.postman.json`)
 
 **Focus**: Conversation and project management
 
@@ -74,13 +73,64 @@ Conversation Flow
 Cleanup [Delete All Resources]
 ```
 
-**3 Flows, 30+ Test Cases**
+**30+ Test Cases**
 
 ---
 
-### 3. MCP Tools Tests (`mcp-postman-scripts.json`)
+### 3. Model Tests (`model.postman.json`)
 
-**Focus**: Model Context Protocol tool orchestration
+**Focus**: Model catalog operations
+
+```
+Authentication
+ v
+Model Catalog Operations
++- List Models
++- Get Model Details
++- Model Metadata
+```
+
+**Test Cases**
+
+---
+
+### 4. Model Prompt Templates Tests (`model-prompt-templates.postman.json`)
+
+**Focus**: Prompt template management
+
+```
+Authentication
+ v
+Template Operations
++- List Templates
++- Get Template
++- Create/Update Templates
+```
+
+**Test Cases**
+
+---
+
+### 5. MCP Admin Tests (`mcp-admin.postman.json`)
+
+**Focus**: MCP administrative operations
+
+```
+Authentication
+ v
+MCP Configuration
++- List Available Tools
++- Tool Configuration
++- Admin Settings
+```
+
+**Test Cases**
+
+---
+
+### 6. MCP Runtime Tests (`mcp-runtime.postman.json`)
+
+**Focus**: MCP tool execution at runtime
 
 ```
 Guest Authentication
@@ -95,11 +145,11 @@ Individual Tool Tests
 +- SearXNG Direct [Meta-search integration]
 ```
 
-**2 Flows, 8+ Test Cases**
+**8+ Test Cases**
 
 ---
 
-### 4. Media API Tests (`media-postman-scripts.json`)
+### 7. Media API Tests (`media.postman.json`)
 
 **Focus**: File upload, storage, and resolution
 
@@ -122,7 +172,7 @@ Resolution & Download
 
 ---
 
-### 5. Response API Tests (`responses-postman-scripts.json`)
+### 8. Response API Tests (`response.postman.json`)
 
 **Focus**: Response generation with tool orchestration
 
@@ -144,7 +194,26 @@ Response Generation (Parallel)
 +- Complex Scenarios [Search + Scrape + Analyze]
 ```
 
-**9 Flows, 25+ Test Cases**
+**25+ Test Cases**
+
+---
+
+### 9. User Management Tests (`user-management.postman.json`)
+
+**Focus**: User administration and account management
+
+```
+Authentication
+ v
+User Operations
++- Create Users
++- List Users
++- Update User Details
++- Delete Users
++- Role Management
+```
+
+**Test Cases**
 
 ---
 
