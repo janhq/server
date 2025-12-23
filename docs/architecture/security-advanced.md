@@ -21,215 +21,29 @@ Comprehensive security documentation covering authentication, authorization, enc
 
 ### Overview
 
-Jan Server uses a multi-layered authentication system supporting multiple authentication methods:
-
-```
-┌─────────────────────────────────────────┐
-│ Client Application                       │
-└──────────────────┬──────────────────────┘
-                   │
-        ┌──────────┴──────────┐
-        │                     │
-    ┌───▼────┐          ┌────▼────┐
-    │ OAuth2 │          │ API Key  │
-    └───┬────┘          └────┬────┘
-        │                     │
-        └──────────┬──────────┘
-                   │
-        ┌──────────▼──────────┐
-        │ Authentication      │
-        │ Gateway             │
-        │ (Keycloak/OIDC)    │
-        └──────────┬──────────┘
-                   │
-        ┌──────────▼──────────┐
-        │ JWT Validation      │
-        │ Token Introspection │
-        └──────────┬──────────┘
-                   │
-        ┌──────────▼──────────┐
-        │ Authorization       │
-        │ (RBAC/ABAC)        │
-        └──────────┬──────────┘
-                   │
-        ┌──────────▼──────────┐
-        │ Protected Resource  │
-        └─────────────────────┘
-```
+Jan Server uses a multi-layered authentication system supporting multiple authentication methods: OAuth2 and API Key authentication flow through an Authentication Gateway (Keycloak/OIDC), followed by JWT Validation and Token Introspection, then Authorization (RBAC/ABAC), and finally access to Protected Resources.
 
 ### Keycloak/OIDC Integration
 
 #### Configuration
 
-```yaml
-# keycloak configuration
-keycloak:
-  auth_server_url: "https://auth.jan.ai"
-  realm: "jan-server"
-  client_id: "jan-server"
-  client_secret: "${KEYCLOAK_CLIENT_SECRET}"
-  
-  openid_config:
-    issuer: "https://auth.jan.ai/realms/jan-server"
-    authorization_endpoint: "https://auth.jan.ai/realms/jan-server/protocol/openid-connect/auth"
-    token_endpoint: "https://auth.jan.ai/realms/jan-server/protocol/openid-connect/token"
-    userinfo_endpoint: "https://auth.jan.ai/realms/jan-server/protocol/openid-connect/userinfo"
-    jwks_uri: "https://auth.jan.ai/realms/jan-server/protocol/openid-connect/certs"
-```
+Configure Keycloak with auth_server_url, realm, client_id, client_secret, and openid_config endpoints (issuer, authorization_endpoint, token_endpoint, userinfo_endpoint, jwks_uri).
 
 #### OAuth2 Code Flow with PKCE
 
-```
-User Browser                    Jan Server                  Keycloak
-    │                               │                          │
-    ├──── Click "Login" ───────────▶│                          │
-    │                               │                          │
-    │◀─ Redirect to /authorize ────│◀─ Generate code_challenge│
-    │ (client_id, state, redirect) │                          │
-    │                               │                          │
-    ├─────────────────── Call /authorize ──────────────────▶  │
-    │                               │                          │
-    │◀─ Show login form ─────────────────────────────────────│
-    │                               │                          │
-    ├──────── Submit credentials ──────────────────────────▶  │
-    │                               │                          │
-    │◀─ Redirect to callback URL ──────────────────────────│
-    │ (code=ABC123, state=xyz)      │                          │
-    │                               │                          │
-    ├──── Redirect callback ────────▶│                          │
-    │                               │                          │
-    │                               ├─ Exchange code for token▶
-    │                               │ (code, client_id,        │
-    │                               │  client_secret,           │
-    │                               │  code_verifier)           │
-    │                               │                          │
-    │                               │◀─ Return JWT token ──────
-    │                               │ (access_token,           │
-    │                               │  id_token,               │
-    │                               │  refresh_token)          │
-    │◀─ Set session cookie ────────│                          │
-    │                               │                          │
-    └──── Redirect to dashboard ────▶                          │
-```
+The OAuth2 flow with PKCE follows this sequence: User clicks login → Jan Server generates code_challenge and redirects to Keycloak /authorize → User submits credentials → Keycloak redirects to callback with authorization code → Jan Server exchanges code for JWT tokens (access_token, id_token, refresh_token) using code_verifier → Session cookie is set and user is redirected to dashboard.
 
 #### JWT Token Structure
 
-```
-Header:
-{
-  "alg": "RS256",
-  "typ": "JWT",
-  "kid": "key-id-1"
-}
-
-Payload:
-{
-  "iss": "https://auth.jan.ai/realms/jan-server",
-  "sub": "user-123",
-  "aud": "jan-server",
-  "exp": 1672531200,
-  "iat": 1672527600,
-  "auth_time": 1672527600,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "email_verified": true,
-  "realm_access": {
-    "roles": ["user", "premium"]
-  },
-  "resource_access": {
-    "jan-server": {
-      "roles": ["read:conversations", "write:conversations", "admin"]
-    }
-  }
-}
-
-Signature:
-RSASSA-PKCS1-v1_5(
-  base64url(header) + '.' + base64url(payload),
-  private_key
-)
-```
+JWT tokens contain three parts: Header (algorithm RS256, type JWT, key ID), Payload (issuer, subject, audience, expiration, issued at, auth time, user details, roles and permissions), and Signature (RSASSA-PKCS1-v1_5 signature using private key).
 
 #### Token Validation Flow
 
-```python
-import jwt
-from cryptography.x509 import load_pem_x509_certificate
-import requests
-
-class TokenValidator:
-    def __init__(self, jwks_uri):
-        self.jwks_uri = jwks_uri
-        self.public_keys = {}
-    
-    def get_public_key(self, kid):
-        """Fetch public key from JWKS endpoint"""
-        if kid not in self.public_keys:
-            response = requests.get(self.jwks_uri)
-            jwks = response.json()
-            
-            for key_data in jwks['keys']:
-                key_id = key_data['kid']
-                # Convert JWK to PEM format
-                public_key = self._jwk_to_pem(key_data)
-                self.public_keys[key_id] = public_key
-        
-        return self.public_keys.get(kid)
-    
-    def validate_token(self, token):
-        """Validate JWT token"""
-        try:
-            # Decode without verification first to get kid
-            header = jwt.get_unverified_header(token)
-            kid = header['kid']
-            
-            # Get public key
-            public_key = self.get_public_key(kid)
-            
-            # Verify and decode
-            payload = jwt.decode(
-                token,
-                public_key,
-                algorithms=['RS256'],
-                audience='jan-server',
-                issuer='https://auth.jan.ai/realms/jan-server'
-            )
-            
-            return payload
-        
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationError("Token expired")
-        except jwt.InvalidTokenError:
-            raise AuthenticationError("Invalid token")
-    
-    def _jwk_to_pem(self, jwk):
-        """Convert JWK to PEM format"""
-        # Implementation details omitted
-        pass
-
-# Usage in middleware
-@app.before_request
-def validate_auth():
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    if token:
-        try:
-            payload = token_validator.validate_token(token)
-            g.user = payload
-        except AuthenticationError:
-            abort(401)
-```
+Token validation involves: fetching public keys from JWKS endpoint, decoding the JWT header to extract the key ID, retrieving the corresponding public key, verifying the signature using RS256 algorithm, validating issuer and audience claims, checking expiration, and returning the payload. Middleware validates tokens on each request.
 
 ### Guest Login
 
-For unauthenticated users, Jan Server supports guest login:
-
-```
-POST /llm/auth/guest-login
-├─ No credentials required
-├─ Returns temporary token (expires in 1 hour)
-├─ Limited to read-only operations
-└─ Rate limited: 10 requests per hour per IP
-```
+For unauthenticated users, Jan Server supports guest login via POST /llm/auth/guest-login endpoint. No credentials are required. Returns a temporary token (expires in 1 hour). Limited to read-only operations and rate limited to 10 requests per hour per IP.
 
 ---
 
@@ -237,100 +51,25 @@ POST /llm/auth/guest-login
 
 ### Role Hierarchy
 
-```
-┌─────────────────────────────────┐
-│ Administrator                    │
-│ ├─ All permissions              │
-│ ├─ Manage users                 │
-│ ├─ Manage roles                 │
-│ ├─ Access audit logs            │
-│ └─ System configuration         │
-└─────────────────────────────────┘
+**Administrator**: All permissions, manage users and roles, access audit logs, system configuration.
 
-┌─────────────────────────────────┐
-│ Premium User                     │
-│ ├─ Create conversations         │
-│ ├─ Use all models               │
-│ ├─ Webhooks                     │
-│ ├─ MCP tools                    │
-│ ├─ Batch operations             │
-│ └─ Priority support             │
-└─────────────────────────────────┘
+**Premium User**: Create conversations, use all models, webhooks, MCP tools, batch operations, priority support.
 
-┌─────────────────────────────────┐
-│ Standard User                    │
-│ ├─ Create conversations         │
-│ ├─ Use free models              │
-│ ├─ Basic features               │
-│ └─ Rate limited                 │
-└─────────────────────────────────┘
+**Standard User**: Create conversations, use free models, basic features, rate limited.
 
-┌─────────────────────────────────┐
-│ Guest                            │
-│ ├─ Read-only access             │
-│ ├─ No conversation creation     │
-│ ├─ Limited model access         │
-│ └─ Heavily rate limited         │
-└─────────────────────────────────┘
-```
+**Guest**: Read-only access, no conversation creation, limited model access, heavily rate limited.
 
 ### Permission Matrix
 
-```
-Resource            | Guest | Standard | Premium | Admin
-─────────────────────────────────────────────────────
-GET /conversations  | NO    | YES      | YES     | YES
-POST /conversations | NO    | YES      | YES     | YES
-PATCH /conversations| NO    | YES      | YES     | YES
-DELETE /conversations| NO    | NO       | YES     | YES
-GET /models         | YES   | YES      | YES     | YES
-POST /chat/complete | NO    | LIMITED  | YES     | YES
-POST /media/upload  | NO    | 5 files  | 100 files| YES
-POST /webhooks      | NO    | NO       | YES     | YES
-GET /admin/*        | NO    | NO       | NO      | YES
-```
+Permissions vary by role:
+- **Guest**: Can only GET /models
+- **Standard**: Can GET/POST/PATCH conversations, GET models, LIMITED chat completions, upload 5 files
+- **Premium**: All Standard permissions plus DELETE conversations, unlimited chat completions, upload 100 files, webhooks
+- **Admin**: All permissions including admin endpoints
 
 ### RBAC Implementation
 
-```python
-from functools import wraps
-
-def require_role(*roles):
-    """Decorator to enforce role-based access"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            user_roles = g.user.get('realm_access', {}).get('roles', [])
-            if not any(role in user_roles for role in roles):
-                abort(403, description="Insufficient permissions")
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-def require_permission(resource, action):
-    """Decorator to enforce permission-based access"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            user_perms = g.user.get('resource_access', {}).get('jan-server', {}).get('roles', [])
-            required = f"{action}:{resource}"
-            if required not in user_perms:
-                abort(403, description="Insufficient permissions")
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-# Usage
-@app.route('/v1/conversations', methods=['POST'])
-@require_role('premium', 'admin')
-def create_conversation():
-    return {"id": "conv-123"}
-
-@app.route('/v1/webhooks', methods=['POST'])
-@require_permission('webhooks', 'write')
-def create_webhook():
-    return {"id": "hook-123"}
-```
+RBAC is implemented using decorators that check user roles and permissions from JWT tokens. Role-based decorators verify if a user has required roles (e.g., premium, admin). Permission-based decorators check specific resource:action permissions (e.g., write:webhooks). Both abort with 403 if requirements are not met.
 
 ---
 
@@ -338,96 +77,19 @@ def create_webhook():
 
 ### Data in Transit (TLS/SSL)
 
-```
-TLS 1.3 Configuration:
-├─ Cipher suites:
-│  ├─ TLS_AES_256_GCM_SHA384 (preferred)
-│  ├─ TLS_CHACHA20_POLY1305_SHA256
-│  └─ TLS_AES_128_GCM_SHA256
-├─ Certificate:
-│  ├─ Issued by: DigiCert / Let's Encrypt
-│  ├─ Validity: 1 year
-│  ├─ Auto-renewal: 30 days before expiry
-│  └─ SAN: *.jan.ai, jan.ai
-├─ Perfect Forward Secrecy: Enabled
-└─ HSTS: max-age=31536000, includeSubDomains
-```
+**TLS 1.3 Configuration**: Uses cipher suites TLS_AES_256_GCM_SHA384 (preferred), TLS_CHACHA20_POLY1305_SHA256, and TLS_AES_128_GCM_SHA256. Certificates issued by DigiCert/Let's Encrypt with 1-year validity and auto-renewal 30 days before expiry. SAN covers *.jan.ai and jan.ai. Perfect Forward Secrecy enabled. HSTS configured with max-age=31536000 and includeSubDomains.
 
 #### Certificate Pinning
 
-```python
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.ssl_ import create_urllib3_context
-
-class PinningAdapter(HTTPAdapter):
-    def init_poolmanager(self, *args, **kwargs):
-        ctx = create_urllib3_context()
-        # Add certificate pinning
-        ctx.load_verify_locations('server_cert.pem')
-        kwargs['ssl_context'] = ctx
-        return super().init_poolmanager(*args, **kwargs)
-
-session = requests.Session()
-session.mount('https://', PinningAdapter())
-response = session.get('https://api.jan.ai/v1/health')
-```
+Certificate pinning is implemented using custom HTTP adapters that create an SSL context and load specific server certificates for verification. This prevents man-in-the-middle attacks by ensuring only trusted certificates are accepted.
 
 ### Data at Rest (Database Encryption)
 
-```sql
--- Enable encryption at rest for MySQL
-SET GLOBAL innodb_encrypt_tables=ON;
-SET GLOBAL innodb_encrypt_log=ON;
-
--- Encryption key management
-SET GLOBAL keyring_encrypted_file_data='/var/lib/mysql-keyring/keyring';
-SET GLOBAL keyring_encrypted_file_password='secure-password';
-
--- Create encrypted table
-CREATE TABLE conversations (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) NOT NULL,
-  title VARCHAR(200) NOT NULL ENCRYPTION='Y',
-  content LONGTEXT ENCRYPTION='Y',
-  created_at TIMESTAMP,
-  CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
-) ENCRYPTION='Y';
-
--- Verify encryption
-SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS 
-FROM INFORMATION_SCHEMA.TABLES 
-WHERE TABLE_NAME='conversations';
-```
+Database encryption at rest uses MySQL InnoDB encryption features: enable innodb_encrypt_tables and innodb_encrypt_log, configure keyring for key management, create tables with ENCRYPTION='Y' option for sensitive columns (title, content). Verify encryption status by querying INFORMATION_SCHEMA.TABLES.
 
 ### Field-Level Encryption
 
-```python
-from cryptography.fernet import Fernet
-import base64
-
-class FieldEncryption:
-    def __init__(self, master_key):
-        self.cipher = Fernet(base64.urlsafe_b64encode(master_key.encode()))
-    
-    def encrypt_field(self, plaintext):
-        """Encrypt sensitive field"""
-        return self.cipher.encrypt(plaintext.encode()).decode()
-    
-    def decrypt_field(self, ciphertext):
-        """Decrypt sensitive field"""
-        return self.cipher.decrypt(ciphertext.encode()).decode()
-
-# Usage
-encryption = FieldEncryption(os.getenv('MASTER_ENCRYPTION_KEY'))
-
-# Store
-user.email_encrypted = encryption.encrypt_field(user.email)
-db.save(user)
-
-# Retrieve
-user.email = encryption.decrypt_field(user.email_encrypted)
-```
+Field-level encryption uses Fernet symmetric encryption with a master key. Sensitive fields are encrypted before storage and decrypted when retrieved. The master key is stored securely in environment variables.
 
 ---
 
@@ -435,148 +97,41 @@ user.email = encryption.decrypt_field(user.email_encrypted)
 
 ### Threat Matrix
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ STRIDE Threat Model                                     │
-└─────────────────────────────────────────────────────────┘
+**STRIDE Threat Model**:
 
-S - Spoofing Identity
-├─ Threat: Attacker impersonates legitimate user
-├─ Likelihood: Medium
-├─ Impact: High
-└─ Mitigation:
-   ├─ Mutual TLS authentication
-   ├─ Multi-factor authentication (MFA)
-   ├─ IP whitelisting for admin
-   └─ Hardware security keys
+**S - Spoofing Identity**: Attacker impersonates legitimate user (Medium likelihood, High impact). Mitigations: Mutual TLS, MFA, IP whitelisting, hardware security keys.
 
-T - Tampering with Data
-├─ Threat: Attacker modifies data in transit/at rest
-├─ Likelihood: Low
-├─ Impact: Critical
-└─ Mitigation:
-   ├─ TLS 1.3 for transit
-   ├─ Database encryption at rest
-   ├─ Message authentication codes (HMAC)
-   ├─ Cryptographic signatures
-   └─ Integrity verification
+**T - Tampering with Data**: Attacker modifies data in transit/at rest (Low likelihood, Critical impact). Mitigations: TLS 1.3, database encryption, HMAC, cryptographic signatures, integrity verification.
 
-R - Repudiation
-├─ Threat: Attacker denies performing action
-├─ Likelihood: Medium
-├─ Impact: High
-└─ Mitigation:
-   ├─ Comprehensive audit logging
-   ├─ Non-repudiation tokens
-   ├─ Immutable logs
-   └─ 3rd-party verification
+**R - Repudiation**: Attacker denies performing action (Medium likelihood, High impact). Mitigations: Comprehensive audit logging, non-repudiation tokens, immutable logs, 3rd-party verification.
 
-I - Information Disclosure
-├─ Threat: Attacker gains access to sensitive data
-├─ Likelihood: Medium
-├─ Impact: Critical
-└─ Mitigation:
-   ├─ Role-based access control (RBAC)
-   ├─ Encryption at rest and in transit
-   ├─ Data masking in logs
-   ├─ Secrets management (Vault)
-   └─ DLP (Data Loss Prevention)
+**I - Information Disclosure**: Attacker gains access to sensitive data (Medium likelihood, Critical impact). Mitigations: RBAC, encryption at rest and in transit, data masking, secrets management (Vault), DLP.
 
-D - Denial of Service (DoS)
-├─ Threat: Attacker disrupts service availability
-├─ Likelihood: High
-├─ Impact: High
-└─ Mitigation:
-   ├─ Rate limiting per user/IP
-   ├─ DDoS protection (Cloudflare)
-   ├─ Load balancing
-   ├─ Circuit breakers
-   └─ Auto-scaling
+**D - Denial of Service**: Attacker disrupts service availability (High likelihood, High impact). Mitigations: Rate limiting, DDoS protection (Cloudflare), load balancing, circuit breakers, auto-scaling.
 
-E - Elevation of Privilege
-├─ Threat: Attacker gains admin/higher access
-├─ Likelihood: Low
-├─ Impact: Critical
-└─ Mitigation:
-   ├─ Principle of least privilege
-   ├─ Role-based access control
-   ├─ Multi-factor authentication
-   ├─ Privilege separation
-   └─ Regular access reviews
-```
+**E - Elevation of Privilege**: Attacker gains admin/higher access (Low likelihood, Critical impact). Mitigations: Principle of least privilege, RBAC, MFA, privilege separation, regular access reviews.
 
 ### Attack Scenarios & Responses
 
 #### Scenario 1: Compromised API Token
 
-```
-Threat: Attacker obtains user's API token and makes requests
+**Threat**: Attacker obtains user's API token and makes requests.
 
-Detection:
-├─ Unusual API usage pattern
-├─ Request from unfamiliar IP
-├─ Rate limit exceeded
-└─ Concurrent requests from multiple IPs
+**Detection**: Unusual API usage pattern, requests from unfamiliar IPs, rate limit exceeded, concurrent requests from multiple IPs.
 
-Response:
-├─ Immediately revoke token
-├─ Notify user via email
-├─ Require password reset
-├─ Enable MFA
-├─ Review and audit recent actions
-└─ Block suspicious IP addresses
-```
+**Response**: Immediately revoke token, notify user via email, require password reset, enable MFA, review and audit recent actions, block suspicious IP addresses.
 
 #### Scenario 2: SQL Injection
 
-```
-Threat: Attacker injects SQL through user input
+**Threat**: Attacker injects SQL through user input.
 
-Prevention:
-├─ Parameterized queries (prepared statements)
-├─ Input validation and sanitization
-├─ ORM usage (SQLAlchemy)
-├─ WAF (Web Application Firewall)
-└─ Regular security scanning
-
-Code Example:
-# UNSAFE
-query = f"SELECT * FROM users WHERE email='{email}'"
-result = db.execute(query)
-
-# SAFE
-query = "SELECT * FROM users WHERE email=?"
-result = db.execute(query, (email,))
-
-# SAFER (ORM)
-result = User.query.filter_by(email=email).first()
-```
+**Prevention**: Use parameterized queries (prepared statements), input validation and sanitization, ORMs (SQLAlchemy), WAF (Web Application Firewall), regular security scanning. Always use parameterized queries or ORM methods instead of string concatenation.
 
 #### Scenario 3: Cross-Site Request Forgery (CSRF)
 
-```
-Threat: Attacker tricks user into making unwanted request
+**Threat**: Attacker tricks user into making unwanted request.
 
-Prevention:
-├─ CSRF tokens on all state-changing operations
-├─ SameSite cookie attribute
-├─ Verify Origin/Referer headers
-└─ User confirmation for sensitive operations
-
-Implementation:
-# Generate CSRF token
-csrf_token = secrets.token_urlsafe(32)
-session['csrf_token'] = csrf_token
-
-# Validate on POST/PUT/PATCH
-@app.before_request
-def validate_csrf():
-    if request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-        token = request.form.get('_csrf_token', 
-                    request.headers.get('X-CSRF-Token'))
-        if not token or token != session.get('csrf_token'):
-            abort(403, description="CSRF token validation failed")
-```
+**Prevention**: Use CSRF tokens on all state-changing operations, SameSite cookie attribute, verify Origin/Referer headers, user confirmation for sensitive operations. Generate unique CSRF tokens per session and validate them on all POST/PUT/PATCH/DELETE requests.
 
 ---
 
@@ -584,85 +139,25 @@ def validate_csrf():
 
 ### Rate Limiting Strategy
 
-```
-Tier 1 - Anonymous/Guest
-├─ 10 requests per minute per IP
-├─ 100 requests per hour per IP
-└─ Burst: 20 requests per 10 seconds
+**Tier 1 - Anonymous/Guest**: 10 requests/minute, 100 requests/hour per IP, burst 20 requests/10 seconds.
 
-Tier 2 - Authenticated User
-├─ 100 requests per minute per user
-├─ 10,000 requests per hour per user
-└─ Burst: 200 requests per 10 seconds
+**Tier 2 - Authenticated User**: 100 requests/minute, 10,000 requests/hour per user, burst 200 requests/10 seconds.
 
-Tier 3 - Premium User
-├─ 1,000 requests per minute per user
-├─ 1,000,000 requests per hour per user
-└─ Burst: 2,000 requests per 10 seconds
+**Tier 3 - Premium User**: 1,000 requests/minute, 1,000,000 requests/hour per user, burst 2,000 requests/10 seconds.
 
-Tier 4 - API Key Holder
-├─ Configurable per API key
-├─ Can request custom limits
-└─ Usage tracking and alerts
-```
+**Tier 4 - API Key Holder**: Configurable per API key, can request custom limits, usage tracking and alerts.
 
 #### Implementation
 
-```python
-from flask_limiter import Limiter
-
-limiter = Limiter(
-    app,
-    key_func=get_client_identifier,
-    storage_uri="redis://localhost:6379"
-)
-
-@app.route('/v1/chat/completions', methods=['POST'])
-@limiter.limit("100/hour;20/minute")
-def chat_completion():
-    return {"status": "ok"}
-
-def get_client_identifier():
-    """Get unique identifier for rate limiting"""
-    if g.user:
-        return g.user['sub']  # Use user ID
-    else:
-        return request.remote_addr  # Use IP address
-```
+Rate limiting is implemented using decorators with Redis storage backend. The key function determines whether to rate limit by user ID (authenticated) or IP address (anonymous). Limits are specified per endpoint using decorator syntax.
 
 ### Input Validation
 
-```python
-from pydantic import BaseModel, Field, EmailStr
-
-class CreateConversationRequest(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-    description: str = Field(None, max_length=1000)
-    model: str = Field(None, regex=r"^[a-z0-9_-]+$")
-
-@app.route('/v1/conversations', methods=['POST'])
-def create_conversation():
-    try:
-        data = CreateConversationRequest(**request.json)
-        # Process validated data
-        return {"id": "conv-123"}
-    except ValidationError as e:
-        return {"errors": e.errors()}, 400
-```
+Input validation uses schema-based validation with Pydantic models. Define field constraints (min_length, max_length, regex patterns) and validate request data before processing. Return 400 errors with detailed validation messages on failure.
 
 ### Output Encoding
 
-```python
-import html
-
-# Prevent XSS by encoding user input in responses
-user_input = '<script>alert("XSS")</script>'
-safe_output = html.escape(user_input)
-# Result: &lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;
-
-# Use in templates (Jinja2 auto-escapes by default)
-# {{ user_input }}  # Automatically escaped
-```
+Prevent XSS attacks by HTML-encoding user input in responses. Use html.escape() for manual encoding or rely on template engine auto-escaping (Jinja2 auto-escapes by default).
 
 ---
 
@@ -670,89 +165,15 @@ safe_output = html.escape(user_input)
 
 ### Data Isolation
 
-```
-Tenant A                      Tenant B
-├─ Users                      ├─ Users
-├─ Conversations              ├─ Conversations
-│  ├─ Conv 1                  │  ├─ Conv 5
-│  └─ Conv 2                  │  └─ Conv 6
-├─ Media Files                ├─ Media Files
-│  ├─ File 1                  │  ├─ File 10
-│  └─ File 2                  │  └─ File 11
-└─ Settings                   └─ Settings
-
-Database Schema:
-├─ conversations (tenant_id, user_id, ...)
-├─ messages (conversation_id, tenant_id, ...)
-├─ media_files (tenant_id, user_id, ...)
-└─ audit_logs (tenant_id, user_id, ...)
-
-Query Example:
-SELECT * FROM conversations 
-WHERE tenant_id = ? AND user_id = ?  -- Always include tenant_id
-```
+Each tenant has isolated data: users, conversations, media files, and settings. Database schema includes tenant_id in all tables (conversations, messages, media_files, audit_logs). All queries must include tenant_id filter to ensure data isolation.
 
 ### Tenant Context
 
-```python
-from flask import g, request
-
-class TenantContext:
-    """Ensure tenant isolation in all operations"""
-    
-    @staticmethod
-    def get_current_tenant():
-        """Get tenant ID from JWT token"""
-        user = g.user
-        return user.get('tenant_id')
-    
-    @staticmethod
-    def validate_tenant_access(resource_tenant_id):
-        """Verify user can access this tenant's data"""
-        current_tenant = TenantContext.get_current_tenant()
-        if resource_tenant_id != current_tenant:
-            abort(403, description="Access denied")
-
-@app.route('/v1/conversations/<conversation_id>')
-def get_conversation(conversation_id):
-    conv = db.get_conversation(conversation_id)
-    
-    # Always validate tenant
-    TenantContext.validate_tenant_access(conv.tenant_id)
-    
-    return conv.to_dict()
-```
+Tenant context is extracted from JWT tokens and validated on every resource access. A TenantContext class provides methods to get the current tenant ID and validate that users can only access resources belonging to their tenant, aborting with 403 on violations.
 
 ### Network Isolation
 
-```yaml
-# Kubernetes NetworkPolicy for tenant isolation
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: tenant-isolation
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: jan-server
-    ports:
-    - protocol: TCP
-      port: 8000
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          name: jan-server
-    ports:
-    - protocol: TCP
-      port: 5432  # PostgreSQL
-```
+Kubernetes NetworkPolicy enforces tenant isolation at the network level. Policies restrict ingress traffic to port 8000 from jan-server namespace only, and egress traffic to PostgreSQL (port 5432) within the same namespace.
 
 ---
 
@@ -760,77 +181,11 @@ spec:
 
 ### Audit Trail
 
-All sensitive operations are logged:
-
-```python
-class AuditLog:
-    def log(self, event_type, user_id, tenant_id, resource, action, result):
-        """Log security event"""
-        log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "event_type": event_type,
-            "user_id": user_id,
-            "tenant_id": tenant_id,
-            "resource": resource,
-            "resource_id": resource.id,
-            "action": action,
-            "result": result,  # success/failure
-            "ip_address": request.remote_addr,
-            "user_agent": request.headers.get('User-Agent'),
-            "request_id": request.headers.get('X-Request-ID')
-        }
-        
-        # Immutable append
-        db.audit_logs.insert(log_entry)
-        
-        # Also ship to centralized logging
-        logger.info(log_entry)
-
-# Usage
-@app.route('/v1/conversations', methods=['POST'])
-def create_conversation():
-    try:
-        conv = create_conv()
-        AuditLog.log(
-            event_type="RESOURCE_CREATE",
-            user_id=g.user['sub'],
-            tenant_id=g.user['tenant_id'],
-            resource=conv,
-            action="create",
-            result="success"
-        )
-        return conv.to_dict()
-    except Exception as e:
-        AuditLog.log(
-            event_type="RESOURCE_CREATE",
-            user_id=g.user['sub'],
-            tenant_id=g.user['tenant_id'],
-            resource=None,
-            action="create",
-            result="failure"
-        )
-        raise
-```
+All sensitive operations are logged with an AuditLog class that captures: timestamp, event_type, user_id, tenant_id, resource, action, result (success/failure), ip_address, user_agent, and request_id. Log entries are immutably appended to the database and shipped to centralized logging. Every endpoint logs both successful and failed operations.
 
 ### Audit Events
 
-```
-Event Type              | Fields Logged
-────────────────────────────────────────────
-LOGIN                   | user_id, ip, timestamp, status
-TOKEN_GENERATED         | user_id, token_type, expires_at
-TOKEN_REVOKED           | user_id, token_id, reason
-PASSWORD_CHANGED        | user_id, timestamp, old_hash_required
-PERMISSION_GRANTED      | user_id, role, granted_by, timestamp
-PERMISSION_REVOKED      | user_id, role, revoked_by, timestamp
-CONVERSATION_CREATED    | user_id, conv_id, timestamp
-CONVERSATION_DELETED    | user_id, conv_id, timestamp
-MEDIA_UPLOADED          | user_id, file_id, size, type
-DATA_EXPORTED           | user_id, data_type, records_count
-ADMIN_CONFIG_CHANGED    | admin_id, setting, old_value, new_value
-FAILED_AUTH_ATTEMPT     | ip, username, reason, timestamp
-SUSPICIOUS_ACTIVITY     | user_id, activity_type, details
-```
+Audit events include: LOGIN (user_id, ip, status), TOKEN_GENERATED/REVOKED (user_id, token details), PASSWORD_CHANGED (user_id, timestamp), PERMISSION_GRANTED/REVOKED (user_id, role, actor), CONVERSATION_CREATED/DELETED (user_id, conv_id), MEDIA_UPLOADED (user_id, file details), DATA_EXPORTED (user_id, data_type, count), ADMIN_CONFIG_CHANGED (admin_id, setting, values), FAILED_AUTH_ATTEMPT (ip, username, reason), SUSPICIOUS_ACTIVITY (user_id, activity details).
 
 ---
 
@@ -838,98 +193,29 @@ SUSPICIOUS_ACTIVITY     | user_id, activity_type, details
 
 ### Development
 
-```python
-# 1. Use security headers
-@app.after_request
-def set_security_headers(response):
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    response.headers['Content-Security-Policy'] = "default-src 'self'"
-    return response
+**Security Headers**: Set X-Content-Type-Options (nosniff), X-Frame-Options (DENY), X-XSS-Protection (1; mode=block), Strict-Transport-Security (max-age=31536000), Content-Security-Policy (default-src 'self') on all responses.
 
-# 2. Secrets management
-import os
-from dotenv import load_dotenv
+**Secrets Management**: Load secrets from environment variables using dotenv, never hardcode credentials.
 
-load_dotenv()
-DB_PASSWORD = os.getenv('DB_PASSWORD')  # Never hardcode
-API_KEY = os.getenv('API_KEY')
+**Dependency Scanning**: Use safety to check for vulnerable dependencies.
 
-# 3. Dependency scanning
-# pip install safety
-# safety check
+**Code Scanning**: Use bandit for Python security linting.
 
-# 4. Code scanning
-# pip install bandit
-# bandit -r .
+**SAST**: Use tools like SonarQube and Snyk for static analysis.
 
-# 5. SAST (Static Application Security Testing)
-# Use tools like SonarQube, Snyk
-
-# 6. Regular updates
-# pip install --upgrade pip
-# pip install -U -r requirements.txt
-```
+**Regular Updates**: Keep dependencies up to date with pip upgrade.
 
 ### Deployment
 
-```yaml
-# 1. Runtime security
-apiVersion: v1
-kind: Pod
-metadata:
-  name: jan-server
-spec:
-  containers:
-  - name: app
-    image: jan-server:latest
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 1000
-      readOnlyRootFilesystem: true
-      allowPrivilegeEscalation: false
-      capabilities:
-        drop:
-        - ALL
+**Runtime Security**: Configure pod securityContext with runAsNonRoot: true, runAsUser: 1000, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, drop all capabilities.
 
-# 2. Secrets handling
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: db-secret
-        key: password
+**Secrets Handling**: Load secrets from Kubernetes secretKeyRef instead of environment variables.
 
-# 3. RBAC
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: jan-server
-rules:
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["get"]
-  resourceNames: ["db-secret"]
-```
+**RBAC**: Define minimal Kubernetes roles that only allow access to specific secrets with get verb.
 
 ### Monitoring
 
-```
-Security Monitoring Checklist:
-├─ Failed login attempts
-├─ Brute force detection
-├─ Unusual API patterns
-├─ Permission escalation attempts
-├─ Unencrypted data transmission
-├─ Certificate expiration
-├─ Rate limit violations
-├─ Unauthorized access attempts
-├─ Configuration changes
-├─ Audit log tampering
-├─ DLP alerts
-└─ Intrusion detection
-```
+**Security Monitoring Checklist**: Failed login attempts, brute force detection, unusual API patterns, permission escalation attempts, unencrypted data transmission, certificate expiration, rate limit violations, unauthorized access attempts, configuration changes, audit log tampering, DLP alerts, intrusion detection.
 
 ---
 
