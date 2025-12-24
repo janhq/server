@@ -1,4 +1,4 @@
-name: CI - Microservices
+name: CI - Backend Services (Dev)
 on:
   push:
     branches:
@@ -48,7 +48,7 @@ jobs:
   build-llm-api:
     needs: changes
     if: needs.changes.outputs.llm-api == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
@@ -63,7 +63,7 @@ jobs:
   build-mcp-tools:
     needs: changes
     if: needs.changes.outputs.mcp-tools == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
@@ -78,7 +78,7 @@ jobs:
   build-media-api:
     needs: changes
     if: needs.changes.outputs.media-api == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
@@ -93,7 +93,7 @@ jobs:
   build-response-api:
     needs: changes
     if: needs.changes.outputs.response-api == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
@@ -108,7 +108,7 @@ jobs:
   build-memory-tools:
     needs: changes
     if: needs.changes.outputs.memory-tools == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
@@ -123,7 +123,7 @@ jobs:
   build-vector-store:
     needs: changes
     if: needs.changes.outputs.vector-store == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
@@ -138,7 +138,7 @@ jobs:
   build-realtime-api:
     needs: changes
     if: needs.changes.outputs.realtime-api == 'true' || needs.changes.outputs.pkg == 'true'
-    uses: ./.github/workflows/template-docker.yml
+    uses: ./.github/workflows/_reusable-docker.yml
     secrets: inherit
     with:
       runs-on: ubuntu-24-04-docker
