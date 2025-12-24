@@ -1,0 +1,155 @@
+# Core infrastructure services
+# PostgreSQL, Keycloak, Kong
+
+volumes:
+  api-db-data:
+  keycloak-db-data:
+
+networks:
+  default:
+    name: jan-server_default
+  mcp-network:
+    driver: bridge
+    name: jan-server_mcp-network
+
+services:
+  # PostgreSQL Database for LLM API
+  api-db:
+    image: ankane/pgvector:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-jan_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jan_password}
+      POSTGRES_DB: ${POSTGRES_DB:-jan_llm_api}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - api-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jan_user} -d ${POSTGRES_DB:-jan_llm_api}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["infra", "full"]
+
+  # PostgreSQL Database for Keycloak
+  keycloak-db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+    ports:
+      - "${KEYCLOAK_DB_PORT:-5433}:5432"
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["infra", "full"]
+
+  # Keycloak Authentication Server
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../../.env}
+    environment:
+      # Database
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_DB_URL_DATABASE: keycloak
+      
+      # Features (aligned with KEYCLOAK_FEATURES in centralized config)
+      KC_FEATURES: ${KEYCLOAK_FEATURES:-token-exchange,preview,admin-fine-grained-authz}
+      
+      # HTTP Configuration
+      KC_HTTP_PORT: ${KEYCLOAK_HTTP_PORT:-8085}
+      KC_HOSTNAME_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8085}
+      KC_HOSTNAME_ADMIN_URL: ${KEYCLOAK_ADMIN_URL:-http://localhost:8085}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_PROXY: "edge"
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /
+      
+      # Admin Credentials
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      
+      # OpenID Connect
+      KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_LEGACY_LOGOUT_REDIRECT_URI: "true"
+      
+      # CORS Configuration - Disabled for local development to avoid admin console issues
+      # Note: For production, configure proper CORS origins
+      QUARKUS_HTTP_CORS: "false"
+      
+      # Logging / Debug Configuration
+      QUARKUS_LOG_LEVEL: ${KEYCLOAK_LOG_LEVEL:-INFO}
+      QUARKUS_LOG_CATEGORY__ORG_KEYCLOAK__LEVEL: ${KEYCLOAK_LOG_LEVEL:-DEBUG}
+      QUARKUS_LOG_CONSOLE_ENABLE: "true"
+    command:
+      - start
+      - --import-realm
+      - --hostname-strict=false
+      - --hostname-strict-backchannel=false
+      - --http-enabled=true
+      - --proxy=edge
+      - --proxy-headers=xforwarded
+      - --spi-login-protocol-openid-connect-suppress-logout-confirmation-screen=true
+      - --log-level=${KEYCLOAK_LOG_LEVEL:-INFO}
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-8085}:${KEYCLOAK_HTTP_PORT:-8085}"
+    volumes:
+      - ../../integrations/keycloak/import:/opt/keycloak/data/import:ro
+      - ../../integrations/keycloak/init:/opt/keycloak/init:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8085 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    profiles: ["infra", "full"]
+
+  # Kong API Gateway
+  kong:
+    image: kong:3.5
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../../.env}
+    environment:
+      # Database Configuration
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      
+      # Logging
+      KONG_LOG_LEVEL: ${KONG_LOG_LEVEL:-info}
+      
+      # Proxy Configuration
+      KONG_PROXY_LISTEN: ${KONG_PROXY_LISTEN:-0.0.0.0:8000, 0.0.0.0:8443 ssl}
+      KONG_ADMIN_LISTEN: ${KONG_ADMIN_LISTEN:-0.0.0.0:8001, 0.0.0.0:8444 ssl}
+      
+      # Plugin Configuration
+      KONG_PLUGINS: ${KONG_PLUGINS:-bundled,keycloak-apikey}
+      KONG_LUA_PACKAGE_PATH: ${KONG_LUA_PACKAGE_PATH:-/opt/kong-plugins/?.lua;/opt/kong-plugins/?/init.lua;;}
+    volumes:
+      - ../../integrations/kong/kong.yml:/kong/kong.yml:ro
+      - ../../integrations/kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
+    ports:
+      - "${KONG_HTTP_PORT:-8000}:8000"
+      - "127.0.0.1:${KONG_ADMIN_PORT:-8001}:8001"
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["infra", "full"]

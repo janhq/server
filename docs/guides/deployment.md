@@ -415,7 +415,7 @@ export VLLM_ENABLED=true
 export VLLM_PROVIDER_URL=http://localhost:8101/v1,http://localhost:8102/v1,http://localhost:8103/v1
 
 # Start LLM API
-docker compose -f docker-compose.yml -f docker/services-api.yml up -d llm-api
+docker compose -f docker-compose.yml -f infra/docker/services-api.yml up -d llm-api
 ```
 
 Or in `docker-compose.yml`, set the environment variable:

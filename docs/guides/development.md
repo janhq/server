@@ -87,10 +87,10 @@ docker compose ps  # status
 ```
 jan-server/
 +-- services/              # llm-api, media-api, response-api, mcp-tools, template-api
-+-- cmd/jan-cli/           # jan-cli sources (`./jan-cli.sh`, `.\\jan-cli.ps1` wrappers)
++-- tools/jan-cli/         # jan-cli sources (`./jan-cli.sh`, `.\jan-cli.ps1` wrappers)
 +-- pkg/config/            # Single source of truth for config defaults and schema
-+-- docker/                # Compose fragments (infrastructure, services, dev-full, observability)
-+-- docker compose.yml     # Root compose file (includes docker/*.yml via profiles)
++-- infra/docker/          # Compose fragments (infrastructure, services, dev-full, observability)
++-- docker compose.yml     # Root compose file (includes infra/docker/*.yml via profiles)
 +-- docker compose.dev-full.yml # Extra compose overrides for dev-full
 +-- kong/                  # Gateway configuration (kong.yml + kong-dev-full.yml)
 +-- docs/                  # Documentation (guides, architecture, configuration)
@@ -147,7 +147,7 @@ After the stack is up you can replace a service:
 #### How It Works
 
 `make dev-full`:
-- Loads `.env` and copies it to `docker/.env` via `ensure-docker-env`
+- Loads `.env` and copies it to `infra/docker/.env` via `ensure-docker-env`
 - Runs `docker compose -f docker-compose.yml -f docker-compose.dev-full.yml --profile full up -d`
 - Prints URLs for PostgreSQL, Keycloak, Kong, and every API/MCP service
 - Keeps the `jan-network`/`jan-monitoring` networks around for fast restarts

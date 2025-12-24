@@ -44,7 +44,7 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 
 ### Development Workflow
 ```bash
-# 1. Setup development environment (.env + docker/.env)
+# 1. Setup development environment (.env + infra/docker/.env)
 make setup
 
 # 2. Start everything in Docker

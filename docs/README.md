@@ -108,7 +108,7 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 - `docs/quickstart.md` - Installation, prerequisites, and troubleshooting.
 - `docs/api/` - Service-specific references plus shared overview.
 - `docs/architecture/` - System design, services, security, data flow, observability.
-- `docs/configuration/` - Loader behavior, precedence, env var mapping, docker/k8s examples.
+- `docs/configuration/` - Loader behavior, precedence, env var mapping, infra/docker/k8s examples.
 - `docs/guides/` - Development, deployment, testing, CLI, IDE, troubleshooting pointers.
 - `docs/runbooks/` - On-call runbooks, incident playbooks, rate-limit/monitoring actions.
 - `docs/conventions/` - Standards, patterns, workflow, and reviews.

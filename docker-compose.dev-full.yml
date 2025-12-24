@@ -17,5 +17,5 @@ services:
     environment:
       KONG_DECLARATIVE_CONFIG: /kong/kong-dev-full.yml
     volumes:
-      - ./kong/kong-dev-full.yml:/kong/kong-dev-full.yml:ro
-      - ./kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
+      - ./integrations/kong/kong-dev-full.yml:/kong/kong-dev-full.yml:ro
+      - ./integrations/kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro

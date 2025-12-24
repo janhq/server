@@ -58,7 +58,7 @@ You can run Jan Server in different ways:
 Use Docker Compose to run on your local computer:
 
 - `make quickstart` - interactive wizard (creates `.env`, starts stack)
-- `make up-full` - bring up all services (`docker compose.yml` + `docker/*.yml`)
+- `make up-full` - bring up all services (`docker compose.yml` + `infra/docker/*.yml`)
 - `make up-vllm-gpu` / `make up-vllm-cpu` - start vLLM profile
 - `make monitor-up` - start Prometheus, Grafana, Jaeger
 - `make down` / `make down-clean` - stop stack (preserve or remove volumes)
