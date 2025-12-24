@@ -20,6 +20,7 @@ services:
   bge-m3:
     build:
       context: ./bge-m3-mock
+      dockerfile: Dockerfile
     environment:
       PORT: ${EMBEDDING_PORT:-8091}
     ports:
@@ -33,10 +34,10 @@ services:
     profiles: ["memory-mock"]
 
   memory-tools:
-    build: ../services/memory-tools
+    build: ../../services/memory-tools
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-../.env}
+      - ${ENV_FILE:-.env}
     environment:
       # HTTP Server
       MEMORY_TOOLS_PORT: ${MEMORY_TOOLS_PORT:-8090}

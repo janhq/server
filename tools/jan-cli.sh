@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLI_DIR="${SCRIPT_DIR}/cmd/jan-cli"
+CLI_DIR="${SCRIPT_DIR}/jan-cli"
 CLI_BINARY="${CLI_DIR}/jan-cli"
 
 # Build if binary doesn't exist or any .go source is newer

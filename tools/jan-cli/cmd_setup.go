@@ -20,12 +20,14 @@ func init() {
 	setupAndRunCmd.Flags().Bool("skip-prompts", false, "Skip interactive prompts and use existing .env")
 	setupAndRunCmd.Flags().Bool("with-memory-tools", false, "Enable memory tools profile and defaults during setup")
 	setupAndRunCmd.Flags().Bool("with-realtime-api", false, "Enable realtime API profile during setup")
+	setupAndRunCmd.Flags().Bool("skip-realtime", false, "Skip realtime API setup (disable realtime profile)")
 }
 
 func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	skipPrompts, _ := cmd.Flags().GetBool("skip-prompts")
 	enableMemory, _ := cmd.Flags().GetBool("with-memory-tools")
 	enableRealtime, _ := cmd.Flags().GetBool("with-realtime-api")
+	skipRealtime, _ := cmd.Flags().GetBool("skip-realtime")
 
 	fmt.Println("🚀 Jan Server Setup and Run")
 	fmt.Println("=" + strings.Repeat("=", 50))
@@ -51,7 +53,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 			if response != "y" && response != "yes" {
 				fmt.Println("Using existing .env file...")
 			} else {
-				if err := promptForEnvVars(envPath, enableMemory); err != nil {
+				if err := promptForEnvVars(envPath, enableMemory, skipRealtime); err != nil {
 					return fmt.Errorf("failed to update .env: %w", err)
 				}
 			}
@@ -62,7 +64,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to copy .env template: %w", err)
 			}
 
-			if err := promptForEnvVars(envPath, enableMemory); err != nil {
+			if err := promptForEnvVars(envPath, enableMemory, skipRealtime); err != nil {
 				return fmt.Errorf("failed to configure .env: %w", err)
 			}
 		}
@@ -83,6 +85,12 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	if skipPrompts && enableRealtime {
 		if err := applyRealtimeDefaults(envPath); err != nil {
 			return fmt.Errorf("failed to enable realtime API defaults: %w", err)
+		}
+	}
+
+	if skipRealtime {
+		if err := disableRealtime(envPath); err != nil {
+			return fmt.Errorf("failed to disable realtime API: %w", err)
 		}
 	}
 
@@ -217,7 +225,7 @@ func copyEnvTemplate(destPath string) error {
 	return nil
 }
 
-func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
+func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime bool) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println()
@@ -526,49 +534,54 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool) error {
 	}
 
 	// 5. Realtime API Configuration
-	fmt.Println()
-	fmt.Println("🎙️  Realtime API Setup")
-	fmt.Println("Enable realtime API for real-time audio/video communication via LiveKit.")
-	fmt.Print("Enable Realtime API? (y/N): ")
-
-	realtimeChoice, _ := reader.ReadString('\n')
-	realtimeChoice = strings.TrimSpace(strings.ToLower(realtimeChoice))
-
-	// Default is No for Realtime API (requires LiveKit credentials)
-	if realtimeChoice == "y" || realtimeChoice == "yes" {
-		updates["REALTIME_API_ENABLED"] = "true"
-		profiles = append(profiles, "realtime")
-
+	if !skipRealtime {
 		fmt.Println()
-		fmt.Println("LiveKit Configuration (required for Realtime API):")
-		fmt.Println("Get credentials from https://cloud.livekit.io or your self-hosted LiveKit server")
-		fmt.Println()
+		fmt.Println("🎙️  Realtime API Setup")
+		fmt.Println("Enable realtime API for real-time audio/video communication via LiveKit.")
+		fmt.Print("Enable Realtime API? (y/N): ")
 
-		fmt.Print("LIVEKIT_WS_URL (e.g., wss://your-app.livekit.cloud): ")
-		livekitURL, _ := reader.ReadString('\n')
-		livekitURL = strings.TrimSpace(livekitURL)
-		if livekitURL != "" {
-			updates["LIVEKIT_WS_URL"] = livekitURL
+		realtimeChoice, _ := reader.ReadString('\n')
+		realtimeChoice = strings.TrimSpace(strings.ToLower(realtimeChoice))
+
+		// Default is No for Realtime API (requires LiveKit credentials)
+		if realtimeChoice == "y" || realtimeChoice == "yes" {
+			updates["REALTIME_API_ENABLED"] = "true"
+			profiles = append(profiles, "realtime")
+
+			fmt.Println()
+			fmt.Println("LiveKit Configuration (required for Realtime API):")
+			fmt.Println("Get credentials from https://cloud.livekit.io or your self-hosted LiveKit server")
+			fmt.Println()
+
+			fmt.Print("LIVEKIT_WS_URL (e.g., wss://your-app.livekit.cloud): ")
+			livekitURL, _ := reader.ReadString('\n')
+			livekitURL = strings.TrimSpace(livekitURL)
+			if livekitURL != "" {
+				updates["LIVEKIT_WS_URL"] = livekitURL
+			}
+
+			fmt.Print("LIVEKIT_API_KEY: ")
+			livekitKey, _ := reader.ReadString('\n')
+			livekitKey = strings.TrimSpace(livekitKey)
+			if livekitKey != "" {
+				updates["LIVEKIT_API_KEY"] = livekitKey
+			}
+
+			fmt.Print("LIVEKIT_API_SECRET: ")
+			livekitSecret, _ := reader.ReadString('\n')
+			livekitSecret = strings.TrimSpace(livekitSecret)
+			if livekitSecret != "" {
+				updates["LIVEKIT_API_SECRET"] = livekitSecret
+			}
+
+			fmt.Println("✓ Realtime API enabled (profile: realtime)")
+		} else {
+			updates["REALTIME_API_ENABLED"] = "false"
+			fmt.Println("✓ Realtime API disabled (enable later by editing .env)")
 		}
-
-		fmt.Print("LIVEKIT_API_KEY: ")
-		livekitKey, _ := reader.ReadString('\n')
-		livekitKey = strings.TrimSpace(livekitKey)
-		if livekitKey != "" {
-			updates["LIVEKIT_API_KEY"] = livekitKey
-		}
-
-		fmt.Print("LIVEKIT_API_SECRET: ")
-		livekitSecret, _ := reader.ReadString('\n')
-		livekitSecret = strings.TrimSpace(livekitSecret)
-		if livekitSecret != "" {
-			updates["LIVEKIT_API_SECRET"] = livekitSecret
-		}
-
-		fmt.Println("✓ Realtime API enabled (profile: realtime)")
 	} else {
 		updates["REALTIME_API_ENABLED"] = "false"
-		fmt.Println("✓ Realtime API disabled (enable later by editing .env)")
+		fmt.Println("✓ Realtime API disabled (skipped via --skip-realtime flag)")
 	}
 
 	// Apply all updates
@@ -702,6 +715,32 @@ func applyRealtimeDefaults(envPath string) error {
 		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
 	}
 
+	return applyEnvUpdates(envPath, updates)
+}
+
+func disableRealtime(envPath string) error {
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("read .env: %w", err)
+	}
+
+	profiles := parseProfiles(strings.Split(string(data), "\n"))
+	updates := make(map[string]string)
+
+	// Remove realtime profile if present
+	newProfiles := []string{}
+	for _, profile := range profiles {
+		if profile != "realtime" {
+			newProfiles = append(newProfiles, profile)
+		}
+	}
+
+	updates["REALTIME_API_ENABLED"] = "false"
+	if len(newProfiles) > 0 {
+		updates["COMPOSE_PROFILES"] = strings.Join(newProfiles, ",")
+	}
+
+	fmt.Println("✓ Realtime API disabled (profile removed)")
 	return applyEnvUpdates(envPath, updates)
 }
 

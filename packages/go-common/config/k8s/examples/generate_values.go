@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/janhq/jan-server/pkg/config"
-	"github.com/janhq/jan-server/pkg/config/k8s"
+	"github.com/janhq/jan-server/packages/go-common/config"
+	"github.com/janhq/jan-server/packages/go-common/config/k8s"
 	"gopkg.in/yaml.v3"
 )
 

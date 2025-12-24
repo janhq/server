@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/janhq/jan-server/pkg/config/codegen"
+	"github.com/janhq/jan-server/packages/go-common/config/codegen"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

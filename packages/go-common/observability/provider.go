@@ -15,7 +15,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/janhq/jan-server/pkg/telemetry"
+	"github.com/janhq/jan-server/packages/go-common/telemetry"
 )
 
 // Provider holds initialized OTEL components

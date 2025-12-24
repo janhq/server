@@ -2,10 +2,10 @@
 
 services:
   realtime-api:
-    build: ../services/realtime-api
+    build: ../../services/realtime-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-../.env}
+      - ${ENV_FILE:-.env}
     environment:
       # HTTP Server
       REALTIME_API_PORT: ${REALTIME_API_PORT:-8186}

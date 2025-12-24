@@ -9,17 +9,18 @@
 # QUICK START
 # ============================================================================================================
 #
-#   make quickstart     - Interactive setup and run (prompts for API keys, starts all services)
-#   make setup          - Initial project setup (dependencies, networks, .env)
-#   make cli-install    - Install jan-cli tool globally
-#   make build-all      - Build all Docker images
-#   make up-full        - Start all services (infrastructure + API + MCP)
-#   make dev-full       - Start all services with host.docker.internal support (for testing)
-#   make health-check   - Check if all services are healthy
-#   make test-all       - Run all integration tests
-#   make stop           - Stop all services (keeps containers & volumes)
-#   make down           - Stop and remove containers (keeps volumes)
-#   make down-clean     - Stop, remove containers and volumes (full cleanup)
+#   make quickstart              - Interactive setup and run (prompts for API keys, starts all services)
+#   make quickstart NO_REALTIME=1 - Interactive setup without Realtime API
+#   make setup                   - Initial project setup (dependencies, networks, .env)
+#   make cli-install             - Install jan-cli tool globally
+#   make build-all               - Build all Docker images
+#   make up-full                 - Start all services (infrastructure + API + MCP)
+#   make dev-full                - Start all services with host.docker.internal support (for testing)
+#   make health-check            - Check if all services are healthy
+#   make test-all                - Run all integration tests
+#   make stop                    - Stop all services (keeps containers & volumes)
+#   make down                    - Stop and remove containers (keeps volumes)
+#   make down-clean              - Stop, remove containers and volumes (full cleanup)
 #
 # ============================================================================================================
 # MAKEFILE STRUCTURE
@@ -47,7 +48,7 @@
 # Docker Compose
 COMPOSE = docker compose
 COMPOSE_DEV_FULL = docker compose -f docker-compose.yml -f docker-compose.dev-full.yml
-MONITOR_COMPOSE = docker compose -f docker/observability.yml
+MONITOR_COMPOSE = docker compose -f infra/docker/observability.yml
 
 MEDIA_SERVICE_KEY ?= changeme-media-key
 MEDIA_API_KEY ?= changeme-media-key
@@ -69,17 +70,17 @@ endif
 setup-and-run quickstart:
 	@echo "Starting interactive setup and run (includes Memory Tools prompt)..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 setup-and-run --with-memory-tools
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 setup-and-run --with-memory-tools $(if $(NO_REALTIME),--skip-realtime,)
 else
-	@bash jan-cli.sh setup-and-run --with-memory-tools
+	@bash tools/jan-cli.sh setup-and-run --with-memory-tools $(if $(NO_REALTIME),--skip-realtime,)
 endif
 
 setup:
 	@echo "Running setup via jan-cli..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 dev setup
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 dev setup
 else
-	@bash jan-cli.sh dev setup
+	@bash tools/jan-cli.sh dev setup
 endif
 
 check-deps:
@@ -171,14 +172,14 @@ build-all:
 
 config-generate:
 	@echo "Generating configuration files from Go structs..."
-	@cd cmd/jan-cli && go run . config generate
+	@cd tools/jan-cli && go run . config generate
 	@echo " Configuration files generated:"
 	@echo "  - config/defaults.yaml (auto-generated)"
 	@echo "  - config/schema/*.schema.json (auto-generated)"
 
 config-drift-check:
 	@echo "Checking for configuration drift..."
-	@cd cmd/jan-cli && go run . config generate
+	@cd tools/jan-cli && go run . config generate
 ifeq ($(OS),Windows_NT)
 	@git diff --exit-code config/ && echo " No configuration drift detected" || (echo " Configuration drift detected! Run 'make config-generate' to update." && exit 1)
 else
@@ -195,7 +196,7 @@ config-help:
 	@echo "  - config/schema/*.schema.json         JSON Schemas for validation"
 	@echo ""
 	@echo "Usage:"
-	@echo "  1. Update pkg/config/types.go with your configuration changes"
+	@echo "  1. Update packages/go-common/config/types.go with your configuration changes"
 	@echo "  2. Run 'make config-generate' to regenerate all files"
 	@echo "  4. Use 'make config-drift-check' in CI to prevent drift  "
 
@@ -205,85 +206,85 @@ config-help:
 
 cli-build:
 	@echo "Building jan-cli..."
-	@cd cmd/jan-cli && go build -o jan-cli$(if $(filter Windows_NT,$(OS)),.exe,) .
+	@cd tools/jan-cli && go build -o jan-cli$(if $(filter Windows_NT,$(OS)),.exe,) .
 	@echo " jan-cli built successfully"
 
 cli-install: cli-build
 	@echo "Installing jan-cli to local bin directory..."
 ifeq ($(OS),Windows_NT)
-	@cmd/jan-cli/jan-cli.exe install
+	@tools/jan-cli/jan-cli.exe install
 else
-	@cmd/jan-cli/jan-cli install
+	@tools/jan-cli/jan-cli install
 endif
 
 cli-clean:
 	@echo "Cleaning jan-cli binary..."
-	@rm -f cmd/jan-cli/jan-cli cmd/jan-cli/jan-cli.exe
+	@rm -f tools/jan-cli/jan-cli tools/jan-cli/jan-cli.exe
 	@echo " jan-cli binary removed"
 
 # --- Swagger Documentation ---
 
 .PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-response-api swagger-realtime-api swagger-combine swagger-install
 
-swagger:
+swagger: cli-build
 	@echo "Generating Swagger documentation for all services..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate --combine
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate --combine
 else
-	@bash jan-cli.sh swagger generate --combine
+	@bash tools/jan-cli.sh swagger generate --combine
 endif
 
 swagger-llm-api:
 	@echo "Generating Swagger for llm-api service..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate -s llm-api
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate -s llm-api
 else
-	@bash jan-cli.sh swagger generate -s llm-api
+	@bash tools/jan-cli.sh swagger generate -s llm-api
 endif
 	@echo " llm-api swagger generated at services/llm-api/docs/swagger"
 
-swagger-media-api:
+swagger-media-api: cli-build
 	@echo "Generating Swagger for media-api service..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate -s media-api
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate -s media-api
 else
-	@bash jan-cli.sh swagger generate -s media-api
+	@bash tools/jan-cli.sh swagger generate -s media-api
 endif
 	@echo " media-api swagger generated at services/media-api/docs/swagger"
 
-swagger-mcp-tools:
+swagger-mcp-tools: cli-build
 	@echo "Generating Swagger for mcp-tools service..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate -s mcp-tools
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate -s mcp-tools
 else
-	@bash jan-cli.sh swagger generate -s mcp-tools
+	@bash tools/jan-cli.sh swagger generate -s mcp-tools
 endif
 	@echo " mcp-tools swagger generated at services/mcp-tools/docs/swagger"
 
-swagger-response-api:
+swagger-response-api: cli-build
 	@echo "Generating Swagger for response-api service..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate -s response-api
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate -s response-api
 else
-	@bash jan-cli.sh swagger generate -s response-api
+	@bash tools/jan-cli.sh swagger generate -s response-api
 endif
 	@echo " response-api swagger generated at services/response-api/docs/swagger"
 
-swagger-realtime-api:
+swagger-realtime-api: cli-build
 	@echo "Generating Swagger for realtime-api service..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger generate -s realtime-api
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate -s realtime-api
 else
-	@bash jan-cli.sh swagger generate -s realtime-api
+	@bash tools/jan-cli.sh swagger generate -s realtime-api
 endif
 	@echo " realtime-api swagger generated at services/realtime-api/docs/swagger"
 
-swagger-combine:
+swagger-combine: cli-build
 	@echo \"Merging LLM API, MCP Tools, and Realtime API swagger specs...\"
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 swagger combine
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger combine
 else
-	@bash jan-cli.sh swagger combine
+	@bash tools/jan-cli.sh swagger combine
 endif
 	@echo \" Combined swagger created for unified API documentation\"
 
@@ -542,16 +543,16 @@ db-dump:
 
 monitor-up:
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor up
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 monitor up
 else
-	@bash jan-cli.sh monitor up
+	@bash tools/jan-cli.sh monitor up
 endif
 
 monitor-down:
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor down
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 monitor down
 else
-	@bash jan-cli.sh monitor down
+	@bash tools/jan-cli.sh monitor down
 endif
 
 monitor-logs:
@@ -559,9 +560,9 @@ monitor-logs:
 
 monitor-clean:
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File jan-cli.ps1 monitor reset
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 monitor reset
 else
-	@bash jan-cli.sh monitor reset
+	@bash tools/jan-cli.sh monitor reset
 endif
 
 # --- Advanced Monitoring Targets (from monitoring improvement plan) ---
@@ -574,20 +575,20 @@ endif
 # =============================================================================
 
 ifeq ($(OS),Windows_NT)
-API_TEST := cmd/jan-cli/jan-cli.exe api-test run
+API_TEST := tools/jan-cli/jan-cli.exe api-test run
 else
-API_TEST := cmd/jan-cli/jan-cli api-test run
+API_TEST := tools/jan-cli/jan-cli api-test run
 endif
 
 GATEWAY_URL ?= http://localhost:8000
 TIMEOUT_MS ?= 30000
-COLLECTIONS_DIR := tests/automation/collections
+COLLECTIONS_DIR := tests/e2e/collections
 AUTH_MODE ?= guest
 # Exclude memory.postman.json (no memory service), model-prompt-templates.postman.json (API not implemented),
 # and user-management.postman.json (requires manual admin token setup)
 COLLECTION_FILES := $(filter-out $(COLLECTIONS_DIR)/memory.postman.json $(COLLECTIONS_DIR)/model-prompt-templates.postman.json $(COLLECTIONS_DIR)/user-management.postman.json,$(wildcard $(COLLECTIONS_DIR)/*.postman.json))
 
-API_TEST_FLAGS := --env-file tests/automation/.env \
+API_TEST_FLAGS := --env-file tests/e2e/.env \
   --env-var gateway_url=$(GATEWAY_URL) \
   --auto-auth $(AUTH_MODE) \
   --auto-models \

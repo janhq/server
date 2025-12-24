@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/janhq/jan-server/pkg/config"
+	"github.com/janhq/jan-server/packages/go-common/config"
 	"gopkg.in/yaml.v3"
 )
 

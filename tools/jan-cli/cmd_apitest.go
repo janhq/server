@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/janhq/jan-server/pkg/testhelpers"
+	"github.com/janhq/jan-server/packages/go-common/testhelpers"
 	"github.com/spf13/cobra"
 )
 

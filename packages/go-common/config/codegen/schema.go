@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/invopop/jsonschema"
-	"github.com/janhq/jan-server/pkg/config"
+	"github.com/janhq/jan-server/packages/go-common/config"
 )
 
 // GenerateJSONSchema generates JSON Schema files from Go structs

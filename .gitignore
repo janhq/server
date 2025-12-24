@@ -23,9 +23,9 @@ config/*.local.env
 /todos
 
 # Kubernetes secret overrides (never commit these!)
-k8s/**/values-*.local.yaml
-k8s/**/secrets.yaml
-k8s/**/*-secret.yaml.local
+infra/k8s/**/values-*.local.yaml
+infra/k8s/**/secrets.yaml
+infra/k8s/**/*-secret.yaml.local
 
 # Local configuration that shouldn't be shared
 *.local
@@ -256,6 +256,12 @@ go.work
 *.tsbuildinfo
 node_modules/
 dist/
+build/
+.next/
+.nuxt/
+*.log
+.env.local
+.env.*.local
 
 .DS_Store
 cmd/server/__debug_bin*
@@ -281,7 +287,7 @@ docker-compose.override.yml
 docker-compose.*.local.yml
 
 # jan-cli generated config artifacts
-cmd/jan-cli/config/
+tools/jan-cli/config/
 
 # jan-cli binary
-cmd/jan-cli/jan-cli
+tools/jan-cli/jan-cli

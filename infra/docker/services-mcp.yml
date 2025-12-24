@@ -39,7 +39,7 @@ services:
 
   # Lightweight vector store for MCP file search
   vector-store:
-    build: ../services/mcp-tools/tools/vector-store-service
+    build: ../../services/mcp-tools/tools/vector-store-service
     restart: unless-stopped
     environment:
       VECTOR_STORE_PORT: ${VECTOR_STORE_PORT:-3015}
@@ -72,10 +72,10 @@ services:
 
   # MCP Tools API - Unified MCP interface
   mcp-tools:
-    build: ../services/mcp-tools
+    build: ../../services/mcp-tools
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-../.env}
+      - ${ENV_FILE:-.env}
     environment:
       # HTTP Server (service-specific port)
       MCP_TOOLS_HTTP_PORT: ${MCP_TOOLS_HTTP_PORT:-8091}

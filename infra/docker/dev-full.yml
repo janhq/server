@@ -30,8 +30,8 @@ services:
       KONG_PLUGINS: bundled,keycloak-apikey
       KONG_LUA_PACKAGE_PATH: /opt/kong-plugins/?.lua;/opt/kong-plugins/?/init.lua;;
     volumes:
-      - ../kong/kong-dev-full.yml:/kong/kong-dev-full.yml:ro
-      - ../kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
+      - ../integrations/kong/kong-dev-full.yml:/kong/kong-dev-full.yml:ro
+      - ../integrations/kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
 
   # API Services - add host.docker.internal
   llm-api:

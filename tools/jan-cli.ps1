@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$CliDir = Join-Path $ScriptDir "cmd\jan-cli"
+$CliDir = Join-Path $ScriptDir "jan-cli"
 $CliBinary = Join-Path $CliDir "jan-cli.exe"
 $MainGo = Join-Path $CliDir "main.go"
 

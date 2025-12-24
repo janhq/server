@@ -2,10 +2,10 @@
 
 services:
   llm-api:
-    build: ../services/llm-api
+    build: ../../services/llm-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-../.env}
+      - ${ENV_FILE:-.env}
     environment:
       # HTTP Server
       HTTP_PORT: ${HTTP_PORT:-8080}
@@ -93,10 +93,10 @@ services:
     profiles: ["api", "full"]
 
   media-api:
-    build: ../services/media-api
+    build: ../../services/media-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-../.env}
+      - ${ENV_FILE:-.env}
     environment:
       # HTTP Server (using service-specific port)
       MEDIA_API_PORT: ${MEDIA_API_PORT:-8285}
@@ -146,10 +146,10 @@ services:
     profiles: ["api", "full"]
 
   response-api:
-    build: ../services/response-api
+    build: ../../services/response-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-../.env}
+      - ${ENV_FILE:-.env}
     environment:
       # HTTP Server (using service-specific port)
       RESPONSE_API_PORT: ${RESPONSE_API_PORT:-8082}
