@@ -170,9 +170,27 @@ const DefaultMemoryPrompt = `Use the following personal memory for this user whe
 {{end}}`
 
 // DefaultToolInstructionsPrompt is the default prompt for tool usage guidance
-const DefaultToolInstructionsPrompt = `You have access to various tools. Always choose the best tool for the task.
-When you need to search for information, use web search. When you need to execute code, use the code execution tool.
-Tool usage must respect project instructions and system-level constraints at all times.`
+const DefaultToolInstructionsPrompt = `## Tool Usage Instructions
+
+You have access to the following tools. **ONLY use tools from this list. Do not invent or claim access to tools not listed here.**
+
+AVAILABLE TOOLS:
+{{range .Tools}}- **{{.Name}}**: {{.Description}}
+  - Parameters: {{.Parameters}}
+{{end}}
+CRITICAL RULES:
+1. **Only use tools from the list above** - Never claim access to tools not in this list
+2. **If a tool is not listed, it does not exist** - Do not invent tool names or capabilities
+3. **When asked about available tools**, list ONLY the tools from the list above
+4. Always choose the best tool for the task from the available tools
+5. Tool usage must respect project instructions and system-level constraints at all times
+
+TOOL USAGE PATTERNS:
+{{if .HasSearchTool}}- When you need to search for information: use {{.SearchToolName}}
+{{end}}{{if .HasScrapeTool}}- When you need to scrape or extract content from a webpage: use {{.ScrapeToolName}}
+{{end}}{{if .HasCodeTool}}- When you need to execute code: use {{.CodeToolName}}
+{{end}}{{if .HasBrowserTool}}- When you need to browse the web: use {{.BrowserToolName}}
+{{end}}`
 
 // DefaultCodeAssistantPrompt is the default prompt for code assistance
 const DefaultCodeAssistantPrompt = `When providing code assistance:

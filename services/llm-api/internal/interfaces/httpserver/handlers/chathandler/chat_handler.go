@@ -276,6 +276,7 @@ func (h *ChatHandler) CreateChatCompletion(
 			ProjectInstruction: projectInstruction,
 			Profile:            profileSettings,
 			ModelCatalogID:     modelCatalogID,
+			Tools:              request.Tools,
 		}
 
 		processedMessages, processErr := h.promptProcessor.Process(ctx, promptCtx, request.Messages)
