@@ -107,7 +107,7 @@ jan-server/
 |   |-- realtime-api/
 |   |-- template-api/
 |-- docs/                  # Documentation hub
-|-- docker/                # Compose profiles (infra, api, mcp, realtime, inference)
+|-- infra/docker/          # Compose profiles (infra, api, mcp, realtime, inference)
 |-- monitoring/            # Grafana, Prometheus, OTEL configs
 |-- k8s/                   # Helm chart + setup guide
 |-- config/                # Environment templates and helpers
@@ -120,7 +120,7 @@ jan-server/
 Key directories:
 - `services/` - source for each microservice plus local docs.
 - `docs/` - user, operator, and developer documentation (see [docs/README.md](docs/README.md)).
-- `docker/` - compose files included via `docker-compose.yml`.
+- `infra/docker/` - compose files included via `docker-compose.yml`.
 - `monitoring/` - observability stack definitions (Grafana dashboards live here).
 - `k8s/` - Helm chart (`k8s/jan-server`) and cluster setup notes.
 - `config/` - `.env` templates and environment overlays.
@@ -289,7 +289,7 @@ jan-cli dev scaffold my-service      # Create new service from template
 
 **Documentation:** 
 - Complete guide: [docs/guides/jan-cli.md](docs/guides/jan-cli.md)
-- Command reference: [cmd/jan-cli/README.md](cmd/jan-cli/README.md)
+- Command reference: [tools/jan-cli/README.md](tools/jan-cli/README.md)
 
 ## API Examples
 

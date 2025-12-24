@@ -206,7 +206,7 @@ config/
 +-- staging.yaml # Staging overrides (optional)
 +-- production.yaml # Production overrides (optional)
 
-cmd/jan-cli/
+tools/jan-cli/
 +-- main.go # CLI tool
 ```
 
@@ -367,7 +367,7 @@ helm upgrade jan-server k8s/jan-server -f k8s/values-prod.yaml
 
 ### Documentation
 - **CLI Guide:** [docs/guides/jan-cli.md](../guides/jan-cli.md) - Installation, usage, and examples
-- **CLI Command Reference:** [cmd/jan-cli/README.md](../../cmd/jan-cli/README.md)
+- **CLI Command Reference:** [tools/jan-cli/README.md](../../tools/jan-cli/README.md)
 - **Configuration Types:** [pkg/config/README.md](../../pkg/config/README.md)
 
 ### Code References

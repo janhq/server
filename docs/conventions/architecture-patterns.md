@@ -8,9 +8,9 @@
 
 ```
 jan-server/
-+-- cmd/jan-cli/                # jan-cli sources + wrappers (jan-cli.sh / jan-cli.ps1)
++-- tools/jan-cli/              # jan-cli sources + wrappers (jan-cli.sh / jan-cli.ps1)
 +-- config/                     # Shared configuration defaults and templates
-+-- docker/                     # Compose fragments (infra, services, observability)
++-- infra/docker/               # Compose fragments (infra, services, observability)
 +-- docs/                       # Documentation (guides, conventions, templates, etc.)
 +-- k8s/                        # Helm chart + Kubernetes manifests
 +-- services/

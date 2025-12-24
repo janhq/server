@@ -188,9 +188,9 @@ make cli-install # Build and install to local bin
 make cli-clean # Remove the binary
 ```
 
-**cli-build** - Builds binary in `cmd/jan-cli/`:
-- Linux/macOS: `cmd/jan-cli/jan-cli`
-- Windows: `cmd/jan-cli/jan-cli.exe`
+**cli-build** - Builds binary in `tools/jan-cli/`:
+- Linux/macOS: `tools/jan-cli/jan-cli`
+- Windows: `tools/jan-cli/jan-cli.exe`
 
 **cli-install** - Builds and installs:
 1. Calls `cli-build`
@@ -558,8 +558,7 @@ make cli-install
 
 4. Try manual build:
  ```bash
- cd cmd/jan-cli && go build
- ```
+ cd tools/jan-cli && go build
 
 ---
 
@@ -637,7 +636,7 @@ require (
 ### Project Structure
 
 ```
-cmd/jan-cli/
+tools/jan-cli/
 +-- main.go # Root command and initialization
 +-- cmd_config.go # Configuration management
 +-- cmd_service.go # Service operations
@@ -653,7 +652,7 @@ cmd/jan-cli/
 
 **Build Command:**
 ```bash
-cd cmd/jan-cli
+cd tools/jan-cli
 go build -o jan-cli
 ```
 

@@ -329,7 +329,7 @@ if isWindows() {
 
 **Issue:** Docker not available on Windows CI and macOS CI may have Colima startup failures.
 
-**Fix:** Made Docker checks optional in `cmd/jan-cli/cmd_dev.go`:
+**Fix:** Made Docker checks optional in `tools/jan-cli/cmd_dev.go`:
 
 ```go
 dockerAvailable:= isDockerAvailable()

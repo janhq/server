@@ -49,7 +49,7 @@ sudo mv jan-cli /usr/local/bin/  # Linux/macOS
 ### Using Go Install
 
 ```bash
-go install github.com/janhq/jan-server/cmd/jan-cli@latest
+go install github.com/janhq/jan-server/tools/jan-cli@latest
 ```
 
 ### Installation
