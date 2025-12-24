@@ -32,6 +32,19 @@ func (s *ProjectService) CreateProject(ctx context.Context, proj *Project) (*Pro
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "project validation failed", err, "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c")
 	}
 
+	// Check for duplicate name
+	existingProject, err := s.repo.GetByNameAndUserID(ctx, proj.Name, proj.UserID)
+	if err == nil && existingProject != nil {
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerDomain,
+			platformerrors.ErrorTypeConflict,
+			"Project name already exists",
+			nil,
+			existingProject.PublicID,
+		)
+	}
+
 	// Persist project
 	if err := s.repo.Create(ctx, proj); err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to create project")
@@ -61,6 +74,19 @@ func (s *ProjectService) UpdateProject(ctx context.Context, proj *Project) (*Pro
 	// Validate updated project
 	if err := s.validator.ValidateProject(proj); err != nil {
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "project validation failed", err, "b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e")
+	}
+
+	// Check for duplicate name (but exclude self)
+	existingProject, err := s.repo.GetByNameAndUserID(ctx, proj.Name, proj.UserID)
+	if err == nil && existingProject != nil && existingProject.PublicID != proj.PublicID {
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerDomain,
+			platformerrors.ErrorTypeConflict,
+			"Project name already exists",
+			nil,
+			existingProject.PublicID,
+		)
 	}
 
 	// Persist changes
