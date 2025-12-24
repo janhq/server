@@ -5,7 +5,7 @@ services:
     build: ../../services/llm-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       # HTTP Server
       HTTP_PORT: ${HTTP_PORT:-8080}
@@ -83,8 +83,8 @@ services:
       # vllm-jan-gpu:
       #   condition: service_healthy
     volumes:
-      - ../services/llm-api/configs:/app/config:ro
-      - ../services/llm-api/migrations:/app/migrations:ro
+      - ../../services/llm-api/configs:/app/config:ro
+      - ../../services/llm-api/migrations:/app/migrations:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${HTTP_PORT:-8080}/healthz"]
       interval: 10s
@@ -96,7 +96,7 @@ services:
     build: ../../services/media-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       # HTTP Server (using service-specific port)
       MEDIA_API_PORT: ${MEDIA_API_PORT:-8285}
@@ -137,7 +137,7 @@ services:
       keycloak:
         condition: service_healthy
     volumes:
-      - ../services/media-api/configs:/app/config:ro
+      - ../../services/media-api/configs:/app/config:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${MEDIA_API_PORT:-8285}/healthz"]
       interval: 10s
@@ -149,7 +149,7 @@ services:
     build: ../../services/response-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       # HTTP Server (using service-specific port)
       RESPONSE_API_PORT: ${RESPONSE_API_PORT:-8082}

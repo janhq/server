@@ -21,6 +21,7 @@ func init() {
 	setupAndRunCmd.Flags().Bool("with-memory-tools", false, "Enable memory tools profile and defaults during setup")
 	setupAndRunCmd.Flags().Bool("with-realtime-api", false, "Enable realtime API profile during setup")
 	setupAndRunCmd.Flags().Bool("skip-realtime", false, "Skip realtime API setup (disable realtime profile)")
+	setupAndRunCmd.Flags().Bool("skip-memory", false, "Skip memory tools setup (disable memory profile)")
 }
 
 func runSetupAndRun(cmd *cobra.Command, args []string) error {
@@ -28,6 +29,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	enableMemory, _ := cmd.Flags().GetBool("with-memory-tools")
 	enableRealtime, _ := cmd.Flags().GetBool("with-realtime-api")
 	skipRealtime, _ := cmd.Flags().GetBool("skip-realtime")
+	skipMemory, _ := cmd.Flags().GetBool("skip-memory")
 
 	fmt.Println("🚀 Jan Server Setup and Run")
 	fmt.Println("=" + strings.Repeat("=", 50))
@@ -53,7 +55,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 			if response != "y" && response != "yes" {
 				fmt.Println("Using existing .env file...")
 			} else {
-				if err := promptForEnvVars(envPath, enableMemory, skipRealtime); err != nil {
+				if err := promptForEnvVars(envPath, enableMemory, skipRealtime, skipMemory); err != nil {
 					return fmt.Errorf("failed to update .env: %w", err)
 				}
 			}
@@ -64,7 +66,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to copy .env template: %w", err)
 			}
 
-			if err := promptForEnvVars(envPath, enableMemory, skipRealtime); err != nil {
+			if err := promptForEnvVars(envPath, enableMemory, skipRealtime, skipMemory); err != nil {
 				return fmt.Errorf("failed to configure .env: %w", err)
 			}
 		}
@@ -225,7 +227,7 @@ func copyEnvTemplate(destPath string) error {
 	return nil
 }
 
-func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime bool) error {
+func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime bool, skipMemory bool) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println()
@@ -347,28 +349,37 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime boo
 	}
 
 	// 3. Memory Tools Configuration
-	fmt.Println()
-	fmt.Println("🧠 Memory Tools Setup")
-	fmt.Println("Enable memory tools for long-term context and retrieval.")
-	memoryPromptDefault := "Y/n"
-	if !defaultEnableMemory {
-		memoryPromptDefault = "y/N"
-	}
-	fmt.Printf("Enable memory tools? (%s): ", memoryPromptDefault)
+	var enableMemory bool
+	var externalEmbedding bool
+	var useRedis bool
+	
+	if skipMemory {
+		// Skip memory prompt - disable memory tools
+		enableMemory = false
+		fmt.Println()
+		fmt.Println("⏭️  Skipping memory tools setup (disabled by default)")
+	} else {
+		fmt.Println()
+		fmt.Println("🧠 Memory Tools Setup")
+		fmt.Println("Enable memory tools for long-term context and retrieval.")
+		memoryPromptDefault := "Y/n"
+		if !defaultEnableMemory {
+			memoryPromptDefault = "y/N"
+		}
+		fmt.Printf("Enable memory tools? (%s): ", memoryPromptDefault)
 
-	memoryChoice, _ := reader.ReadString('\n')
-	memoryChoice = strings.TrimSpace(strings.ToLower(memoryChoice))
+		memoryChoice, _ := reader.ReadString('\n')
+		memoryChoice = strings.TrimSpace(strings.ToLower(memoryChoice))
 
-	// Default based on defaultEnableMemory flag (Y/n or y/N)
-	enableMemory := defaultEnableMemory
-	if memoryChoice != "" {
-		enableMemory = memoryChoice != "n" && memoryChoice != "no"
-	}
+		// Default based on defaultEnableMemory flag (Y/n or y/N)
+		enableMemory = defaultEnableMemory
+		if memoryChoice != "" {
+			enableMemory = memoryChoice != "n" && memoryChoice != "no"
+		}
 
-	externalEmbedding := false
-	useRedis := false
-	if enableMemory {
-		externalEmbedding, useRedis = configureMemoryOptions(reader, updates)
+		if enableMemory {
+			externalEmbedding, useRedis = configureMemoryOptions(reader, updates)
+		}
 	}
 	applyMemorySettings(updates, &profiles, enableMemory, externalEmbedding, useRedis)
 

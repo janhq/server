@@ -100,7 +100,7 @@ func init() {
 func runMonitorUp(cmd *cobra.Command, args []string) {
 	printInfo("Starting monitoring stack...")
 
-	composeFile := filepath.Join("docker", "observability.yml")
+	composeFile := filepath.Join("infra", "docker", "observability.yml")
 	if err := runDockerCompose(composeFile, "up", "-d"); err != nil {
 		printError("Failed to start monitoring stack: %v", err)
 		os.Exit(1)
@@ -120,7 +120,7 @@ func runMonitorDev(cmd *cobra.Command, args []string) {
 	// Set environment variable for full sampling
 	os.Setenv("OTEL_TRACES_SAMPLER", "always_on")
 
-	composeFile := filepath.Join("docker", "observability.yml")
+	composeFile := filepath.Join("infra", "docker", "observability.yml")
 	if err := runDockerCompose(composeFile, "up", "-d"); err != nil {
 		printError("Failed to start monitoring stack: %v", err)
 		os.Exit(1)
@@ -147,7 +147,7 @@ func runMonitorDev(cmd *cobra.Command, args []string) {
 func runMonitorDown(cmd *cobra.Command, args []string) {
 	printInfo("Stopping monitoring stack...")
 
-	composeFile := filepath.Join("docker", "observability.yml")
+	composeFile := filepath.Join("infra", "docker", "observability.yml")
 	if err := runDockerCompose(composeFile, "down"); err != nil {
 		printError("Failed to stop monitoring stack: %v", err)
 		os.Exit(1)
@@ -193,7 +193,7 @@ func runMonitorStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("=== Monitoring Stack Status ===")
 	fmt.Println()
 
-	composeFile := filepath.Join("docker", "observability.yml")
+	composeFile := filepath.Join("infra", "docker", "observability.yml")
 	if err := runDockerCompose(composeFile, "ps"); err != nil {
 		printError("Failed to get status: %v", err)
 		os.Exit(1)
@@ -230,7 +230,7 @@ func runMonitorReset(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	composeFile := filepath.Join("docker", "observability.yml")
+	composeFile := filepath.Join("infra", "docker", "observability.yml")
 	if err := runDockerCompose(composeFile, "down", "-v"); err != nil {
 		printError("Failed to reset monitoring data: %v", err)
 		os.Exit(1)
@@ -278,7 +278,7 @@ func runMonitorExport(cmd *cobra.Command, args []string) {
 	}
 
 	// Export docker-compose config
-	composeFile := filepath.Join("docker", "observability.yml")
+	composeFile := filepath.Join("infra", "docker", "observability.yml")
 	exportFile := filepath.Join(exportDir, "docker-compose.yml")
 
 	configCmd := exec.Command("docker", "compose", "-f", composeFile, "config")

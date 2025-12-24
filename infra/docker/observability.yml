@@ -8,9 +8,9 @@ services:
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-development}
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     volumes:
-      - ../integrations/monitoring/otel-collector.yaml:/etc/otel-collector.yaml:ro
+      - ../../integrations/monitoring/otel-collector.yaml:/etc/otel-collector.yaml:ro
     command: ["--config=/etc/otel-collector.yaml"]
     ports:
       - "${OTEL_GRPC_PORT:-4317}:4317"
@@ -27,9 +27,9 @@ services:
     image: prom/prometheus:v2.48.0
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     volumes:
-      - ../integrations/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../integrations/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -46,7 +46,7 @@ services:
     image: jaegertracing/all-in-one:1.51
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       COLLECTOR_OTLP_ENABLED: ${JAEGER_OTLP_ENABLED:-true}
     ports:
@@ -60,14 +60,14 @@ services:
     image: grafana/grafana:10.2.2
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: ${GRAFANA_ALLOW_SIGNUP:-false}
     volumes:
       - grafana-data:/var/lib/grafana
-      - ../integrations/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../integrations/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
       - "${GRAFANA_PORT:-3331}:3000"
     depends_on:

@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
     profiles: ["gpu", "full"]
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     command: >
       --model ${VLLM_MODEL:-janhq/Jan-v1-4B}
       --host ${VLLM_HOST:-0.0.0.0}
@@ -70,7 +70,7 @@ services:
     restart: unless-stopped
     profiles: ["cpu"]
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     command: >
       --model ${VLLM_CPU_MODEL:-janhq/Jan-v1-4B}
       --served-model-name ${VLLM_CPU_SERVED_NAME:-jan-v1-4b}

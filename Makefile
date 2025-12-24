@@ -9,12 +9,11 @@
 # QUICK START
 # ============================================================================================================
 #
-#   make quickstart              - Interactive setup and run (prompts for API keys, starts all services)
-#   make quickstart NO_REALTIME=1 - Interactive setup without Realtime API
+#   make quickstart              - Interactive setup and run (core: infra + API + MCP web search)
 #   make setup                   - Initial project setup (dependencies, networks, .env)
 #   make cli-install             - Install jan-cli tool globally
 #   make build-all               - Build all Docker images
-#   make up-full                 - Start all services (infrastructure + API + MCP)
+#   make up-full                 - Start services based on COMPOSE_PROFILES in .env
 #   make dev-full                - Start all services with host.docker.internal support (for testing)
 #   make health-check            - Check if all services are healthy
 #   make test-all                - Run all integration tests
@@ -68,11 +67,11 @@ endif
 .PHONY: setup check-deps install-deps setup-and-run quickstart
 
 setup-and-run quickstart:
-	@echo "Starting interactive setup and run (includes Memory Tools prompt)..."
+	@echo "Starting interactive setup and run..."
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 setup-and-run --with-memory-tools $(if $(NO_REALTIME),--skip-realtime,)
+	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 setup-and-run --skip-realtime --skip-memory
 else
-	@bash tools/jan-cli.sh setup-and-run --with-memory-tools $(if $(NO_REALTIME),--skip-realtime,)
+	@bash tools/jan-cli.sh setup-and-run --skip-realtime --skip-memory
 endif
 
 setup:
@@ -430,15 +429,19 @@ up-full: ## Start full stack (all services in Docker)
 	@echo "  - Keycloak:   http://localhost:8085 (admin/admin)"
 	@echo "  - Kong:       http://localhost:8000"
 	@echo ""
-	@echo "Services:"
-	@echo "  - LLM API:        http://localhost:8080"
-	@echo "  - Media API:      http://localhost:8285"
-	@echo "  - Realtime API:   http://localhost:8186"
-	@echo "  - MCP Tools:      http://localhost:8091"
-	@echo "  - Vector Store:   http://localhost:3015"
-	@echo "  - vLLM (if enabled): http://localhost:8101"
+	@echo "Core Services:"
+	@echo "  - LLM API:    http://localhost:8080"
+	@echo "  - Media API:  http://localhost:8285"
+	@echo "  - MCP Tools:  http://localhost:8091 (web search)"
 	@echo ""
-	@echo "Note: vLLM only starts if using local GPU provider (COMPOSE_PROFILES=full)"
+	@echo "Optional Services (add to COMPOSE_PROFILES in .env):"
+	@echo "  - Code Sandbox:   (profile: sandbox - for code execution)"
+	@echo "  - Vector Store:   http://localhost:3015 (profile: vector)"
+	@echo "  - Memory Tools:   http://localhost:8090 (profile: memory)"
+	@echo "  - Realtime API:   http://localhost:8186 (profile: realtime)"
+	@echo "  - vLLM:           http://localhost:8101 (profile: full)"
+	@echo ""
+	@echo "To enable optional services, edit COMPOSE_PROFILES in .env"
 	@echo "To start monitoring stack: make monitor-up"
 
 down-full:

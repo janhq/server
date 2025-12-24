@@ -37,7 +37,7 @@ services:
     build: ../../services/memory-tools
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       # HTTP Server
       MEMORY_TOOLS_PORT: ${MEMORY_TOOLS_PORT:-8090}
@@ -67,8 +67,8 @@ services:
       api-db:
         condition: service_healthy
     volumes:
-      - ../services/memory-tools/configs:/app/config:ro
-      - ../services/memory-tools/migrations:/app/migrations:ro
+      - ../../services/memory-tools/configs:/app/config:ro
+      - ../../services/memory-tools/migrations:/app/migrations:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:${MEMORY_TOOLS_PORT:-8090}/healthz"]
       interval: 10s

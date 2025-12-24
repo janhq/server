@@ -53,7 +53,7 @@ services:
     #   interval: 10s
     #   timeout: 5s
     #   retries: 5
-    profiles: ["mcp", "full"]
+    profiles: ["vector", "full"]
 
   # SandboxFusion code interpreter
   # sandboxfusion:
@@ -75,7 +75,7 @@ services:
     build: ../../services/mcp-tools
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       # HTTP Server (service-specific port)
       MCP_TOOLS_HTTP_PORT: ${MCP_TOOLS_HTTP_PORT:-8091}
@@ -115,18 +115,19 @@ services:
       AUTH_ENABLED: ${AUTH_ENABLED:-false}
     ports:
       - "${MCP_TOOLS_HTTP_PORT:-8091}:${MCP_TOOLS_HTTP_PORT:-8091}"
-    depends_on:
-      # searxng:
-      #   condition: service_healthy
-      vector-store:
-        condition: service_started
-      # memory-tools is optional - only needed when memory profile is enabled
-      # memory-tools:
-      #   condition: service_started
-      # sandboxfusion:
-      #   condition: service_started
+    # depends_on:
+    #   # searxng:
+    #   #   condition: service_healthy
+    #   # Vector store is optional (profile: vector)
+    #   # vector-store:
+    #   #   condition: service_started
+    #   # memory-tools is optional - only needed when memory profile is enabled
+    #   # memory-tools:
+    #   #   condition: service_started
+    #   # sandboxfusion:
+    #   #   condition: service_started
     volumes:
-      - ../services/mcp-tools/configs:/app/configs:ro
+      - ../../services/mcp-tools/configs:/app/configs:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:${MCP_TOOLS_HTTP_PORT:-8091}/healthz"]
       interval: 10s

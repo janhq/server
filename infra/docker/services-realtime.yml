@@ -5,7 +5,7 @@ services:
     build: ../../services/realtime-api
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-.env}
+      - ${ENV_FILE:-../../.env}
     environment:
       # HTTP Server
       REALTIME_API_PORT: ${REALTIME_API_PORT:-8186}
@@ -14,8 +14,8 @@ services:
 
       # LiveKit Configuration
       LIVEKIT_WS_URL: ${LIVEKIT_WS_URL:-wss://your-livekit-server.com}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
       LIVEKIT_TOKEN_TTL: ${LIVEKIT_TOKEN_TTL:-24h}
 
       # Session Management
@@ -45,4 +45,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    profiles: ["api", "realtime", "full"]
+    profiles: ["realtime", "full"]
