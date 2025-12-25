@@ -73,7 +73,7 @@ func (h *UserSettingsHandler) computeServerCapabilities(ctx context.Context) Ser
 	if h.cfg.ImageGenerationEnabled {
 		provider, err := h.providerService.FindActiveImageProvider(ctx)
 		if err == nil && provider != nil {
-			capabilities.ImageGeneration = true
+			capabilities.ImageGenerationEnabled = true
 		}
 	}
 
@@ -230,7 +230,7 @@ type PreferencesResponse struct {
 
 // ServerCapabilities represents the server's available features.
 type ServerCapabilities struct {
-	ImageGeneration bool `json:"image_generation"`
+	ImageGenerationEnabled bool `json:"image_generation_enabled"`
 }
 
 // UserSettingsResponse is the JSON response for user settings.

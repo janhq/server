@@ -120,7 +120,7 @@ func CreateApplication() (*Application, error) {
 	chatRoute := chat.NewChatRoute(chatCompletionRoute)
 	zImageService := inference.NewZImageService(config)
 	mediaclientClient := infrastructure.ProvideMediaClient(config, zerologLogger)
-	imageHandler := imagehandler.NewImageHandler(config, providerService, zImageService, mediaclientClient)
+	imageHandler := imagehandler.NewImageHandler(config, providerService, zImageService, mediaclientClient, conversationService)
 	imageRoute := image.NewImageRoute(imageHandler, authHandler)
 	conversationRoute := conversation2.NewConversationRoute(conversationHandler, authHandler)
 	branchHandler := conversationhandler.NewBranchHandler(conversationService, messageActionService, conversationRepository)
