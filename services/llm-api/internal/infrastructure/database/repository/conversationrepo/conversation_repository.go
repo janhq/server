@@ -810,9 +810,9 @@ func (repo *ConversationGormRepository) applyPagination(q *gormgen.Query, sql go
 			}
 		}
 		if p.Order == "desc" {
-			sql = sql.Order(q.Conversation.ID.Desc())
+			sql = sql.Order(q.Conversation.UpdatedAt.Desc())
 		} else {
-			sql = sql.Order(q.Conversation.ID.Asc())
+			sql = sql.Order(q.Conversation.UpdatedAt.Asc())
 		}
 	}
 	return sql
