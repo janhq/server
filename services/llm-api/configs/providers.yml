@@ -32,6 +32,24 @@ providers:
         tool_support: true
         image_input: '{"supported":true,"url":true,"base64":true,"schema":"messages[].content[].type=image_url; supports https:// or data:image/...;base64,..."}'
         file_attachment: '{"supported":true,"url":true,"base64":true,"file_upload":true,"schema":"messages[].content[].type=input_file; supports url, inline base64, or file_id"}'
+
+    # Image Generation Provider (Z-Image / Flux)
+    - name: Z-Image Provider
+      enable: ${ZIMAGE_ENABLED:-false}
+      type: z-image
+      category: image
+      url: ${ZIMAGE_PROVIDER_URL}
+      api_key: ${ZIMAGE_API_KEY}
+      description: "Image generation via Z-Image (Flux)"
+      auto_enable_new_models: false
+      sync_models: false
+      metadata:
+        environment: internal
+        max_resolution: "2048"
+        default_quality: "standard"
+        default_style: "natural"
+        # Supported models (comma-separated or JSON array)
+        models: "flux-schnell,flux-dev"
     # - name: External Gemini
     #   type: gemini
     #   url: https://generativelanguage.googleapis.com/v1beta/openai

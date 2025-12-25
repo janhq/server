@@ -585,19 +585,22 @@ endif
 
 GATEWAY_URL ?= http://localhost:8000
 TIMEOUT_MS ?= 30000
-COLLECTIONS_DIR := tests/e2e/collections
+COLLECTIONS_DIR := tests/e2e/automation/collections
 AUTH_MODE ?= guest
 # Exclude memory.postman.json (no memory service), model-prompt-templates.postman.json (API not implemented),
 # and user-management.postman.json (requires manual admin token setup)
 COLLECTION_FILES := $(filter-out $(COLLECTIONS_DIR)/memory.postman.json $(COLLECTIONS_DIR)/model-prompt-templates.postman.json $(COLLECTIONS_DIR)/user-management.postman.json,$(wildcard $(COLLECTIONS_DIR)/*.postman.json))
 
-API_TEST_FLAGS := --env-file tests/e2e/.env \
+# Base flags without auth (for targets that need custom auth)
+API_TEST_BASE_FLAGS := --env-file tests/e2e/.env \
   --env-var gateway_url=$(GATEWAY_URL) \
-  --auto-auth $(AUTH_MODE) \
   --auto-models \
   --timeout-request $(TIMEOUT_MS)
 
-.PHONY: test-all test-auth test-conversation test-response test-model test-media test-mcp test-user-management test-model-prompts test-dev
+# Full flags with default auth mode
+API_TEST_FLAGS := $(API_TEST_BASE_FLAGS) --auto-auth $(AUTH_MODE)
+
+.PHONY: test-all test-auth test-conversation test-response test-model test-media test-mcp test-user-management test-model-prompts test-image test-dev
 
 test-all:
 	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS)
@@ -612,7 +615,7 @@ test-response:
 	$(API_TEST) $(COLLECTIONS_DIR)/response.postman.json $(API_TEST_FLAGS)
 
 test-model:
-	$(API_TEST) $(COLLECTIONS_DIR)/model.postman.json $(API_TEST_FLAGS) --auto-auth admin
+	$(API_TEST) $(COLLECTIONS_DIR)/model.postman.json $(API_TEST_BASE_FLAGS) --auto-auth admin
 
 test-media:
 	$(API_TEST) $(COLLECTIONS_DIR)/media.postman.json $(API_TEST_FLAGS)
@@ -621,10 +624,16 @@ test-mcp:
 	$(API_TEST) $(COLLECTIONS_DIR)/mcp-runtime.postman.json $(COLLECTIONS_DIR)/mcp-admin.postman.json $(API_TEST_FLAGS)
 
 test-user-management:
-	$(API_TEST) $(COLLECTIONS_DIR)/user-management.postman.json $(API_TEST_FLAGS)
+	$(API_TEST) $(COLLECTIONS_DIR)/user-management.postman.json $(API_TEST_BASE_FLAGS) --auto-auth admin
 
 test-model-prompts:
 	$(API_TEST) $(COLLECTIONS_DIR)/model-prompt-templates.postman.json $(API_TEST_FLAGS)
+
+test-image:
+	$(API_TEST) $(COLLECTIONS_DIR)/image.postman.json $(API_TEST_FLAGS)
+
+test-memory:
+	$(API_TEST) $(COLLECTIONS_DIR)/memory.postman.json $(API_TEST_FLAGS)
 
 test-dev:
 	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS) --bail

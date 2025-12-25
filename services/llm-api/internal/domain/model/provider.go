@@ -29,7 +29,16 @@ const (
 	ProviderHuggingFace ProviderKind = "huggingface"
 	ProviderVercelAI    ProviderKind = "vercel_ai"
 	ProviderDeepInfra   ProviderKind = "deepinfra"
-	ProviderCustom      ProviderKind = "custom" // for any customer-provided API
+	ProviderCustom      ProviderKind = "custom"  // for any customer-provided API
+	ProviderZImage      ProviderKind = "z-image" // Image generation provider
+)
+
+// ProviderCategory distinguishes between LLM and other provider types (e.g., image generation)
+type ProviderCategory string
+
+const (
+	ProviderCategoryLLM   ProviderCategory = "llm"   // Default: Language model providers
+	ProviderCategoryImage ProviderCategory = "image" // Image generation providers
 )
 
 type Provider struct {
@@ -37,6 +46,7 @@ type Provider struct {
 	PublicID        string            `json:"public_id"`
 	DisplayName     string            `json:"display_name"`
 	Kind            ProviderKind      `json:"kind"`
+	Category        ProviderCategory  `json:"category"`               // "llm" or "image", defaults to "llm"
 	BaseURL         string            `json:"base_url"`               // e.g., https://api.openai.com/v1
 	Endpoints       EndpointList      `json:"endpoints,omitempty"`    // Optional: multiple endpoints for round robin
 	EncryptedAPIKey string            `json:"-"`                      // encrypted at rest, decrypted in memory when needed
@@ -206,6 +216,7 @@ type ProviderFilter struct {
 	IDs              *[]uint
 	PublicID         *string
 	Kind             *ProviderKind
+	Category         *ProviderCategory // NEW: filter by category ("llm" or "image")
 	Active           *bool
 	IsModerated      *bool
 	LastSyncedAfter  *time.Time

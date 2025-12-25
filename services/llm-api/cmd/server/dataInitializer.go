@@ -84,11 +84,16 @@ func (d *DataInitializer) ensureProvider(ctx context.Context, entry config.Provi
 	kind := model.ProviderKindFromVendor(entry.Vendor)
 	metadata := cloneMetadata(entry.Metadata)
 	endpoints := toDomainEndpoints(entry.Endpoints)
+	category := model.ProviderCategory(entry.Category)
+	if category == "" {
+		category = model.ProviderCategoryLLM
+	}
 
 	if kind == model.ProviderCustom {
 		return d.provider.UpsertProvider(ctx, model.UpsertProviderInput{
 			Name:      entry.Name,
 			Vendor:    entry.Vendor,
+			Category:  category,
 			BaseURL:   entry.BaseURL,
 			Endpoints: endpoints,
 			APIKey:    entry.APIKey,
@@ -106,6 +111,7 @@ func (d *DataInitializer) ensureProvider(ctx context.Context, entry config.Provi
 		return d.provider.RegisterProvider(ctx, model.RegisterProviderInput{
 			Name:      entry.Name,
 			Vendor:    entry.Vendor,
+			Category:  category,
 			BaseURL:   entry.BaseURL,
 			Endpoints: endpoints,
 			APIKey:    entry.APIKey,

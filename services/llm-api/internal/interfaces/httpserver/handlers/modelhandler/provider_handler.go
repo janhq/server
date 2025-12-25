@@ -48,17 +48,24 @@ func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requ
 	}
 
 	result, err := providerHandler.providerService.RegisterProvider(ctx, domainmodel.RegisterProviderInput{
-		Name:     addProviderRequest.Name,
-		Vendor:   addProviderRequest.Vendor,
-		BaseURL:  addProviderRequest.BaseURL,
+		Name:      addProviderRequest.Name,
+		Vendor:    addProviderRequest.Vendor,
+		BaseURL:   addProviderRequest.BaseURL,
 		Endpoints: endpoints,
-		APIKey:   addProviderRequest.APIKey,
-		Metadata: addProviderRequest.Metadata,
-		Active:   active,
+		APIKey:    addProviderRequest.APIKey,
+		Metadata:  addProviderRequest.Metadata,
+		Active:    active,
+		Category:  domainmodel.ProviderCategory(addProviderRequest.Category),
 	})
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "register provider failed")
 	}
+
+	// Skip model sync for image providers (they don't have a /v1/models endpoint)
+	if result.Category == domainmodel.ProviderCategoryImage {
+		return modelresponses.BuildProviderResponseWithModels(result, nil), nil
+	}
+
 	models, err := providerHandler.inferenceProvider.ListModels(ctx, result)
 	if err != nil {
 		return nil, err

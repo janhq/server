@@ -82,6 +82,7 @@ type Config struct {
 
 	// Media integration
 	MediaResolveURL     string        `env:"MEDIA_RESOLVE_URL" envDefault:"http://kong:8000/media/v1/media/resolve"`
+	MediaIngestURL      string        `env:"MEDIA_INGEST_URL" envDefault:"http://kong:8000/media/v1/media"`
 	MediaResolveTimeout time.Duration `env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s"`
 
 	// Streaming timeout for LLM responses (increase for large/complex requests)
@@ -100,6 +101,17 @@ type Config struct {
 
 	// Conversation Sharing
 	ConversationSharingEnabled bool `env:"CONVERSATION_SHARING_ENABLED" envDefault:"false"`
+
+	// Image Generation
+	ImageGenerationEnabled     bool          `env:"IMAGE_GENERATION_ENABLED" envDefault:"false"`
+	ImageGenerationTimeout     time.Duration `env:"IMAGE_GENERATION_TIMEOUT" envDefault:"120s"`
+	ImageDefaultModel          string        `env:"IMAGE_DEFAULT_MODEL" envDefault:"flux-schnell"`
+	ImageDefaultSize           string        `env:"IMAGE_DEFAULT_SIZE" envDefault:"1024x1024"`
+	ImageMaxN                  int           `env:"IMAGE_MAX_N" envDefault:"4"`
+	ImageDefaultQuality        string        `env:"IMAGE_DEFAULT_QUALITY" envDefault:"standard"`
+	ImageDefaultStyle          string        `env:"IMAGE_DEFAULT_STYLE" envDefault:"natural"`
+	ImageDefaultResponseFormat string        `env:"IMAGE_DEFAULT_RESPONSE_FORMAT" envDefault:"url"`
+	ImageMediaPresignTTL       time.Duration `env:"IMAGE_MEDIA_PRESIGN_TTL" envDefault:"1h"`
 
 	// Internal
 	EnvReloadedAt time.Time

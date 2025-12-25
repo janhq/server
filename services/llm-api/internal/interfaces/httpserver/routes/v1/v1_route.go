@@ -10,6 +10,7 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/admin"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/chat"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/conversation"
+	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/image"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/llm/projects"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/model"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/routes/v1/share"
@@ -21,6 +22,7 @@ import (
 type V1Route struct {
 	model                 *model.ModelRoute
 	chat                  *chat.ChatRoute
+	image                 *image.ImageRoute
 	conversation          *conversation.ConversationRoute
 	branch                *conversation.BranchRoute
 	project               *projects.ProjectRoute
@@ -35,6 +37,7 @@ type V1Route struct {
 func NewV1Route(
 	model *model.ModelRoute,
 	chat *chat.ChatRoute,
+	image *image.ImageRoute,
 	conversation *conversation.ConversationRoute,
 	branch *conversation.BranchRoute,
 	project *projects.ProjectRoute,
@@ -48,6 +51,7 @@ func NewV1Route(
 	return &V1Route{
 		model,
 		chat,
+		image,
 		conversation,
 		branch,
 		project,
@@ -69,6 +73,7 @@ func (v1Route *V1Route) RegisterRouter(router gin.IRouter) {
 	v1Route.adminRoute.RegisterRouter(v1Router)
 	v1Route.model.RegisterRouter(v1Router)
 	v1Route.chat.RegisterRouter(v1Router)
+	v1Route.image.RegisterRouter(v1Router)
 	v1Route.conversation.RegisterRouter(v1Router)
 	v1Route.branch.RegisterRouter(v1Router)
 	v1Route.project.RegisterRoutes(v1Router)
