@@ -4,10 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"jan-server/services/llm-api/internal/domain/conversation"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
+
+// janMediaPattern matches placeholders like:
+// - data:image/jpeg;jan_<id>
+// - data:image/jpeg;base64,jan_<id>
+var janMediaPattern = regexp.MustCompile(`jan_[A-Za-z0-9]+`)
 
 const (
 	// MaxSnapshotSize is the maximum allowed size for a serialized snapshot (10MB)
@@ -489,12 +495,21 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		if content.Image == nil {
 			return nil
 		}
-		// Only include file_id reference, not URLs or base64 data
-		if content.Image.FileID != "" {
+		// Extract file_id - either from FileID field or from URL (jan_* placeholder)
+		// We only store the short media ID reference, never full URLs or base64 data
+		fileID := content.Image.FileID
+		if fileID == "" && content.Image.URL != "" {
+			// Frontend stores media ID in URL as "data:image/jpeg;jan_01xxx"
+			// Extract just the jan_* ID (~30 chars), not the full URL
+			if match := janMediaPattern.FindString(content.Image.URL); match != "" {
+				fileID = match
+			}
+		}
+		if fileID != "" {
 			return &SnapshotContent{
 				Type: "image",
-				FileRef: &FileRef{
-					FileID: content.Image.FileID,
+				Image: &ImageRef{
+					FileID: fileID,
 				},
 			}
 		}
@@ -504,17 +519,16 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		if content.File == nil {
 			return nil
 		}
-		// Only include file_id reference
-		mimeType := content.File.MimeType
-		name := content.File.Name
-		return &SnapshotContent{
-			Type: "file",
-			FileRef: &FileRef{
-				FileID:   content.File.FileID,
-				MimeType: &mimeType,
-				Name:     &name,
-			},
+		// Check if this is an image file
+		if content.File.MimeType != "" && isImageMimeType(content.File.MimeType) && includeImages {
+			return &SnapshotContent{
+				Type: "image",
+				Image: &ImageRef{
+					FileID: content.File.FileID,
+				},
+			}
 		}
+		return nil
 
 	// Skip sensitive/internal content types
 	case "audio", "input_audio":
@@ -536,6 +550,10 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		// Skip unknown types for safety
 		return nil
 	}
+}
+
+func isImageMimeType(mimeType string) bool {
+	return len(mimeType) >= 6 && mimeType[:6] == "image/"
 }
 
 // extractTextFromContent extracts text from various content structures

@@ -27,7 +27,6 @@ func (r *Routes) Register(router gin.IRouter) {
 	group.POST("/media/upload", r.handlers.Media.DirectUpload)
 	group.POST("/media/prepare-upload", r.handlers.Media.PrepareUpload)
 	group.POST("/media/resolve", r.handlers.Media.Resolve)
-	group.GET("/media/:id/presign", r.handlers.Media.GetPresignedURL)
 	group.GET("/media/:id", r.handlers.Media.Proxy)
 
 	// Serve static files from local storage if configured

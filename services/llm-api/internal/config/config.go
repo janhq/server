@@ -83,6 +83,7 @@ type Config struct {
 	// Media integration
 	MediaResolveURL     string        `env:"MEDIA_RESOLVE_URL" envDefault:"http://kong:8000/media/v1/media/resolve"`
 	MediaResolveTimeout time.Duration `env:"MEDIA_RESOLVE_TIMEOUT" envDefault:"5s"`
+	MediaInternalURL    string        `env:"MEDIA_INTERNAL_URL" envDefault:"http://media-api:8285/v1/media"` // Direct service-to-service URL (bypasses Kong auth)
 
 	// Streaming timeout for LLM responses (increase for large/complex requests)
 	StreamTimeout time.Duration `env:"STREAM_TIMEOUT" envDefault:"600s"`

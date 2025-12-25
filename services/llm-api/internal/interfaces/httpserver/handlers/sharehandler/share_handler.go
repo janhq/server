@@ -7,6 +7,7 @@ import (
 
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/share"
+	"jan-server/services/llm-api/internal/infrastructure/mediapresigner"
 	"jan-server/services/llm-api/internal/infrastructure/metrics"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/conversationhandler"
@@ -21,6 +22,7 @@ type ShareHandler struct {
 	shareService        *share.ShareService
 	conversationHandler *conversationhandler.ConversationHandler
 	cfg                 *config.Config
+	presigner           mediapresigner.Presigner
 }
 
 // NewShareHandler creates a new share handler
@@ -28,11 +30,13 @@ func NewShareHandler(
 	shareService *share.ShareService,
 	conversationHandler *conversationhandler.ConversationHandler,
 	cfg *config.Config,
+	presigner mediapresigner.Presigner,
 ) *ShareHandler {
 	return &ShareHandler{
 		shareService:        shareService,
 		conversationHandler: conversationHandler,
 		cfg:                 cfg,
+		presigner:           presigner,
 	}
 }
 
@@ -281,7 +285,14 @@ func (h *ShareHandler) GetPublicShare(reqCtx *gin.Context) {
 	}
 
 	metrics.RecordPublicShareRequest(reqCtx.Request.Method, "200")
-	resp := shareresponses.NewPublicShareResponse(sh)
+
+	// Build response with presigned URLs for file references
+	var resp *shareresponses.PublicShareResponse
+	if h.presigner != nil {
+		resp = shareresponses.NewPublicShareResponseWithPresigning(ctx, sh, h.presigner)
+	} else {
+		resp = shareresponses.NewPublicShareResponse(sh)
+	}
 
 	// Set cache headers (5 minute TTL)
 	reqCtx.Header("Cache-Control", "public, max-age=300")
