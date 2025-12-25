@@ -257,6 +257,8 @@ func getProviderVendorName(pk ProviderKind) string {
 		return "replicate"
 	case ProviderHuggingFace:
 		return "huggingface"
+	case ProviderZImage:
+		return "zimage"
 	default:
 		return strings.ToLower(string(pk))
 	}

@@ -21,6 +21,7 @@ const DefaultProviderConfigFile = "configs/providers.yml"
 type ProviderBootstrapEntry struct {
 	Name                string
 	Vendor              string
+	Category            string // "llm" or "image"; defaults to "llm"
 	BaseURL             string
 	Endpoints           []EndpointConfig
 	APIKey              string
@@ -135,6 +136,7 @@ type providerConfigEntry struct {
 	Name        string            `yaml:"name"`
 	Type        string            `yaml:"type"`
 	Vendor      string            `yaml:"vendor"`
+	Category    string            `yaml:"category"` // "llm" or "image"; defaults to "llm"
 	URL         string            `yaml:"url"`
 	BaseURL     string            `yaml:"base_url"`
 	Endpoints   []EndpointConfig  `yaml:"endpoints"`
@@ -218,9 +220,16 @@ func normalizeProviderEntry(entry providerConfigEntry) (ProviderBootstrapEntry, 
 		metadata = nil
 	}
 
+	// Default category to "llm" if not specified.
+	category := strings.TrimSpace(entry.Category)
+	if category == "" {
+		category = "llm"
+	}
+
 	return ProviderBootstrapEntry{
 		Name:                name,
 		Vendor:              vendor,
+		Category:            category,
 		BaseURL:             baseURL,
 		Endpoints:           endpoints,
 		APIKey:              apiKey,

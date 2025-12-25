@@ -1,11 +1,14 @@
 package usersettingshandler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 
+	"jan-server/services/llm-api/internal/config"
+	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/usersettings"
 	authhandler "jan-server/services/llm-api/internal/interfaces/httpserver/handlers/authhandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
@@ -13,15 +16,24 @@ import (
 
 // UserSettingsHandler handles user settings HTTP requests.
 type UserSettingsHandler struct {
-	service *usersettings.Service
-	logger  zerolog.Logger
+	service         *usersettings.Service
+	providerService *domainmodel.ProviderService
+	cfg             *config.Config
+	logger          zerolog.Logger
 }
 
 // NewUserSettingsHandler constructs a new handler instance.
-func NewUserSettingsHandler(service *usersettings.Service, logger zerolog.Logger) *UserSettingsHandler {
+func NewUserSettingsHandler(
+	service *usersettings.Service,
+	providerService *domainmodel.ProviderService,
+	cfg *config.Config,
+	logger zerolog.Logger,
+) *UserSettingsHandler {
 	return &UserSettingsHandler{
-		service: service,
-		logger:  logger,
+		service:         service,
+		providerService: providerService,
+		cfg:             cfg,
+		logger:          logger,
 	}
 }
 
@@ -49,7 +61,23 @@ func (h *UserSettingsHandler) GetSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toResponse(settings))
+	capabilities := h.computeServerCapabilities(c.Request.Context())
+	c.JSON(http.StatusOK, toResponse(settings, capabilities))
+}
+
+// computeServerCapabilities determines available server features.
+func (h *UserSettingsHandler) computeServerCapabilities(ctx context.Context) ServerCapabilities {
+	capabilities := ServerCapabilities{}
+
+	// Check if image generation is enabled in config and has an active provider
+	if h.cfg.ImageGenerationEnabled {
+		provider, err := h.providerService.FindActiveImageProvider(ctx)
+		if err == nil && provider != nil {
+			capabilities.ImageGeneration = true
+		}
+	}
+
+	return capabilities
 }
 
 // UpdateSettings handles PATCH /v1/users/me/settings
@@ -114,7 +142,8 @@ func (h *UserSettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toResponse(settings))
+	capabilities := h.computeServerCapabilities(c.Request.Context())
+	c.JSON(http.StatusOK, toResponse(settings, capabilities))
 }
 
 // GetPreferences handles GET /v1/users/me/settings/preferences
@@ -199,31 +228,38 @@ type PreferencesResponse struct {
 	Preferences map[string]interface{} `json:"preferences"`
 }
 
-// UserSettingsResponse is the JSON response for user settings.
-type UserSettingsResponse struct {
-	ID               uint                          `json:"id"`
-	UserID           uint                          `json:"user_id"`
-	MemoryConfig     usersettings.MemoryConfig     `json:"memory_config"`
-	ProfileSettings  usersettings.ProfileSettings  `json:"profile_settings"`
-	AdvancedSettings usersettings.AdvancedSettings `json:"advanced_settings"`
-	EnableTrace      bool                          `json:"enable_trace"`
-	EnableTools      bool                          `json:"enable_tools"`
-	Preferences      map[string]interface{}        `json:"preferences"`
-	CreatedAt        string                        `json:"created_at"`
-	UpdatedAt        string                        `json:"updated_at"`
+// ServerCapabilities represents the server's available features.
+type ServerCapabilities struct {
+	ImageGeneration bool `json:"image_generation"`
 }
 
-func toResponse(settings *usersettings.UserSettings) UserSettingsResponse {
+// UserSettingsResponse is the JSON response for user settings.
+type UserSettingsResponse struct {
+	ID                 uint                          `json:"id"`
+	UserID             uint                          `json:"user_id"`
+	MemoryConfig       usersettings.MemoryConfig     `json:"memory_config"`
+	ProfileSettings    usersettings.ProfileSettings  `json:"profile_settings"`
+	AdvancedSettings   usersettings.AdvancedSettings `json:"advanced_settings"`
+	EnableTrace        bool                          `json:"enable_trace"`
+	EnableTools        bool                          `json:"enable_tools"`
+	Preferences        map[string]interface{}        `json:"preferences"`
+	ServerCapabilities ServerCapabilities            `json:"server_capabilities"`
+	CreatedAt          string                        `json:"created_at"`
+	UpdatedAt          string                        `json:"updated_at"`
+}
+
+func toResponse(settings *usersettings.UserSettings, capabilities ServerCapabilities) UserSettingsResponse {
 	return UserSettingsResponse{
-		ID:               settings.ID,
-		UserID:           settings.UserID,
-		MemoryConfig:     settings.MemoryConfig,
-		ProfileSettings:  settings.ProfileSettings,
-		AdvancedSettings: settings.AdvancedSettings,
-		EnableTrace:      settings.EnableTrace,
-		EnableTools:      settings.EnableTools,
-		Preferences:      settings.Preferences,
-		CreatedAt:        settings.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:        settings.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:                 settings.ID,
+		UserID:             settings.UserID,
+		MemoryConfig:       settings.MemoryConfig,
+		ProfileSettings:    settings.ProfileSettings,
+		AdvancedSettings:   settings.AdvancedSettings,
+		EnableTrace:        settings.EnableTrace,
+		EnableTools:        settings.EnableTools,
+		Preferences:        settings.Preferences,
+		ServerCapabilities: capabilities,
+		CreatedAt:          settings.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:          settings.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }

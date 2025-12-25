@@ -16,6 +16,7 @@ type AddProviderRequest struct {
 	APIKey    string            `json:"api_key"`
 	Metadata  map[string]string `json:"metadata"`
 	Active    *bool             `json:"active"`
+	Category  string            `json:"category"` // "llm" or "image", defaults to "llm"
 }
 
 type UpdateProviderRequest struct {

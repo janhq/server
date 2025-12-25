@@ -35,6 +35,7 @@ func newProvider(db *gorm.DB, opts ...gen.DOOption) provider {
 	_provider.PublicID = field.NewString(tableName, "public_id")
 	_provider.DisplayName = field.NewString(tableName, "display_name")
 	_provider.Kind = field.NewString(tableName, "kind")
+	_provider.Category = field.NewString(tableName, "category")
 	_provider.BaseURL = field.NewString(tableName, "base_url")
 	_provider.EncryptedAPIKey = field.NewString(tableName, "encrypted_api_key")
 	_provider.APIKeyHint = field.NewString(tableName, "api_key_hint")
@@ -59,6 +60,7 @@ type provider struct {
 	PublicID        field.String
 	DisplayName     field.String
 	Kind            field.String
+	Category        field.String
 	BaseURL         field.String
 	EncryptedAPIKey field.String
 	APIKeyHint      field.String
@@ -89,6 +91,7 @@ func (p *provider) updateTableName(table string) *provider {
 	p.PublicID = field.NewString(table, "public_id")
 	p.DisplayName = field.NewString(table, "display_name")
 	p.Kind = field.NewString(table, "kind")
+	p.Category = field.NewString(table, "category")
 	p.BaseURL = field.NewString(table, "base_url")
 	p.EncryptedAPIKey = field.NewString(table, "encrypted_api_key")
 	p.APIKeyHint = field.NewString(table, "api_key_hint")
@@ -112,7 +115,7 @@ func (p *provider) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *provider) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 14)
+	p.fieldMap = make(map[string]field.Expr, 15)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt
@@ -120,6 +123,7 @@ func (p *provider) fillFieldMap() {
 	p.fieldMap["public_id"] = p.PublicID
 	p.fieldMap["display_name"] = p.DisplayName
 	p.fieldMap["kind"] = p.Kind
+	p.fieldMap["category"] = p.Category
 	p.fieldMap["base_url"] = p.BaseURL
 	p.fieldMap["encrypted_api_key"] = p.EncryptedAPIKey
 	p.fieldMap["api_key_hint"] = p.APIKeyHint

@@ -20,6 +20,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/keycloak"
 	"jan-server/services/llm-api/internal/infrastructure/kong"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
+	"jan-server/services/llm-api/internal/infrastructure/mediaclient"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
 	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 )
@@ -114,6 +115,11 @@ func ProvideMediaResolver(cfg *config.Config, log zerolog.Logger, kc *keycloak.C
 	return mediaresolver.NewResolver(cfg, log, kc)
 }
 
+// ProvideMediaClient wires the media client for uploading images.
+func ProvideMediaClient(cfg *config.Config, log zerolog.Logger) *mediaclient.Client {
+	return mediaclient.NewClient(cfg, log)
+}
+
 // ProvideAdminAuditLogger supplies audit logging helper.
 func ProvideAdminAuditLogger(db *gorm.DB, logger zerolog.Logger) *audit.AdminAuditLogger {
 	return audit.NewAdminAuditLogger(db, logger)
@@ -154,8 +160,16 @@ var InfrastructureProvider = wire.NewSet(
 	// Provider registry
 	inference.NewInferenceProvider,
 
+	// Image generation service
+	inference.NewZImageService,
+	// Bind ZImageService to ImageService interface
+	wire.Bind(new(inference.ImageService), new(*inference.ZImageService)),
+
 	// Media resolver
 	ProvideMediaResolver,
+
+	// Media client for uploading images
+	ProvideMediaClient,
 
 	// Logger
 	logger.GetLogger,
