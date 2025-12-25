@@ -67,14 +67,24 @@ type SnapshotItemResp struct {
 type SnapshotContentResp struct {
 	Type        string           `json:"type"`
 	Text        string           `json:"text,omitempty"`
+	InputText   string           `json:"input_text,omitempty"`
 	OutputText  string           `json:"output_text,omitempty"`
+	Image       *ImageRefResp    `json:"image,omitempty"`
 	FileRef     *FileRefResp     `json:"file_ref,omitempty"`
 	Annotations []AnnotationResp `json:"annotations,omitempty"`
 }
 
+// ImageRefResp represents an image reference
+type ImageRefResp struct {
+	URL    string `json:"url,omitempty"`
+	FileID string `json:"file_id,omitempty"`
+	Detail string `json:"detail,omitempty"`
+}
+
 // FileRefResp represents a file reference
 type FileRefResp struct {
-	FileID   string  `json:"file_id"`
+	FileID   string  `json:"file_id,omitempty"`
+	URL      *string `json:"url,omitempty"` // For data URLs or external image URLs
 	MimeType *string `json:"mime_type,omitempty"`
 	Name     *string `json:"name,omitempty"`
 }
@@ -196,12 +206,22 @@ func newSnapshotContentResp(content share.SnapshotContent) SnapshotContentResp {
 	resp := SnapshotContentResp{
 		Type:       content.Type,
 		Text:       content.Text,
+		InputText:  content.InputText,
 		OutputText: content.OutputText,
+	}
+
+	if content.Image != nil {
+		resp.Image = &ImageRefResp{
+			URL:    content.Image.URL,
+			FileID: content.Image.FileID,
+			Detail: content.Image.Detail,
+		}
 	}
 
 	if content.FileRef != nil {
 		resp.FileRef = &FileRefResp{
 			FileID:   content.FileRef.FileID,
+			URL:      content.FileRef.URL,
 			MimeType: content.FileRef.MimeType,
 			Name:     content.FileRef.Name,
 		}

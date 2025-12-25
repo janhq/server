@@ -458,7 +458,7 @@ func (s *ShareService) sanitizeItem(item conversation.Item, includeImages bool) 
 
 func (s *ShareService) sanitizeContent(content conversation.Content, includeImages bool) *SnapshotContent {
 	switch content.Type {
-	case "text", "input_text":
+	case "text":
 		text := extractTextFromContent(content)
 		if text == "" {
 			return nil
@@ -466,6 +466,16 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		return &SnapshotContent{
 			Type: "text",
 			Text: text,
+		}
+
+	case "input_text":
+		text := extractTextFromContent(content)
+		if text == "" {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:      "input_text",
+			InputText: text,
 		}
 
 	case "output_text":
@@ -489,16 +499,16 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		if content.Image == nil {
 			return nil
 		}
-		// Only include file_id reference, not URLs or base64 data
-		if content.Image.FileID != "" {
-			return &SnapshotContent{
-				Type: "image",
-				FileRef: &FileRef{
-					FileID: content.Image.FileID,
-				},
-			}
+		// Match the exact format from conversation items
+		imageRef := &ImageRef{
+			URL:    content.Image.URL,
+			FileID: content.Image.FileID,
+			Detail: content.Image.Detail,
 		}
-		return nil
+		return &SnapshotContent{
+			Type:  "image",
+			Image: imageRef,
+		}
 
 	case "file":
 		if content.File == nil {
