@@ -1,10 +1,16 @@
 package shareresponses
 
 import (
+	"context"
 	"time"
 
 	"jan-server/services/llm-api/internal/domain/share"
 )
+
+// FilePresigner is an interface for presigning file IDs to URLs
+type FilePresigner interface {
+	PresignFileID(ctx context.Context, fileID string) (string, error)
+}
 
 // ShareResponse represents the response for a share
 type ShareResponse struct {
@@ -77,6 +83,7 @@ type FileRefResp struct {
 	FileID   string  `json:"file_id"`
 	MimeType *string `json:"mime_type,omitempty"`
 	Name     *string `json:"name,omitempty"`
+	URL      string  `json:"url,omitempty"` // Presigned URL for public access
 }
 
 // AnnotationResp represents an annotation
@@ -155,6 +162,96 @@ func NewPublicShareResponse(s *share.Share) *PublicShareResponse {
 
 	if s.Snapshot != nil {
 		resp.Snapshot = newSnapshotResp(s.Snapshot)
+	}
+
+	return resp
+}
+
+// NewPublicShareResponseWithPresigning creates a PublicShareResponse with presigned URLs for file references
+func NewPublicShareResponseWithPresigning(ctx context.Context, s *share.Share, presigner FilePresigner) *PublicShareResponse {
+	resp := &PublicShareResponse{
+		Object:    "public_share",
+		Slug:      s.Slug,
+		Title:     s.Title,
+		CreatedAt: s.CreatedAt.Unix(),
+	}
+
+	if s.Snapshot != nil {
+		resp.Snapshot = newSnapshotRespWithPresigning(ctx, s.Snapshot, presigner)
+	}
+
+	return resp
+}
+
+func newSnapshotRespWithPresigning(ctx context.Context, snapshot *share.Snapshot, presigner FilePresigner) *SnapshotResp {
+	resp := &SnapshotResp{
+		Title:         snapshot.Title,
+		ModelName:     snapshot.ModelName,
+		AssistantName: snapshot.AssistantName,
+		CreatedAt:     snapshot.CreatedAt.Unix(),
+		Items:         make([]SnapshotItemResp, 0, len(snapshot.Items)),
+	}
+
+	for _, item := range snapshot.Items {
+		resp.Items = append(resp.Items, newSnapshotItemRespWithPresigning(ctx, item, presigner))
+	}
+
+	return resp
+}
+
+func newSnapshotItemRespWithPresigning(ctx context.Context, item share.SnapshotItem, presigner FilePresigner) SnapshotItemResp {
+	resp := SnapshotItemResp{
+		ID:        item.ID,
+		Type:      item.Type,
+		Role:      item.Role,
+		Content:   make([]SnapshotContentResp, 0, len(item.Content)),
+		CreatedAt: item.CreatedAt.Unix(),
+	}
+
+	for _, content := range item.Content {
+		resp.Content = append(resp.Content, newSnapshotContentRespWithPresigning(ctx, content, presigner))
+	}
+
+	return resp
+}
+
+func newSnapshotContentRespWithPresigning(ctx context.Context, content share.SnapshotContent, presigner FilePresigner) SnapshotContentResp {
+	resp := SnapshotContentResp{
+		Type:       content.Type,
+		Text:       content.Text,
+		OutputText: content.OutputText,
+	}
+
+	if content.FileRef != nil {
+		fileRef := &FileRefResp{
+			FileID:   content.FileRef.FileID,
+			MimeType: content.FileRef.MimeType,
+			Name:     content.FileRef.Name,
+		}
+
+		// Presign the file ID to get a public URL
+		if presigner != nil && content.FileRef.FileID != "" {
+			url, err := presigner.PresignFileID(ctx, content.FileRef.FileID)
+			if err == nil && url != "" {
+				fileRef.URL = url
+			}
+		}
+
+		resp.FileRef = fileRef
+	}
+
+	if len(content.Annotations) > 0 {
+		resp.Annotations = make([]AnnotationResp, 0, len(content.Annotations))
+		for _, a := range content.Annotations {
+			resp.Annotations = append(resp.Annotations, AnnotationResp{
+				Type:       a.Type,
+				Text:       a.Text,
+				StartIndex: a.StartIdx,
+				EndIndex:   a.EndIdx,
+				URL:        a.URL,
+				FileID:     a.FileID,
+			})
+		}
 	}
 
 	return resp

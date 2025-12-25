@@ -20,6 +20,7 @@ import (
 	"jan-server/services/llm-api/internal/infrastructure/keycloak"
 	"jan-server/services/llm-api/internal/infrastructure/kong"
 	"jan-server/services/llm-api/internal/infrastructure/logger"
+	"jan-server/services/llm-api/internal/infrastructure/mediapresigner"
 	"jan-server/services/llm-api/internal/infrastructure/mediaresolver"
 	memclient "jan-server/services/llm-api/internal/infrastructure/memory"
 )
@@ -114,6 +115,11 @@ func ProvideMediaResolver(cfg *config.Config, log zerolog.Logger, kc *keycloak.C
 	return mediaresolver.NewResolver(cfg, log, kc)
 }
 
+// ProvideMediaPresigner wires the HTTP-based media presigner for share URLs.
+func ProvideMediaPresigner(cfg *config.Config, log zerolog.Logger) mediapresigner.Presigner {
+	return mediapresigner.NewPresigner(cfg, log)
+}
+
 // ProvideAdminAuditLogger supplies audit logging helper.
 func ProvideAdminAuditLogger(db *gorm.DB, logger zerolog.Logger) *audit.AdminAuditLogger {
 	return audit.NewAdminAuditLogger(db, logger)
@@ -156,6 +162,9 @@ var InfrastructureProvider = wire.NewSet(
 
 	// Media resolver
 	ProvideMediaResolver,
+
+	// Media presigner for share URLs
+	ProvideMediaPresigner,
 
 	// Logger
 	logger.GetLogger,

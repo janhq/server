@@ -40,8 +40,8 @@ func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, a
 	handlerProvider := handlers.NewProvider(cfg, mediaService, log)
 	routeProvider := v1.NewRoutes(handlerProvider, cfg)
 
-	// Register public routes (health checks, swagger) without authentication
-	registerPublicRoutes(engine, cfg, authValidator)
+	// Register public routes (health checks, swagger, presign) without authentication
+	registerPublicRoutes(engine, cfg, authValidator, handlerProvider)
 
 	// Apply authentication middleware before protected routes
 	if authValidator != nil {
@@ -88,7 +88,7 @@ func (s *HTTPServer) Run(ctx context.Context) error {
 	return server.Shutdown(shutdownCtx)
 }
 
-func registerPublicRoutes(engine *gin.Engine, cfg *config.Config, authValidator *auth.Validator) {
+func registerPublicRoutes(engine *gin.Engine, cfg *config.Config, authValidator *auth.Validator, handlerProvider *handlers.Provider) {
 	engine.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"service": cfg.ServiceName, "status": "ok"})
 	})
@@ -110,4 +110,6 @@ func registerPublicRoutes(engine *gin.Engine, cfg *config.Config, authValidator 
 	engine.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	engine.GET("/v1/media/:id/presign", handlerProvider.Media.GetPresignedURL)
 }
