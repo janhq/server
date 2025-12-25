@@ -81,20 +81,19 @@ type SnapshotItem struct {
 }
 
 // SnapshotContent represents sanitized content for public display
-// Only includes safe content types: text, output_text, and file references
+// Only includes safe content types: text, output_text, and images
 type SnapshotContent struct {
-	Type       string      `json:"type"`
-	Text       string      `json:"text,omitempty"`
-	OutputText string      `json:"output_text,omitempty"`
-	FileRef    *FileRef    `json:"file_ref,omitempty"` // For images/files
+	Type        string       `json:"type"`
+	Text        string       `json:"text,omitempty"`
+	OutputText  string       `json:"output_text,omitempty"`
+	Image       *ImageRef    `json:"image,omitempty"` // For images - same format as conversation items
 	Annotations []Annotation `json:"annotations,omitempty"`
 }
 
-// FileRef represents a reference to a file (image, document) in the snapshot
-type FileRef struct {
-	FileID   string  `json:"file_id"`
-	MimeType *string `json:"mime_type,omitempty"`
-	Name     *string `json:"name,omitempty"`
+// ImageRef represents an image reference in the snapshot
+type ImageRef struct {
+	URL    string `json:"url,omitempty"`     // Presigned URL for public access
+	FileID string `json:"file_id,omitempty"` // Media ID (jan_xxx)
 }
 
 // Annotation represents text annotations (citations, links)

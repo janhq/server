@@ -14,20 +14,20 @@ type FilePresigner interface {
 
 // ShareResponse represents the response for a share
 type ShareResponse struct {
-	ID              string             `json:"id"`
-	Object          string             `json:"object"`
-	Slug            string             `json:"slug"`
-	ShareURL        string             `json:"share_url,omitempty"`
-	Title           *string            `json:"title,omitempty"`
-	ItemID          *string            `json:"item_id,omitempty"`
-	Visibility      string             `json:"visibility"`
-	ViewCount       int                `json:"view_count"`
-	RevokedAt       *int64             `json:"revoked_at,omitempty"`
-	LastViewedAt    *int64             `json:"last_viewed_at,omitempty"`
-	SnapshotVersion int                `json:"snapshot_version"`
-	ShareOptions    *ShareOptionsResp  `json:"share_options,omitempty"`
-	CreatedAt       int64              `json:"created_at"`
-	UpdatedAt       int64              `json:"updated_at"`
+	ID              string            `json:"id"`
+	Object          string            `json:"object"`
+	Slug            string            `json:"slug"`
+	ShareURL        string            `json:"share_url,omitempty"`
+	Title           *string           `json:"title,omitempty"`
+	ItemID          *string           `json:"item_id,omitempty"`
+	Visibility      string            `json:"visibility"`
+	ViewCount       int               `json:"view_count"`
+	RevokedAt       *int64            `json:"revoked_at,omitempty"`
+	LastViewedAt    *int64            `json:"last_viewed_at,omitempty"`
+	SnapshotVersion int               `json:"snapshot_version"`
+	ShareOptions    *ShareOptionsResp `json:"share_options,omitempty"`
+	CreatedAt       int64             `json:"created_at"`
+	UpdatedAt       int64             `json:"updated_at"`
 }
 
 // ShareOptionsResp represents the share options in response
@@ -44,29 +44,29 @@ type ShareListResponse struct {
 
 // PublicShareResponse represents the public-facing share response (no auth)
 type PublicShareResponse struct {
-	Object    string           `json:"object"`
-	Slug      string           `json:"slug"`
-	Title     *string          `json:"title,omitempty"`
-	CreatedAt int64            `json:"created_at"`
-	Snapshot  *SnapshotResp    `json:"snapshot"`
+	Object    string        `json:"object"`
+	Slug      string        `json:"slug"`
+	Title     *string       `json:"title,omitempty"`
+	CreatedAt int64         `json:"created_at"`
+	Snapshot  *SnapshotResp `json:"snapshot"`
 }
 
 // SnapshotResp represents the snapshot in public response
 type SnapshotResp struct {
-	Title         string              `json:"title"`
-	ModelName     *string             `json:"model_name,omitempty"`
-	AssistantName *string             `json:"assistant_name,omitempty"`
-	CreatedAt     int64               `json:"created_at"`
-	Items         []SnapshotItemResp  `json:"items"`
+	Title         string             `json:"title"`
+	ModelName     *string            `json:"model_name,omitempty"`
+	AssistantName *string            `json:"assistant_name,omitempty"`
+	CreatedAt     int64              `json:"created_at"`
+	Items         []SnapshotItemResp `json:"items"`
 }
 
 // SnapshotItemResp represents an item in the snapshot
 type SnapshotItemResp struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Role      string                 `json:"role"`
-	Content   []SnapshotContentResp  `json:"content"`
-	CreatedAt int64                  `json:"created_at"`
+	ID        string                `json:"id"`
+	Type      string                `json:"type"`
+	Role      string                `json:"role"`
+	Content   []SnapshotContentResp `json:"content"`
+	CreatedAt int64                 `json:"created_at"`
 }
 
 // SnapshotContentResp represents content in the snapshot
@@ -74,16 +74,14 @@ type SnapshotContentResp struct {
 	Type        string           `json:"type"`
 	Text        string           `json:"text,omitempty"`
 	OutputText  string           `json:"output_text,omitempty"`
-	FileRef     *FileRefResp     `json:"file_ref,omitempty"`
+	Image       *ImageResp       `json:"image,omitempty"` // Same format as conversation items
 	Annotations []AnnotationResp `json:"annotations,omitempty"`
 }
 
-// FileRefResp represents a file reference
-type FileRefResp struct {
-	FileID   string  `json:"file_id"`
-	MimeType *string `json:"mime_type,omitempty"`
-	Name     *string `json:"name,omitempty"`
-	URL      string  `json:"url,omitempty"` // Presigned URL for public access
+// ImageResp represents an image - same format as conversation.ImageContent
+type ImageResp struct {
+	URL    string `json:"url,omitempty"`
+	FileID string `json:"file_id,omitempty"`
 }
 
 // AnnotationResp represents an annotation
@@ -222,22 +220,20 @@ func newSnapshotContentRespWithPresigning(ctx context.Context, content share.Sna
 		OutputText: content.OutputText,
 	}
 
-	if content.FileRef != nil {
-		fileRef := &FileRefResp{
-			FileID:   content.FileRef.FileID,
-			MimeType: content.FileRef.MimeType,
-			Name:     content.FileRef.Name,
+	if content.Image != nil {
+		image := &ImageResp{
+			FileID: content.Image.FileID,
 		}
 
 		// Presign the file ID to get a public URL
-		if presigner != nil && content.FileRef.FileID != "" {
-			url, err := presigner.PresignFileID(ctx, content.FileRef.FileID)
+		if presigner != nil && content.Image.FileID != "" {
+			url, err := presigner.PresignFileID(ctx, content.Image.FileID)
 			if err == nil && url != "" {
-				fileRef.URL = url
+				image.URL = url
 			}
 		}
 
-		resp.FileRef = fileRef
+		resp.Image = image
 	}
 
 	if len(content.Annotations) > 0 {
@@ -296,11 +292,10 @@ func newSnapshotContentResp(content share.SnapshotContent) SnapshotContentResp {
 		OutputText: content.OutputText,
 	}
 
-	if content.FileRef != nil {
-		resp.FileRef = &FileRefResp{
-			FileID:   content.FileRef.FileID,
-			MimeType: content.FileRef.MimeType,
-			Name:     content.FileRef.Name,
+	if content.Image != nil {
+		resp.Image = &ImageResp{
+			FileID: content.Image.FileID,
+			URL:    content.Image.URL,
 		}
 	}
 

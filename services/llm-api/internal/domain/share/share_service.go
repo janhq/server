@@ -508,7 +508,7 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		if fileID != "" {
 			return &SnapshotContent{
 				Type: "image",
-				FileRef: &FileRef{
+				Image: &ImageRef{
 					FileID: fileID,
 				},
 			}
@@ -519,17 +519,16 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		if content.File == nil {
 			return nil
 		}
-		// Only include file_id reference
-		mimeType := content.File.MimeType
-		name := content.File.Name
-		return &SnapshotContent{
-			Type: "file",
-			FileRef: &FileRef{
-				FileID:   content.File.FileID,
-				MimeType: &mimeType,
-				Name:     &name,
-			},
+		// Check if this is an image file
+		if content.File.MimeType != "" && isImageMimeType(content.File.MimeType) && includeImages {
+			return &SnapshotContent{
+				Type: "image",
+				Image: &ImageRef{
+					FileID: content.File.FileID,
+				},
+			}
 		}
+		return nil
 
 	// Skip sensitive/internal content types
 	case "audio", "input_audio":
@@ -551,6 +550,10 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		// Skip unknown types for safety
 		return nil
 	}
+}
+
+func isImageMimeType(mimeType string) bool {
+	return len(mimeType) >= 6 && mimeType[:6] == "image/"
 }
 
 // extractTextFromContent extracts text from various content structures
