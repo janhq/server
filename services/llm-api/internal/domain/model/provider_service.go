@@ -130,9 +130,14 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 	metadata = setDefaultCapabilities(kind, metadata)
 
 	// Default category to LLM if not specified.
+	// Auto-detect category for known image providers (e.g., z-image).
 	category := input.Category
 	if category == "" {
-		category = ProviderCategoryLLM
+		if kind == ProviderZImage {
+			category = ProviderCategoryImage
+		} else {
+			category = ProviderCategoryLLM
+		}
 	}
 
 	provider := &Provider{

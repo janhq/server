@@ -598,7 +598,7 @@ API_TEST_BASE_FLAGS := --env-file tests/e2e/.env \
   --timeout-request $(TIMEOUT_MS)
 
 # Full flags with default auth mode
-API_TEST_FLAGS := $(API_TEST_BASE_FLAGS) --auto-auth $(AUTH_MODE)
+API_TEST_FLAGS := $(API_TEST_BASE_FLAGS) --auto-auth $(AUTH_MODE) --debug
 
 .PHONY: test-all test-auth test-conversation test-response test-model test-media test-mcp test-user-management test-model-prompts test-image test-dev
 
