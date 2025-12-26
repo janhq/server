@@ -1,10 +1,10 @@
 {
   "title": "Conventions",
   "pages": [
-    "overview",
+    "index",
+    "conventions",
     "architecture-patterns",
     "design-patterns",
     "workflow"
   ]
 }
-

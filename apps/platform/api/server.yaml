@@ -1,5 +1,39 @@
 basePath: /
 definitions:
+  authhandler.AccessTokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_at:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+    type: object
+  authhandler.GetMeResponse:
+    properties:
+      auth_method:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_admin:
+        type: boolean
+      name:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      subject:
+        type: string
+      username:
+        type: string
+    type: object
   chatrequests.ChatCompletionRequest:
     properties:
       chat_template_kwargs:
@@ -17,6 +51,18 @@ definitions:
           Conversation can be either a string (conversation ID) or a conversation object
           Items from this conversation are prepended to Messages for this response request.
           Input items and output items from this response are automatically added to this conversation after completion.
+      deep_research:
+        description: |-
+          DeepResearch enables the Deep Research mode which uses a specialized prompt
+          for conducting in-depth investigations with tool usage.
+          Requires a model with supports_reasoning: true capability.
+        type: boolean
+      enable_thinking:
+        description: |-
+          EnableThinking controls whether reasoning/thinking capabilities should be used.
+          Defaults to true. When set to false for a model with supports_reasoning: true
+          and an instruct model configured, the instruct model will be used instead.
+        type: boolean
       frequency_penalty:
         type: number
       function_call:
@@ -88,6 +134,8 @@ definitions:
         description: Controls effort on reasoning for reasoning models. It can be
           set to "low", "medium", or "high".
         type: string
+      repetition_penalty:
+        type: number
       response_format:
         $ref: '#/definitions/openai.ChatCompletionResponseFormat'
       safety_identifier:
@@ -130,6 +178,8 @@ definitions:
         items:
           $ref: '#/definitions/openai.Tool'
         type: array
+      top_k:
+        type: integer
       top_logprobs:
         description: |-
           TopLogProbs is an integer between 0 and 5 specifying the number of most likely tokens to return at each
@@ -175,6 +225,9 @@ definitions:
         $ref: '#/definitions/openai.ServiceTier'
       system_fingerprint:
         type: string
+      trimmed:
+        description: True if messages were trimmed to fit context
+        type: boolean
       usage:
         $ref: '#/definitions/openai.Usage'
     type: object
@@ -345,26 +398,16 @@ definitions:
         allOf:
         - $ref: '#/definitions/conversation.InputAudio'
         description: User audio input
-      input_text:
-        description: User input text (simple)
-        type: string
       output_text:
         allOf:
         - $ref: '#/definitions/conversation.OutputText'
         description: AI output text (with annotations)
-      reasoning_content:
-        description: AI reasoning content
-        type: string
       refusal:
         description: Model refusal message
         type: string
       summary_text:
         description: Summary content
         type: string
-      text:
-        allOf:
-        - $ref: '#/definitions/conversation.Text'
-        description: Generic text content
       thinking:
         description: Internal reasoning (o1 models)
         type: string
@@ -451,9 +494,35 @@ definitions:
     type: object
   conversation.Item:
     properties:
+      acknowledged_safety_checks:
+        description: For computer call outputs
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
+      action:
+        additionalProperties: true
+        description: For computer/shell actions
+        type: object
+      approval_request_id:
+        description: For MCP approval
+        type: string
+      approve:
+        description: For MCP approval response
+        type: boolean
+      arguments:
+        description: For tool calls (JSON string)
+        type: string
       branch:
         description: Branch identifier (MAIN, EDIT_1, etc.)
         type: string
+      call_id:
+        description: OpenAI-compatible fields for specific item types
+        type: string
+      commands:
+        description: For shell calls
+        items:
+          type: string
+        type: array
       completed_at:
         type: string
       content:
@@ -462,15 +531,36 @@ definitions:
         type: array
       created_at:
         type: string
+      error:
+        description: For failed calls
+        type: string
       id:
         type: string
       incomplete_at:
         type: string
       incomplete_details:
         $ref: '#/definitions/conversation.IncompleteDetails'
+      max_output_length:
+        description: For shell calls
+        type: integer
+      name:
+        description: For MCP tool calls - tool name
+        type: string
       object:
         description: Always "conversation.item" for OpenAI compatibility
         type: string
+      operation:
+        additionalProperties: true
+        description: For patch operations
+        type: object
+      output:
+        description: For tool call outputs
+        type: string
+      pending_safety_checks:
+        description: For computer calls
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
       rated_at:
         description: When rating was given
         type: string
@@ -481,13 +571,29 @@ definitions:
       rating_comment:
         description: Optional comment with rating
         type: string
+      reason:
+        description: For MCP approval reason
+        type: string
       role:
         $ref: '#/definitions/conversation.ItemRole'
       sequence_number:
         description: Order within branch
         type: integer
+      server_label:
+        description: For MCP calls
+        type: string
+      shell_outputs:
+        description: For shell call outputs
+        items:
+          $ref: '#/definitions/conversation.ShellOutput'
+        type: array
       status:
         $ref: '#/definitions/conversation.ItemStatus'
+      tools:
+        description: For mcp_list_tools
+        items:
+          $ref: '#/definitions/conversation.McpTool'
+        type: array
       type:
         $ref: '#/definitions/conversation.ItemType'
     type: object
@@ -569,33 +675,66 @@ definitions:
     - function_call
     - function_call_output
     - reasoning
+    - file_search_call
+    - web_search_call
+    - image_generation_call
+    - computer_call
+    - computer_call_output
+    - code_interpreter_call
+    - local_shell_call
+    - local_shell_call_output
+    - shell_call
+    - shell_call_output
+    - apply_patch_call
+    - apply_patch_call_output
+    - mcp_list_tools
+    - mcp_approval_request
+    - mcp_approval_response
+    - mcp_call
+    - custom_tool_call
+    - custom_tool_call_output
     - file_search
     - web_search
     - code_interpreter
     - computer_use
-    - custom_tool_call
     - mcp_item
     - image_generation
     type: string
     x-enum-comments:
-      ItemTypeCodeInterpreter: Code execution
-      ItemTypeComputerUse: Computer interaction
-      ItemTypeCustomToolCall: Custom tool invocations
-      ItemTypeFileSearch: RAG/retrieval operations
-      ItemTypeImageGeneration: DALL-E image generation
-      ItemTypeMCPItem: Model Context Protocol items
+      ItemTypeCodeInterpreter: 'Legacy: maps to code_interpreter_call'
+      ItemTypeComputerUse: 'Legacy: maps to computer_call'
+      ItemTypeFileSearch: 'Legacy: maps to file_search_call'
+      ItemTypeImageGeneration: 'Legacy: maps to image_generation_call'
+      ItemTypeMCPItem: 'Legacy: maps to mcp_call'
       ItemTypeReasoning: For o1/reasoning models
-      ItemTypeWebSearch: Web browsing operations
+      ItemTypeWebSearch: 'Legacy: maps to web_search_call'
     x-enum-varnames:
     - ItemTypeMessage
     - ItemTypeFunctionCall
     - ItemTypeFunctionCallOut
     - ItemTypeReasoning
+    - ItemTypeFileSearchCall
+    - ItemTypeWebSearchCall
+    - ItemTypeImageGenerationCall
+    - ItemTypeComputerCall
+    - ItemTypeComputerCallOutput
+    - ItemTypeCodeInterpreterCall
+    - ItemTypeLocalShellCall
+    - ItemTypeLocalShellCallOutput
+    - ItemTypeShellCall
+    - ItemTypeShellCallOutput
+    - ItemTypeApplyPatchCall
+    - ItemTypeApplyPatchCallOutput
+    - ItemTypeMcpListTools
+    - ItemTypeMcpApprovalRequest
+    - ItemTypeMcpApprovalResponse
+    - ItemTypeMcpCall
+    - ItemTypeCustomToolCall
+    - ItemTypeCustomToolCallOutput
     - ItemTypeFileSearch
     - ItemTypeWebSearch
     - ItemTypeCodeInterpreter
     - ItemTypeComputerUse
-    - ItemTypeCustomToolCall
     - ItemTypeMCPItem
     - ItemTypeImageGeneration
   conversation.LogProb:
@@ -613,6 +752,15 @@ definitions:
           $ref: '#/definitions/conversation.TopLogProb'
         type: array
     type: object
+  conversation.McpTool:
+    properties:
+      annotations: {}
+      description:
+        type: string
+      input_schema: {}
+      name:
+        type: string
+    type: object
   conversation.OutputText:
     properties:
       annotations:
@@ -626,6 +774,13 @@ definitions:
           $ref: '#/definitions/conversation.LogProb'
         type: array
       text:
+        type: string
+    type: object
+  conversation.SafetyCheck:
+    properties:
+      reason:
+        type: string
+      type:
         type: string
     type: object
   conversation.ScreenshotContent:
@@ -656,14 +811,12 @@ definitions:
       "y":
         type: integer
     type: object
-  conversation.Text:
+  conversation.ShellOutput:
     properties:
-      annotations:
-        items:
-          $ref: '#/definitions/conversation.Annotation'
-        type: array
-      text:
-        description: Changed from "value" to match OpenAI spec
+      type:
+        description: stdout, stderr, exit_code
+        type: string
+      value:
         type: string
     type: object
   conversation.ToolCall:
@@ -685,6 +838,124 @@ definitions:
       logprob:
         type: number
       token:
+        type: string
+    type: object
+  conversationhandler.ActivateBranchResponse:
+    properties:
+      active_branch:
+        type: string
+      message:
+        type: string
+    type: object
+  conversationhandler.BranchResponse:
+    properties:
+      created_at:
+        type: integer
+      description:
+        type: string
+      forked_at:
+        type: integer
+      forked_from_item_id:
+        type: string
+      is_active:
+        type: boolean
+      item_count:
+        type: integer
+      name:
+        type: string
+      parent_branch:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  conversationhandler.CreateBranchRequest:
+    properties:
+      description:
+        type: string
+      fork_from_item_id:
+        type: string
+      name:
+        type: string
+      parent_branch:
+        type: string
+    required:
+    - name
+    type: object
+  conversationhandler.DeleteItemResponse:
+    properties:
+      branch:
+        description: Always "MAIN" after swap
+        type: string
+      branch_created:
+        type: boolean
+      deleted:
+        type: boolean
+      old_main_backup:
+        description: Backup name for old MAIN
+        type: string
+    type: object
+  conversationhandler.EditMessageRequest:
+    properties:
+      content:
+        type: string
+      regenerate:
+        description: 'Auto-trigger new response (default: true)'
+        type: boolean
+    required:
+    - content
+    type: object
+  conversationhandler.EditMessageResponse:
+    properties:
+      branch:
+        description: Always "MAIN" after swap
+        type: string
+      branch_created:
+        type: boolean
+      new_branch:
+        $ref: '#/definitions/conversationhandler.BranchResponse'
+      old_main_backup:
+        description: Backup name for old MAIN
+        type: string
+      user_item:
+        $ref: '#/definitions/conversation.Item'
+    type: object
+  conversationhandler.ListBranchesResponse:
+    properties:
+      active_branch:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/conversationhandler.BranchResponse'
+        type: array
+      object:
+        description: '"list"'
+        type: string
+    type: object
+  conversationhandler.RegenerateMessageRequest:
+    properties:
+      max_tokens:
+        description: Override max tokens
+        type: integer
+      model:
+        description: Override model
+        type: string
+      temperature:
+        description: Override temperature
+        type: number
+    type: object
+  conversationhandler.RegenerateMessageResponse:
+    properties:
+      branch:
+        description: Always "MAIN" after swap
+        type: string
+      branch_created:
+        type: boolean
+      new_branch:
+        $ref: '#/definitions/conversationhandler.BranchResponse'
+      old_main_backup:
+        description: Backup name for old MAIN
+        type: string
+      user_item_id:
         type: string
     type: object
   conversationrequests.CreateConversationRequest:
@@ -719,9 +990,44 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      project_id:
+        type: string
       referrer:
         type: string
       title:
+        type: string
+    type: object
+  conversationrequests.UpdateItemByCallIDRequest:
+    properties:
+      arguments:
+        description: JSON string of arguments
+        type: string
+      error:
+        description: Error message if status is "failed"
+        type: string
+      name:
+        description: Tool info fields (optional - already set on creation, but can
+          be updated)
+        type: string
+      output:
+        description: Result fields
+        type: string
+      server_label:
+        description: MCP server label
+        type: string
+      status:
+        description: Required fields
+        type: string
+    required:
+    - status
+    type: object
+  conversationresponses.BulkConversationsDeletedResponse:
+    properties:
+      deleted:
+        type: boolean
+      deleted_count:
+        type: integer
+      object:
         type: string
     type: object
   conversationresponses.ConversationDeletedResponse:
@@ -801,9 +1107,35 @@ definitions:
     type: object
   conversationresponses.ItemResponse:
     properties:
+      acknowledged_safety_checks:
+        description: For computer call outputs
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
+      action:
+        additionalProperties: true
+        description: For computer/shell actions
+        type: object
+      approval_request_id:
+        description: For MCP approval
+        type: string
+      approve:
+        description: For MCP approval response
+        type: boolean
+      arguments:
+        description: For tool calls (JSON string)
+        type: string
       branch:
         description: Branch identifier (MAIN, EDIT_1, etc.)
         type: string
+      call_id:
+        description: OpenAI-compatible fields for specific item types
+        type: string
+      commands:
+        description: For shell calls
+        items:
+          type: string
+        type: array
       completed_at:
         type: string
       content:
@@ -812,15 +1144,36 @@ definitions:
         type: array
       created_at:
         type: string
+      error:
+        description: For failed calls
+        type: string
       id:
         type: string
       incomplete_at:
         type: string
       incomplete_details:
         $ref: '#/definitions/conversation.IncompleteDetails'
+      max_output_length:
+        description: For shell calls
+        type: integer
+      name:
+        description: For MCP tool calls - tool name
+        type: string
       object:
         description: Always "conversation.item" for OpenAI compatibility
         type: string
+      operation:
+        additionalProperties: true
+        description: For patch operations
+        type: object
+      output:
+        description: For tool call outputs
+        type: string
+      pending_safety_checks:
+        description: For computer calls
+        items:
+          $ref: '#/definitions/conversation.SafetyCheck'
+        type: array
       rated_at:
         description: When rating was given
         type: string
@@ -831,15 +1184,92 @@ definitions:
       rating_comment:
         description: Optional comment with rating
         type: string
+      reason:
+        description: For MCP approval reason
+        type: string
       role:
         $ref: '#/definitions/conversation.ItemRole'
       sequence_number:
         description: Order within branch
         type: integer
+      server_label:
+        description: For MCP calls
+        type: string
+      shell_outputs:
+        description: For shell call outputs
+        items:
+          $ref: '#/definitions/conversation.ShellOutput'
+        type: array
       status:
         $ref: '#/definitions/conversation.ItemStatus'
+      tools:
+        description: For mcp_list_tools
+        items:
+          $ref: '#/definitions/conversation.McpTool'
+        type: array
       type:
         $ref: '#/definitions/conversation.ItemType'
+    type: object
+  mcptool.UpdateMCPToolRequest:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      disallowed_keywords:
+        description: Regex patterns
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      metadata:
+        additionalProperties: {}
+        type: object
+    type: object
+  mcptoolhandler.ActiveToolsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/mcptoolhandler.MCPToolResponse'
+        type: array
+    type: object
+  mcptoolhandler.ListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/mcptoolhandler.MCPToolResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  mcptoolhandler.MCPToolResponse:
+    properties:
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      disallowed_keywords:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      is_active:
+        type: boolean
+      metadata:
+        additionalProperties: {}
+        type: object
+      name:
+        type: string
+      public_id:
+        type: string
+      tool_key:
+        type: string
+      updated_at:
+        type: string
     type: object
   model.Architecture:
     properties:
@@ -933,6 +1363,117 @@ definitions:
         description: e.g., 128000
         type: integer
     type: object
+  modelprompthandler.AssignRequest:
+    properties:
+      is_active:
+        type: boolean
+      priority:
+        type: integer
+      prompt_template_id:
+        type: string
+      template_key:
+        type: string
+    required:
+    - prompt_template_id
+    - template_key
+    type: object
+  modelprompthandler.EffectiveTemplateResponse:
+    properties:
+      source:
+        description: '"model_specific", "global_default", "hardcoded"'
+        type: string
+      template:
+        $ref: '#/definitions/modelprompthandler.FullPromptTemplateResponse'
+    type: object
+  modelprompthandler.EffectiveTemplatesResponse:
+    properties:
+      templates:
+        additionalProperties:
+          $ref: '#/definitions/modelprompthandler.EffectiveTemplateResponse'
+        type: object
+    type: object
+  modelprompthandler.FullPromptTemplateResponse:
+    properties:
+      category:
+        type: string
+      content:
+        type: string
+      description:
+        type: string
+      is_active:
+        type: boolean
+      is_system:
+        type: boolean
+      metadata:
+        additionalProperties: {}
+        type: object
+      name:
+        type: string
+      public_id:
+        type: string
+      template_key:
+        type: string
+      variables:
+        items:
+          type: string
+        type: array
+      version:
+        type: integer
+    type: object
+  modelprompthandler.ListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/modelprompthandler.ModelPromptTemplateResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  modelprompthandler.ModelPromptTemplateResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      model_catalog_id:
+        type: string
+      priority:
+        type: integer
+      prompt_template:
+        $ref: '#/definitions/modelprompthandler.PromptTemplateResponse'
+      prompt_template_id:
+        type: string
+      template_key:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  modelprompthandler.PromptTemplateResponse:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      public_id:
+        type: string
+      template_key:
+        type: string
+    type: object
+  modelprompthandler.UpdateRequest:
+    properties:
+      is_active:
+        type: boolean
+      priority:
+        type: integer
+      prompt_template_id:
+        type: string
+    type: object
   modelresponses.BulkOperationResponse:
     properties:
       failed_count:
@@ -948,29 +1489,70 @@ definitions:
       updated_count:
         type: integer
     type: object
+  modelresponses.EndpointResponse:
+    properties:
+      healthy:
+        type: boolean
+      priority:
+        type: integer
+      url:
+        type: string
+      weight:
+        type: integer
+    type: object
   modelresponses.ModelCatalogResponse:
     properties:
       active:
         type: boolean
       architecture:
         $ref: '#/definitions/model.Architecture'
+      context_length:
+        type: integer
       created_at:
         type: integer
+      description:
+        type: string
+      experimental:
+        type: boolean
       extras:
         additionalProperties: {}
         type: object
+      family:
+        type: string
       id:
         type: string
       is_moderated:
         type: boolean
       last_synced_at:
         type: integer
+      model_display_name:
+        type: string
       notes:
+        type: string
+      public_id:
+        type: string
+      requires_feature_flag:
         type: string
       status:
         $ref: '#/definitions/model.ModelCatalogStatus'
       supported_parameters:
         $ref: '#/definitions/model.SupportedParameters'
+      supports_audio:
+        type: boolean
+      supports_browser:
+        type: boolean
+      supports_embeddings:
+        type: boolean
+      supports_images:
+        type: boolean
+      supports_instruct:
+        type: boolean
+      supports_reasoning:
+        type: boolean
+      supports_tools:
+        type: boolean
+      supports_video:
+        type: boolean
       tags:
         items:
           type: string
@@ -980,10 +1562,18 @@ definitions:
     type: object
   modelresponses.ModelResponse:
     properties:
+      category:
+        type: string
+      category_order_number:
+        type: integer
       created:
         type: integer
       id:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       object:
         type: string
       owned_by:
@@ -1000,10 +1590,18 @@ definitions:
     type: object
   modelresponses.ModelResponseWithProvider:
     properties:
+      category:
+        type: string
+      category_order_number:
+        type: integer
       created:
         type: integer
       id:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       object:
         type: string
       owned_by:
@@ -1028,16 +1626,25 @@ definitions:
     properties:
       active:
         type: boolean
+      category:
+        type: string
+      category_order_number:
+        type: integer
       created_at:
         type: integer
-      display_name:
-        type: string
       family:
         type: string
       id:
         type: string
+      instruct_model_public_id:
+        description: Public ID of the instruct model to use when enable_thinking=false
+        type: string
       model_catalog_id:
         type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       model_public_id:
         type: string
       pricing:
@@ -1054,6 +1661,8 @@ definitions:
         type: boolean
       supports_images:
         type: boolean
+      supports_instruct:
+        type: boolean
       supports_reasoning:
         type: boolean
       supports_video:
@@ -1069,6 +1678,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1095,6 +1708,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1116,6 +1733,10 @@ definitions:
         type: boolean
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/modelresponses.EndpointResponse'
+        type: array
       id:
         type: string
       metadata:
@@ -1550,6 +2171,112 @@ definitions:
       updated_at:
         type: integer
     type: object
+  prompttemplate.CreatePromptTemplateRequest:
+    properties:
+      category:
+        maxLength: 100
+        minLength: 1
+        type: string
+      content:
+        minLength: 1
+        type: string
+      description:
+        type: string
+      metadata:
+        additionalProperties: {}
+        type: object
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      template_key:
+        maxLength: 100
+        minLength: 1
+        type: string
+      variables:
+        items:
+          type: string
+        type: array
+    required:
+    - category
+    - content
+    - name
+    - template_key
+    type: object
+  prompttemplate.UpdatePromptTemplateRequest:
+    properties:
+      category:
+        maxLength: 100
+        minLength: 1
+        type: string
+      content:
+        minLength: 1
+        type: string
+      description:
+        type: string
+      is_active:
+        type: boolean
+      metadata:
+        additionalProperties: {}
+        type: object
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      variables:
+        items:
+          type: string
+        type: array
+    type: object
+  prompttemplatehandler.DuplicateRequest:
+    properties:
+      new_name:
+        maxLength: 200
+        type: string
+    type: object
+  prompttemplatehandler.ListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/prompttemplatehandler.PromptTemplateResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  prompttemplatehandler.PromptTemplateResponse:
+    properties:
+      category:
+        type: string
+      content:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      is_system:
+        type: boolean
+      metadata:
+        additionalProperties: {}
+        type: object
+      name:
+        type: string
+      public_id:
+        type: string
+      template_key:
+        type: string
+      updated_at:
+        type: string
+      variables:
+        items:
+          type: string
+        type: array
+      version:
+        type: integer
+    type: object
   requestmodels.AddProviderRequest:
     properties:
       active:
@@ -1558,16 +2285,21 @@ definitions:
         type: string
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/requestmodels.EndpointDTO'
+        type: array
       metadata:
         additionalProperties:
           type: string
         type: object
       name:
         type: string
+      url:
+        type: string
       vendor:
         type: string
     required:
-    - base_url
     - name
     - vendor
     type: object
@@ -1607,19 +2339,58 @@ definitions:
     required:
     - enable
     type: object
+  requestmodels.EndpointDTO:
+    properties:
+      priority:
+        type: integer
+      url:
+        type: string
+      weight:
+        type: integer
+    type: object
   requestmodels.UpdateModelCatalogRequest:
     properties:
+      active:
+        type: boolean
       architecture:
         $ref: '#/definitions/model.Architecture'
+      context_length:
+        type: number
+      description:
+        type: string
+      experimental:
+        type: boolean
       extras:
         additionalProperties: {}
         type: object
+      family:
+        type: string
       is_moderated:
         type: boolean
+      model_display_name:
+        type: string
       notes:
+        type: string
+      requires_feature_flag:
         type: string
       supported_parameters:
         $ref: '#/definitions/model.SupportedParameters'
+      supports_audio:
+        type: boolean
+      supports_browser:
+        type: boolean
+      supports_embeddings:
+        type: boolean
+      supports_images:
+        type: boolean
+      supports_instruct:
+        type: boolean
+      supports_reasoning:
+        type: boolean
+      supports_tools:
+        type: boolean
+      supports_video:
+        type: boolean
       tags:
         items:
           type: string
@@ -1629,10 +2400,19 @@ definitions:
     properties:
       active:
         type: boolean
-      display_name:
+      category:
         type: string
+      category_order_number:
+        type: integer
       family:
         type: string
+      instruct_model_public_id:
+        description: Public ID of the instruct model to use when enable_thinking=false
+        type: string
+      model_display_name:
+        type: string
+      model_order_number:
+        type: integer
       pricing:
         $ref: '#/definitions/model.Pricing'
       supports_audio:
@@ -1656,11 +2436,17 @@ definitions:
         type: string
       base_url:
         type: string
+      endpoints:
+        items:
+          $ref: '#/definitions/requestmodels.EndpointDTO'
+        type: array
       metadata:
         additionalProperties:
           type: string
         type: object
       name:
+        type: string
+      url:
         type: string
     type: object
   responses.ErrorResponse:
@@ -1674,6 +2460,367 @@ definitions:
         type: string
       request_id:
         type: string
+    type: object
+  sharerequests.CreateShareRequest:
+    properties:
+      branch:
+        description: Branch to share from (defaults to active branch)
+        type: string
+      include_context_messages:
+        description: For single-message share
+        type: boolean
+      include_images:
+        type: boolean
+      item_id:
+        description: Required if scope is "item"
+        type: string
+      scope:
+        description: '"conversation" or "item"'
+        enum:
+        - conversation
+        - item
+        type: string
+      title:
+        type: string
+    required:
+    - scope
+    type: object
+  shareresponses.AnnotationResp:
+    properties:
+      end_index:
+        type: integer
+      file_id:
+        type: string
+      start_index:
+        type: integer
+      text:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  shareresponses.FileRefResp:
+    properties:
+      file_id:
+        type: string
+      mime_type:
+        type: string
+      name:
+        type: string
+    type: object
+  shareresponses.PublicShareResponse:
+    properties:
+      created_at:
+        type: integer
+      object:
+        type: string
+      slug:
+        type: string
+      snapshot:
+        $ref: '#/definitions/shareresponses.SnapshotResp'
+      title:
+        type: string
+    type: object
+  shareresponses.ShareDeletedResponse:
+    properties:
+      deleted:
+        type: boolean
+      id:
+        type: string
+      object:
+        type: string
+    type: object
+  shareresponses.ShareListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/shareresponses.ShareResponse'
+        type: array
+      object:
+        type: string
+    type: object
+  shareresponses.ShareOptionsResp:
+    properties:
+      include_context_messages:
+        type: boolean
+      include_images:
+        type: boolean
+    type: object
+  shareresponses.ShareResponse:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      item_id:
+        type: string
+      last_viewed_at:
+        type: integer
+      object:
+        type: string
+      revoked_at:
+        type: integer
+      share_options:
+        $ref: '#/definitions/shareresponses.ShareOptionsResp'
+      share_url:
+        type: string
+      slug:
+        type: string
+      snapshot_version:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: integer
+      view_count:
+        type: integer
+      visibility:
+        type: string
+    type: object
+  shareresponses.SnapshotContentResp:
+    properties:
+      annotations:
+        items:
+          $ref: '#/definitions/shareresponses.AnnotationResp'
+        type: array
+      file_ref:
+        $ref: '#/definitions/shareresponses.FileRefResp'
+      output_text:
+        type: string
+      text:
+        type: string
+      type:
+        type: string
+    type: object
+  shareresponses.SnapshotItemResp:
+    properties:
+      content:
+        items:
+          $ref: '#/definitions/shareresponses.SnapshotContentResp'
+        type: array
+      created_at:
+        type: integer
+      id:
+        type: string
+      role:
+        type: string
+      type:
+        type: string
+    type: object
+  shareresponses.SnapshotResp:
+    properties:
+      assistant_name:
+        type: string
+      created_at:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/shareresponses.SnapshotItemResp'
+        type: array
+      model_name:
+        type: string
+      title:
+        type: string
+    type: object
+  tokenusage.DailyAggregate:
+    properties:
+      date:
+        type: string
+      estimated_cost_usd:
+        type: number
+      request_count:
+        type: integer
+      total_completion_tokens:
+        type: integer
+      total_prompt_tokens:
+        type: integer
+      total_tokens:
+        type: integer
+    type: object
+  tokenusage.Period:
+    properties:
+      end_date:
+        type: string
+      start_date:
+        type: string
+    type: object
+  tokenusage.PlatformUsageResponse:
+    properties:
+      by_model:
+        items:
+          $ref: '#/definitions/tokenusage.UsageSummary'
+        type: array
+      by_provider:
+        items:
+          $ref: '#/definitions/tokenusage.UsageSummary'
+        type: array
+      period:
+        $ref: '#/definitions/tokenusage.Period'
+      top_users:
+        items:
+          $ref: '#/definitions/tokenusage.UserUsage'
+        type: array
+      total_usage:
+        $ref: '#/definitions/tokenusage.UsageSummary'
+    type: object
+  tokenusage.UsageResponse:
+    properties:
+      by_model:
+        items:
+          $ref: '#/definitions/tokenusage.UsageSummary'
+        type: array
+      by_provider:
+        items:
+          $ref: '#/definitions/tokenusage.UsageSummary'
+        type: array
+      period:
+        $ref: '#/definitions/tokenusage.Period'
+      total_usage:
+        $ref: '#/definitions/tokenusage.UsageSummary'
+    type: object
+  tokenusage.UsageSummary:
+    properties:
+      estimated_cost_usd:
+        type: number
+      model:
+        type: string
+      provider:
+        type: string
+      request_count:
+        type: integer
+      total_completion_tokens:
+        type: integer
+      total_prompt_tokens:
+        type: integer
+      total_tokens:
+        type: integer
+    type: object
+  tokenusage.UserUsage:
+    properties:
+      estimated_cost_usd:
+        type: number
+      request_count:
+        type: integer
+      total_completion_tokens:
+        type: integer
+      total_prompt_tokens:
+        type: integer
+      total_tokens:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  usersettings.AdvancedSettings:
+    properties:
+      code_enabled:
+        description: Enable code execution features
+        type: boolean
+      web_search:
+        description: Let Jan automatically search the web for answers
+        type: boolean
+    type: object
+  usersettings.BaseStyle:
+    enum:
+    - Concise
+    - Friendly
+    - Professional
+    type: string
+    x-enum-varnames:
+    - BaseStyleConcise
+    - BaseStyleFriendly
+    - BaseStyleProfessional
+  usersettings.MemoryConfig:
+    properties:
+      enabled:
+        type: boolean
+      inject_episodic:
+        type: boolean
+      inject_semantic:
+        type: boolean
+      inject_user_core:
+        type: boolean
+      max_episodic_items:
+        type: integer
+      max_project_items:
+        type: integer
+      max_user_items:
+        type: integer
+      min_similarity:
+        type: number
+      observe_enabled:
+        type: boolean
+    type: object
+  usersettings.ProfileSettings:
+    properties:
+      base_style:
+        allOf:
+        - $ref: '#/definitions/usersettings.BaseStyle'
+        description: 'Conversation style: Concise, Friendly, or Professional'
+      custom_instructions:
+        description: Additional behavior, style, and tone preferences
+        type: string
+      more_about_you:
+        description: Additional information about the user
+        type: string
+      nick_name:
+        description: 'What should Jan call you? (alias: nickname)'
+        type: string
+      occupation:
+        description: User's occupation
+        type: string
+    type: object
+  usersettings.UpdateRequest:
+    properties:
+      advanced_settings:
+        $ref: '#/definitions/usersettings.AdvancedSettings'
+      enable_tools:
+        type: boolean
+      enable_trace:
+        type: boolean
+      memory_config:
+        $ref: '#/definitions/usersettings.MemoryConfig'
+      preferences:
+        additionalProperties: true
+        type: object
+      profile_settings:
+        $ref: '#/definitions/usersettings.ProfileSettings'
+    type: object
+  usersettingshandler.PreferencesResponse:
+    properties:
+      preferences:
+        additionalProperties: true
+        type: object
+    type: object
+  usersettingshandler.UpdatePreferencesRequest:
+    properties:
+      preferences:
+        additionalProperties: true
+        type: object
+    type: object
+  usersettingshandler.UserSettingsResponse:
+    properties:
+      advanced_settings:
+        $ref: '#/definitions/usersettings.AdvancedSettings'
+      created_at:
+        type: string
+      enable_tools:
+        type: boolean
+      enable_trace:
+        type: boolean
+      id:
+        type: integer
+      memory_config:
+        $ref: '#/definitions/usersettings.MemoryConfig'
+      preferences:
+        additionalProperties: true
+        type: object
+      profile_settings:
+        $ref: '#/definitions/usersettings.ProfileSettings'
+      updated_at:
+        type: string
+      user_id:
+        type: integer
     type: object
 info:
   contact:
@@ -1846,6 +2993,97 @@ paths:
           schema:
             $ref: '#/definitions/responses.ErrorResponse'
       summary: Create guest user account
+      tags:
+      - Authentication API
+  /auth/keycloak/callback:
+    get:
+      consumes:
+      - application/json
+      description: Handles the OAuth2 callback from Keycloak, exchanges authorization
+        code for tokens using PKCE
+      parameters:
+      - description: Authorization code from Keycloak
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State parameter for CSRF protection
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Frontend URL to redirect after successful authentication
+        in: query
+        name: redirect_url
+        type: string
+      - description: Error from Keycloak (if authentication failed)
+        in: query
+        name: error
+        type: string
+      - description: Error description from Keycloak
+        in: query
+        name: error_description
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirects to frontend URL with tokens in URL fragment
+        "400":
+          description: Missing code or state, or Keycloak error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Invalid state parameter
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Failed to exchange code for tokens
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Handle Keycloak OAuth2 callback
+      tags:
+      - Authentication API
+  /auth/keycloak/login:
+    get:
+      consumes:
+      - application/json
+      description: Redirects the user to Keycloak's authorization endpoint to authenticate.
+        Returns the authorization URL for frontend redirection with PKCE.
+      parameters:
+      - description: URL to redirect after successful login
+        in: query
+        name: redirect_url
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authorization URL and state parameter
+          schema:
+            properties:
+              authorization_url:
+                type: string
+              state:
+                type: string
+            type: object
+        "500":
+          description: Failed to generate state or PKCE parameters
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Initiate Keycloak OAuth2 login
       tags:
       - Authentication API
   /auth/login:
@@ -2098,6 +3336,127 @@ paths:
       summary: Validate API key (Kong Plugin)
       tags:
       - Authentication API
+  /v1/admin/mcp-tools:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of MCP tools with optional filtering
+      parameters:
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Search in name, description, and tool_key
+        in: query
+        name: search
+        type: string
+      - default: 20
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mcptoolhandler.ListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List MCP tools
+      tags:
+      - Admin - MCP Tools
+  /v1/admin/mcp-tools/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get an MCP tool by public ID
+      parameters:
+      - description: Public ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mcptoolhandler.MCPToolResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get an MCP tool
+      tags:
+      - Admin - MCP Tools
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing MCP tool configuration (Name is read-only)
+      parameters:
+      - description: Public ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/mcptool.UpdateMCPToolRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mcptoolhandler.MCPToolResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an MCP tool
+      tags:
+      - Admin - MCP Tools
   /v1/admin/models/catalogs:
     get:
       description: Retrieves a paginated list of model catalogs with optional filtering
@@ -2257,6 +3616,207 @@ paths:
       summary: Bulk enable/disable provider models by catalog IDs or all catalogs
       tags:
       - Admin Model API
+  /v1/admin/models/prompt-templates/assign/{model_id}:
+    post:
+      consumes:
+      - application/json
+      description: Assign or update a prompt template assignment for a model catalog
+      parameters:
+      - description: Model Catalog Public ID
+        in: path
+        name: model_id
+        required: true
+        type: string
+      - description: Assignment request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelprompthandler.AssignRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelprompthandler.ModelPromptTemplateResponse'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/modelprompthandler.ModelPromptTemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Assign a prompt template to a model
+      tags:
+      - Admin - Model Prompt Templates
+  /v1/admin/models/prompt-templates/effective/{model_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all resolved templates for a model, including global defaults
+      parameters:
+      - description: Model Catalog Public ID
+        in: path
+        name: model_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelprompthandler.EffectiveTemplatesResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get effective templates for a model
+      tags:
+      - Admin - Model Prompt Templates
+  /v1/admin/models/prompt-templates/list/{model_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all prompt template assignments for a model catalog
+      parameters:
+      - description: Model Catalog Public ID
+        in: path
+        name: model_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelprompthandler.ListResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List model prompt template assignments
+      tags:
+      - Admin - Model Prompt Templates
+  /v1/admin/models/prompt-templates/unassign/{template_key}/{model_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a prompt template assignment, reverting to global default
+      parameters:
+      - description: Model Catalog Public ID
+        in: path
+        name: model_id
+        required: true
+        type: string
+      - description: Template Key (e.g., deep_research, timing)
+        in: path
+        name: template_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove a prompt template assignment from a model
+      tags:
+      - Admin - Model Prompt Templates
+  /v1/admin/models/prompt-templates/update/{template_key}/{model_id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing prompt template assignment
+      parameters:
+      - description: Model Catalog Public ID
+        in: path
+        name: model_id
+        required: true
+        type: string
+      - description: Template Key
+        in: path
+        name: template_key
+        required: true
+        type: string
+      - description: Update request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelprompthandler.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelprompthandler.ModelPromptTemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a prompt template assignment
+      tags:
+      - Admin - Model Prompt Templates
   /v1/admin/models/provider-models:
     get:
       description: Retrieves a paginated list of provider models with optional filtering
@@ -2419,6 +3979,258 @@ paths:
       summary: Bulk enable or disable provider models
       tags:
       - Admin Model API
+  /v1/admin/prompt-templates:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of prompt templates with optional filtering
+      parameters:
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter by system status
+        in: query
+        name: is_system
+        type: boolean
+      - description: Search in name and description
+        in: query
+        name: search
+        type: string
+      - default: 20
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/prompttemplatehandler.ListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List prompt templates
+      tags:
+      - Admin - Prompt Templates
+    post:
+      consumes:
+      - application/json
+      description: Create a new prompt template
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/prompttemplate.CreatePromptTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/prompttemplatehandler.PromptTemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a prompt template
+      tags:
+      - Admin - Prompt Templates
+  /v1/admin/prompt-templates/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a prompt template (system templates cannot be deleted)
+      parameters:
+      - description: Public ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a prompt template
+      tags:
+      - Admin - Prompt Templates
+    get:
+      consumes:
+      - application/json
+      description: Get a prompt template by public ID
+      parameters:
+      - description: Public ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/prompttemplatehandler.PromptTemplateResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a prompt template
+      tags:
+      - Admin - Prompt Templates
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing prompt template
+      parameters:
+      - description: Public ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/prompttemplate.UpdatePromptTemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/prompttemplatehandler.PromptTemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a prompt template
+      tags:
+      - Admin - Prompt Templates
+  /v1/admin/prompt-templates/{id}/duplicate:
+    post:
+      consumes:
+      - application/json
+      description: Create a copy of an existing prompt template with a new name (key
+        is auto-generated)
+      parameters:
+      - description: Public ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/prompttemplatehandler.DuplicateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/prompttemplatehandler.PromptTemplateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Duplicate a prompt template
+      tags:
+      - Admin - Prompt Templates
   /v1/admin/providers:
     get:
       description: Retrieves all providers with their model counts
@@ -2472,6 +4284,60 @@ paths:
       tags:
       - Admin Provider API
   /v1/admin/providers/{provider_public_id}:
+    delete:
+      description: Deletes a provider by its public ID along with its provider models
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Provider deleted
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to delete provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a provider
+      tags:
+      - Admin Provider API
+    get:
+      description: Retrieves a provider by its public ID
+      parameters:
+      - description: Provider public ID
+        in: path
+        name: provider_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Provider details
+          schema:
+            $ref: '#/definitions/modelresponses.ProviderResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Failed to retrieve provider
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a provider
+      tags:
+      - Admin Provider API
     patch:
       consumes:
       - application/json
@@ -2512,6 +4378,162 @@ paths:
       summary: Update a provider
       tags:
       - Admin Provider API
+  /v1/admin/usage:
+    get:
+      description: Returns total platform token usage including top users and breakdown
+        by model/provider
+      parameters:
+      - description: Start date (YYYY-MM-DD), defaults to 30 days ago
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD), defaults to today
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tokenusage.PlatformUsageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get platform-wide token usage (Admin only)
+      tags:
+      - Usage
+  /v1/auth/logout:
+    get:
+      consumes:
+      - application/json
+      description: Remove refresh tokens to perform logout and invalidate Keycloak
+        session. Accepts refresh token from cookie, Authorization header, or request
+        body.
+      parameters:
+      - description: Refresh token to revoke
+        in: body
+        name: refresh_token
+        schema:
+          type: string
+      - description: Bearer refresh_token
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully logged out
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Logout
+      tags:
+      - Authentication API
+    post:
+      consumes:
+      - application/json
+      description: Remove refresh tokens to perform logout and invalidate Keycloak
+        session. Accepts refresh token from cookie, Authorization header, or request
+        body.
+      parameters:
+      - description: Refresh token to revoke
+        in: body
+        name: refresh_token
+        schema:
+          type: string
+      - description: Bearer refresh_token
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully logged out
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Logout
+      tags:
+      - Authentication API
+  /v1/auth/me:
+    get:
+      description: Retrieves the profile of the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved user profile
+          schema:
+            $ref: '#/definitions/authhandler.GetMeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - Authentication API
+  /v1/auth/refresh-token:
+    post:
+      consumes:
+      - application/json
+      description: Use a valid refresh token to obtain a new access token
+      parameters:
+      - description: Refresh token (can also be in Authorization header)
+        in: body
+        name: refresh_token
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully refreshed the access token
+          schema:
+            $ref: '#/definitions/authhandler.AccessTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Refresh an access token
+      tags:
+      - Authentication API
   /v1/chat/completions:
     post:
       consumes:
@@ -2572,6 +4594,42 @@ paths:
       tags:
       - Chat Completions API
   /v1/conversations:
+    delete:
+      description: |-
+        Permanently delete all conversations for the authenticated user
+
+        **WARNING: This is a destructive operation that cannot be undone.**
+
+        **Features:**
+        - Deletes ALL conversations owned by the authenticated user
+        - Automatically cascades to delete all associated items and shares
+        - Returns the count of deleted conversations
+        - Requires valid authentication to ensure ownership verification
+
+        **Security:**
+        - Only deletes conversations owned by the authenticated user
+        - Cannot delete other users' conversations
+        - Authentication is mandatory
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully deleted all conversations
+          schema:
+            $ref: '#/definitions/conversationresponses.BulkConversationsDeletedResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error - deletion failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete all conversations
+      tags:
+      - Conversations API
     get:
       description: List conversations for the authenticated user with optional referrer
         filtering.
@@ -2821,6 +4879,178 @@ paths:
       summary: Update a conversation
       tags:
       - Conversations API
+  /v1/conversations/{conv_public_id}/branches:
+    get:
+      description: List all branches for a conversation
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved branches
+          schema:
+            $ref: '#/definitions/conversationhandler.ListBranchesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List branches
+      tags:
+      - Conversation Branches
+    post:
+      consumes:
+      - application/json
+      description: Create a new branch in a conversation, optionally forking from
+        an existing item
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Create branch request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationhandler.CreateBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created branch
+          schema:
+            $ref: '#/definitions/conversationhandler.BranchResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a branch
+      tags:
+      - Conversation Branches
+  /v1/conversations/{conv_public_id}/branches/{branch_name}:
+    delete:
+      description: Delete a branch from a conversation (cannot delete MAIN or active
+        branch)
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Branch name
+        in: path
+        name: branch_name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Branch deleted successfully
+        "400":
+          description: Cannot delete MAIN or active branch
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Branch not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a branch
+      tags:
+      - Conversation Branches
+    get:
+      description: Get details of a specific branch
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Branch name
+        in: path
+        name: branch_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved branch
+          schema:
+            $ref: '#/definitions/conversationhandler.BranchResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Branch not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get branch details
+      tags:
+      - Conversation Branches
+  /v1/conversations/{conv_public_id}/branches/{branch_name}/activate:
+    post:
+      description: Set a branch as the active branch for a conversation
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Branch name
+        in: path
+        name: branch_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Branch activated successfully
+          schema:
+            $ref: '#/definitions/conversationhandler.ActivateBranchResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Branch not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Activate a branch
+      tags:
+      - Conversation Branches
   /v1/conversations/{conv_public_id}/items:
     get:
       description: |-
@@ -2976,22 +5206,22 @@ paths:
   /v1/conversations/{conv_public_id}/items/{item_id}:
     delete:
       description: |-
-        Delete an item from a conversation. The item will be removed from the conversation.
+        Delete an item from a conversation by creating a new MAIN branch without it.
+        The old MAIN branch is preserved as a backup.
 
         **Features:**
-        - Remove specific item from conversation
+        - Creates a new branch without the deleted item
+        - New branch becomes MAIN, old MAIN becomes backup
         - Automatic ownership verification
-        - Returns updated conversation object after deletion
-        - Items are permanently removed (not soft delete)
+        - Preserves conversation history in backup branch
 
         **Important:**
-        - Deleting an item may affect conversation flow
-        - Item IDs are not reused after deletion
-        - Other items in conversation remain unchanged
-        - Consider creating a new branch instead of deleting items
+        - The old MAIN branch is renamed to MAIN_YYYYMMDDHHMMSS
+        - You can switch back to the backup branch if needed
+        - This is a non-destructive delete operation
 
         **Response:**
-        Returns the conversation object (not the deleted item)
+        Returns branch information including the backup branch name
       parameters:
       - description: 'Conversation ID (format: conv_xxxxx)'
         in: path
@@ -3007,9 +5237,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Successfully deleted item, returns conversation
+          description: Successfully deleted item, returns branch info
           schema:
-            $ref: '#/definitions/conversationresponses.ConversationResponse'
+            $ref: '#/definitions/conversationhandler.DeleteItemResponse'
         "400":
           description: Invalid conversation ID or item ID format
           schema:
@@ -3094,6 +5324,280 @@ paths:
       summary: Get a conversation item
       tags:
       - Conversations API
+  /v1/conversations/{conv_public_id}/items/{item_id}/edit:
+    post:
+      consumes:
+      - application/json
+      description: Edit a user message and create a new branch with the edited content
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Message item ID (format: msg_xxxxx)'
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Edit message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationhandler.EditMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message edited successfully
+          schema:
+            $ref: '#/definitions/conversationhandler.EditMessageResponse'
+        "400":
+          description: Invalid request or not a user message
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Edit a message
+      tags:
+      - Message Actions
+  /v1/conversations/{conv_public_id}/items/{item_id}/regenerate:
+    post:
+      consumes:
+      - application/json
+      description: Regenerate an assistant response by creating a new branch
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Assistant message item ID (format: msg_xxxxx)'
+        in: path
+        name: item_id
+        required: true
+        type: string
+      - description: Regenerate options
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/conversationhandler.RegenerateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Regeneration initiated
+          schema:
+            $ref: '#/definitions/conversationhandler.RegenerateMessageResponse'
+        "400":
+          description: Invalid request or not an assistant message
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Message not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Regenerate a response
+      tags:
+      - Message Actions
+  /v1/conversations/{conv_public_id}/items/by-call-id/{call_id}:
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Update a conversation item's status and output using its call_id.
+        This endpoint is primarily used by MCP tools to report tool execution results.
+
+        **Features:**
+        - Find item by call_id (e.g., call_xxx) instead of item_id
+        - Update status to completed, failed, or cancelled
+        - Store tool output or error message
+        - Automatic timestamp for completion
+
+        **Use Cases:**
+        - MCP tool reports successful execution with output
+        - MCP tool reports failure with error message
+        - Tool call status tracking and observability
+      parameters:
+      - description: 'Conversation ID (format: conv_xxxxx)'
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: 'Call ID of the tool call item (format: call_xxxxx)'
+        in: path
+        name: call_id
+        required: true
+        type: string
+      - description: Update request with status and optional output/error
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/conversationrequests.UpdateItemByCallIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully updated item
+          schema:
+            $ref: '#/definitions/conversationresponses.ItemResponse'
+        "400":
+          description: Invalid request - validation failed
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation or item not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update item by call ID
+      tags:
+      - Conversations API
+  /v1/conversations/{conv_public_id}/share:
+    post:
+      consumes:
+      - application/json
+      description: Creates a public share link for a conversation or a single message
+      parameters:
+      - description: Conversation public ID
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Share creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sharerequests.CreateShareRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Share created successfully
+          schema:
+            $ref: '#/definitions/shareresponses.ShareResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "413":
+          description: Snapshot too large
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a share for a conversation
+      tags:
+      - Shares API
+  /v1/conversations/{conv_public_id}/shares:
+    get:
+      description: Lists all shares (active and revoked) for a conversation
+      parameters:
+      - description: Conversation public ID
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of shares
+          schema:
+            $ref: '#/definitions/shareresponses.ShareListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Conversation not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List shares for a conversation
+      tags:
+      - Shares API
+  /v1/conversations/{conv_public_id}/shares/{share_id}:
+    delete:
+      description: Revokes an active share, making it inaccessible
+      parameters:
+      - description: Conversation public ID
+        in: path
+        name: conv_public_id
+        required: true
+        type: string
+      - description: Share public ID
+        in: path
+        name: share_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Share revoked successfully
+          schema:
+            $ref: '#/definitions/shareresponses.ShareDeletedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Share not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke a share
+      tags:
+      - Shares API
   /v1/healthz:
     get:
       description: Returns the health status of the API server. Used by orchestrators
@@ -3110,6 +5614,61 @@ paths:
       summary: Health check endpoint
       tags:
       - Server API
+  /v1/mcp-tools:
+    get:
+      consumes:
+      - application/json
+      description: Get all active MCP tools (public endpoint for mcp-tools service)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mcptoolhandler.ActiveToolsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all active MCP tools
+      tags:
+      - MCP Tools
+  /v1/mcp-tools/{key}:
+    get:
+      consumes:
+      - application/json
+      description: Get an MCP tool by its unique tool key (public endpoint for mcp-tools
+        service)
+      parameters:
+      - description: Tool Key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mcptoolhandler.MCPToolResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get an MCP tool by key
+      tags:
+      - MCP Tools
   /v1/models:
     get:
       consumes:
@@ -3381,6 +5940,84 @@ paths:
       summary: Update project
       tags:
       - Projects API
+  /v1/prompt-templates/{key}:
+    get:
+      consumes:
+      - application/json
+      description: Get a prompt template by its unique template key (public endpoint)
+      parameters:
+      - description: Template Key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/prompttemplatehandler.PromptTemplateResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a prompt template by key
+      tags:
+      - Prompt Templates
+  /v1/public/shares/{slug}:
+    get:
+      description: Retrieves a publicly shared conversation or message by its slug
+      parameters:
+      - description: Share slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public share content
+          schema:
+            $ref: '#/definitions/shareresponses.PublicShareResponse'
+        "404":
+          description: Share not found or revoked
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "410":
+          description: Share has been revoked
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Get a public share by slug
+      tags:
+      - Public Shares API
+    head:
+      description: Checks if a share exists and is accessible (for preloading)
+      parameters:
+      - description: Share slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Share exists and is accessible
+        "404":
+          description: Share not found
+        "410":
+          description: Share has been revoked
+      summary: Check if a public share exists
+      tags:
+      - Public Shares API
   /v1/readyz:
     get:
       description: Returns the readiness status of the API server. Indicates if the
@@ -3397,6 +6034,307 @@ paths:
       summary: Readiness check endpoint
       tags:
       - Server API
+  /v1/shares:
+    get:
+      description: Lists all shares (active and revoked) for the authenticated user
+        across all conversations
+      parameters:
+      - default: true
+        description: Include revoked shares
+        in: query
+        name: include_revoked
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of shares
+          schema:
+            $ref: '#/definitions/shareresponses.ShareListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all shares for the authenticated user
+      tags:
+      - Shares API
+  /v1/shares/{share_id}:
+    delete:
+      description: Revokes an active share by its ID, making it inaccessible
+      parameters:
+      - description: Share public ID
+        in: path
+        name: share_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Share revoked successfully
+          schema:
+            $ref: '#/definitions/shareresponses.ShareDeletedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Share not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke a share by share ID
+      tags:
+      - Shares API
+  /v1/usage/me:
+    get:
+      description: Returns token usage summary for the authenticated user within a
+        date range
+      parameters:
+      - description: Start date (YYYY-MM-DD), defaults to 30 days ago
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD), defaults to today
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tokenusage.UsageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user's token usage
+      tags:
+      - Usage
+  /v1/usage/me/daily:
+    get:
+      description: Returns daily aggregated token usage for the authenticated user
+      parameters:
+      - description: Start date (YYYY-MM-DD), defaults to 30 days ago
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD), defaults to today
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/tokenusage.DailyAggregate'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user's daily token usage
+      tags:
+      - Usage
+  /v1/usage/projects/{id}:
+    get:
+      description: Returns token usage summary for a specific project
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start date (YYYY-MM-DD), defaults to 30 days ago
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD), defaults to today
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/tokenusage.UsageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get project's token usage
+      tags:
+      - Usage
+  /v1/users/me/settings:
+    get:
+      description: Retrieve current user's settings including memory preferences
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usersettingshandler.UserSettingsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user settings
+      tags:
+      - User Settings
+    patch:
+      consumes:
+      - application/json
+      description: Update current user's settings (partial update supported)
+      parameters:
+      - description: Settings to update
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/usersettings.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usersettingshandler.UserSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user settings
+      tags:
+      - User Settings
+  /v1/users/me/settings/preferences:
+    get:
+      description: Retrieve current user's preferences only
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usersettingshandler.PreferencesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user preferences
+      tags:
+      - User Settings
+    patch:
+      consumes:
+      - application/json
+      description: Update current user's preferences only
+      parameters:
+      - description: Preferences to update
+        in: body
+        name: preferences
+        required: true
+        schema:
+          $ref: '#/definitions/usersettingshandler.UpdatePreferencesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usersettingshandler.PreferencesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user preferences
+      tags:
+      - User Settings
   /v1/version:
     get:
       description: Returns the current build version of the API server and environment

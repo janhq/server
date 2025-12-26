@@ -43,12 +43,12 @@ export default function HomePage() {
                     <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                  Detailed system architecture and design decisions                  
+                    Get started with Jan Server in minutes
                   </p>
                 </div>
               </div>
             </Link>
-            <Link href="/docs/architecture/overview" className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group">
+            <Link href="/docs/architecture" className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group">
               <div className="flex h-[180px] flex-col justify-between rounded-md p-6">
                 <Box className="h-12 w-12" />
                 <div className="space-y-2">
@@ -57,7 +57,7 @@ export default function HomePage() {
                     <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Learn about the different models available.
+                    Detailed system architecture and design decisions
                   </p>
                 </div>
               </div>

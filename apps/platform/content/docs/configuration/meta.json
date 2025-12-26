@@ -1,9 +1,11 @@
 {
   "title": "Configuration",
   "pages": [
-    "overview",
+    "index",
     "docker-compose",
     "kubernetes",
-    "environment-variables"
+    "env-var-mapping",
+    "precedence",
+    "service-migration"
   ]
 }
