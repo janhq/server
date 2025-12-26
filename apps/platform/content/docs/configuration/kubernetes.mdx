@@ -1,0 +1,135 @@
+---
+title: Kubernetes Configuration
+description: Deploy Jan Server on Kubernetes
+full: false
+---
+
+# Kubernetes Configuration
+
+Use the Helm chart in `k8s/jan-server` to deploy Jan Server to Kubernetes. The chart mirrors the configuration structs, so values align with Docker Compose.
+
+## Prerequisites
+
+- Kubernetes 1.27+
+- Helm 3.12+
+- `kubectl` configured for your cluster
+- Container registry access (if pushing custom images)
+- Storage class for PostgreSQL/Redis if running them in-cluster
+
+## Deployment Paths
+
+### Local Development (minikube or kind)
+
+```bash
+# Start cluster
+minikube start --cpus=4 --memory=8192 --driver=docker
+
+# Build images locally (optional)
+docker build -t jan/llm-api:dev -f services/llm-api/Dockerfile .
+minikube image load jan/llm-api:dev
+# Repeat for media-api, response-api, mcp-tools as needed
+
+# Install chart
+cd k8s
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace
+
+# Port-forward for quick access
+kubectl port-forward -n jan-server svc/jan-server-llm-api 8080:8080
+```
+
+### Cloud Clusters (AKS/EKS/GKE)
+
+```bash
+helm install jan-server ./k8s/jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set ingress.hosts[0].host=jan.example.com \
+  --set llmApi.autoscaling.enabled=true \
+  --set mediaApi.autoscaling.enabled=true
+```
+
+Use `--set postgresql.enabled=false` (and similar for Redis) when pointing to managed services.
+
+## values.yaml Highlights
+
+```yaml
+llmApi:
+  replicaCount: 3
+  image:
+    repository: ghcr.io/janhq/llm-api
+    tag: v1.0.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+mediaApi:
+  env:
+    MEDIA_API_S3_BUCKET_NAME: jan-media
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: jan.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+```
+
+Every value maps back to the configuration structs, so you can run:
+
+```bash
+jan-cli config k8s-values --env production > k8s/values-prod.yaml
+```
+
+to generate a starting point for staging/production.
+
+## Post-Install Checklist
+
+1. Verify pods: `kubectl get pods -n jan-server`.
+2. Run smoke tests: `kubectl run curl --image=curlimages/curl -it --rm --restart=Never -- curl http://jan-server-llm-api:8080/healthz -n jan-server`.
+3. Seed databases if you disabled the bundled PostgreSQL chart.
+4. Configure ingress/TLS certificates (Cert-Manager or cloud-specific solution).
+5. Set up secret management (Kubernetes secrets, External Secrets, SOPS, etc.).
+
+## Resource Guidance
+
+| Component | Dev (min) | Production Starting Point |
+|-----------|-----------|---------------------------|
+| LLM API | 250m CPU / 256Mi RAM | 1 CPU / 1Gi RAM (3 replicas). |
+| Media API | 250m / 256Mi | 500m / 512Mi (2 replicas). |
+| MCP Tools | 250m / 256Mi | 500m / 512Mi (2 replicas). |
+| Keycloak | 500m / 512Mi | 1 CPU / 1Gi (2 replicas with external DB). |
+| PostgreSQL | 250m / 256Mi | Managed service recommended. |
+
+## Troubleshooting
+
+```bash
+# Describe failing pods
+kubectl describe pod <name> -n jan-server
+
+# Tail logs
+kubectl logs -n jan-server deploy/jan-server-llm-api -f
+
+# Verify services/endpoints
+kubectl get svc,endpoints -n jan-server
+
+# Port-forward Kong for debugging
+kubectl port-forward -n jan-server svc/jan-server-kong 8000:8000
+```
+
+Common fixes:
+
+- **ImagePullBackOff**: ensure the cluster can read your registry or load images via `minikube image load`.
+- **DB auth errors**: update `global.postgresql.*` values or supply external connection strings.
+- **Ingress 404**: confirm ingress controller is installed and hosts/paths match.
+
+See also the [Deployment Guide](/docs/guides/deployment) and `k8s/SETUP.md` for deeper walkthroughs.

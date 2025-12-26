@@ -1,0 +1,102 @@
+---
+title: Testing Guide
+description: Test Jan Server APIs and services
+full: false
+---
+
+# Testing Guide
+
+Cross-platform testing workflows for Jan Server. Mirrors the canonical `docs/guides/testing.md`.
+
+## Platform Coverage
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Windows 11 (PowerShell + Git Bash) | ? | Make targets require Git Bash or WSL; jan-cli PowerShell wrapper works everywhere. |
+| Linux (Ubuntu/Debian) | ? | Full Docker + Make support, primary CI environment. |
+| macOS 14+ | ? | Use Docker Desktop or Colima; some Docker CI steps run only on Linux. |
+
+## Quick Start Commands
+
+```bash
+# CLI smoke tests
+./jan-cli.sh --help
+./jan-cli.sh dev setup
+./jan-cli.sh config validate
+./jan-cli.sh service list
+
+# Windows equivalents
+.\jan-cli.ps1 --help
+.\jan-cli.ps1 dev setup
+
+# Makefile targets
+make setup
+make build-llm-api
+make build-media-api
+make clean-build
+```
+
+## jan-cli api-test Suites
+
+```bash
+# Install jan-cli if not already installed
+
+# Run the aggregated suite
+make test-api
+
+# Focused suites
+make test-auth
+make test-conversations
+make test-media
+make test-response
+make test-mcp-integration
+```
+
+Each suite expects Jan Server to be running locally with valid credentials (guest token or API key).
+
+## Manual API Testing
+
+```bash
+# Fetch a guest token
+TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+
+# Chat completion
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "qwen2.5-0.5b-instruct",
+        "messages": [{"role": "user", "content": "Hello!"}]
+      }'
+
+# MCP call
+curl -X POST http://localhost:8000/v1/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":"1"}'
+```
+
+## Testing Checklist
+
+| Area | Windows | Linux | macOS | Notes |
+|------|---------|-------|-------|-------|
+| `jan-cli` commands | ? | ? | ? | Covers `dev setup`, `config generate`, `config validate`, `config show`. |
+| Makefile build targets | ? (via Git Bash/WSL) | ? | ? | `make build-llm-api`, `make build-mcp`. |
+| Docker Compose stack | ? (Docker Desktop) | ? | ? | Authentication + API flows verified via jan-cli api-test. |
+| Authentication flows | ? | ? | ? | Guest login, API keys, refresh tokens. |
+
+## Troubleshooting
+
+- **jan-cli errors**: ensure Go 1.21+ is installed and `$GOPATH/bin` is in your PATH on Linux/macOS. On Windows, run commands from PowerShell 5.1+.
+- **Docker unavailable on Windows CI**: GitHub Actions Windows runners cannot run Docker; rely on Linux workflows for container tests.
+- **Make not found (Windows)**: install via Chocolatey or use WSL/Git Bash. Ensure paths in the Makefile use Unix-style separators.
+- **jan-cli api-test failures**: check Kong/Keycloak logs and verify tokens. Use `make logs` to inspect service errors.
+
+## Best Practices
+
+1. Prefer `jan-cli` for complex setup/tear-down flows; Go is cross-platform.
+2. Use Make targets for Docker orchestration and integration testing.
+3. Always test on Windows (PowerShell) plus at least one Unix environment before merging platform-sensitive changes.
+4. Capture logs and sanitized configuration when filing bugs (attach output from `make logs`, `docker ps`, and `jan-cli config show`).
+
+Related docs: [Development Guide](/docs/guides/development), [Operations & Troubleshooting](/docs/guides/operations), [Configuration Overview](/docs/configuration/overview).

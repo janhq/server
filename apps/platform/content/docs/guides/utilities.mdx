@@ -1,0 +1,439 @@
+---
+title: Advanced Features
+description: Background tasks, custom plugins, MCP testing, and CLI tools
+full: false
+---
+
+# Advanced Features
+
+This guide covers advanced capabilities including asynchronous background tasks, custom Kong plugins, MCP testing, and CLI utilities.
+
+---
+
+## Background Mode: Asynchronous Response Generation
+
+The Response API supports OpenAI-compatible background mode for asynchronous response generation. This feature allows long-running requests to complete without blocking clients.
+
+### Architecture Overview
+
+1. **PostgreSQL-backed queue** using the `responses` table with `SELECT FOR UPDATE SKIP LOCKED` for reliable task distribution.
+2. **Worker pool** (default 4 workers) polling queued tasks.
+3. **Webhook notifications** with asynchronous HTTP POST callbacks.
+4. **Graceful cancellation** for queued or in-progress tasks.
+
+### Task Lifecycle
+
+```
+Client Request (background=true, store=true)
+    -> Create Response (status=queued, queued_at=now)
+    -> Return Response Immediately
+    -> Worker Dequeues Task
+    -> Mark Processing (status=in_progress, started_at=now)
+    -> Execute LLM Orchestration
+    -> Update Status (completed/failed, completed_at=now)
+    -> Send Webhook Notification (async, non-blocking)
+```
+
+### API Usage
+
+#### Create a Background Response
+
+```http
+POST /responses
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "model": "gpt-4",
+  "input": "Write a long article about...",
+  "background": true,
+  "store": true,
+  "metadata": {
+    "webhook_url": "https://example.com/webhooks/responses"
+  }
+}
+```
+
+**201 Created** response:
+
+```json
+{
+  "id": "resp_abc123",
+  "object": "response",
+  "status": "queued",
+  "background": true,
+  "store": true,
+  "queued_at": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "webhook_url": "https://example.com/webhooks/responses"
+  }
+}
+```
+
+#### Poll for Status
+
+```http
+GET /responses/resp_abc123
+Authorization: Bearer <token>
+```
+
+Response when completed:
+
+```json
+{
+  "id": "resp_abc123",
+  "status": "completed",
+  "output": "The article...",
+  "usage": {
+    "prompt_tokens": 150,
+    "completion_tokens": 500,
+    "total_tokens": 650
+  },
+  "completed_at": "2024-01-15T10:35:22Z"
+}
+```
+
+#### Cancel a Background Task
+
+```http
+POST /responses/resp_abc123/cancel
+Authorization: Bearer <token>
+```
+
+Cancellation rules:
+- **Queued** tasks stop immediately and never run.
+- **In-progress** tasks mark cancelled but may finish (cooperative cancellation).
+- **Completed** tasks return `409 Conflict` if cancellation is attempted afterwards.
+
+### Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BACKGROUND_WORKER_COUNT` | Number of worker goroutines. | `4` |
+| `BACKGROUND_TASK_POLL_INTERVAL` | Poll interval (duration). | `1s` |
+| `BACKGROUND_TASK_TIMEOUT` | Max processing duration per task. | `5m` |
+| `BACKGROUND_WEBHOOK_TIMEOUT` | Timeout for webhook callbacks. | `5s` |
+| `BACKGROUND_WEBHOOK_RETRIES` | Retry attempts (manual retry recommended). | `0` |
+
+### Webhooks
+
+- Webhook URL stored in `metadata.webhook_url`.
+- Delivered asynchronously (fire-and-forget).
+- Include status, timestamps, output summary, and usage metrics.
+
+Example payload:
+
+```json
+{
+  "id": "resp_abc123",
+  "status": "completed",
+  "attempt": 1,
+  "output": "...",
+  "completed_at": "2024-01-15T10:35:22Z"
+}
+```
+
+### Testing Background Mode
+
+#### Automated
+
+```bash
+jan-cli api-test run tests/postman/responses-background-webhook.json \
+  --environment tests/postman/environments/local.json \
+  --delay-request 1000 \
+  --timeout-request 60000
+```
+
+#### Manual
+
+```bash
+# Create background task
+curl -X POST http://localhost:8082/responses \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "gpt-4",
+        "input": "Count to 10 slowly",
+        "background": true,
+        "store": true,
+        "metadata": {"webhook_url": "https://webhook.site/<id>"}
+      }'
+
+# Poll status
+curl http://localhost:8082/responses/resp_abc123
+
+# Cancel
+curl -X POST http://localhost:8082/responses/resp_abc123/cancel
+```
+
+### Troubleshooting Background Mode
+
+| Symptom | Fix |
+|---------|-----|
+| Tasks stuck in `queued` | Ensure workers running (`docker logs response-api`), DB healthy, no locks. Restart Response API. |
+| Webhooks missing | Verify `metadata.webhook_url`, check logs for "webhook notification failed". |
+| Queue depth growing | Increase `BACKGROUND_WORKER_COUNT`, inspect LLM provider throttling, review task durations. |
+| `background=true` without `store=true` | Request fails with `400`; store must be enabled so workers can resume context. |
+
+---
+
+## Kong Custom Plugins
+
+This section explains how to set up and use custom Kong plugins such as `keycloak-apikey` in the jan-server project.
+
+### Directory Structure
+
+```
+kong/
++-- kong.yml              # Main declarative config
++-- kong-dev-full.yml     # Dev-full/Hybrid overrides
++-- plugins/
+    +-- keycloak-apikey/
+        +-- handler.lua   # Plugin logic
+        +-- schema.lua    # Configuration schema
+        +-- README.md
+```
+
+### Plugin Loading
+
+#### Docker Configuration
+
+```yaml
+environment:
+  KONG_PLUGINS: bundled,keycloak-apikey
+  KONG_LUA_PACKAGE_PATH: /usr/local/kong/plugins/?.lua;;
+volumes:
+  - ../kong/plugins:/usr/local/kong/plugins:ro
+```
+
+#### Verify
+
+```bash
+curl http://localhost:8001/plugins/enabled
+# Should list bundled plugins + keycloak-apikey
+```
+
+### Create a New Plugin
+
+1. **Create directory**
+   ```bash
+   mkdir -p kong/plugins/my-plugin
+   ```
+2. **Add `handler.lua`**
+   ```lua
+   local MyPluginHandler = {
+     PRIORITY = 1000,
+     VERSION = "1.0.0",
+   }
+
+   function MyPluginHandler:access(conf)
+     kong.log.info("My plugin executed")
+   end
+
+   return MyPluginHandler
+   ```
+3. **Add `schema.lua`**
+   ```lua
+   return {
+     name = "my-plugin",
+     fields = {
+       { config = {
+           type = "record",
+           fields = {
+             { my_setting = {
+                 type = "string",
+                 required = true,
+                 default = "default_value",
+             }},
+           },
+       }},
+     },
+   }
+   ```
+4. **Register plugin** in `docker/infrastructure.yml` (`KONG_PLUGINS: bundled,keycloak-apikey,my-plugin`).
+5. **Configure** inside `kong/kong.yml`.
+
+### Development Tips
+
+- Enable debug logging: `KONG_LOG_LEVEL=debug`.
+- Tail logs: `docker logs kong -f`.
+- Add `kong.log.debug(...)` statements during development.
+- Kong executes plugins by priority (higher value runs earlier).
+
+### Useful Patterns
+
+#### HTTP Requests
+
+```lua
+local http = require "resty.http"
+local httpc = http.new()
+local res, err = httpc:request_uri("http://service:8080/endpoint", {
+  method = "POST",
+  body = "data",
+  headers = { ["Content-Type"] = "application/json" },
+})
+```
+
+#### Header Manipulation
+
+```lua
+local api_key = kong.request.get_header("X-API-Key")
+kong.service.request.set_header("X-User-ID", "123")
+kong.response.set_header("X-Custom", "value")
+```
+
+#### Error Responses
+
+```lua
+return kong.response.exit(401, { message = "Unauthorized" })
+```
+
+### Troubleshooting Kong Plugins
+
+| Issue | Fix |
+|-------|-----|
+| Plugin missing from `/plugins/enabled` | Ensure `KONG_PLUGINS` includes your plugin, verify volume mount, restart Kong. |
+| Kong fails to start | Check `docker logs kong`, validate Lua syntax (`luac -p handler.lua`). |
+| Plugin not executing | Confirm configuration in `kong.yml`, verify route/service names, add debug logs. |
+| Performance issues | Cache expensive calls, reuse HTTP connections, keep logic lightweight.
+
+---
+
+## MCP Testing
+
+Validate the MCP (Model Context Protocol) toolchain end to end, from Kong down to vector-store and SandboxFusion.
+
+### Prerequisites
+
+- `make up-full` (or `make up-mcp && make up-api`).
+- MCP env vars set in `.env` (`SERPER_API_KEY`, etc.).
+- `jan-cli` installed for API testing.
+- Services available:
+  - Kong Gateway: http://localhost:8000
+  - MCP Tools: http://localhost:8091 (direct) or http://localhost:8000/mcp (via Kong)
+  - Vector Store: http://localhost:3015
+  - SandboxFusion (optional): http://localhost:3010
+
+Health check:
+
+```bash
+make health-check
+curl http://localhost:8091/healthz
+curl http://localhost:3015/healthz || true # vector-store uses custom routes
+```
+
+### Automated Suite
+
+```bash
+make test-mcp-integration
+```
+
+Expected results:
+- Guest token flow succeeds (`/llm/auth/guest-login`).
+- Tool list includes `google_search`, `scrape`, `file_search_index`, `file_search_query`, `python_exec`.
+- File index/query endpoints return previously indexed content.
+- SandboxFusion executions return stdout/stderr.
+
+### Manual Checks
+
+#### Via Kong
+
+```bash
+curl -s http://localhost:8000/mcp \
+  -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq .
+```
+
+#### Direct Endpoints
+
+```bash
+curl -s http://localhost:8091/v1/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+        "jsonrpc":"2.0",
+        "id":3,
+        "method":"tools/call",
+        "params":{
+          "name":"file_search_index",
+          "arguments":{"document_id":"cli-doc","text":"CLI test"}
+        }
+      }' | jq .
+```
+
+### Logs & Troubleshooting
+
+| Component | Command |
+|-----------|---------|
+| Kong | `make logs` or `docker compose logs kong` |
+| MCP Tools | `make logs-mcp` |
+| Vector Store | `docker compose logs vector-store` |
+| SandboxFusion | `docker compose logs sandboxfusion` |
+
+Common fixes:
+- **401/403**: Acquire guest token or include API key headers when hitting Kong.
+- **Vector store timeouts**: Ensure `COMPOSE_PROFILES` includes `mcp`.
+- **Sandbox errors**: Provide `language` in arguments; see `services/mcp-tools/internal/sandboxfusion`.
+
+---
+
+## Jan CLI & Utilities
+
+The Jan CLI provides a single entry point for configuration management, service operations, development tooling, and utilities.
+
+### Overview
+
+Jan CLI provides:
+
+- **Configuration management**: validate, export, and inspect configuration.
+- **Service operations**: list services, view logs, check health.
+- **Development tooling**: setup environments, scaffold services, run Swagger generators.
+- **Shell completion**: auto-complete for Bash, Zsh, Fish, and PowerShell.
+
+### Quick Start
+
+```bash
+make cli-install   # build + install to ~/bin or %USERPROFILE%\bin
+jan-cli --version
+jan-cli --help
+```
+
+Add `~/bin` (Unix) or `%USERPROFILE%\bin` (Windows) to your PATH. Wrapper scripts (`./jan-cli.sh`, `./jan-cli.ps1`) auto-build if the binary is missing or outdated.
+
+### Common Commands
+
+| Command | Notes |
+|---------|-------|
+| `jan-cli config validate` | Validate merged configuration. |
+| `jan-cli config export --format env` | Export `.env` style output. |
+| `jan-cli config show services.llm-api` | Inspect a specific service section. |
+| `jan-cli service list` | Show all services defined in `services/`. |
+| `jan-cli service logs llm-api --follow` | Tail logs (wraps docker compose). |
+| `jan-cli dev setup` | Verify Docker and create `.env` files. |
+| `jan-cli dev run llm-api` | Stop container + run service locally. |
+| `jan-cli swagger generate --service llm-api` | Rebuild Swagger docs. |
+
+### Troubleshooting CLI
+
+| Issue | Fix |
+|-------|-----|
+| `jan-cli` not found | Re-run `make cli-install` and add install dir to PATH. |
+| Wrapper keeps rebuilding | Delete `bin/jan-cli` and run `./jan-cli.sh` again. |
+| Permission errors on Unix | `chmod +x ~/bin/jan-cli`. |
+| PowerShell cannot execute script | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. |
+
+### Shell Completion
+
+Generate completion scripts with `jan-cli completion <shell>`:
+
+```bash
+jan-cli completion zsh > ~/.oh-my-zsh/completions/_jan-cli
+source ~/.zshrc
+```
+
+---
+
+## Related Documentation
+
+- [Development Modes](/docs/guides/dev-modes) - Hybrid development workflows
+- [Operations & Troubleshooting](/docs/guides/operations) - Monitoring and debugging
+- [Testing Guide](/docs/guides/testing) - Testing strategies
+- [Deployment Guide](/docs/guides/deployment) - Production deployment

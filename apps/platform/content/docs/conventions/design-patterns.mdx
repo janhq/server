@@ -1,0 +1,284 @@
+---
+title: Code Patterns & Best Practices
+description: Database, error-handling, entity, and performance patterns used across Jan Server.
+full: false
+---
+
+# Code Patterns & Best Practices
+
+Daily reference for contributors writing Go code in Jan Server. Use [Architecture & Structure](/docs/conventions/architecture-patterns) for layout guidance and [Development Workflow](/docs/conventions/workflow) for CI/testing expectations.
+
+## Table of Contents
+
+1. [Database Patterns](#database-patterns)
+2. [Error Handling](#error-handling)
+3. [Domain Entity Creation](#domain-entity-creation)
+4. [Performance Patterns](#performance-patterns)
+5. [Common Patterns Reference](#common-patterns-reference)
+
+_All examples assume you are inside a service directory such as `services/llm-api/`. Adjust paths accordingly._
+
+## Database Patterns
+
+### GORM Zero-Value Handling (Critical)
+
+GORM skips zero values when saving (`0`, `false`, `""`). Use pointer fields in schema structs and convert inside helper functions.
+
+```go
+// Bad: Cannot set Enabled to false or Amount to 0.0
+type User struct {
+    BaseModel
+    Enabled bool `gorm:"not null;default:true"`
+    Amount  float64 `gorm:"not null"`
+}
+
+// Good: Use pointers for zero-affected fields
+type User struct {
+    BaseModel
+    Enabled *bool    `gorm:"not null;default:true"`
+    Amount  *float64 `gorm:"not null"`
+}
+
+func NewSchemaUser(u *user.User) *User {
+    enabled := u.Enabled
+    amount := u.Amount
+    return &User{
+        Enabled: &enabled,
+        Amount:  &amount,
+    }
+}
+
+func (u *User) EtoD() *user.User {
+    enabled := false
+    if u.Enabled != nil {
+        enabled = *u.Enabled
+    }
+    amount := 0.0
+    if u.Amount != nil {
+        amount = *u.Amount
+    }
+    return &user.User{
+        Enabled: enabled,
+        Amount:  amount,
+    }
+}
+```
+
+Use pointers for booleans, numeric fields that may be zero, and counters. Avoid pointers for IDs/timestamps.
+
+### Schema Definition Pattern
+
+```go
+type Organization struct {
+    BaseModel
+    PublicID string `gorm:"size:64;not null;uniqueIndex"`
+    Name     string `gorm:"size:255;not null"`
+    Active   *bool  `gorm:"not null;default:true;index"`
+}
+
+func init() {
+    database.RegisterSchemaForAutoMigrate(Organization{})
+}
+
+func (e *Organization) EtoD() *domain.Organization {
+    if e == nil {
+        return nil
+    }
+    active := true
+    if e.Active != nil {
+        active = *e.Active
+    }
+    return &domain.Organization{
+        ID:        e.ID,
+        PublicID:  e.PublicID,
+        Name:      e.Name,
+        Active:    active,
+        CreatedAt: e.CreatedAt,
+        UpdatedAt: e.UpdatedAt,
+    }
+}
+
+func NewSchemaOrganization(d *domain.Organization) *Organization {
+    if d == nil {
+        return nil
+    }
+    active := d.Active
+    return &Organization{
+        PublicID: d.PublicID,
+        Name:     d.Name,
+        Active:   &active,
+    }
+}
+```
+
+### Repository Pattern
+
+Use GORM-gen query builders for type safety.
+
+```go
+func (r *OrganizationRepository) FindByPublicID(ctx context.Context, id string) (*organization.Organization, error) {
+    orgTable := query.Use(r.db).Organization
+    org, err := orgTable.WithContext(ctx).Where(orgTable.PublicID.Eq(id)).First()
+    if err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            return nil, platformerrors.NewError(platformerrors.ErrNotFound, "organization not found")
+        }
+        return nil, platformerrors.NewError(platformerrors.ErrInternal, err.Error())
+    }
+    return org.EtoD(), nil
+}
+```
+
+### Transactions & Locks
+
+```go
+err := r.db.Transaction(func(tx *gorm.DB) error {
+    repo := repository.Use(tx)
+    if err := repo.UpdateBalance(ctx, id, amount); err != nil {
+        return err
+    }
+    return repo.AppendLedgerEntry(ctx, id, amount)
+})
+```
+
+Use `SELECT ... FOR UPDATE SKIP LOCKED` for queues:
+
+```go
+queue := query.Use(tx).Response
+resp, err := queue.WithContext(ctx).
+    Where(queue.Status.Eq(models.StatusQueued)).
+    Order(queue.QueuedAt).
+    Limit(1).
+    Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+    First()
+```
+
+### Pagination
+
+Prefer cursor-based pagination:
+
+```go
+users, err := u.WithContext(ctx).
+    Where(u.ID.Gt(lastID)).
+    Limit(pageSize).
+    Find()
+```
+
+Offset pagination is acceptable for small datasets.
+
+### Caching Pattern
+
+```go
+func (s *OrganizationService) GetByID(ctx context.Context, id string) (*Organization, error) {
+    key := fmt.Sprintf("org:%s", id)
+    if cached, err := s.cache.Get(ctx, key); err == nil {
+        return cached, nil
+    }
+    org, err := s.repo.FindByID(ctx, id)
+    if err != nil {
+        return nil, err
+    }
+    go s.cache.Set(context.Background(), key, org, 5*time.Minute)
+    return org, nil
+}
+```
+
+## Error Handling
+
+- Trigger point (repository) creates errors via `platformerrors.NewError()` or `platformerrors.Wrap()` to preserve stack context.
+- Handlers call `responses.HandleError()` so every response includes `request_id` and consistent JSON body.
+- Never log secrets or raw upstream responses; redact tokens before printing.
+
+```go
+if errors.Is(err, gorm.ErrRecordNotFound) {
+    return nil, platformerrors.NewError(platformerrors.ErrNotFound, "organization not found")
+}
+return nil, platformerrors.Wrap(err, "find organization failed")
+```
+
+## Domain Entity Creation
+
+Domain structs should remain plain Go types with validation at constructors or service level. Example request conversion:
+
+```go
+type CreateOrganizationRequest struct {
+    Name string `json:"name" binding:"required"`
+}
+
+func (r *CreateOrganizationRequest) ToDomain() *organization.Organization {
+    return &organization.Organization{
+        Name:   r.Name,
+        Active: true,
+    }
+}
+```
+
+Response builders convert back to API DTOs:
+
+```go
+type OrganizationResponse struct {
+    ID        string `json:"id"`
+    Name      string `json:"name"`
+    Active    bool   `json:"active"`
+    CreatedAt string `json:"created_at"`
+}
+
+func BuildOrganizationResponse(org *organization.Organization) *OrganizationResponse {
+    return &OrganizationResponse{
+        ID:        org.PublicID,
+        Name:      org.Name,
+        Active:    org.Active,
+        CreatedAt: org.CreatedAt.Format(time.RFC3339),
+    }
+}
+```
+
+## Performance Patterns
+
+### Context Timeouts
+
+```go
+ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+defer cancel()
+
+resp, err := httpClient.Get(ctx, url)
+```
+
+### Batch Operations
+
+```go
+db.CreateInBatches(users, 100) // insert in batches of 100
+
+u := query.Use(db).User
+u.WithContext(ctx).
+    Where(u.ID.In(ids...)).
+    Update(u.Active, false)
+```
+
+### Cursor Pagination
+
+```go
+users, err := u.WithContext(ctx).
+    Where(u.ID.Gt(lastID)).
+    Limit(pageSize).
+    Find()
+```
+
+### Caching & Invalidation
+
+```go
+cacheKey := fmt.Sprintf("org:%s", org.PublicID)
+go s.cache.Set(context.Background(), cacheKey, org, 5*time.Minute)
+
+// On update
+go s.cache.Delete(context.Background(), cacheKey)
+```
+
+## Common Patterns Reference
+
+- **Request -> Domain conversion**: keep helper methods on request structs.
+- **Domain -> Response conversion**: use builders for consistent JSON.
+- **Cursor pagination**: maintain `last_id` or `created_at` pointers.
+- **Caching**: log cache hits/misses for observability.
+
+See the source repository for full examples (for instance `services/llm-api/internal/domain` and `services/llm-api/internal/infrastructure/database`).

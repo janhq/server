@@ -1,0 +1,125 @@
+---
+title: System Design
+description: Detailed system architecture, request flows, and deployment modes for Jan Server.
+full: false
+---
+
+# System Design
+
+This reference complements the [Architecture Overview](/docs/architecture/overview) with deep-dive details on request lifecycles, data flow, network topology, and change management. Use it when reviewing cross-service changes or planning deployments.
+
+## Request Lifecycles
+
+## Request Lifecycles
+
+### Chat Completions
+
+1. Client calls `POST /v1/chat/completions` on `http://localhost:8000`.
+2. Kong validates the JWT/API key and forwards to `llm-api:8080`.
+3. LLM API resolves `jan_*` placeholders via Media API, selects a provider (local vLLM or remote), and streams tokens back to the gateway.
+4. Conversations/projects are persisted in PostgreSQL.
+
+### Response Orchestration
+
+1. Client calls `POST /responses/v1/responses` (streaming optional).
+2. Response API loads the conversation context and iteratively issues `tools/list` / `tools/call` requests to MCP Tools.
+3. Tool executions are capped by `RESPONSE_MAX_TOOL_DEPTH` and `TOOL_EXECUTION_TIMEOUT`.
+4. Final synthesis is delegated to LLM API and streamed back to the caller.
+
+### Media Handling
+
+1. Upload via `POST /media/v1/media` (remote URL or data URL) or request a presigned upload with `POST /media/v1/media/prepare-upload`.
+2. Media API deduplicates content, issues a `jan_*` ID, and stores metadata in PostgreSQL.
+3. Other services embed the `jan_*` ID; LLM API resolves them to presigned URLs right before inference.
+
+### MCP JSON-RPC
+
+1. Response API or external automation sends JSON-RPC requests to `POST /v1/mcp`.
+2. MCP Tools validates the method (`tools/list`, `tools/call`, `prompts/*`, `resources/*`) and dispatches to the Serper/SearXNG/SandboxFusion clients.
+3. Results are returned as SSE events (streaming) or plain JSON when the response fits a single chunk.
+
+## Component Diagram
+
+```
+             +------------------------------+
+             |  External Clients / SDKs     |
+             +---------------+--------------+
+                             |
+                             v
+                   +-------------------+
+                   |   Kong Gateway    | 8000
+                   | (validates JWT)   |
+                   +---+---+----+------+
+                       |   |    |       \
+        +--------------+   |    |        \
+        |                  |    |         +------------------+
+        v                  v    |                            v
+  +-----------+    +---------------+      +---------------+  +-----------+
+  |  LLM API  |    |  Response API |      |   Media API   |  | Keycloak  |
+  | (8080)    |    |    (8082)     |      |    (8285)     |  |  (8085)   |
+  +-----+-----+    +-------+-------+      +-------+-------+  | OIDC/JWT  |
+        |                  |                     |            +-----------+
+        |                  v                     |
+        |        +-------------------+           |
+        +------->|    MCP Tools      |<----------+
+                 |     (8091)        |
+                 +----+---+----+-----+
+                      |   |    |
+                      |   |    +--> SandboxFusion
+                      |   +-------> Vector Store
+                      +-----------> SearXNG / Serper
+
+Infrastructure & Data:
+  +-----------------+  +-----------------+  +-----------------+
+  |  PostgreSQL     |  | S3 / Object     |  |   vLLM (8101)   |
+  |   (api-db)      |  |    Storage      |  | Local Inference |
+  +-----------------+  +-----------------+  +-----------------+
+
+Observability Stack:
+  +------------------+  +------------------+  +------------------+
+  | OpenTelemetry    |  |   Prometheus     |  |    Grafana       |
+  |  Collector       |  |     (9090)       |  |    (3001)        |
+  |  (4317/4318)     |  | Metrics Storage  |  |  Dashboards      |
+  +--------+---------+  +--------+---------+  +--------+---------+
+           |                     ^                     ^
+           |                     |                     |
+           v                     +----------+----------+
+  +------------------+                      |
+  |     Jaeger       |<---------------------+
+  |    (16686)       |
+  |  Trace Storage   |
+  +------------------+
+
+Services emit metrics/traces -> OTEL Collector -> Prometheus (metrics) + Jaeger (traces) -> Grafana (visualization).
+```
+
+## Data & Network Topology
+
+- Docker Compose defines two primary networks: `jan-server_default` (Kong + core services + databases) and `jan-server_mcp-network` (MCP-only helpers such as SearXNG, vector store, SandboxFusion).
+- Production deployments should mirror this split using Kubernetes namespaces or NetworkPolicies.
+- Persistent data:
+  - `api-db` (LLM/Response/Media metadata) - each service uses its own schema.
+  - `keycloak-db` - Keycloak realm and client configuration.
+  - Object storage (S3, MinIO, etc.) - Media files and presigned URLs.
+
+## Change Impact Checklist
+
+When modifying the system architecture:
+
+1. Update the relevant service README and API docs.
+2. Reflect new ports/paths in Kong configuration.
+3. Adjust `/docs/architecture/services.mdx` and `/docs/architecture/overview.mdx`.
+4. Regenerate configuration artifacts (`make config-generate`) if `pkg/config` changes.
+5. Update Kubernetes values and Helm defaults as needed.
+
+## Related References
+
+- [Architecture Overview](/docs/architecture/overview) - High-level system layout and components
+- [Services Reference](/docs/architecture/services) - Individual service documentation
+- [Security Architecture](/docs/architecture/security) - Authentication, authorization, and security model
+- [Deployment Guide](/docs/guides/deployment) - Production deployment steps
+- [Configuration Overview](/docs/configuration/overview) - System configuration options
+
+---
+
+**Maintainer:** Jan Server Architecture Group - **Last Reviewed:** November 2025

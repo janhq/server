@@ -1,0 +1,139 @@
+---
+title: Development Guide
+description: Local development workflows and best practices
+full: false
+---
+
+# Development Guide
+
+This guide mirrors the `docs/guides/development.md` content in the jan-server repo and explains how to set up and iterate locally.
+
+## Prerequisites
+
+- Docker Desktop 24+ (or Docker Engine + Compose V2 on Linux).
+- GNU Make (preinstalled on macOS/Linux, install via Chocolatey/Brew on Windows).
+- Go 1.21+ when editing Go code or running `jan-cli` from source.
+- jan-cli for API test suites.
+
+Run `make setup` to verify Docker, copy `.env.template`, and create `docker/.env` for Compose.
+
+## Quick Start
+
+```bash
+# Clone repo
+git clone https://github.com/janhq/jan-server.git
+cd jan-server
+
+# Create .env and infrastructure
+make setup
+
+# Start everything (infra + APIs + MCP)
+make up-full
+
+# Verify health
+make health-check
+```
+
+Useful Make targets:
+
+```bash
+make logs          # tail all containers
+make logs-api      # API-only logs
+make logs-mcp      # MCP stack logs
+make restart-api   # restart API services
+make down          # stop containers
+make down-clean    # remove containers + volumes
+```
+
+## Workflows
+
+### Full Docker Stack
+
+- `make up-full` starts all services defined in `COMPOSE_PROFILES`.
+- Use `make up-api`, `make up-mcp`, or `make up-vllm-gpu` for smaller stacks.
+- Stop everything with `make down`; keep volumes intact for faster restarts.
+
+### Dev-Full (Hybrid) Mode
+
+```
+make dev-full
+# Stop the container you want to replace
+docker compose stop llm-api
+# Run the service locally (auto-loads env vars)
+./jan-cli.sh dev run llm-api      # macOS/Linux
+.\jan-cli.ps1 dev run llm-api    # Windows
+```
+
+Kong routes traffic to `host.docker.internal:<port>` while your host process runs. Exit with `Ctrl+C` and restart the Docker container to revert.
+
+### Running Services Directly
+
+```bash
+docker compose up -d api-db keycloak kong
+cd services/llm-api
+export DB_DSN="postgres://jan_user:${POSTGRES_PASSWORD}@localhost:5432/jan_llm_api?sslmode=disable"
+export KEYCLOAK_BASE_URL="http://localhost:8085"
+export HTTP_PORT=8080
+export LOG_LEVEL=debug
+
+go run ./cmd/server
+```
+
+## Project Layout (high level)
+
+```
+jan-server/
++-- services/llm-api, media-api, response-api, mcp-tools, template-api
++-- cmd/jan-cli/ (Go CLI + platform-specific wrappers)
++-- pkg/config/ (source of truth for configuration)
++-- docker/ (Compose fragments + dev overlays)
++-- kong/ (gateway declarative config + custom plugin)
++-- docs/ (architecture, configuration, guides, API)
++-- Makefile (canonical automation entry point)
+```
+
+## Configuration Tips
+
+- Copy `.env.template` ? `.env` and populate API keys, secrets, and ports.
+- `make quickstart` launches the interactive wizard (LLM provider, MCP search provider, Media API toggle) and writes `.env` + `config/secrets.env`.
+- Use `jan-cli config show` / `jan-cli config export` to inspect merged config or generate Kubernetes values.
+
+## Database & Tooling
+
+```bash
+make db-migrate     # run goose migrations for llm-api
+make db-reset       # drop + recreate schema
+make db-console     # open psql shell inside api-db container
+```
+
+Other helpers:
+- `make logs-api-db` or `docker compose logs api-db` for Postgres output.
+- `make jan-cli` or run `./jan-cli.sh` / `.\jan-cli.ps1` for CLI utilities.
+
+## Testing
+
+```bash
+make test           # go test ./...
+make test-api       # run Postman collections via jan-cli api-test
+make test-auth      # focus on auth suite
+make test-response
+make test-media
+make test-mcp-integration
+```
+
+Each service directory also supports `go test ./...` for unit tests.
+
+## Troubleshooting
+
+1. `make health-check` to confirm each service responds.
+2. `make logs` or `docker compose logs <service>` to inspect failures.
+3. `make restart-kong` or `make restart-keycloak` to fix stale credentials.
+4. Enable observability via `make monitor-up` and inspect Grafana/Jaeger if you need traces.
+
+## Related Guides
+
+- [Development Modes](/docs/guides/dev-modes) - Hybrid dev-full and hybrid workflows
+- [Operations & Troubleshooting](/docs/guides/operations) - Observability and debugging
+- [Testing Guide](/docs/guides/testing) - Testing strategies
+- [Configuration Overview](/docs/configuration/overview) - System configuration
+- [Utilities & Advanced Features](/docs/guides/utilities) - CLI tools, background mode, and plugins

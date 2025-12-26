@@ -1,0 +1,90 @@
+---
+title: Conventions Overview
+description: Quick reference for Jan Server conventions and workflows.
+full: false
+---
+
+# Conventions Quick Reference
+
+Start here for the current Jan Server standards. Detailed references live in the other Conventions pages.
+
+## Documentation Map
+
+| Document | Purpose |
+|----------|---------|
+| [Conventions Quick Reference](/docs/conventions/overview) | TL;DR, commands, and quick links. |
+| [Architecture & Structure](/docs/conventions/architecture-patterns) | Repository and service layout patterns. |
+| [Code Patterns & Best Practices](/docs/conventions/design-patterns) | Database, error handling, entities, performance. |
+| [Development Workflow](/docs/conventions/workflow) | Daily workflow for git, testing, deployments. |
+
+## TL;DR Rules
+
+### Language & Tooling
+- **Go version**: `1.25` (matches the root `go.mod`). Run `go fmt ./...` and `go test ./...` before committing.
+- **Dependency hygiene**: `go mod tidy` inside each service you change.
+
+### Architecture
+- Every service lives under `services/<name>/` and follows the same structure (`cmd/`, `internal/`, `migrations/`, etc.).
+- Clean architecture still applies: Interfaces (HTTP) -> Domain -> Infrastructure. Domain packages never import database or HTTP packages.
+
+### Database
+- GORM zero-value issue still exists. Use pointer fields (`*bool`, `*float64`, etc.) in schema structs and convert to plain types in domain models.
+- When schemas change, run `make gormgen` from the service directory (for example `cd services/llm-api && make gormgen`).
+
+### Error Handling
+- Trigger points (repositories) create errors via `platformerrors.NewError()`.
+- Handlers call `responses.HandleError()` so every response includes `requestID`.
+- Never log secrets or the raw error from external providers.
+
+### Naming
+- Exported symbols use `PascalCase`. Unexported symbols use `camelCase`.
+- Database columns are `snake_case`.
+- Avoid stuttering (`provider.ID`, not `provider.ProviderID`).
+- Names should be meaningful and easy to read-no single-letter fields.
+
+### Git & Commits
+- Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, etc.
+- Branch format: `type/short-description` (for example `feat/dev-full-refresh`).
+
+### Security
+- Secrets live only in `.env` or injected environment variables. `.env` is generated from `.env.template` via `make setup` and never committed.
+- Kong + Keycloak handle auth; do not bypass JWT/API-key validation in services.
+
+## Common Commands
+
+```bash
+# Setup & environments
+make setup              # Copy .env.template -> .env and docker/.env
+make up-full            # Start infra + APIs + MCP in Docker
+make dev-full           # Start Docker stack with host routing for native services
+./jan-cli.sh dev run llm-api   # Run a service on host (macOS/Linux)
+./jan-cli.ps1 dev run llm-api  # Run a service on host (Windows)
+
+# Monitoring & tooling
+make monitor-up         # Prometheus + Grafana + Jaeger
+make monitor-clean      # Stop monitoring and remove volumes
+
+# Testing
+make test-all           # Run every jan-cli api-test collection
+make test-auth          # Focused collection (others listed in the Makefile)
+go test ./services/llm-api/...    # Service-level unit tests
+
+# Code generation
+(cd services/llm-api && make gormgen)   # Regenerate GORM queries after schema changes
+make swagger            # Rebuild Swagger docs for all services
+
+# Database helpers
+make db-console         # Open psql shell inside api-db
+make db-reset           # Drop + recreate llm-api database
+```
+
+## Critical Checklist Before Pushing
+
+1. `go fmt ./...` in every service you touched.
+2. `go test ./...` (unit) and `make test-all` or the relevant jan-cli api-test suites if you changed APIs.
+3. `make swagger` if REST contracts changed.
+4. `(cd services/<name> && make gormgen)` if DB schemas changed.
+5. `.env`/secrets unchanged and never committed.
+6. Conventional commit message and CI passes locally (`make up-full && make health-check`).
+
+Need more detail? Dive into the Architecture, Design Patterns, and Workflow pages listed above.

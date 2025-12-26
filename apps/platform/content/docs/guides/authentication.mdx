@@ -1,0 +1,94 @@
+---
+title: Authentication Guide
+description: Configure Kong and Keycloak authentication
+full: false
+---
+
+# Authentication & Gateway
+
+Kong sits in front of every Jan Server API and relies on Keycloak-issued JWTs or API keys. This guide summarizes the flow implemented in the repository today.
+
+## 1. Architectural Overview
+
+```
+Client -> Kong (jwt + keycloak-apikey plugins)
+              |-> LLM API (/auth/*, /llm/*)
+              |-> Response API (/responses/*)
+              |-> Media API (/media/*)
+              |-> MCP Tools (/mcp/*)
+```
+
+- **Kong Gateway** (`http://localhost:8000`) is the only public endpoint.
+- **Keycloak** (`http://localhost:8085`) issues OAuth2/OIDC tokens for the `jan` realm.
+- **LLM API** implements the `/auth` routes (guest login, API key issuance, API key validation).
+
+## 2. Kong Plugin Flow
+
+| Plugin | Purpose | Key Configuration |
+|--------|---------|-------------------|
+| `jwt` | Validates Keycloak JWTs. | `key_claim_name=iss`, `claims_to_verify=["exp","nbf"]`, `maximum_expiration=3600`, `anonymous=kong-anon-jwt`. |
+| `keycloak-apikey` | Validates API keys via LLM API. | `validation_url=http://llm-api:8080/auth/validate-api-key`, `hide_credentials=true`, `run_on_preflight=false`. |
+| `request-termination` | Fallback 401 when neither plugin authenticates the request. | Used to short-circuit unauthenticated traffic. |
+
+Kong injects `X-Auth-Method` (`jwt` or `apikey`) plus identity headers (`X-User-Id`, `X-User-Email`, `X-User-Username`) for downstream services.
+
+## 3. Guest Tokens
+
+- **Endpoint**: `POST /llm/auth/guest-login` via Kong.
+- **Behavior**: LLM API creates a temporary Keycloak user (`guest-<uuid>@temp.jan.ai`) and returns `access_token`, `refresh_token`, and expiration metadata.
+- **Usage**: Perfect for local testing. Include `Authorization: Bearer <token>` on `/v1/*` requests.
+- **Upgrade**: Call `POST /auth/upgrade` with the guest token to convert into a permanent account.
+
+```bash
+curl -X POST http://localhost:8000/llm/auth/guest-login | jq
+```
+
+## 4. API Key Lifecycle
+
+- **Create**: `POST /auth/api-keys` (requires JWT).
+- **List**: `GET /auth/api-keys`.
+- **Delete**: `DELETE /auth/api-keys/{id}`.
+- **Validate**: `POST /auth/validate-api-key` (called by Kong, not end users).
+
+Keys use the `sk_` prefix plus 32 random characters. Only the hashed version is stored (Keycloak attribute + Postgres record). Kong never forwards the raw key to upstream services thanks to `hide_credentials=true`.
+
+**Making a request with an API key**:
+```bash
+curl -H "X-API-Key: sk_live_xxx" http://localhost:8000/v1/models
+```
+
+## 5. Configuration Checklist
+
+```bash
+# Keycloak
+KEYCLOAK_BASE_URL=http://keycloak:8085
+KEYCLOAK_REALM=jan
+KEYCLOAK_ADMIN=admin
+KEYCLOAK_ADMIN_PASSWORD=admin
+
+# Kong
+KONG_HTTP_PORT=8000
+KONG_PLUGINS=bundled,keycloak-apikey
+KONG_SSL_ENABLED=false  # enable + supply certs for production
+
+# Services
+LLM_API_AUTH_ENABLED=true
+LLM_API_ISSUER=http://localhost:8085/realms/jan
+RESPONSE_API_AUTH_ENABLED=true
+MEDIA_API_AUTH_ENABLED=true
+```
+
+## 6. Deployment Notes
+
+- Keep the Kong admin API firewalled or disabled in production.
+- Rotate Keycloak signing keys carefully; Kong caches JWKS. Restart Kong after major changes.
+- Dev environments mount `kong/plugins/keycloak-apikey` directly into the container. Production images bake the plugin into `/usr/local/kong/plugins`.
+- Combine Kong plugin rate limits with Response API workflow limits to avoid runaway tool executions.
+
+## 7. Troubleshooting
+
+- `401` with `invalid signature`: ensure system clocks are synced and `ISSUER` matches the Keycloak realm.
+- `401` with `invalid api key`: confirm LLM API is reachable from Kong and the key still exists (`GET /auth/api-keys`).
+- `Guest login fails`: restart Keycloak (`make restart-keycloak`) and inspect `services/llm-api/logs` for user-creation errors.
+
+See also the [Security Architecture](/docs/architecture/security) and [Operations & Troubleshooting](/docs/guides/operations).

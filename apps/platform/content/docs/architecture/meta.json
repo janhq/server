@@ -1,0 +1,9 @@
+{
+  "title": "Architecture",
+  "pages": [
+    "overview",
+    "system-design",
+    "services",
+    "security"
+  ]
+}

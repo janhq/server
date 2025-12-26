@@ -1,0 +1,174 @@
+---
+title: Development Modes
+description: Hybrid workflows that mix Docker infrastructure with native services.
+full: false
+---
+
+# Development Modes: Dev-Full & Hybrid
+
+Jan Server supports hybrid development workflows that keep infrastructure in Docker while letting you run services directly on your host. This enables fast iteration, native debugging, and production-parity networking.
+
+## Why Hybrid Development?
+
+- **Fast iteration** without rebuilding Docker images.
+- **Native debugging** with breakpoints while Kong continues authenticating traffic.
+- **Production parity** - Keep PostgreSQL, Keycloak, Kong, and monitoring in Docker.
+- **Easy switching** - Stop your host process at any time and Docker resumes ownership automatically.
+
+## Dev-Full Mode
+
+Dev-Full mode is the officially supported hybrid workflow. It starts every dependency in Docker and configures Kong with `host.docker.internal` upstreams, letting you replace any service with a native process via `jan-cli dev run <service>`.
+
+### Quick Start
+
+```bash
+make setup    # once per machine
+make dev-full # start infra + APIs + MCP with host routing
+```
+
+Replace a service with a native process:
+
+```bash
+./jan-cli.sh dev run llm-api   # macOS/Linux
+./jan-cli.ps1 dev run llm-api  # Windows PowerShell
+```
+
+`jan-cli dev run` stops the Docker container, loads env vars from `.env` (override with `--env`), and executes `go run ./cmd/server` inside `services/<name>`.
+
+### Running Services Natively
+
+| Service | Port | Command |
+|---------|------|---------|
+| LLM API | 8080 | `jan-cli dev run llm-api` |
+| Response API | 8082 | `jan-cli dev run response-api` |
+| Media API | 8285 | `jan-cli dev run media-api` |
+| MCP Tools | 8091 | `jan-cli dev run mcp-tools` |
+
+Tips:
+- Pass `--build` to compile before running (`jan-cli dev run llm-api --build`).
+- Pass `--env config/hybrid.env` if you keep a dedicated env file for host processes.
+- Hand control back to Docker by stopping the host process and running `docker compose start <service>`.
+
+### What `make dev-full` Does
+
+- Copies `.env` to `docker/.env` via the `ensure-docker-env` target.
+- Runs `docker compose -f docker-compose.yml -f docker-compose.dev-full.yml --profile full up -d`.
+- Applies `kong/kong-dev-full.yml` so every upstream has both container and host targets.
+- Leaves Docker networks alive for fast restarts.
+
+Inspect `docker-compose.dev-full.yml` for `extra_hosts: - "host.docker.internal:host-gateway"` entries and `kong/kong-dev-full.yml` for dual-target upstreams.
+
+### IDE Integration
+
+- VS Code tasks can run `make dev-full` before `go test` or debugging.
+- Launch configs call `jan-cli dev run <service>` as `preLaunchTask`.
+- Debuggers connect to the same port Kong routes to (e.g., `localhost:8080`).
+- Hot reload tools (`air`, `reflex`) live inside `services/<name>`.
+
+### Cleanup
+
+```bash
+make dev-full-stop  # stop containers but keep them around
+make dev-full-down  # stop + remove containers
+make down           # switch back to vanilla docker workflow
+```
+
+Need a pristine slate? Run `make down-clean` to remove volumes and networks, then start Dev-Full again.
+
+---
+
+## Hybrid Mode Details
+
+Hybrid mode keeps infrastructure in Docker while letting you run services directly from source. The supported flow is `make dev-full` followed by `jan-cli dev run <service>` which mirrors production networking but gives you native tooling.
+
+### Prerequisites
+
+1. `make setup` at least once (creates `.env` and `docker/.env`).
+2. Docker Desktop with Compose V2.
+3. Go toolchain (1.21+) installed.
+4. `jan-cli` wrapper (`./jan-cli.sh` or `./jan-cli.ps1`).
+
+### Workflow Overview
+
+1. **Start dev-full mode**
+   ```bash
+   make dev-full
+   ```
+   This bootstraps the stack with overrides from `docker-compose.dev-full.yml` and `kong/kong-dev-full.yml`. Kong now targets both containers and `host.docker.internal:<port>`.
+
+2. **Run a service on your host**
+   ```bash
+   ./jan-cli.sh dev run llm-api   # macOS/Linux
+   ./jan-cli.ps1 dev run llm-api # Windows PowerShell
+   ```
+   The CLI stops the Docker container, loads env vars from `.env` (override with `--env`), and executes `go run ./cmd/server`.
+
+3. **Iterate and debug**
+   - Use Delve: `dlv debug ./cmd/server --headless --listen=:2345`.
+   - Use hot reload tools inside `services/<name>`.
+   - Send requests through Kong at http://localhost:8000 exactly like clients do.
+
+4. **Hand control back to Docker**
+   - Stop the host process (`Ctrl+C`).
+   - Restart the container if needed: `docker compose start llm-api`.
+
+5. **Stop dev-full**
+   ```bash
+   make dev-full-stop   # keep containers
+   make dev-full-down   # remove containers
+   ```
+
+### Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `DB_DSN` / `DB_POSTGRESQL_WRITE_DSN` | Use `localhost` when running on host. |
+| `KEYCLOAK_BASE_URL` / `ISSUER` / `JWKS_URL` | Point to `http://localhost:8085`. |
+| `HTTP_PORT` | Local service port (8080, 8082, 8285, 8091, etc.). |
+| `LOG_LEVEL`, `LOG_FORMAT` | Logging configuration. |
+| `MCP_*`, `SEARXNG_URL`, `VECTOR_STORE_URL` | Tool integrations for mcp-tools. |
+| `OTEL_*` | Telemetry export (set `OTEL_ENABLED=true`). |
+
+Need separated env values? Create `config/hybrid.env` and run `jan-cli dev run ... --env config/hybrid.env`.
+
+### How Kong Routes to Your Host
+
+`kong/kong-dev-full.yml` adds `host.docker.internal` targets for every upstream:
+
+```yaml
+upstreams:
+  - name: llm-api-upstream
+    targets:
+      - target: llm-api:8080
+      - target: host.docker.internal:8080
+    healthchecks:
+      active:
+        http_path: /healthz
+```
+
+When the Docker container stops, Kong automatically fails over to the host target as soon as `/healthz` responds with 200.
+
+### Debugging Tips
+
+- Run `make health-check` after swapping services to confirm Kong sees them as healthy.
+- `make logs-api` / `make logs-mcp` monitor dependencies while your host service runs.
+- Need database access? `make db-console` opens `psql` using the same credentials.
+- Observability works identically: `make monitor-up` enables Grafana/Prometheus/Jaeger pointed at both Docker and host services.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Kong keeps routing to the container | Ensure your host service listens on the same port and returns 200 on `/healthz`. |
+| Service cannot reach PostgreSQL | Update `DB_DSN` to use `localhost` instead of `api-db`. |
+| Missing environment variables | Pass `--env .env` or a custom env file to `jan-cli dev run`. |
+| Port already in use | Stop the other listener or adjust `HTTP_PORT`. |
+| Need to debug multiple services | Run `jan-cli dev run ...` for each service; each command stops its container first. |
+
+---
+
+## Related Resources
+
+- [Development Guide](/docs/guides/development) - General development overview and workflows
+- [Monitoring Guide](/docs/guides/operations) - Observability stack setup
+- [Jan CLI Guide](/docs/guides/utilities) - CLI commands and configuration

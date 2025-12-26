@@ -1,0 +1,12 @@
+{
+  "title": "Guides",
+  "pages": [
+    "development",
+    "dev-modes",
+    "deployment",
+    "authentication",
+    "testing",
+    "operations",
+    "utilities"
+  ]
+}

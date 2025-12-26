@@ -1,0 +1,14 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "quickstart",
+    "getting-started",
+    "guides",
+    "conventions",
+    "configuration",
+    "api-reference",
+    "architecture"
+  ],
+  "description": "Jan Platform Documentation",
+  "root": true
+}

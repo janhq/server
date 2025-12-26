@@ -1,0 +1,11 @@
+{
+  "title": "Conversations API",
+  "pages": [
+    "conv-public-id/items/get",
+    "conversations/get",
+    "conv-public-id/items/post",
+    "conversations/post",
+    "conv-public-id/items/delete",
+    "conversations/delete"
+  ]
+}

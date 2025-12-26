@@ -1,0 +1,468 @@
+---
+title: First API Call
+description: Make your first request to Jan Server
+full: false
+---
+
+# Your First API Call
+
+After installing Jan Server, test your setup by making API calls.
+
+## Prerequisites
+
+- Jan Server is running (`make quickstart` or `make up-full`)
+- Services are healthy (`make health-check`)
+
+## Step 1: Get Authentication Token
+
+All API endpoints require authentication through Kong Gateway (port 8000).
+
+### Get a Guest Token
+
+```bash
+curl -X POST http://localhost:8000/llm/auth/guest-login
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 300
+}
+```
+
+**Save the token:**
+```bash
+# Linux / macOS
+TOKEN=$(curl -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
+
+# Windows PowerShell
+$response = Invoke-RestMethod -Method Post -Uri http://localhost:8000/llm/auth/guest-login
+$token = $response.access_token
+```
+
+## Step 2: Chat Completion
+
+Send a message to the AI model.
+
+### Basic Request
+
+```bash
+# Linux / macOS
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen2.5-0.5b-instruct",
+    "messages": [
+      {"role": "user", "content": "What is the capital of France?"}
+    ]
+  }'
+
+# Windows PowerShell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/chat/completions `
+  -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
+  -Body '{"model":"qwen2.5-0.5b-instruct","messages":[{"role":"user","content":"What is the capital of France?"}]}'
+```
+
+**Response:**
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1699999999,
+  "model": "qwen2.5-0.5b-instruct",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "The capital of France is Paris."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 15,
+    "completion_tokens": 8,
+    "total_tokens": 23
+  }
+}
+```
+
+### Streaming Request
+
+Get word-by-word responses:
+
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen2.5-0.5b-instruct",
+    "messages": [
+      {"role": "user", "content": "Tell me a short story"}
+    ],
+    "stream": true
+  }'
+```
+
+**Streaming Response:**
+```
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1699999999,"model":"qwen2.5-0.5b-instruct","choices":[{"index":0,"delta":{"role":"assistant","content":"Once"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1699999999,"model":"qwen2.5-0.5b-instruct","choices":[{"index":0,"delta":{"content":" upon"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1699999999,"model":"qwen2.5-0.5b-instruct","choices":[{"index":0,"delta":{"content":" a"},"finish_reason":null}]}
+
+...
+
+data: [DONE]
+```
+
+## Step 3: List Available Models
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/v1/models
+```
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "qwen2.5-0.5b-instruct",
+      "object": "model",
+      "created": 1699999999,
+      "owned_by": "organization-owner"
+    }
+  ]
+}
+```
+
+## Step 4: Create a Conversation
+
+Manage multi-turn conversations with context:
+
+```bash
+# Create conversation
+curl -X POST http://localhost:8000/v1/conversations \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "My First Conversation"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "conv_abc123",
+  "title": "My First Conversation",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+**Save the conversation ID:**
+```bash
+CONV_ID="conv_abc123"
+```
+
+**Add message to conversation:**
+```bash
+curl -X POST http://localhost:8000/v1/conversations/$CONV_ID/items \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "user",
+    "content": "Hello, I want to learn about AI"
+  }'
+```
+
+## Step 5: Use MCP Tools
+
+Execute tools for search, scraping, and more.
+
+### List Available Tools
+
+```bash
+curl -X POST http://localhost:8000/v1/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list"
+  }'
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "google_search",
+        "description": "Search the web using Google",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "q": {"type": "string", "description": "Search query"}
+          },
+          "required": ["q"]
+        }
+      },
+      {
+        "name": "scrape",
+        "description": "Fetch and parse a web page"
+      }
+    ]
+  }
+}
+```
+
+### Execute a Tool (Google Search)
+
+```bash
+curl -X POST http://localhost:8000/v1/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "google_search",
+      "arguments": {
+        "q": "latest AI news"
+      }
+    }
+  }'
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"results\": [\n    {\n      \"title\": \"Latest AI News\",\n      \"link\": \"https://example.com/ai-news\",\n      \"snippet\": \"Recent developments in AI...\"\n    }\n  ]\n}"
+      }
+    ]
+  }
+}
+```
+
+## Step 6: Upload Media
+
+Upload images for use in chat completions:
+
+```bash
+# Upload from URL
+curl -X POST http://localhost:8000/media/v1/media/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/image.jpg"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "jan_abc123xyz",
+  "url": "https://example.com/image.jpg",
+  "content_type": "image/jpeg",
+  "size": 245678
+}
+```
+
+**Use in chat completion:**
+```bash
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen2.5-0.5b-instruct",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {"type": "text", "text": "What is in this image?"},
+          {"type": "image_url", "image_url": {"url": "jan_abc123xyz"}}
+        ]
+      }
+    ]
+  }'
+```
+
+## Using with OpenAI SDK
+
+Jan Server is fully compatible with OpenAI SDKs. Simply change the base URL:
+
+### Python (OpenAI SDK)
+
+```python
+from openai import OpenAI
+
+# Initialize client pointing to Jan Server
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="your-token-here"
+)
+
+# Chat completion
+response = client.chat.completions.create(
+    model="qwen2.5-0.5b-instruct",
+    messages=[
+        {"role": "user", "content": "Hello!"}
+    ]
+)
+
+print(response.choices[0].message.content)
+
+# Streaming
+stream = client.chat.completions.create(
+    model="qwen2.5-0.5b-instruct",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+### Node.js (OpenAI SDK)
+
+```javascript
+import OpenAI from 'openai';
+
+// Initialize client pointing to Jan Server
+const client = new OpenAI({
+  baseURL: 'http://localhost:8000/v1',
+  apiKey: 'your-token-here'
+});
+
+// Chat completion
+const response = await client.chat.completions.create({
+  model: 'qwen2.5-0.5b-instruct',
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+
+console.log(response.choices[0].message.content);
+
+// Streaming
+const stream = await client.chat.completions.create({
+  model: 'qwen2.5-0.5b-instruct',
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || '');
+}
+```
+
+## Common Parameters
+
+### Chat Completion Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | string | required | Model identifier |
+| `messages` | array | required | Conversation messages |
+| `temperature` | number | 0.7 | Randomness (0.0-2.0) |
+| `max_tokens` | number | unlimited | Maximum response length |
+| `top_p` | number | 1.0 | Nucleus sampling |
+| `stream` | boolean | false | Enable streaming |
+| `stop` | array | null | Stop sequences |
+
+### Message Format
+
+```json
+{
+  "role": "user|assistant|system",
+  "content": "text or content array"
+}
+```
+
+**Content array (for media):**
+```json
+{
+  "role": "user",
+  "content": [
+    {"type": "text", "text": "Describe this image"},
+    {"type": "image_url", "image_url": {"url": "jan_abc123"}}
+  ]
+}
+```
+
+## Next Steps
+
+Now that you've made your first API calls:
+
+1. [API Reference](/docs/api-reference/introduction) - Explore all endpoints
+2. [Configuration](/docs/getting-started/configuration) - Customize your setup
+3. [Developer Guides](/docs/guides/development) - Learn development workflows
+4. [Architecture](/docs/architecture/overview) - Understand the system
+
+## Troubleshooting
+
+### 401 Unauthorized
+
+**Problem:** Token expired (default: 5 minutes)
+
+**Solution:** Get a new token:
+```bash
+curl -X POST http://localhost:8000/llm/auth/guest-login
+```
+
+### 404 Not Found
+
+**Problem:** Service not running or wrong URL
+
+**Solution:** Check services are running:
+```bash
+make health-check
+docker compose ps
+```
+
+### Connection Refused
+
+**Problem:** Service not started or port conflict
+
+**Solution:** 
+```bash
+# Check if services are running
+make logs
+
+# Restart services
+make restart
+```
+
+### Model Not Available
+
+**Problem:** Model not loaded or wrong model name
+
+**Solution:** List available models:
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/models
+```
+
+## Need Help?
+
+- [API Reference](/docs/api-reference/introduction)
+- [Operations & Troubleshooting](/docs/guides/operations)
+- [GitHub Issues](https://github.com/janhq/jan-server/issues)
+- [GitHub Discussions](https://github.com/janhq/jan-server/discussions)

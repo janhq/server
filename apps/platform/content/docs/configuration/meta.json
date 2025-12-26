@@ -1,0 +1,9 @@
+{
+  "title": "Configuration",
+  "pages": [
+    "overview",
+    "docker-compose",
+    "kubernetes",
+    "environment-variables"
+  ]
+}

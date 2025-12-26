@@ -1,0 +1,158 @@
+---
+title: Deployment Guide
+description: Deploy Jan Server to production
+full: false
+---
+
+# Deployment Guide
+
+How to run Jan Server in development, staging, and production environments.
+
+## Overview
+
+| Option | Orchestrator | Best For |
+|--------|--------------|----------|
+| **Docker Compose** | Docker Compose V2 | Local development, QA environments. |
+| **Kubernetes** | Helm chart (`k8s/jan-server`) | Production/staging clusters with autoscaling and managed databases. |
+| **Hybrid / Dev-Full** | Docker + host binaries | Contributors who want hot reload/IDE debugging. |
+
+Prerequisites for all deployments: Docker 24+, Docker Compose V2, GNU Make, Git, and access to an S3-compatible bucket for Media API.
+
+## Docker Compose
+
+### Production-style Setup
+
+```bash
+git clone https://github.com/janhq/jan-server.git
+cd jan-server
+
+# Populate configuration
+cp config/production.env.example .env
+cp config/secrets.env.example config/secrets.env
+nano .env
+nano config/secrets.env
+
+# Validate + start stack
+make config-validate
+make up-full
+```
+
+**TLS** (terminate at Kong):
+```bash
+KONG_SSL_ENABLED=true
+KONG_SSL_CERT_PATH=/path/to/cert.pem
+KONG_SSL_KEY_PATH=/path/to/key.pem
+```
+
+**Monitoring**:
+```bash
+make monitor-up      # Prometheus + Grafana + Jaeger
+make monitor-down    # Stop monitoring stack
+```
+
+### Hybrid (dev-full) Mode
+
+```bash
+make dev-full               # Docker runs infra + APIs + MCP
+./jan-cli.sh dev run llm-api  # Or .\jan-cli.ps1 on Windows
+```
+
+Kong automatically routes to `host.docker.internal:<port>` while the host binary is running.
+
+## Kubernetes (Recommended for Production)
+
+```bash
+# From repo root
+cd k8s
+helm install jan-server ./jan-server \
+  --namespace jan-server \
+  --create-namespace \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set ingress.hosts[0].host=jan.example.com \
+  --set llmApi.autoscaling.enabled=true \
+  --set mediaApi.autoscaling.enabled=true
+```
+
+**Managed DB/Redis Example**:
+```bash
+helm upgrade jan-server ./jan-server \
+  --namespace jan-server \
+  --set postgresql.enabled=false \
+  --set redis.enabled=false \
+  --set global.postgresql.host=pg.example.com \
+  --set global.postgresql.user=jan \
+  --set global.postgresql.password=<secret> \
+  --set global.redis.host=redis.example.com
+```
+
+**Local clusters (minikube)**:
+```bash
+minikube start --cpus=4 --memory=8192
+minikube image load jan/llm-api:dev
+helm install jan-server ./jan-server --namespace jan-server --create-namespace
+kubectl port-forward -n jan-server svc/jan-server-kong 8000:8000
+```
+
+Refer to `k8s/SETUP.md` for detailed walkthroughs including database bootstrapping and ingress/TLS configuration.
+
+## Environment Configuration Checklist
+
+1. Run `make quickstart` (dev) or copy the production templates.
+2. Set `COMPOSE_PROFILES` to match the stack you need (`infra,api,mcp,monitor`).
+3. Provide S3 credentials for Media API and API keys for remote LLM providers if applicable.
+4. Configure SMTP providers in Keycloak if email verification is required.
+5. For Kubernetes, generate `values-<env>.yaml` via `jan-cli config k8s-values --env <env>` and commit sanitized copies.
+
+## Security Considerations
+
+- Terminate TLS at Kong or the cloud load balancer; disable the Kong Admin API publicly.
+- Rotate API keys and Keycloak credentials during CI/CD by injecting secrets through your secret manager.
+- Configure NetworkPolicies (or security groups) so only Kong is exposed externally.
+- Enable rate limiting plugins on Kong plus Response API safeguards (`RESPONSE_API_MAX_TOOL_DEPTH`, `RESPONSE_API_TOOL_TIMEOUT`).
+- Back up PostgreSQL volumes or use managed Postgres with PITR.
+
+## Monitoring & Observability
+
+```bash
+# Docker
+make monitor-up
+
+# Kubernetes (via Helm values)
+helm upgrade jan-server ./jan-server \
+  --namespace jan-server \
+  --set observability.enabled=true
+```
+
+Dashboards:
+- Grafana: `http://localhost:3001` (dev) or the hostname you configured.
+- Prometheus: `http://localhost:9090`.
+- Jaeger: `http://localhost:16686`.
+
+Ensure each service sets `OTEL_ENABLED=true` and points at the OpenTelemetry Collector endpoint.
+
+## Troubleshooting Highlights
+
+### Docker Compose
+
+- `Address already in use`: adjust ports in `.env` or stop conflicting processes (`lsof -i:8000`).
+- Authentication failures: verify Keycloak + Kong logs (`make logs-keycloak`, `make logs-kong`).
+- Database migrations failing: run `make db-migrate` or inspect `docker compose logs api-db`.
+
+### Kubernetes
+
+```bash
+kubectl get pods -n jan-server
+kubectl describe pod <pod> -n jan-server
+kubectl logs deploy/jan-server-llm-api -n jan-server
+```
+
+- `ImagePullBackOff`: make sure the registry credentials are configured (`imagePullSecrets`) or preload images into minikube.
+- `CrashLoopBackOff`: check environment variables in the deployment and ensure secrets/configmaps match the Compose equivalents.
+- Ingress 404: confirm ingress class/hosts align and any external DNS records point to the load balancer.
+
+## Next Steps
+
+- [Operations & Troubleshooting](/docs/guides/operations)
+- [Security Architecture](/docs/architecture/security)
+- [Configuration Overview](/docs/configuration/overview)

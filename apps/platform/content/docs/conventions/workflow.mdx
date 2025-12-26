@@ -1,0 +1,166 @@
+---
+title: Development Workflow
+description: Day-to-day processes for git, testing, and deployments.
+full: false
+---
+
+# Development Workflow & Process
+
+Daily workflow for collaborating on Jan Server. All commands reference current Makefile targets and jan-cli helpers.
+
+## Table of Contents
+
+1. [Environment & Local Setup](#environment--local-setup)
+2. [Git Workflow](#git-workflow)
+3. [Testing Strategy](#testing-strategy)
+4. [Code Generation](#code-generation)
+5. [Security Practices](#security-practices)
+6. [Logging Standards](#logging-standards)
+7. [Code Review Checklist](#code-review-checklist)
+8. [Common Commands](#common-commands)
+9. [Deployment Checklist](#deployment-checklist)
+
+## Environment & Local Setup
+
+```bash
+git clone https://github.com/janhq/jan-server.git
+cd jan-server
+make setup
+make up-full
+make health-check
+```
+
+### Dev-Full Hybrid Workflow
+
+```bash
+make dev-full                  # start Docker stack with host routing
+./jan-cli.sh dev run llm-api   # macOS/Linux
+./jan-cli.ps1 dev run llm-api  # Windows
+```
+
+Stop dev-full with `make dev-full-stop` (keep containers) or `make dev-full-down` (remove containers).
+
+### Environment Variables
+
+- `.env` (created by `make setup`) is the single source of truth.
+- `docker/.env` is generated automatically so Compose uses identical values.
+- When running a service natively, pass env vars via `jan-cli dev run <service> --env path/to/file`.
+
+## Git Workflow
+
+- Branch format: `type/short-description` (for example `feat/background-mode`).
+- Use Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
+
+Typical loop:
+
+```bash
+git checkout -b feat/new-flow
+# edit code
+go fmt ./...
+go test ./services/llm-api/...
+make test-all
+
+git add <files>
+git commit -m "feat(llm-api): add new flow"
+git push origin feat/new-flow
+```
+
+Pull-request tips:
+1. Keep changes focused.
+2. Document manual testing (`make test-all`, curl commands, etc.).
+3. Update docs when commands or config change.
+4. Wait for CI to pass.
+
+## Testing Strategy
+
+| Scope | Command |
+|-------|---------|
+| Unit tests | `go test ./services/<service>/...` |
+| Full jan-cli api-test suite | `make test-all` |
+| Focused jan-cli api-test suites | `make test-auth`, `make test-media`, `make test-mcp-integration`, etc. |
+| Health check | `make health-check` |
+
+Run Go tests before committing and jan-cli api-test suites whenever API/Kong/MCP behavior changes.
+
+## Code Generation
+
+| Task | Command |
+|------|---------|
+| Swagger docs (all services) | `make swagger` |
+| GORM queries (llm-api) | `cd services/llm-api && make gormgen` |
+| Other generators | Follow the service-local Makefile patterns |
+
+Run generators whenever schemas or contracts change and commit the output.
+
+## Security Practices
+
+- Secrets (`HF_TOKEN`, `SERPER_API_KEY`, `BACKEND_CLIENT_SECRET`, etc.) stay in `.env`.
+- Never log access tokens or PII. Stick to structured logging.
+- Kong + Keycloak enforce JWT/API key validation-never bypass them.
+- Use HTTPS for any remote secrets (CI/CD, managed databases, etc.).
+
+## Logging Standards
+
+- Use structured logs (`logger.With()` key/value pairs).
+- Always include `requestID` in logs and error responses.
+- Log levels: `debug` for local noise, `info` for state changes, `warn` for recoverable issues, `error` for failures.
+- Avoid logging full request/response bodies unless behind a debug flag.
+
+## Code Review Checklist
+
+**Architecture**
+- Domain packages contain only business logic.
+- Infrastructure injections have no HTTP imports.
+- Routes remain thin and convert DTOs immediately.
+
+**Database**
+- Schema structs use pointer fields for zero values.
+- `EtoD()`/`DtoE()` handle nil/default conversions.
+- Repositories use query builders and transactions.
+
+**Errors & Logging**
+- Errors originate with `platformerrors.NewError()`.
+- `responses.HandleError()` renders consistent responses.
+- Request IDs logged and returned.
+
+**Testing**
+- Unit tests cover new code paths.
+- jan-cli api-test suites updated if APIs change.
+- Feature flags/env toggles documented.
+
+**Security**
+- No credentials committed or logged.
+- DTO validation in place.
+- Kong/Keycloak configs updated if auth flow changes.
+
+**Docs**
+- README/guides updated when commands or endpoints change.
+- Swagger regenerated when API contracts move.
+
+## Common Commands
+
+```bash
+make up-full            # Start everything via Docker
+make down               # Stop containers (keeps volumes)
+make dev-full           # Dev-full hybrid stack
+make monitor-up         # Observability stack
+make monitor-clean      # Remove monitoring volumes
+make db-console         # psql shell into api-db
+make db-reset           # Drop & recreate llm-api database
+make test-all           # All jan-cli api-test suites
+make test-auth          # Focused suite
+make test-mcp-integration
+```
+
+## Deployment Checklist
+
+- [ ] `go fmt ./...`
+- [ ] `go test ./services/<service>/...`
+- [ ] `make test-all` (or relevant suites)
+- [ ] `make swagger` (if API contracts changed)
+- [ ] `(cd services/llm-api && make gormgen)` (if schemas changed)
+- [ ] `.env` changes documented but not committed
+- [ ] Docker/Kubernetes manifests updated as needed
+- [ ] PR reviewed and CI green
+
+Once everything passes, follow the platform release process (merge to `main`, tag if required, and promote via the deployment pipeline).

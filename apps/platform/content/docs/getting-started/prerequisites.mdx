@@ -1,0 +1,324 @@
+---
+title: Prerequisites
+description: System requirements and dependencies for Jan Server
+full: false
+---
+
+# Prerequisites
+
+Before installing Jan Server, ensure your system meets these requirements.
+
+## System Requirements
+
+### Minimum Requirements
+
+- **CPU**: 4+ cores
+- **RAM**: 8GB minimum, 16GB recommended
+- **Disk Space**: 20GB+ free space
+- **OS**: 
+  - Linux (Ubuntu 20.04+, Debian 11+, CentOS 8+)
+  - macOS 11+ (Big Sur or later)
+  - Windows 10/11 with WSL2
+
+### GPU Requirements (Optional)
+
+For local model inference with vLLM:
+
+- **NVIDIA GPU** with CUDA 11.8+ or 12.1+
+- **VRAM**: 8GB+ (depends on model size)
+- **Drivers**: Latest NVIDIA drivers
+- **CUDA Toolkit**: 11.8 or 12.1
+
+## Required Software
+
+### Docker
+
+Jan Server runs in Docker containers.
+
+**Windows:**
+- [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+- Enable WSL2 backend
+- Allocate at least 8GB RAM to Docker
+
+**macOS:**
+- [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+- Allocate at least 8GB RAM in Docker settings
+
+**Linux:**
+- [Docker Engine](https://docs.docker.com/engine/install/)
+- [Docker Compose V2](https://docs.docker.com/compose/install/)
+- Add user to docker group: `sudo usermod -aG docker $USER`
+
+**Verify installation:**
+```bash
+docker --version          # Should show 20.10+
+docker compose version    # Should show v2.0+
+```
+
+### Make
+
+Used for running build and deployment commands.
+
+**Linux:**
+```bash
+# Debian/Ubuntu
+sudo apt-get install build-essential
+
+# CentOS/RHEL
+sudo yum install make
+```
+
+**macOS:**
+```bash
+# Pre-installed with Xcode Command Line Tools
+xcode-select --install
+```
+
+**Windows:**
+```powershell
+# Install via Chocolatey
+choco install make
+
+# Or download from GnuWin32
+# http://gnuwin32.sourceforge.net/packages/make.htm
+```
+
+### Git
+
+**Linux:**
+```bash
+sudo apt-get install git  # Debian/Ubuntu
+sudo yum install git      # CentOS/RHEL
+```
+
+**macOS:**
+```bash
+# Included with Xcode Command Line Tools
+xcode-select --install
+```
+
+**Windows:**
+- [Git for Windows](https://git-scm.com/download/win)
+
+## Optional Dependencies
+
+### For GPU Inference
+
+**NVIDIA Docker Runtime:**
+```bash
+# Install NVIDIA Container Toolkit
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
+  sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2
+sudo systemctl restart docker
+```
+
+**Verify GPU access:**
+```bash
+docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+```
+
+### For Development
+
+**Go 1.21+** (for building services):
+```bash
+# Linux
+wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+
+# macOS
+brew install go@1.21
+
+# Windows
+# Download from https://go.dev/dl/
+```
+
+**Node.js 18+** (for tests and tooling):
+```bash
+# Linux/macOS with nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 18
+nvm use 18
+
+# Windows
+# Download from https://nodejs.org/
+```
+
+**jan-cli** (for API testing):
+```bash
+# Install jan-cli for API testing
+# Follow installation instructions in the Getting Started guide
+```
+
+## API Keys & Tokens
+
+Depending on your configuration, you may need:
+
+### LLM Provider Keys
+
+**For Remote LLM APIs:**
+- **OpenAI**: Get API key from [platform.openai.com](https://platform.openai.com/)
+- **Anthropic**: Get API key from [console.anthropic.com](https://console.anthropic.com/)
+- **Groq**: Get API key from [console.groq.com](https://console.groq.com/)
+- **Azure OpenAI**: Set up in Azure Portal
+
+**For Local vLLM:**
+- **HuggingFace Token**: Required for downloading models from [huggingface.co](https://huggingface.co/settings/tokens)
+
+### MCP Tools Keys
+
+**Serper (Google Search):**
+- Get API key from [serper.dev](https://serper.dev/)
+- Free tier: 2,500 queries/month
+
+**SearXNG (Alternative):**
+- No API key needed (runs locally)
+- More privacy-focused
+
+### Media Storage Keys
+
+**AWS S3 (for Media API):**
+- AWS Access Key ID
+- AWS Secret Access Key
+- S3 Bucket name and region
+
+## Network Requirements
+
+### Required Ports
+
+Ensure these ports are available:
+
+| Service | Port | Protocol | Purpose |
+|---------|------|----------|---------|
+| Kong Gateway | 8000 | HTTP | Public API access |
+| LLM API | 8080 | HTTP | Internal service |
+| Response API | 8082 | HTTP | Internal service |
+| Keycloak | 8085 | HTTP | Authentication |
+| MCP Tools | 8091 | HTTP | Internal service |
+| Media API | 8285 | HTTP | Internal service |
+| PostgreSQL | 5432 | TCP | Database |
+| Grafana | 3001 | HTTP | Monitoring (optional) |
+| Prometheus | 9090 | HTTP | Metrics (optional) |
+| Jaeger | 16686 | HTTP | Tracing (optional) |
+
+### Firewall Configuration
+
+For production deployments, configure firewall rules:
+
+```bash
+# Allow inbound on port 8000 (API Gateway)
+sudo ufw allow 8000/tcp
+
+# Block direct access to internal services
+sudo ufw deny 8080/tcp
+sudo ufw deny 8082/tcp
+sudo ufw deny 8091/tcp
+```
+
+## Cloud Platform Requirements
+
+### AWS
+
+- EC2 instance with at least 8GB RAM
+- Security group allowing port 8000
+- Optional: GPU instance (g4dn, g5, p3)
+
+### Google Cloud
+
+- Compute Engine VM with at least 8GB RAM
+- Firewall rule allowing port 8000
+- Optional: GPU-enabled instance
+
+### Azure
+
+- Virtual Machine with at least 8GB RAM
+- Network Security Group allowing port 8000
+- Optional: GPU-enabled VM
+
+## Verification Checklist
+
+Before proceeding with installation, verify:
+
+- [ ] Docker is installed and running
+- [ ] Docker Compose V2 is available
+- [ ] Make is installed
+- [ ] Git is installed
+- [ ] At least 8GB RAM available
+- [ ] At least 20GB disk space free
+- [ ] Ports 8000, 8080, 8082, 8085, 8091 are available
+- [ ] (GPU only) NVIDIA drivers and CUDA installed
+- [ ] (GPU only) nvidia-docker2 runtime installed
+- [ ] API keys obtained (if using remote services)
+
+**Check your setup:**
+```bash
+# Verify Docker
+docker --version
+docker compose version
+docker run hello-world
+
+# Verify Make
+make --version
+
+# Verify Git
+git --version
+
+# Check available ports
+netstat -tuln | grep -E '8000|8080|8082|8085|8091'
+
+# (GPU only) Check NVIDIA
+nvidia-smi
+docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+```
+
+## Next Steps
+
+Once prerequisites are met:
+
+1. [Installation](/docs/getting-started/installation) - Install Jan Server
+2. [Configuration](/docs/getting-started/configuration) - Configure your setup
+3. [First API Call](/docs/getting-started/first-api-call) - Test your installation
+
+## Troubleshooting
+
+### Docker permission errors
+
+```bash
+# Add user to docker group (Linux)
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### Port conflicts
+
+```bash
+# Find what's using a port
+# Linux/macOS
+sudo lsof -i:8000
+
+# Windows
+netstat -ano | findstr "8000"
+```
+
+### GPU not detected
+
+```bash
+# Check NVIDIA drivers
+nvidia-smi
+
+# Check Docker GPU access
+docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+
+# Reinstall nvidia-docker2 if needed
+```
+
+## Need Help?
+
+- [Installation Guide](/docs/getting-started/installation)
+- [Operations & Troubleshooting](/docs/guides/operations)
+- [GitHub Issues](https://github.com/janhq/jan-server/issues)

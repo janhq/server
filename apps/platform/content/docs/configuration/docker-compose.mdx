@@ -1,0 +1,85 @@
+---
+title: Docker Compose Configuration
+description: Configure Jan Server with Docker Compose
+full: false
+---
+
+# Docker Compose Configuration
+
+The Jan Server repository maintains the Compose files directly instead of generating them. Profiles map one-to-one with logical stacks so you can mix and match infrastructure, APIs, MCP helpers, observability, and inference.
+
+## File Layout
+
+| File | Purpose |
+|------|---------|
+| `docker/infrastructure.yml` | PostgreSQL, Keycloak, Kong, shared networks, volumes. |
+| `docker/services-api.yml` | LLM API, Response API, Media API containers. |
+| `docker/services-mcp.yml` | MCP Tools plus supporting search/vector/sandbox services. |
+| `docker/inference.yml` | vLLM CPU/GPU profiles. |
+| `docker/observability.yml` | Prometheus, Grafana, Jaeger, OpenTelemetry Collector. |
+| `docker/dev-full.yml` | Overlay that maps upstreams to `host.docker.internal` for hybrid mode. |
+| `docker-compose.yml` | Root file that stitches the fragments together via Compose profiles. |
+
+## Configuration Integration
+
+Compose reads the `.env` written by `make quickstart` (or `make setup`) and falls back to `config/defaults.yaml` values. Examples:
+
+```yaml
+services:
+  llm-api:
+    environment:
+      HTTP_PORT: ${LLM_API_HTTP_PORT:-8080}
+      LOG_LEVEL: ${LLM_API_LOG_LEVEL:-info}
+      MEDIA_RESOLVE_URL: ${MEDIA_RESOLVE_URL:-http://kong:8000/media/v1/media/resolve}
+      POSTGRES_HOST: ${POSTGRES_HOST:-api-db}
+```
+
+Because the environment variables mirror the configuration structs, Kubernetes deployments and Compose share the same naming scheme.
+
+## Profiles & Common Commands
+
+```bash
+# Interactive setup -> writes .env and launches infra+api+mcp
+make quickstart
+
+# Bring up full stack (respecting COMPOSE_PROFILES from .env)
+make up-full
+
+# Targeted stacks
+make up-infra        # databases, kong, keycloak
+make up-api          # LLM, Response, Media
+make up-mcp          # MCP Tools + helpers
+make up-vllm-gpu     # GPU inference profile
+make monitor-up      # Observability stack
+
+# Hybrid mode (Docker + host services)
+make dev-full
+```
+
+Stop/cleanup commands mirror Compose standards:
+
+```bash
+make down            # stop containers, keep volumes
+make down-clean      # stop + remove volumes
+make monitor-down    # stop monitoring stack
+make monitor-clean   # remove monitoring volumes
+```
+
+## Validation Workflow
+
+```bash
+# Check a single fragment
+docker compose -f docker/infrastructure.yml config
+
+# Render the active profiles with your current .env
+docker compose config
+
+# Dry-run dev-full overlay
+docker compose --profile dev-full config
+```
+
+Networks and volumes are declared explicitly (`jan-server_default`, `jan-server_mcp-network`, `api-db-data`, `grafana-data`, etc.) so you can inspect them with the usual Docker CLI commands.
+
+## Rationale
+
+Directly maintaining the Compose YAML keeps the stack easy to read, works cross-platform, and avoids generator drift. If auto-generation is ever required, the repo already contains helper code under `pkg/config/compose/`, but today everything you need is captured in version-controlled Compose files plus the centralized configuration system.

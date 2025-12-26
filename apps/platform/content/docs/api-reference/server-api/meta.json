@@ -1,0 +1,8 @@
+{
+  "title": "Server API",
+  "pages": [
+    "healthz/get",
+    "readyz/get",
+    "version/get"
+  ]
+}

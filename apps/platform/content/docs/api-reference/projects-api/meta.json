@@ -1,0 +1,9 @@
+{
+  "title": "Projects API",
+  "pages": [
+    "projects/get",
+    "projects/post",
+    "projects/patch",
+    "projects/delete"
+  ]
+}

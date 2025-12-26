@@ -1,0 +1,58 @@
+---
+title: Services
+description: Jan Server microservices overview
+full: false
+---
+
+# Services
+
+Overview of all Jan Server microservices plus supporting infrastructure.
+
+## Core Services
+
+| Service | Purpose | Ports | Source | Primary References |
+|---------|---------|-------|--------|--------------------|
+| **LLM API** | OpenAI-compatible chat completions, conversation storage, model management. | 8080 (direct), 8000 via Kong. | `services/llm-api` | `docs/api/llm-api/README.md`, `docs/api/llm-api/examples.md`. |
+| **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools. | 8082. | `services/response-api` | `docs/api/response-api/README.md`. |
+| **Media API** | Binary ingestion, `jan_*` IDs, S3 storage and resolution. | 8285. | `services/media-api` | `docs/api/media-api/README.md`. |
+| **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec). | 8091. | `services/mcp-tools` | `docs/api/mcp-tools/README.md`, `services/mcp-tools/README.md`. |
+| **Template API** | Go microservice scaffold for new feature teams. | 8185. | `services/template-api` | `services/template-api/README.md`. |
+
+## Configuration System
+
+All services share the centralized configuration at `pkg/config/`:
+
+- Go structs provide type-safe defaults that compile into `config/defaults.yaml`.
+- Environment-specific YAMLs (`config/environments/<env>.yaml`) override defaults without touching secrets.
+- Environment variables take the highest priority and are generated for every field (`SERVICE_SECTION_FIELD`).
+- `jan-cli config validate|export|show` commands verify configuration during CI/CD and local development.
+- Kubernetes Helm values are generated from the same structs so Compose and cluster deployments stay aligned.
+
+## Infrastructure Components
+
+- **Kong Gateway (8000/8001)**: Exposes all APIs, enforces JWT or API-key auth, applies rate limits, and proxies `/llm/auth/guest-login` for guest tokens.
+- **Keycloak (8085)**: OAuth2/OIDC provider for access tokens plus Keycloak admin console. See `keycloak/` in the repo.
+- **PostgreSQL**: `api-db` stores LLM/Response/Media data; `keycloak-db` holds Keycloak state.
+- **vLLM (8101)**: Local inference backend used whenever the model catalog selects the `local` provider.
+- **Observability**: OpenTelemetry Collector, Prometheus (9090), Jaeger (16686), and Grafana (3001) started via `make monitor-up`.
+- **MCP helper services**: SearXNG (search), Vector Store (file search), SandboxFusion (python execution) connected through `jan-server_mcp-network`.
+
+## Creating a New Service
+
+1. **Generate from template**
+   ```bash
+   scripts/new-service-from-template.ps1 -Name my-service
+   ```
+2. **Define configuration** in `pkg/config/types.go`, then run `make config-generate`.
+3. **Load configuration** inside the new service using `pkg/config` helpers (`cfg.GetServiceConfig("my-service")`).
+4. **Wire deployments** by adding the service to `docker/services-api.yml`, optional monitoring files, and Helm values (`jan-cli config k8s-values`).
+5. **Document the service** by updating this page plus `docs/api/<service>/README.md` and navigation metadata.
+
+## Service Interactions
+
+- **LLM API -> Media API** resolves `jan_*` identifiers into presigned URLs before invoking vLLM or remote providers (`MEDIA_RESOLVE_URL`).
+- **Response API -> LLM API** delegates final language generation (`LLM_API_URL`).
+- **Response API -> MCP Tools** issues JSON-RPC calls (`MCP_TOOLS_URL`) during tool orchestration.
+- **MCP Tools -> helper services** calls Serper/SearXNG/SandboxFusion/Vector Store over the isolated MCP network.
+
+Keep this document updated whenever a service is added, renamed, or retired.
