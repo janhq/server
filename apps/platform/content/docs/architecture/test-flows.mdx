@@ -6,7 +6,7 @@ title: "Test Flows Architecture & Diagrams"
 
 **Generated**: December 2025
 
-This document provides visual representations of test flows, dependencies, and service interactions across the jan-server test suite. See [System Design](system-design) for the complete system architecture.
+This document provides visual representations of test flows, dependencies, and service interactions across the jan-server test suite. See [System Design](./system-design) for the complete system architecture.
 
 ---
 
@@ -23,7 +23,7 @@ The jan-server test suite consists of Postman collections with 100+ individual t
 
 All tests follow dependency chains: Health -> Auth -> Setup -> Main Tests -> Cleanup
 
-For complete system architecture diagrams, see [System Design](system-design).
+For complete system architecture diagrams, see [System Design](./system-design).
 
 ---
 
@@ -636,28 +636,28 @@ Total: ~15-25 seconds (depends on service latency)
 ## Integration Points
 
 ### With System Design
-See [System Design](system-design) for:
+See [System Design](./system-design) for:
 - Architecture layers
 - Service responsibilities
 - Data flow patterns
 - Deployment strategies
 
 ### With Services
-See [Services](services) for:
+See [Services](./services) for:
 - LLM API details
 - Response API details
 - Media API details
 - MCP Tools details
 
 ### With Security
-See [Security](security) for:
+See [Security](./security) for:
 - Authentication mechanisms
 - Authorization patterns
 - API key management
 - Token validation
 
 ### With Data Flow
-See [Data Flow](data-flow) for:
+See [Data Flow](./data-flow) for:
 - Request/response patterns
 - Data transformation
 - Persistence strategies

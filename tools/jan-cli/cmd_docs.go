@@ -357,12 +357,17 @@ func fixLinksInFile(filePath string) error {
 	pathMdFragmentPattern := regexp.MustCompile(`\]\(([^):/]+/[^)]+)\.md(#[^)]+)\)`)
 	contentStr = pathMdFragmentPattern.ReplaceAllString(contentStr, `]($1$2)`)
 
-	// Pattern 5: Remove .md extension from relative links (e.g., [text](file.md) -> [text](file))
-	// This matches markdown links that end in .md but aren't external URLs
-	mdPattern := regexp.MustCompile(`\]\(([^):/]+)\.md\)`)
-	contentStr = mdPattern.ReplaceAllString(contentStr, `]($1)`)
+	// Pattern 5: Remove .md extension from relative links and add ./ prefix (e.g., [text](file.md) -> [text](./file))
+	// This matches markdown links that end in .md but aren't external URLs or paths
+	mdPattern := regexp.MustCompile(`\]\(([^):/\.]+)\.md\)`)
+	contentStr = mdPattern.ReplaceAllString(contentStr, `](./$1)`)
 
-	// Pattern 6: Remove .md extension from relative path links (e.g., [text](path/file.md) -> [text](path/file))
+	// Pattern 6: Add ./ prefix to simple relative links without extension (e.g., [text](file) -> [text](./file))
+	// Only match links that don't already have ./, /, http://, https://, or #
+	simpleRelativePattern := regexp.MustCompile(`\]\(([^):/\.#]+)\)`)
+	contentStr = simpleRelativePattern.ReplaceAllString(contentStr, `](./$1)`)
+
+	// Pattern 7: Remove .md extension from relative path links (e.g., [text](path/file.md) -> [text](path/file))
 	pathMdPattern := regexp.MustCompile(`\]\(([^):/]+/[^)]+)\.md\)`)
 	contentStr = pathMdPattern.ReplaceAllString(contentStr, `]($1)`)
 

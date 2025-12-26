@@ -9,40 +9,40 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 ## Available Guides
 
 ### Development
-- **[Development Guide](development)** - Complete development workflow, setup, and best practices
-- **[Development Guide](development)** - Full Docker, dev-full (hybrid), and native execution modes
-- **[Testing Guide](testing)** - Unit tests, integration tests, and testing best practices
+- **[Development Guide](./development)** - Complete development workflow, setup, and best practices
+- **[Development Guide](./development)** - Full Docker, dev-full (hybrid), and native execution modes
+- **[Testing Guide](./testing)** - Unit tests, integration tests, and testing best practices
 
 ### Operations (how-to)
-- **[Monitoring](monitoring)** - Observability, metrics, traces, and dashboards
-- **[Deployment](deployment)** - Kubernetes, Docker Compose, and hybrid deployment strategies
-- **[Troubleshooting](troubleshooting)** - Common issues and solutions (links out to runbooks where applicable)
+- **[Monitoring](./monitoring)** - Observability, metrics, traces, and dashboards
+- **[Deployment](./deployment)** - Kubernetes, Docker Compose, and hybrid deployment strategies
+- **[Troubleshooting](./troubleshooting)** - Common issues and solutions (links out to runbooks where applicable)
 
 ### Special Topics
-- **[MCP Testing](mcp-testing)** - Testing MCP (Model Context Protocol) integration
+- **[MCP Testing](./mcp-testing)** - Testing MCP (Model Context Protocol) integration
 
 ## Quick Links
 
 ### For Developers
 | Task | Guide |
 |------|-------|
-| Setup local environment | [Development Guide](development) |
+| Setup local environment | [Development Guide](./development) |
 | Run services natively | [Development Guide - Dev-Full Mode](development#dev-full-mode-hybrid-debugging) |
-| Write and run tests | [Testing Guide](testing) |
-| Debug issues | [Troubleshooting](troubleshooting) |
+| Write and run tests | [Testing Guide](./testing) |
+| Debug issues | [Troubleshooting](./troubleshooting) |
 
 ### For DevOps
 | Task | Guide |
 |------|-------|
-| Deploy to production | [Deployment Guide](deployment) |
-| Setup monitoring | [Monitoring](monitoring) |
-| Troubleshoot issues | [Troubleshooting](troubleshooting) (see runbooks for on-call steps) |
+| Deploy to production | [Deployment Guide](./deployment) |
+| Setup monitoring | [Monitoring](./monitoring) |
+| Troubleshoot issues | [Troubleshooting](./troubleshooting) (see runbooks for on-call steps) |
 
 ### For QA
 | Task | Guide |
 |------|-------|
-| Run integration tests | [Testing Guide](testing) |
-| Test MCP tools | [MCP Testing](mcp-testing) |
+| Run integration tests | [Testing Guide](./testing) |
+| Test MCP tools | [MCP Testing](./mcp-testing) |
 
 ## Common Tasks
 
@@ -64,7 +64,7 @@ make test-all                  # jan-cli api-test integration suites
 go test ./services/llm-api/... # Unit tests from source
 ```
 
-Use [Development Guide](development) for the complete workflow including full Docker, dev-full (hybrid), and native execution modes.
+Use [Development Guide](./development) for the complete workflow including full Docker, dev-full (hybrid), and native execution modes.
 
 ### Testing Workflow
 
@@ -81,7 +81,7 @@ make test-mcp
 go test ./...
 ```
 
-See [Testing Guide](testing) for details.
+See [Testing Guide](./testing) for details.
 
 ### Monitoring Setup
 
@@ -98,7 +98,7 @@ make monitor-up
 make monitor-logs
 ```
 
-See [Monitoring Guide](monitoring) for details.
+See [Monitoring Guide](./monitoring) for details.
 
 ## Getting Help
 
@@ -111,7 +111,7 @@ Each guide includes:
 
 ### Need More Help?
 
-- Check the [Troubleshooting Guide](troubleshooting)
+- Check the [Troubleshooting Guide](./troubleshooting)
 - Review [Architecture Documentation](../architecture/)
 - See [API Reference](../api/)
 - Ask in [GitHub Discussions](https://github.com/janhq/jan-server/discussions)

@@ -42,11 +42,11 @@ This directory contains configuration system implementation details:
 
 | Document | Description |
 |----------|-------------|
-| [precedence.md](precedence) | Configuration precedence rules and loading order |
-| [env-var-mapping.md](env-var-mapping) | Environment variable to config mapping |
-| [docker-compose.md](docker-compose) | Docker Compose integration |
-| [kubernetes.md](kubernetes) | Kubernetes Helm values generation |
-| [service-migration.md](service-migration) | Migrating services to new config system |
+| [precedence.md](./precedence) | Configuration precedence rules and loading order |
+| [env-var-mapping.md](./env-var-mapping) | Environment variable to config mapping |
+| [docker-compose.md](./docker-compose) | Docker Compose integration |
+| [kubernetes.md](./kubernetes) | Kubernetes Helm values generation |
+| [service-migration.md](./service-migration) | Migrating services to new config system |
 
 **For user-facing documentation:**
 - **[Jan CLI Guide](../guides/jan-cli)** - Command-line tool for configuration management
@@ -266,7 +266,7 @@ dbDSN:= serviceCfg.Database.DSN
 - YAML files for environment differences
 - Auto-generated documentation
 
-See [service-migration.md](service-migration) for detailed migration steps.
+See [service-migration.md](./service-migration) for detailed migration steps.
 
 ## Best Practices
 
@@ -388,7 +388,7 @@ See working examples in:
 
 ---
 
-**Need help?** See [service-migration.md](service-migration) or check existing service implementations for patterns.
+**Need help?** See [service-migration.md](./service-migration) or check existing service implementations for patterns.
 
 
 
