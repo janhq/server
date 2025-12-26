@@ -1,0 +1,31 @@
+# Web Application Service
+# Vite + React chat interface
+
+services:
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+      args:
+        JAN_API_BASE_URL: ${KONG_PUBLIC_URL:-http://localhost:8000/}
+        VITE_AUTH_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8085/}
+        VITE_AUTH_REALM: ${KEYCLOAK_REALM:-jan}
+        VITE_AUTH_CLIENT_ID: ${TARGET_CLIENT_ID:-jan-client}
+        VITE_OAUTH_REDIRECT_URI: ${WEB_OAUTH_REDIRECT_URI:-http://localhost:3001/auth/callback}
+        VITE_GA_ID: ${VITE_GA_ID:-}
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../../.env}
+    environment:
+      # These are runtime configs (not used by the built static files)
+      # The actual values are baked into the JS bundle at build time
+      NGINX_PORT: 3001
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    profiles: ["web", "full"]

@@ -12,9 +12,10 @@
 #   make quickstart              - Interactive setup and run (core: infra + API + MCP web search)
 #   make setup                   - Initial project setup (dependencies, networks, .env)
 #   make cli-install             - Install jan-cli tool globally
-#   make build-all               - Build all Docker images (including platform)
+#   make build-all               - Build all Docker images (including platform & web)
 #   make up-full                 - Start services based on COMPOSE_PROFILES in .env
 #   make up-platform             - Start platform web app (http://localhost:3000)
+#   make up-web                  - Start web chat app (http://localhost:3001)
 #   make dev-full                - Start all services with host.docker.internal support (for testing)
 #   make swagger                 - Generate swagger docs and sync to platform
 #   make sync-docs               - Sync /docs to apps/platform/content/docs
@@ -103,7 +104,7 @@ install-deps:
 # SECTION 3: BUILD TARGETS
 # ============================================================================================================
 
-.PHONY: build build-api build-mcp build-memory build-realtime build-all clean-build build-llm-api build-media-api build-response-api build-realtime-api build-memory-tools build-platform-docker
+.PHONY: build build-api build-mcp build-memory build-realtime build-all clean-build build-llm-api build-media-api build-response-api build-realtime-api build-memory-tools build-platform-docker build-web-docker
 
 build: build-api build-mcp build-memory
 
@@ -169,13 +170,18 @@ endif
 
 build-all:
 	@echo "Building all Docker images..."
-	$(COMPOSE) --profile full --profile platform build
+	$(COMPOSE) --profile full --profile platform --profile web build
 	@echo " All services built"
 
 build-platform-docker:
 	@echo "Building Platform Docker image..."
 	$(COMPOSE) --profile platform build platform
 	@echo " Platform image built"
+
+build-web-docker:
+	@echo "Building Web Docker image..."
+	$(COMPOSE) --profile web build web
+	@echo " Web image built"
 
 .PHONY: config-generate config-test config-drift-check config-help
 
@@ -481,6 +487,36 @@ build-platform:
 	$(COMPOSE) --profile platform build platform
 	@echo " Platform image built"
 
+# --- Web Application ---
+
+.PHONY: up-web down-web restart-web logs-web build-web
+
+up-web:
+	@echo "Starting Web application..."
+	@echo "Note: Web app requires infra services (Kong, Keycloak) to be running."
+	@echo "Starting infra + web..."
+	$(COMPOSE) --profile infra --profile web up -d
+	@echo " Web app started"
+	@echo ""
+	@echo "Services:"
+	@echo "  - Web App:   http://localhost:3001"
+	@echo "  - Kong:      http://localhost:8000"
+	@echo "  - Keycloak:  http://localhost:8085"
+
+down-web:
+	$(COMPOSE) --profile web down
+
+restart-web:
+	$(COMPOSE) --profile web restart
+
+logs-web:
+	$(COMPOSE) --profile web logs -f web
+
+build-web:
+	@echo "Building Web Docker image..."
+	$(COMPOSE) --profile web build web
+	@echo " Web image built"
+
 # --- Full Stack ---
 
 .PHONY: up-full down-full restart-full logs stop down down-clean dev-full dev-full-down dev-full-stop
@@ -502,6 +538,7 @@ up-full: ## Start full stack (all services in Docker)
 	@echo ""
 	@echo "Optional Services (add to COMPOSE_PROFILES in .env):"
 	@echo "  - Platform:       http://localhost:3000 (profile: platform)"
+	@echo "  - Web App:        http://localhost:3001 (profile: web)"
 	@echo "  - Code Sandbox:   (profile: sandbox - for code execution)"
 	@echo "  - Vector Store:   http://localhost:3015 (profile: vector)"
 	@echo "  - Memory Tools:   http://localhost:8090 (profile: memory)"

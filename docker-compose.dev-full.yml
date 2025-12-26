@@ -25,3 +25,13 @@ services:
       # Use localhost for browser access in dev mode
       NEXT_PUBLIC_JAN_BASE_URL: http://localhost:8000
       NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8085
+
+  web:
+    build:
+      args:
+        # Use localhost for browser access in dev mode
+        JAN_API_BASE_URL: http://localhost:8000/
+        VITE_AUTH_URL: http://localhost:8085/
+        VITE_AUTH_REALM: jan
+        VITE_AUTH_CLIENT_ID: jan-client
+        VITE_OAUTH_REDIRECT_URI: http://localhost:3001/auth/callback
