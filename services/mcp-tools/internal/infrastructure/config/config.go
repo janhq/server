@@ -29,22 +29,22 @@ type Config struct {
 	SerperCBMaxHalfOpen      int `env:"SERPER_CB_MAX_HALF_OPEN" envDefault:"10"`
 
 	// HTTP Client Performance
-	SerperHTTPTimeout      int `env:"SERPER_HTTP_TIMEOUT" envDefault:"15"`
-	SerperScrapeTimeout    int `env:"SERPER_SCRAPE_TIMEOUT" envDefault:"30"` // Separate longer timeout for scrape operations
-	SerperMaxConnsPerHost  int `env:"SERPER_MAX_CONNS_PER_HOST" envDefault:"50"`
-	SerperMaxIdleConns     int `env:"SERPER_MAX_IDLE_CONNS" envDefault:"100"`
-	SerperIdleConnTimeout  int `env:"SERPER_IDLE_CONN_TIMEOUT" envDefault:"90"`
+	SerperHTTPTimeout     int `env:"SERPER_HTTP_TIMEOUT" envDefault:"15"`
+	SerperScrapeTimeout   int `env:"SERPER_SCRAPE_TIMEOUT" envDefault:"30"` // Separate longer timeout for scrape operations
+	SerperMaxConnsPerHost int `env:"SERPER_MAX_CONNS_PER_HOST" envDefault:"50"`
+	SerperMaxIdleConns    int `env:"SERPER_MAX_IDLE_CONNS" envDefault:"100"`
+	SerperIdleConnTimeout int `env:"SERPER_IDLE_CONN_TIMEOUT" envDefault:"90"`
 
 	// Retry Configuration
-	SerperRetryMaxAttempts int    `env:"SERPER_RETRY_MAX_ATTEMPTS" envDefault:"5"`
-	SerperRetryInitialDelay int   `env:"SERPER_RETRY_INITIAL_DELAY" envDefault:"250"`
-	SerperRetryMaxDelay     int   `env:"SERPER_RETRY_MAX_DELAY" envDefault:"5000"`
+	SerperRetryMaxAttempts   int     `env:"SERPER_RETRY_MAX_ATTEMPTS" envDefault:"5"`
+	SerperRetryInitialDelay  int     `env:"SERPER_RETRY_INITIAL_DELAY" envDefault:"250"`
+	SerperRetryMaxDelay      int     `env:"SERPER_RETRY_MAX_DELAY" envDefault:"5000"`
 	SerperRetryBackoffFactor float64 `env:"SERPER_RETRY_BACKOFF_FACTOR" envDefault:"1.5"`
 
 	// Tool Result Token Limits - Controls maximum output size for MCP tool results
-	MaxSnippetChars      int `env:"MCP_MAX_SNIPPET_CHARS" envDefault:"5000"`       // Max chars for search result snippets
+	MaxSnippetChars       int `env:"MCP_MAX_SNIPPET_CHARS" envDefault:"5000"`        // Max chars for search result snippets
 	MaxScrapePreviewChars int `env:"MCP_MAX_SCRAPE_PREVIEW_CHARS" envDefault:"5000"` // Max chars for scrape text preview
-	MaxScrapeTextChars   int `env:"MCP_MAX_SCRAPE_TEXT_CHARS" envDefault:"50000"`   // Max chars for full scrape text (approx 12.5k tokens)
+	MaxScrapeTextChars    int `env:"MCP_MAX_SCRAPE_TEXT_CHARS" envDefault:"50000"`   // Max chars for full scrape text (approx 12.5k tokens)
 
 	// External Services
 	VectorStoreURL   string `env:"VECTOR_STORE_URL" envDefault:"http://vector-store-mcp:3015"`
@@ -52,14 +52,15 @@ type Config struct {
 	MemoryToolsURL   string `env:"MEMORY_TOOLS_URL" envDefault:"http://memory-tools:8090"`
 
 	// LLM-API configuration for tool call tracking
-	LLMAPIBaseURL        string `env:"LLM_API_BASE_URL" envDefault:"http://llm-api:8080"`
-	MCPTrackingEnabled   bool   `env:"MCP_TRACKING_ENABLED" envDefault:"true"`
+	LLMAPIBaseURL      string `env:"LLM_API_BASE_URL" envDefault:"http://llm-api:8080"`
+	MCPTrackingEnabled bool   `env:"MCP_TRACKING_ENABLED" envDefault:"true"`
 
 	// Sandbox Configuration
 	SandboxFusionRequireApproval bool `env:"MCP_SANDBOX_REQUIRE_APPROVAL" envDefault:"false"`
 	EnablePythonExec             bool `env:"MCP_ENABLE_PYTHON_EXEC" envDefault:"true"`
 	EnableMemoryRetrieve         bool `env:"MCP_ENABLE_MEMORY_RETRIEVE" envDefault:"true"`
 	EnableFileSearch             bool `env:"MCP_ENABLE_FILE_SEARCH" envDefault:"false"`
+	EnableImageGenerate          bool `env:"MCP_ENABLE_IMAGE_GENERATE" envDefault:"true"`
 
 	// Authentication
 	AuthEnabled bool   `env:"AUTH_ENABLED" envDefault:"false"`

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"llm-api/internal/domain/tokenusage"
+	"jan-server/services/llm-api/internal/domain/tokenusage"
 
 	"gorm.io/gorm"
 )

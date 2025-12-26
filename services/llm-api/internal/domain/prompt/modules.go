@@ -1008,7 +1008,7 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 
 	// Parse tools directly from request.Tools (OpenAI format)
 	tools := make([]map[string]string, 0, len(promptCtx.Tools))
-	
+
 	for _, tool := range promptCtx.Tools {
 		if tool.Type != openai.ToolTypeFunction {
 			continue
@@ -1016,7 +1016,7 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 
 		toolName := tool.Function.Name
 		toolDesc := tool.Function.Description
-		
+
 		// Extract parameters description
 		paramsDesc := ""
 		if tool.Function.Parameters != nil {
@@ -1046,44 +1046,44 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 		toolDescLower := strings.ToLower(toolDesc)
 
 		// Search tools (web search, google search, etc.)
-		if strings.Contains(toolNameLower, "search") || 
-		   strings.Contains(toolNameLower, "google") || 
-		   strings.Contains(toolNameLower, "web_search") ||
-		   strings.Contains(toolDescLower, "search") || 
-		   strings.Contains(toolDescLower, "web search") {
+		if strings.Contains(toolNameLower, "search") ||
+			strings.Contains(toolNameLower, "google") ||
+			strings.Contains(toolNameLower, "web_search") ||
+			strings.Contains(toolDescLower, "search") ||
+			strings.Contains(toolDescLower, "web search") {
 			vars["HasSearchTool"] = true
 			vars["SearchToolName"] = toolName
 		}
 
 		// Code execution tools (python, code, execute, etc.)
-		if strings.Contains(toolNameLower, "code") || 
-		   strings.Contains(toolNameLower, "execute") || 
-		   strings.Contains(toolNameLower, "python") ||
-		   strings.Contains(toolNameLower, "run_code") ||
-		   strings.Contains(toolDescLower, "execute code") || 
-		   strings.Contains(toolDescLower, "run code") {
+		if strings.Contains(toolNameLower, "code") ||
+			strings.Contains(toolNameLower, "execute") ||
+			strings.Contains(toolNameLower, "python") ||
+			strings.Contains(toolNameLower, "run_code") ||
+			strings.Contains(toolDescLower, "execute code") ||
+			strings.Contains(toolDescLower, "run code") {
 			vars["HasCodeTool"] = true
 			vars["CodeToolName"] = toolName
 		}
 
 		// Browser tools (browser_*, browse, navigate, etc.)
-		if strings.Contains(toolNameLower, "browser") || 
-		   strings.Contains(toolNameLower, "browse") ||
-		   strings.Contains(toolNameLower, "navigate") ||
-		   strings.Contains(toolNameLower, "screenshot") ||
-		   strings.HasPrefix(toolNameLower, "browser_") ||
-		   strings.Contains(toolDescLower, "browse") || 
-		   strings.Contains(toolDescLower, "web page") {
+		if strings.Contains(toolNameLower, "browser") ||
+			strings.Contains(toolNameLower, "browse") ||
+			strings.Contains(toolNameLower, "navigate") ||
+			strings.Contains(toolNameLower, "screenshot") ||
+			strings.HasPrefix(toolNameLower, "browser_") ||
+			strings.Contains(toolDescLower, "browse") ||
+			strings.Contains(toolDescLower, "web page") {
 			vars["HasBrowserTool"] = true
 			vars["BrowserToolName"] = toolName
 		}
 
 		// Scrape tools (scrape, web_scrape, extract, etc.)
-		if strings.Contains(toolNameLower, "scrape") || 
-		   strings.Contains(toolNameLower, "web_scrape") ||
-		   strings.Contains(toolNameLower, "extract") ||
-		   strings.Contains(toolDescLower, "scrape") || 
-		   strings.Contains(toolDescLower, "extract content") {
+		if strings.Contains(toolNameLower, "scrape") ||
+			strings.Contains(toolNameLower, "web_scrape") ||
+			strings.Contains(toolNameLower, "extract") ||
+			strings.Contains(toolDescLower, "scrape") ||
+			strings.Contains(toolDescLower, "extract content") {
 			vars["HasScrapeTool"] = true
 			vars["ScrapeToolName"] = toolName
 		}
@@ -1375,6 +1375,11 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 }
 
 func detectToolUsage(promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	// If the request explicitly provides tool definitions, treat tools as enabled.
+	if promptCtx != nil && len(promptCtx.Tools) > 0 {
+		return true
+	}
+
 	if promptCtx != nil && promptCtx.Preferences != nil {
 		if useTools, ok := promptCtx.Preferences["use_tools"].(bool); ok && useTools {
 			return true
