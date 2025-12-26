@@ -19,3 +19,9 @@ services:
     volumes:
       - ./integrations/kong/kong-dev-full.yml:/kong/kong-dev-full.yml:ro
       - ./integrations/kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
+
+  platform:
+    environment:
+      # Use localhost for browser access in dev mode
+      NEXT_PUBLIC_JAN_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8085
