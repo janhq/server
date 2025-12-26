@@ -14,11 +14,13 @@ OpenAI-compatible API for chat completions, conversations, and models.
 - List available AI models
 - Handle user authentication
 - Support images via jan_* IDs
+- Generate images from text prompts
 
 **Documentation:**
 - **[Complete Documentation](llm-api/)** - Full API reference, endpoints, examples
 - **[Authentication](llm-api/#authentication)** - Auth methods, API keys, and token management
 - **[Chat Completions](llm-api/#chat-completions)** - Main completion endpoint
+- **[Image Generation](../guides/image-generation.md)** - Generate images from text prompts
 - **[Conversations](llm-api/#conversations)** - Conversation CRUD operations
 - **[Projects](llm-api/#projects)** - Project management for organizing conversations
 - **[Admin Endpoints](llm-api/#admin-endpoints)** - Provider and model catalog management

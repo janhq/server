@@ -7,6 +7,7 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
 ## Quick Navigation
 
 - [LLM API Examples](#llm-api) - Chat, conversations, models, user settings
+- [Image Generation Examples](#image-generation) - Generate images from text prompts
 - [Response API Examples](#response-api) - Multi-step tool orchestration
 - [Media API Examples](#media-api) - Image uploads and jan_* IDs
 - [MCP Tools Examples](#mcp-tools) - Search, scrape, vector store, code execution
@@ -21,6 +22,15 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
   - Projects (creation, updates, organization)
   - Models and catalogs (listing, admin operations)
   - User settings (preferences, API keys)
+
+## Image Generation
+- **[Image Generation Guide](../../guides/image-generation.md)** - Generate images from text prompts:
+  - Basic image generation
+  - Multiple models (flux-schnell, flux-dev)
+  - Size and quality options
+  - Conversation integration
+  - Python and JavaScript examples
+  - Error handling
 
 ## Response API
 - **[Comprehensive Examples](../response-api/comprehensive-examples.md)** - Multi-step orchestration including:
@@ -48,6 +58,48 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
   - Real-world scenarios (research, analysis)
 
 ## Cross-Service Examples
+
+### Image Generation + Conversation (LLM + Media)
+```bash
+# 1. Create a conversation
+CONV_RESP=$(curl -s -X POST http://localhost:8000/v1/conversations \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Image Generation Session"}')
+
+CONV_ID=$(echo $CONV_RESP | jq -r '.id')
+
+# 2. Generate image linked to conversation
+IMAGE_RESP=$(curl -s -X POST http://localhost:8000/v1/images/generations \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "A futuristic cityscape at sunset",
+    "model": "flux-schnell",
+    "size": "1024x1024",
+    "conversation_id": "'$CONV_ID'",
+    "store": true
+  }')
+
+JAN_ID=$(echo $IMAGE_RESP | jq -r '.data[0].id')
+echo "Generated image: $JAN_ID"
+
+# 3. Use generated image in follow-up chat
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "jan-v2-30b",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Describe what you see in this image I generated"},
+        {"type": "image_url", "image_url": {"url": "'$JAN_ID'"}}
+      ]
+    }],
+    "conversation": {"id": "'$CONV_ID'"}
+  }'
+```
 
 ### Vision + Chat (Media + LLM)
 ```bash
