@@ -37,10 +37,16 @@ func HandleError(reqCtx *gin.Context, err error, message string) {
 	if errors.As(err, &domainErr) {
 		statusCode := platformerrors.ErrorTypeToHTTPStatus(domainErr.GetErrorType())
 
+		// Use the domain error's message for the response message field if available
+		responseMessage := domainErr.Message
+		if responseMessage == "" {
+			responseMessage = message
+		}
+
 		errResp := ErrorResponse{
 			Code:          domainErr.GetUUID(),
 			Error:         message,
-			Message:       message,
+			Message:       responseMessage,
 			ErrorInstance: domainErr,
 			RequestID:     domainErr.GetRequestID(),
 		}

@@ -120,10 +120,10 @@ MCP_PROVIDER_DEBUG=false
 
 ### Shared Network
 
-Both `docker-compose.yml` and `docker/services-mcp.yml` use the `mcp-network` bridge to enable communication:
+Both `docker-compose.yml` and `infra/docker/services-mcp.yml` use the `mcp-network` bridge to enable communication:
 
 ```yaml
-# docker/services-mcp.yml
+# infra/docker/services-mcp.yml
 networks:
   mcp-network:
     driver: bridge

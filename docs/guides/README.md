@@ -1,22 +1,18 @@
 # Guides
 
-Comprehensive how-to guides for working with Jan Server.
+Comprehensive how-to guides for working with Jan Server. For incident response and on-call steps, see [../runbooks/README.md](../runbooks/README.md).
 
 ## Available Guides
 
 ### Development
 - **[Development Guide](development.md)** - Complete development workflow, setup, and best practices
-- **[VS Code Guide](ide/vscode.md)** - VS Code debugging, tasks, and environment configuration
-- **[Hybrid Mode](hybrid-mode.md)** - Run services natively for faster iteration and debugging
+- **[Development Guide](development.md)** - Full Docker, dev-full (hybrid), and native execution modes
 - **[Testing Guide](testing.md)** - Unit tests, integration tests, and testing best practices
 
-### IDE Setup
-- **[VS Code](ide/vscode.md)** - Complete VS Code configuration, debugging, and tasks
-
-### Operations
+### Operations (how-to)
 - **[Monitoring](monitoring.md)** - Observability, metrics, traces, and dashboards
 - **[Deployment](deployment.md)** - Kubernetes, Docker Compose, and hybrid deployment strategies
-- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions (links out to runbooks where applicable)
 
 ### Special Topics
 - **[MCP Testing](mcp-testing.md)** - Testing MCP (Model Context Protocol) integration
@@ -27,8 +23,7 @@ Comprehensive how-to guides for working with Jan Server.
 | Task | Guide |
 |------|-------|
 | Setup local environment | [Development Guide](development.md) |
-| Debug with VS Code | [VS Code Guide](ide/vscode.md) |
-| Run services natively | [Hybrid Mode](hybrid-mode.md) |
+| Run services natively | [Development Guide - Dev-Full Mode](development.md#dev-full-mode-hybrid-debugging) |
 | Write and run tests | [Testing Guide](testing.md) |
 | Debug issues | [Troubleshooting](troubleshooting.md) |
 
@@ -37,7 +32,7 @@ Comprehensive how-to guides for working with Jan Server.
 |------|-------|
 | Deploy to production | [Deployment Guide](deployment.md) |
 | Setup monitoring | [Monitoring](monitoring.md) |
-| Troubleshoot issues | [Troubleshooting](troubleshooting.md) |
+| Troubleshoot issues | [Troubleshooting](troubleshooting.md) (see runbooks for on-call steps) |
 
 ### For QA
 | Task | Guide |
@@ -49,7 +44,7 @@ Comprehensive how-to guides for working with Jan Server.
 
 ### Development Workflow
 ```bash
-# 1. Setup development environment (.env + docker/.env)
+# 1. Setup development environment (.env + infra/docker/.env)
 make setup
 
 # 2. Start everything in Docker
@@ -65,7 +60,7 @@ make test-all                  # jan-cli api-test integration suites
 go test ./services/llm-api/... # Unit tests from source
 ```
 
-Use [Development Guide](development.md) for the end-to-end workflow and [Dev-Full Mode](dev-full-mode.md) when you need host-native debugging.
+Use [Development Guide](development.md) for the complete workflow including full Docker, dev-full (hybrid), and native execution modes.
 
 ### Testing Workflow
 

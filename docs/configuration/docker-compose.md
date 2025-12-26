@@ -8,12 +8,12 @@ This document describes how docker-compose files are managed in relation to the 
 
 Instead of generating docker-compose files from YAML config, we maintain the compose files directly with references to the config system:
 
-1. **Infrastructure** (`docker/infrastructure.yml`) - PostgreSQL, Keycloak, Kong, shared networks/volumes.
-2. **API Services** (`docker/services-api.yml`) - llm-api, media-api, response-api.
-3. **MCP Services** (`docker/services-mcp.yml`) - mcp-tools, vector-store, sandbox helpers.
-4. **Observability** (`docker/observability.yml`) - Prometheus, Grafana, Jaeger, OTEL collector.
-5. **Inference** (`docker/inference.yml`) - vLLM GPU/CPU profiles.
-6. **Development overlay** (`docker/dev-full.yml`) - adds `host.docker.internal` mapping for hybrid workflows.
+1. **Infrastructure** (`infra/docker/infrastructure.yml`) - PostgreSQL, Keycloak, Kong, shared networks/volumes.
+2. **API Services** (`infra/docker/services-api.yml`) - llm-api, media-api, response-api.
+3. **MCP Services** (`infra/docker/services-mcp.yml`) - mcp-tools, vector-store, sandbox helpers.
+4. **Observability** (`infra/docker/observability.yml`) - Prometheus, Grafana, Jaeger, OTEL collector.
+5. **Inference** (`infra/docker/inference.yml`) - vLLM GPU/CPU profiles.
+6. **Development overlay** (`infra/docker/dev-full.yml`) - adds `host.docker.internal` mapping for hybrid workflows.
 
 The root `docker-compose.yml` stitches the profiles together (infrastructure + services + MCP + observability). Profiles such as `full`, `mcp`, `monitor`, and `dev-full` map directly to the files above.
 

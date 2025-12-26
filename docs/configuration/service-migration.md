@@ -137,7 +137,7 @@ Create `docs/configuration/env-var-mapping.md` documenting:
 
 ### Task 3.2: Docker Compose Updates
 
-Update `docker compose.yml` and `docker/` files to use:
+Update `docker compose.yml` and `infra/docker/` files to use:
 - Standardized env var names
 - config/environments/*.yaml for environment-specific overrides
 

@@ -29,6 +29,9 @@ type Context struct {
 
 	// Model context for model-specific template resolution
 	ModelCatalogID *string
+
+	// Tools available in the request
+	Tools []openai.Tool
 }
 
 // Module represents a prompt module that can be applied

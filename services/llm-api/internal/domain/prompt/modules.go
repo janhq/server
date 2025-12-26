@@ -864,9 +864,7 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 	var toolText string
 
 	// Build variables for template rendering
-	vars := map[string]any{
-		"ToolDescriptions": promptCtx.Preferences["tool_descriptions"],
-	}
+	vars := buildToolTemplateVars(promptCtx)
 
 	// Try to fetch model-specific template first, then fall back to global
 	if m.modelPromptService != nil && promptCtx != nil && promptCtx.ModelCatalogID != nil && *promptCtx.ModelCatalogID != "" {
@@ -931,31 +929,168 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 
 	// Fallback to hardcoded tool text if template not loaded
 	if toolText == "" {
-		var builder strings.Builder
-		builder.WriteString("You have access to various tools. Always choose the best tool for the task.\n")
-		builder.WriteString("When you need to search for information, use web search. When you need to execute code, use the code execution tool.\n")
-		builder.WriteString("Tool usage must respect project instructions and system-level constraints at all times.")
-
-		if promptCtx.Preferences != nil {
-			if desc, ok := promptCtx.Preferences["tool_descriptions"].(string); ok && strings.TrimSpace(desc) != "" {
-				builder.WriteString("\nAvailable tools: ")
-				builder.WriteString(strings.TrimSpace(desc))
-			}
-			if list, ok := promptCtx.Preferences["tool_descriptions"].([]string); ok && len(list) > 0 {
-				builder.WriteString("\nAvailable tools:\n")
-				for _, item := range list {
-					builder.WriteString("- ")
-					builder.WriteString(strings.TrimSpace(item))
-					builder.WriteString("\n")
-				}
-			}
+		// Use the same vars that would be used for template rendering
+		if len(vars["Tools"].([]map[string]string)) == 0 {
+			// No tools available at all
+			log.Debug().Msg("ToolInstructionsModule: No tools available, skipping")
+			return messages, nil
 		}
+
+		var builder strings.Builder
+		builder.WriteString("## Tool Usage Instructions\n\n")
+		builder.WriteString("You have access to the following tools. **ONLY use tools from this list. Do not invent or claim access to tools not listed here.**\n\n")
+		builder.WriteString("AVAILABLE TOOLS:\n")
+
+		// Build explicit tool list from parsed tools
+		tools := vars["Tools"].([]map[string]string)
+		for _, tool := range tools {
+			builder.WriteString("- **")
+			builder.WriteString(tool["Name"])
+			builder.WriteString("**: ")
+			builder.WriteString(tool["Description"])
+			if tool["Parameters"] != "" {
+				builder.WriteString("\n  - Parameters: ")
+				builder.WriteString(tool["Parameters"])
+			}
+			builder.WriteString("\n")
+		}
+
+		builder.WriteString("\nCRITICAL RULES:\n")
+		builder.WriteString("1. **Only use tools from the list above** - Never claim access to tools not in this list\n")
+		builder.WriteString("2. **If a tool is not listed, it does not exist** - Do not invent tool names or capabilities\n")
+		builder.WriteString("3. **When asked about available tools**, list ONLY the tools from the list above\n")
+		builder.WriteString("4. Always choose the best tool for the task from the available tools\n")
+		builder.WriteString("5. Tool usage must respect project instructions and system-level constraints at all times\n")
+
+		// Add usage patterns only for enabled tools
+		builder.WriteString("\nTOOL USAGE PATTERNS:\n")
+		if vars["HasSearchTool"].(bool) {
+			builder.WriteString("- When you need to search for information: use ")
+			builder.WriteString(vars["SearchToolName"].(string))
+			builder.WriteString("\n")
+		}
+		if vars["HasCodeTool"].(bool) {
+			builder.WriteString("- When you need to execute code: use ")
+			builder.WriteString(vars["CodeToolName"].(string))
+			builder.WriteString("\n")
+		}
+		if vars["HasBrowserTool"].(bool) {
+			builder.WriteString("- When you need to browse the web: use ")
+			builder.WriteString(vars["BrowserToolName"].(string))
+			builder.WriteString("\n")
+		}
+
 		toolText = strings.TrimSpace(builder.String())
 		log.Debug().Msg("ToolInstructionsModule: Using fallback hardcoded prompt")
 	}
 
 	result := appendSystemContent(messages, toolText, m.Name(), "")
 	return result, nil
+}
+
+// buildToolTemplateVars builds template variables for tool instructions
+func buildToolTemplateVars(promptCtx *Context) map[string]any {
+	vars := map[string]any{
+		"Tools":           []map[string]string{},
+		"HasSearchTool":   false,
+		"SearchToolName":  "",
+		"HasCodeTool":     false,
+		"CodeToolName":    "",
+		"HasBrowserTool":  false,
+		"BrowserToolName": "",
+		"HasScrapeTool":   false,
+		"ScrapeToolName":  "",
+	}
+
+	if promptCtx == nil || len(promptCtx.Tools) == 0 {
+		return vars
+	}
+
+	// Parse tools directly from request.Tools (OpenAI format)
+	tools := make([]map[string]string, 0, len(promptCtx.Tools))
+	
+	for _, tool := range promptCtx.Tools {
+		if tool.Type != openai.ToolTypeFunction {
+			continue
+		}
+
+		toolName := tool.Function.Name
+		toolDesc := tool.Function.Description
+		
+		// Extract parameters description
+		paramsDesc := ""
+		if tool.Function.Parameters != nil {
+			// Type assert Parameters to map first
+			if paramsMap, ok := tool.Function.Parameters.(map[string]interface{}); ok {
+				// Try to extract required parameters
+				if props, ok := paramsMap["properties"].(map[string]interface{}); ok {
+					paramNames := []string{}
+					for paramName := range props {
+						paramNames = append(paramNames, paramName)
+					}
+					if len(paramNames) > 0 {
+						paramsDesc = strings.Join(paramNames, ", ")
+					}
+				}
+			}
+		}
+
+		tools = append(tools, map[string]string{
+			"Name":        toolName,
+			"Description": toolDesc,
+			"Parameters":  paramsDesc,
+		})
+
+		// Detect tool types based on name and description
+		toolNameLower := strings.ToLower(toolName)
+		toolDescLower := strings.ToLower(toolDesc)
+
+		// Search tools (web search, google search, etc.)
+		if strings.Contains(toolNameLower, "search") || 
+		   strings.Contains(toolNameLower, "google") || 
+		   strings.Contains(toolNameLower, "web_search") ||
+		   strings.Contains(toolDescLower, "search") || 
+		   strings.Contains(toolDescLower, "web search") {
+			vars["HasSearchTool"] = true
+			vars["SearchToolName"] = toolName
+		}
+
+		// Code execution tools (python, code, execute, etc.)
+		if strings.Contains(toolNameLower, "code") || 
+		   strings.Contains(toolNameLower, "execute") || 
+		   strings.Contains(toolNameLower, "python") ||
+		   strings.Contains(toolNameLower, "run_code") ||
+		   strings.Contains(toolDescLower, "execute code") || 
+		   strings.Contains(toolDescLower, "run code") {
+			vars["HasCodeTool"] = true
+			vars["CodeToolName"] = toolName
+		}
+
+		// Browser tools (browser_*, browse, navigate, etc.)
+		if strings.Contains(toolNameLower, "browser") || 
+		   strings.Contains(toolNameLower, "browse") ||
+		   strings.Contains(toolNameLower, "navigate") ||
+		   strings.Contains(toolNameLower, "screenshot") ||
+		   strings.HasPrefix(toolNameLower, "browser_") ||
+		   strings.Contains(toolDescLower, "browse") || 
+		   strings.Contains(toolDescLower, "web page") {
+			vars["HasBrowserTool"] = true
+			vars["BrowserToolName"] = toolName
+		}
+
+		// Scrape tools (scrape, web_scrape, extract, etc.)
+		if strings.Contains(toolNameLower, "scrape") || 
+		   strings.Contains(toolNameLower, "web_scrape") ||
+		   strings.Contains(toolNameLower, "extract") ||
+		   strings.Contains(toolDescLower, "scrape") || 
+		   strings.Contains(toolDescLower, "extract content") {
+			vars["HasScrapeTool"] = true
+			vars["ScrapeToolName"] = toolName
+		}
+	}
+
+	vars["Tools"] = tools
+	return vars
 }
 
 // CodeAssistantModule adds code-specific instructions.

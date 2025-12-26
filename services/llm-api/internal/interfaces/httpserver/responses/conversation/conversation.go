@@ -10,6 +10,7 @@ type ConversationResponse struct {
 	Object    string            `json:"object"`
 	Title     *string           `json:"title,omitempty"`
 	CreatedAt int64             `json:"created_at"`
+	UpdatedAt int64             `json:"updated_at"`
 	Metadata  map[string]string `json:"metadata,omitempty"`
 	Referrer  *string           `json:"referrer,omitempty"`
 	ProjectID *string           `json:"project_id,omitempty"`
@@ -55,6 +56,7 @@ func NewConversationResponse(conv *conversation.Conversation) *ConversationRespo
 		Object:    "conversation",
 		Title:     conv.Title,
 		CreatedAt: conv.CreatedAt.Unix(),
+		UpdatedAt: conv.UpdatedAt.Unix(),
 		Metadata:  conv.Metadata,
 		Referrer:  conv.Referrer,
 		ProjectID: conv.ProjectPublicID,

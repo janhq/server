@@ -43,6 +43,7 @@ type ProjectRepository interface {
 	Create(ctx context.Context, project *Project) error
 	GetByPublicID(ctx context.Context, publicID string) (*Project, error)
 	GetByPublicIDAndUserID(ctx context.Context, publicID string, userID uint) (*Project, error)
+	GetByNameAndUserID(ctx context.Context, name string, userID uint) (*Project, error)
 	ListByUserID(ctx context.Context, userID uint, pagination *query.Pagination) ([]*Project, int64, error)
 	Update(ctx context.Context, project *Project) error
 	Delete(ctx context.Context, publicID string) error

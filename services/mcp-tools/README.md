@@ -229,7 +229,7 @@ The MCP Tools service can be integrated with the llm-api service to provide tool
 
 ### Add to docker-compose.yml
 
-All MCP infrastructure services are defined in `docker/services-mcp.yml` and automatically included in the main `docker-compose.yml`.
+All MCP infrastructure services are defined in `infra/docker/services-mcp.yml` and automatically included in the main `docker-compose.yml`.
 
 ```yaml
 mcp-tools:

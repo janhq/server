@@ -1,0 +1,197 @@
+# LLM API Service
+
+services:
+  llm-api:
+    build: ../../services/llm-api
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../../.env}
+    environment:
+      # HTTP Server
+      HTTP_PORT: ${HTTP_PORT:-8080}
+      METRICS_PORT: ${METRICS_PORT:-9091}
+      
+      # Database
+      DB_POSTGRESQL_WRITE_DSN: ${DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
+      DB_POSTGRESQL_READ1_DSN: ${DB_POSTGRESQL_READ1_DSN:-}
+      
+      # Keycloak / Auth
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8085}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-jan}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_ADMIN_REALM:-master}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
+      BACKEND_CLIENT_ID: ${BACKEND_CLIENT_ID:-backend}
+      BACKEND_CLIENT_SECRET: ${BACKEND_CLIENT_SECRET:-}
+      CLIENT: ${CLIENT:-jan-client}
+      OAUTH_REDIRECT_URI: ${OAUTH_REDIRECT_URI:-http://localhost:8000/auth/callback}
+      JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
+      ISSUER: ${ISSUER:-http://keycloak:8085/realms/jan}
+      ACCOUNT: ${ACCOUNT:-account}
+      JWKS_REFRESH_INTERVAL: ${JWKS_REFRESH_INTERVAL:-5m}
+      AUTH_CLOCK_SKEW: ${AUTH_CLOCK_SKEW:-60s}
+      GUEST_ROLE: ${GUEST_ROLE:-guest}
+      
+      # API Keys
+      API_KEY_PREFIX: ${API_KEY_PREFIX:-sk_live}
+      API_KEY_DEFAULT_TTL: ${API_KEY_DEFAULT_TTL:-2160h}
+      API_KEY_MAX_TTL: ${API_KEY_MAX_TTL:-2160h}
+      API_KEY_MAX_PER_USER: ${API_KEY_MAX_PER_USER:-5}
+      
+      # Gateway
+      KONG_ADMIN_URL: ${KONG_ADMIN_URL:-http://kong:8001}
+      
+      # Model Provider
+      MODEL_PROVIDER_SECRET: ${MODEL_PROVIDER_SECRET:-jan-model-provider-secret-2024}
+      JAN_PROVIDER_CONFIGS: ${JAN_PROVIDER_CONFIGS:-true}
+      JAN_PROVIDER_CONFIG_SET: ${JAN_PROVIDER_CONFIG_SET:-default}
+      JAN_PROVIDER_CONFIGS_FILE: ${JAN_PROVIDER_CONFIGS_FILE:-configs/providers.yml}
+      
+      # vLLM Provider
+      VLLM_PROVIDER_URL: ${VLLM_PROVIDER_URL:-http://vllm-jan-gpu:8101/v1}
+      VLLM_INTERNAL_KEY: ${VLLM_INTERNAL_KEY:-changeme}
+      VLLM_TOOL_SUPPORT: ${VLLM_TOOL_SUPPORT:-false}
+      
+      # Model Sync
+      MODEL_SYNC_ENABLED: ${MODEL_SYNC_ENABLED:-true}
+      MODEL_SYNC_INTERVAL_MINUTES: ${MODEL_SYNC_INTERVAL_MINUTES:-60}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      
+      # Features
+      AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
+      
+      # Observability
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-llm-api}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+      
+      # Media Integration
+      MEDIA_RESOLVE_URL: ${MEDIA_RESOLVE_URL:-http://kong:8000/media/v1/media/resolve}
+      MEDIA_RESOLVE_TIMEOUT: ${MEDIA_RESOLVE_TIMEOUT:-5s}
+    ports:
+      - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
+    depends_on:
+      api-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      # vllm-jan-gpu:
+      #   condition: service_healthy
+    volumes:
+      - ../../services/llm-api/configs:/app/config:ro
+      - ../../services/llm-api/migrations:/app/migrations:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${HTTP_PORT:-8080}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ["api", "full"]
+
+  media-api:
+    build: ../../services/media-api
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../../.env}
+    environment:
+      # HTTP Server (using service-specific port)
+      MEDIA_API_PORT: ${MEDIA_API_PORT:-8285}
+      
+      # Database (using default account)
+      DB_POSTGRESQL_WRITE_DSN: ${MEDIA_DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
+      DB_POSTGRESQL_READ1_DSN: ${MEDIA_DB_POSTGRESQL_READ1_DSN:-}
+      
+      # S3 Storage
+      MEDIA_S3_ENDPOINT: ${MEDIA_S3_ENDPOINT:-https://s3.menlo.ai}
+      MEDIA_S3_PUBLIC_ENDPOINT: ${MEDIA_S3_PUBLIC_ENDPOINT:-}
+      MEDIA_S3_REGION: ${MEDIA_S3_REGION:-us-west-2}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-platform-dev}
+      MEDIA_S3_ACCESS_KEY_ID: ${MEDIA_S3_ACCESS_KEY_ID:-XXXXX}
+      MEDIA_S3_SECRET_ACCESS_KEY: ${MEDIA_S3_SECRET_ACCESS_KEY:-YYYY}
+      MEDIA_S3_USE_PATH_STYLE: ${MEDIA_S3_USE_PATH_STYLE:-true}
+      MEDIA_S3_PRESIGN_TTL: ${MEDIA_S3_PRESIGN_TTL:-5m}
+      
+      # Media Configuration
+      MEDIA_MAX_UPLOAD_BYTES: ${MEDIA_MAX_UPLOAD_BYTES:-20971520}
+      MEDIA_PROXY_DOWNLOAD: ${MEDIA_PROXY_DOWNLOAD:-true}
+      MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
+      MEDIA_REMOTE_FETCH_TIMEOUT: ${MEDIA_REMOTE_FETCH_TIMEOUT:-15s}
+      
+      # Logging
+      MEDIA_LOG_LEVEL: ${MEDIA_LOG_LEVEL:-info}
+      
+      # Authentication
+      AUTH_ENABLED: "true"
+      AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
+      ACCOUNT: ${ACCOUNT:-account}
+      AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
+    ports:
+      - "${MEDIA_API_PORT:-8285}:${MEDIA_API_PORT:-8285}"
+    depends_on:
+      api-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    volumes:
+      - ../../services/media-api/configs:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${MEDIA_API_PORT:-8285}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ["api", "full"]
+
+  response-api:
+    build: ../../services/response-api
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-../../.env}
+    environment:
+      # HTTP Server (using service-specific port)
+      RESPONSE_API_PORT: ${RESPONSE_API_PORT:-8082}
+
+      # Database (using default account)
+      DB_POSTGRESQL_WRITE_DSN: ${RESPONSE_DB_POSTGRESQL_WRITE_DSN:-postgres://${POSTGRES_USER:-jan_user}:${POSTGRES_PASSWORD:-jan_password}@${POSTGRES_HOST:-api-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-jan_llm_api}?sslmode=disable}
+      DB_POSTGRESQL_READ1_DSN: ${RESPONSE_DB_POSTGRESQL_READ1_DSN:-}
+
+      # Service URLs (with prefixes for clarity)
+      RESPONSE_LLM_API_URL: ${RESPONSE_LLM_API_URL:-http://llm-api:8080}
+      RESPONSE_MCP_TOOLS_URL: ${RESPONSE_MCP_TOOLS_URL:-http://mcp-tools:8091}
+
+      # Tool Execution
+      RESPONSE_MAX_TOOL_DEPTH: ${RESPONSE_MAX_TOOL_DEPTH:-8}
+      RESPONSE_TOOL_TIMEOUT: ${RESPONSE_TOOL_TIMEOUT:-45s}
+
+      # Logging
+      RESPONSE_LOG_LEVEL: ${RESPONSE_LOG_LEVEL:-info}
+
+      # Authentication
+      AUTH_ENABLED: "true"
+      AUTH_ISSUER: ${ISSUER:-http://localhost:8085/realms/jan}
+      ACCOUNT: ${ACCOUNT:-account}
+      AUTH_JWKS_URL: ${JWKS_URL:-http://keycloak:8085/realms/jan/protocol/openid-connect/certs}
+
+      # Observability
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+    ports:
+      - "${RESPONSE_API_PORT:-8082}:${RESPONSE_API_PORT:-8082}"
+    depends_on:
+      api-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      # llm-api:
+      #   condition: service_healthy
+      # mcp-tools:
+      #   condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:${RESPONSE_API_PORT:-8082}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles: ["api", "full"]

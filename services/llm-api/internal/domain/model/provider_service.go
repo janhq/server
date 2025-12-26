@@ -40,6 +40,7 @@ func NewProviderService(
 type RegisterProviderInput struct {
 	Name      string
 	Vendor    string
+	Category  ProviderCategory // "llm" or "image"; defaults to "llm"
 	BaseURL   string
 	Endpoints EndpointList
 	APIKey    string
@@ -54,11 +55,13 @@ type UpdateProviderInput struct {
 	APIKey    *string
 	Metadata  *map[string]string
 	Active    *bool
+	Category  *ProviderCategory // Optional category update
 }
 
 type UpsertProviderInput struct {
 	Name      string
 	Vendor    string
+	Category  ProviderCategory // "llm" or "image"; defaults to "llm"
 	BaseURL   string
 	Endpoints EndpointList
 	APIKey    string
@@ -126,10 +129,22 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 	metadata := sanitizeMetadata(input.Metadata)
 	metadata = setDefaultCapabilities(kind, metadata)
 
+	// Default category to LLM if not specified.
+	// Auto-detect category for known image providers (e.g., z-image).
+	category := input.Category
+	if category == "" {
+		if kind == ProviderZImage {
+			category = ProviderCategoryImage
+		} else {
+			category = ProviderCategoryLLM
+		}
+	}
+
 	provider := &Provider{
 		PublicID:        publicID,
 		DisplayName:     name,
 		Kind:            kind,
+		Category:        category,
 		EncryptedAPIKey: encryptedAPIKey,
 		APIKeyHint:      apiKeyHint,
 		IsModerated:     false,
@@ -195,6 +210,8 @@ func ProviderKindFromVendor(vendor string) ProviderKind {
 		return ProviderVercelAI
 	case "deepinfra":
 		return ProviderDeepInfra
+	case "z-image", "zimage":
+		return ProviderZImage
 	default:
 		return ProviderCustom
 	}
@@ -303,6 +320,11 @@ func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProvid
 			Metadata:  &input.Metadata,
 			Active:    &input.Active,
 		}
+		// Only update category if explicitly provided
+		if input.Category != "" {
+			category := input.Category
+			updateInput.Category = &category
+		}
 		return s.UpdateProvider(ctx, existing, updateInput)
 	}
 
@@ -310,6 +332,7 @@ func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProvid
 	registerInput := RegisterProviderInput{
 		Name:      input.Name,
 		Vendor:    input.Vendor,
+		Category:  input.Category,
 		BaseURL:   input.BaseURL,
 		Endpoints: input.Endpoints,
 		APIKey:    input.APIKey,
@@ -368,6 +391,9 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 		sanitized := sanitizeMetadata(*input.Metadata)
 		// Apply default capabilities for missing keys (don't override user-provided values)
 		provider.Metadata = setDefaultCapabilities(provider.Kind, sanitized)
+	}
+	if input.Category != nil {
+		provider.Category = *input.Category
 	}
 	shouldDisableProviderModels := false
 	if input.Active != nil {
@@ -550,4 +576,33 @@ func setDefaultCapabilities(kind ProviderKind, metadata map[string]string) map[s
 	}
 
 	return metadata
+}
+
+// FindActiveImageProvider returns the first active image provider
+func (s *ProviderService) FindActiveImageProvider(ctx context.Context) (*Provider, error) {
+	category := ProviderCategoryImage
+	filter := ProviderFilter{
+		Active:   ptr.ToBool(true),
+		Category: &category,
+	}
+	providers, err := s.providerRepo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(providers) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			"no active image provider configured", nil,
+			"image-provider-not-found")
+	}
+	return providers[0], nil // Return first active image provider
+}
+
+// FindAllActiveProvidersByCategory returns all active providers of a specific category
+func (s *ProviderService) FindAllActiveProvidersByCategory(ctx context.Context, category ProviderCategory) ([]*Provider, error) {
+	filter := ProviderFilter{
+		Active:   ptr.ToBool(true),
+		Category: &category,
+	}
+	return s.providerRepo.FindByFilter(ctx, filter, nil)
 }

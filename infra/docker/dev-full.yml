@@ -1,0 +1,79 @@
+# Development Mode Configuration
+# Extends existing services with host.docker.internal networking
+# Allows stopping any service and running it manually on the host for testing
+# Use profile 'dev-full' which is equivalent to 'full' but with dev configuration
+
+services:
+  # Infrastructure - add host.docker.internal
+  api-db:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  keycloak-db:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  keycloak:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Kong - use dev-full configuration
+  kong:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong-dev-full.yml
+      KONG_LOG_LEVEL: info
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+      KONG_PLUGINS: bundled,keycloak-apikey
+      KONG_LUA_PACKAGE_PATH: /opt/kong-plugins/?.lua;/opt/kong-plugins/?/init.lua;;
+    volumes:
+      - ../../integrations/kong/kong-dev-full.yml:/kong/kong-dev-full.yml:ro
+      - ../../integrations/kong/plugins/keycloak-apikey:/opt/kong-plugins/kong/plugins/keycloak-apikey:ro
+
+  # API Services - add host.docker.internal
+  llm-api:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+
+  media-api:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      LOG_FORMAT: ${LOG_FORMAT:-console}
+
+  response-api:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+
+  # MCP Services - add host.docker.internal
+  # redis-searxng:
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+
+  # searxng:
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+
+  vector-store:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # sandboxfusion:
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+
+  mcp-tools:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      LOG_FORMAT: ${LOG_FORMAT:-console}

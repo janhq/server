@@ -3,6 +3,8 @@ package public
 import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/sharehandler"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/middlewares"
+	_ "jan-server/services/llm-api/internal/interfaces/httpserver/responses"
+	_ "jan-server/services/llm-api/internal/interfaces/httpserver/responses/share"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,9 +29,33 @@ func (route *PublicShareRoute) RegisterRouter(router gin.IRouter) {
 	// Apply rate limiting middleware (100 req/min per IP)
 	publicShares.Use(middlewares.RateLimitMiddleware(100))
 
-	// GET /v1/public/shares/:slug - Get a public share by slug
-	publicShares.GET("/:slug", route.handler.GetPublicShare)
+	publicShares.GET("/:slug", route.getPublicShare)
+	publicShares.HEAD("/:slug", route.headPublicShare)
+}
 
-	// HEAD /v1/public/shares/:slug - Check if a share exists (preload/check)
-	publicShares.HEAD("/:slug", route.handler.HeadPublicShare)
+// getPublicShare godoc
+// @Summary Get a public share by slug
+// @Description Retrieves a publicly shared conversation or message by its slug
+// @Tags Public Shares API
+// @Produce json
+// @Param slug path string true "Share slug"
+// @Success 200 {object} shareresponses.PublicShareResponse "Public share content"
+// @Failure 404 {object} responses.ErrorResponse "Share not found or revoked"
+// @Failure 410 {object} responses.ErrorResponse "Share has been revoked"
+// @Router /v1/public/shares/{slug} [get]
+func (route *PublicShareRoute) getPublicShare(reqCtx *gin.Context) {
+	route.handler.GetPublicShare(reqCtx)
+}
+
+// headPublicShare godoc
+// @Summary Check if a public share exists
+// @Description Checks if a share exists and is accessible (for preloading)
+// @Tags Public Shares API
+// @Param slug path string true "Share slug"
+// @Success 200 "Share exists and is accessible"
+// @Failure 404 "Share not found"
+// @Failure 410 "Share has been revoked"
+// @Router /v1/public/shares/{slug} [head]
+func (route *PublicShareRoute) headPublicShare(reqCtx *gin.Context) {
+	route.handler.HeadPublicShare(reqCtx)
 }

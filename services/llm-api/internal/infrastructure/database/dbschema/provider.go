@@ -20,6 +20,7 @@ type Provider struct {
 	PublicID        string         `gorm:"size:64;not null;uniqueIndex"`
 	DisplayName     string         `gorm:"size:255;not null"`
 	Kind            string         `gorm:"size:64;not null;index;index:idx_provider_active_kind,priority:2"`
+	Category        string         `gorm:"size:20;not null;default:'llm';index"` // "llm" or "image"
 	BaseURL         string         `gorm:"size:512"`
 	Endpoints       datatypes.JSON `gorm:"type:jsonb"`
 	EncryptedAPIKey string         `gorm:"type:text"`
@@ -49,6 +50,12 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 		}
 	}
 
+	// Default category to LLM for backward compatibility
+	category := string(p.Category)
+	if category == "" {
+		category = string(domainmodel.ProviderCategoryLLM)
+	}
+
 	isModerated := p.IsModerated
 	active := p.Active
 	return &Provider{
@@ -60,6 +67,7 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 		PublicID:        p.PublicID,
 		DisplayName:     p.DisplayName,
 		Kind:            string(p.Kind),
+		Category:        category,
 		BaseURL:         p.BaseURL,
 		Endpoints:       endpointsJSON,
 		EncryptedAPIKey: p.EncryptedAPIKey,
@@ -102,11 +110,18 @@ func (p *Provider) EtoD() *domainmodel.Provider {
 		active = *p.Active
 	}
 
+	// Default category to LLM for backward compatibility
+	category := domainmodel.ProviderCategoryLLM
+	if p.Category != "" {
+		category = domainmodel.ProviderCategory(p.Category)
+	}
+
 	return &domainmodel.Provider{
 		ID:              p.ID,
 		PublicID:        p.PublicID,
 		DisplayName:     p.DisplayName,
 		Kind:            domainmodel.ProviderKind(p.Kind),
+		Category:        category,
 		BaseURL:         p.BaseURL,
 		Endpoints:       endpoints,
 		EncryptedAPIKey: p.EncryptedAPIKey,

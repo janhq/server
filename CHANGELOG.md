@@ -6,6 +6,72 @@
 
 ## December 2025
 
+### [v0.0.14] - Multi-vLLM Provider, MCP Tools & User Experience Enhancements
+
+**Status:** ✅ Complete | **Date:** December 2025
+
+Major feature release with realtime communication via LiveKit, enhanced MCP capabilities, improved automation testing, multiple vLLM instance support, and refined user experience features.
+
+#### What's New
+- **Multi-vLLM Instance Provider**:
+  - Round-robin load balancing across multiple vLLM instances
+  - Enhanced swagger documentation
+  - Improved provider instance management
+- **MCP Tools Enhancements**:
+  - Admin API integration for MCP management and monitoring
+  - Model prompt administration
+  - URL filtering and validation
+  - Performance improvements for search operations (reduced latency)
+  - Improved error handling for invalid format handling
+  - Tool call tracking and verification
+- **User Settings & Personalization**:
+  - User-specific settings storage and management
+  - Default settings for existing users
+  - Settings validation and improvement
+  - Browser user support
+- **Conversation & Content Management**:
+  - Image uploading and processing
+  - Image content parsing improvements
+  - Conversation title generation improvements
+  - Model context size validation
+  - Message sharing features
+  - Deep research capability integration
+  - Project-level conversation management
+  - Conversation deletion (including bulk operations)
+  - Model tool support flag
+  - Better conversation naming and titling strategies
+- **File Search & Content Management**:
+  - File search disabled by default for better performance
+  - Content filtering and optimization
+  - File upload and handling improvements
+- **Instruct Model Setup**:
+  - Dedicated configuration for instruct-based models
+  - Enhanced model initialization
+- **Monitoring & Metrics**:
+  - Enhanced monitoring metrics tracking
+  - Improved observability for system performance
+  - Latest prompt orchestration metrics
+- **Automation & Testing**:
+  - Refactored automation test suite
+  - Improved test execution and logging
+  - Cleaner test output and reporting
+- **Bug Fixes & Improvements**:
+  - Context size reload handling improvements
+  - Token size calculation fixes
+  - Conversation recreation with same name fixes
+  - Invalid format parsing fixes
+  - Browser compatibility improvements
+  - Settings configuration improvements
+
+#### Developer Experience
+- Improved CI/CD pipelines for all services
+- Enhanced swagger API documentation
+- Better code organization and standardization
+- Cleaner logging and debugging output
+- Improved test infrastructure and reporting
+
+---
+
 ### [v0.0.13] - Admin API & Model Catalog Enhancements
 
 **Status:** ✅ Complete | **Date:** December 2025

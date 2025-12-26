@@ -33,7 +33,7 @@
  - Media upload throughput and storage utilisation.
 
 ## Alerts
-- Configure Alertmanager rules inside `monitoring/prometheus/alerting-rules.yml` (add file as needed).
+- Configure Alertmanager rules by creating `monitoring/alerting-rules.yml` based on `monitoring/prometheus-alerts.yml` as a reference.
 - Recommended alerts:
  - High error rate (>5% for 5 minutes)
  - Slow LLM responses (>5s p95)

@@ -49,6 +49,9 @@ func (h *ProjectHandler) CreateProject(
 	// Persist project
 	proj, err = h.projectService.CreateProject(ctx, proj)
 	if err != nil {
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeConflict) {
+			return nil, err
+		}
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to create project")
 	}
 
@@ -140,6 +143,9 @@ func (h *ProjectHandler) UpdateProject(
 	// Persist changes
 	proj, err = h.projectService.UpdateProject(ctx, proj)
 	if err != nil {
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeConflict) {
+			return nil, err
+		}
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to update project")
 	}
 

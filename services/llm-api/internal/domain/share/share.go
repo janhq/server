@@ -85,14 +85,24 @@ type SnapshotItem struct {
 type SnapshotContent struct {
 	Type       string      `json:"type"`
 	Text       string      `json:"text,omitempty"`
+	InputText  string      `json:"input_text,omitempty"`
 	OutputText string      `json:"output_text,omitempty"`
-	FileRef    *FileRef    `json:"file_ref,omitempty"` // For images/files
+	Image      *ImageRef   `json:"image,omitempty"` // For image content
+	FileRef    *FileRef    `json:"file_ref,omitempty"` // For file attachments
 	Annotations []Annotation `json:"annotations,omitempty"`
+}
+
+// ImageRef represents an image reference in the snapshot
+type ImageRef struct {
+	URL    string `json:"url,omitempty"`
+	FileID string `json:"file_id,omitempty"`
+	Detail string `json:"detail,omitempty"`
 }
 
 // FileRef represents a reference to a file (image, document) in the snapshot
 type FileRef struct {
-	FileID   string  `json:"file_id"`
+	FileID   string  `json:"file_id,omitempty"`
+	URL      *string `json:"url,omitempty"` // For data URLs or external image URLs
 	MimeType *string `json:"mime_type,omitempty"`
 	Name     *string `json:"name,omitempty"`
 }

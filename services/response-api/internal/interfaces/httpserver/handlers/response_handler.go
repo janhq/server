@@ -34,13 +34,16 @@ func NewResponseHandler(service response.Service, log zerolog.Logger) *ResponseH
 
 // Create handles POST /v1/responses
 // @Summary Create a response
-// @Description Creates a response and orchestrates MCP tool calls when required.
+// @Description Creates a response and orchestrates MCP tool calls when required. When `stream=true`, results are streamed as SSE events instead of a single JSON payload.
 // @Tags Responses
 // @Accept json
 // @Produce json
+// @Produce text/event-stream
 // @Param request body requests.CreateResponseRequest true "Create request"
-// @Success 200 {object} responses.ResponsePayload
+// @Success 200 {object} responses.ResponsePayload "JSON response when stream=false"
+// @Success 200 {string} string "SSE event stream when stream=true"
 // @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Router /v1/responses [post]
 func (h *ResponseHandler) Create(c *gin.Context) {
 	var req requests.CreateResponseRequest
@@ -139,6 +142,7 @@ func (h *ResponseHandler) Get(c *gin.Context) {
 // @Produce json
 // @Param response_id path string true "Response ID"
 // @Success 200 {object} responses.ResponsePayload
+// @Failure 400 {object} map[string]string
 // @Router /v1/responses/{response_id}/cancel [post]
 func (h *ResponseHandler) Cancel(c *gin.Context) {
 	id := c.Param("response_id")
@@ -156,6 +160,7 @@ func (h *ResponseHandler) Cancel(c *gin.Context) {
 // @Produce json
 // @Param response_id path string true "Response ID"
 // @Success 200 {object} responses.ResponsePayload
+// @Failure 400 {object} map[string]string
 // @Router /v1/responses/{response_id} [delete]
 func (h *ResponseHandler) Delete(c *gin.Context) {
 	h.Cancel(c)
@@ -166,7 +171,8 @@ func (h *ResponseHandler) Delete(c *gin.Context) {
 // @Tags Responses
 // @Produce json
 // @Param response_id path string true "Response ID"
-// @Success 200 {array} response.ConversationItem
+// @Success 200 {object} responses.ConversationItemsResponse
+// @Failure 400 {object} map[string]string
 // @Router /v1/responses/{response_id}/input_items [get]
 func (h *ResponseHandler) ListInputItems(c *gin.Context) {
 	id := c.Param("response_id")

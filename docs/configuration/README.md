@@ -40,7 +40,7 @@ This directory contains configuration system implementation details:
 |----------|-------------|
 | [precedence.md](precedence.md) | Configuration precedence rules and loading order |
 | [env-var-mapping.md](env-var-mapping.md) | Environment variable to config mapping |
-| [docker compose.md](docker compose.md) | Docker Compose integration |
+| [docker-compose.md](docker-compose.md) | Docker Compose integration |
 | [kubernetes.md](kubernetes.md) | Kubernetes Helm values generation |
 | [service-migration.md](service-migration.md) | Migrating services to new config system |
 
@@ -206,7 +206,7 @@ config/
 +-- staging.yaml # Staging overrides (optional)
 +-- production.yaml # Production overrides (optional)
 
-cmd/jan-cli/
+tools/jan-cli/
 +-- main.go # CLI tool
 ```
 
@@ -367,7 +367,7 @@ helm upgrade jan-server k8s/jan-server -f k8s/values-prod.yaml
 
 ### Documentation
 - **CLI Guide:** [docs/guides/jan-cli.md](../guides/jan-cli.md) - Installation, usage, and examples
-- **CLI Command Reference:** [cmd/jan-cli/README.md](../../cmd/jan-cli/README.md)
+- **CLI Command Reference:** [tools/jan-cli/README.md](../../tools/jan-cli/README.md)
 - **Configuration Types:** [pkg/config/README.md](../../pkg/config/README.md)
 
 ### Code References

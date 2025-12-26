@@ -32,6 +32,9 @@ func (repo *ProviderGormRepository) applyFilter(query *gormgen.Query, sql gormge
 	if filter.Kind != nil {
 		sql = sql.Where(query.Provider.Kind.Eq(string(*filter.Kind)))
 	}
+	if filter.Category != nil {
+		sql = sql.Where(query.Provider.Category.Eq(string(*filter.Category)))
+	}
 	if filter.Active != nil {
 		sql = sql.Where(query.Provider.Active.Is(*filter.Active))
 	}

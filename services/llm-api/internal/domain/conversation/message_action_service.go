@@ -144,44 +144,49 @@ func (s *MessageActionService) EditMessage(ctx context.Context, conv *Conversati
 }
 
 // RegenerateResponse creates a new branch and prepares for regenerating the assistant response
-// Returns the user message that should be used to regenerate a response
-func (s *MessageActionService) RegenerateResponse(ctx context.Context, conv *Conversation, assistantItemPublicID string) (*RegenerateResult, error) {
-	// Get the assistant item
-	assistantItem, err := s.convRepo.GetItemByPublicID(ctx, conv.ID, assistantItemPublicID)
+// Accepts either a user message ID (uses it directly as fork point) or an assistant message ID
+// (finds the preceding user message). Returns the user message that should be used to regenerate a response.
+func (s *MessageActionService) RegenerateResponse(ctx context.Context, conv *Conversation, itemPublicID string) (*RegenerateResult, error) {
+	// Get the item
+	item, err := s.convRepo.GetItemByPublicID(ctx, conv.ID, itemPublicID)
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "item not found")
 	}
 
-	// Verify it's an assistant message
-	if assistantItem.Role == nil || *assistantItem.Role != ItemRoleAssistant {
-		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "can only regenerate assistant messages", nil, "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e")
-	}
-
 	// Use the item's branch to find sibling items (not active branch, as item may be in a different branch)
-	itemBranch := assistantItem.Branch
+	itemBranch := item.Branch
 	if itemBranch == "" {
 		itemBranch = "MAIN"
 	}
 
-	// Get all branch items to find the user message before this assistant message
-	branchItems, err := s.convRepo.GetBranchItems(ctx, conv.ID, itemBranch, nil)
-	if err != nil {
-		return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to get branch items")
-	}
-
-	// Find the corresponding user message (the item right before the assistant message)
 	var userItem *Item
-	for i, item := range branchItems {
-		if item.PublicID == assistantItemPublicID {
-			// Look for the user message before this assistant message
-			for j := i - 1; j >= 0; j-- {
-				if branchItems[j].Role != nil && *branchItems[j].Role == ItemRoleUser {
-					userItem = branchItems[j]
-					break
-				}
-			}
-			break
+
+	// Handle based on role
+	if item.Role != nil && *item.Role == ItemRoleUser {
+		// User message passed directly - use it as fork point
+		userItem = item
+	} else if item.Role != nil && *item.Role == ItemRoleAssistant {
+		// Assistant message - find preceding user message
+		branchItems, err := s.convRepo.GetBranchItems(ctx, conv.ID, itemBranch, nil)
+		if err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to get branch items")
 		}
+
+		// Find the corresponding user message (the item right before the assistant message)
+		for i, branchItem := range branchItems {
+			if branchItem.PublicID == itemPublicID {
+				// Look for the user message before this assistant message
+				for j := i - 1; j >= 0; j-- {
+					if branchItems[j].Role != nil && *branchItems[j].Role == ItemRoleUser {
+						userItem = branchItems[j]
+						break
+					}
+				}
+				break
+			}
+		}
+	} else {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeValidation, "can only regenerate from user or assistant messages", nil, "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e")
 	}
 
 	if userItem == nil {
