@@ -233,8 +233,8 @@ OK **Already Aligned - No Changes Needed:**
 
 ### Phase 2: High Priority (Sprint 3.2)
 TODO **Requires Prefix/Rename:**
-- Service-specific HTTP_PORT -> {SERVICE}_PORT
-- Service-specific LOG_LEVEL -> {SERVICE}_LOG_LEVEL
+- Service-specific HTTP_PORT -> \{SERVICE\}_PORT
+- Service-specific LOG_LEVEL -> \{SERVICE\}_LOG_LEVEL
 - Database URL components
 
 ### Phase 3: Medium Priority (Sprint 3.3)

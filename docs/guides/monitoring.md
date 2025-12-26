@@ -158,7 +158,7 @@ Datasources are auto-provisioned from `monitoring/grafana/provisioning/datasourc
 1. Navigate to http://localhost:9090
 2. Use the "Graph" tab for queries
 3. Example PromQL queries:
- ```promql
+ ```text
  # Request rate
  rate(http_requests_total[5m])
  

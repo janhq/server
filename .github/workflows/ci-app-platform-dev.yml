@@ -1,0 +1,34 @@
+name: CI - Platform App (Dev)
+
+on:
+  push:
+    branches:
+      - dev
+      - dev-test
+      - main
+    paths:
+      - "apps/platform/**"
+      - "packages/shared-ui/**"
+      - "packages/shared-types/**"
+      - "packages/shared-utils/**"
+  pull_request:
+    branches:
+      - dev
+      - dev-test
+      - main
+    paths:
+      - "apps/platform/**"
+
+jobs:
+  build-docker-x64:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: apps/platform/Dockerfile
+      context: apps/platform
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/server/platform:dev-${{ github.sha }}
+      build-args: |
+        NEXT_PUBLIC_JAN_BASE_URL=https://api-dev.jan.ai
+      is_push: ${{ github.event_name == 'push' }}

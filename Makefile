@@ -12,9 +12,13 @@
 #   make quickstart              - Interactive setup and run (core: infra + API + MCP web search)
 #   make setup                   - Initial project setup (dependencies, networks, .env)
 #   make cli-install             - Install jan-cli tool globally
-#   make build-all               - Build all Docker images
+#   make build-all               - Build all Docker images (including platform)
 #   make up-full                 - Start services based on COMPOSE_PROFILES in .env
+#   make up-platform             - Start platform web app (http://localhost:3000)
 #   make dev-full                - Start all services with host.docker.internal support (for testing)
+#   make swagger                 - Generate swagger docs and sync to platform
+#   make sync-docs               - Sync /docs to apps/platform/content/docs
+#   make sync-swagger            - Sync swagger files to apps/platform/api
 #   make health-check            - Check if all services are healthy
 #   make test-all                - Run all integration tests
 #   make stop                    - Stop all services (keeps containers & volumes)
@@ -99,7 +103,7 @@ install-deps:
 # SECTION 3: BUILD TARGETS
 # ============================================================================================================
 
-.PHONY: build build-api build-mcp build-memory build-realtime build-all clean-build build-llm-api build-media-api build-response-api build-realtime-api build-memory-tools
+.PHONY: build build-api build-mcp build-memory build-realtime build-all clean-build build-llm-api build-media-api build-response-api build-realtime-api build-memory-tools build-platform-docker
 
 build: build-api build-mcp build-memory
 
@@ -165,8 +169,14 @@ endif
 
 build-all:
 	@echo "Building all Docker images..."
-	$(COMPOSE) --profile full build
+	$(COMPOSE) --profile full --profile platform build
 	@echo " All services built"
+
+build-platform-docker:
+	@echo "Building Platform Docker image..."
+	$(COMPOSE) --profile platform build platform
+	@echo " Platform image built"
+
 .PHONY: config-generate config-test config-drift-check config-help
 
 config-generate:
@@ -223,14 +233,40 @@ cli-clean:
 
 # --- Swagger Documentation ---
 
-.PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-response-api swagger-realtime-api swagger-combine swagger-install
+.PHONY: swagger swagger-llm-api swagger-media-api swagger-mcp-tools swagger-response-api swagger-realtime-api swagger-combine swagger-install sync-docs sync-swagger
 
-swagger: cli-build
+swagger: cli-build sync-swagger
 	@echo "Generating Swagger documentation for all services..."
 ifeq ($(OS),Windows_NT)
 	@powershell -ExecutionPolicy Bypass -File tools/jan-cli.ps1 swagger generate --combine
+	@echo "Syncing swagger to platform..."
+	@copy /Y "services\llm-api\docs\swagger\swagger-combined.json" "apps\platform\api\server.json" >nul 2>&1 || echo "swagger-combined.json not found"
+	@copy /Y "services\llm-api\docs\swagger\swagger.yaml" "apps\platform\api\server.yaml" >nul 2>&1 || echo "swagger.yaml not found"
 else
 	@bash tools/jan-cli.sh swagger generate --combine
+	@echo "Syncing swagger to platform..."
+	@cp -f services/llm-api/docs/swagger/swagger-combined.json apps/platform/api/server.json 2>/dev/null || echo "swagger-combined.json not found"
+	@cp -f services/llm-api/docs/swagger/swagger.yaml apps/platform/api/server.yaml 2>/dev/null || echo "swagger.yaml not found"
+endif
+	@echo " Swagger synced to apps/platform/api/"
+
+sync-swagger:
+	@echo "Syncing swagger files to platform..."
+ifeq ($(OS),Windows_NT)
+	@if exist "services\llm-api\docs\swagger\swagger-combined.json" copy /Y "services\llm-api\docs\swagger\swagger-combined.json" "apps\platform\api\server.json" >nul
+	@if exist "services\llm-api\docs\swagger\swagger.yaml" copy /Y "services\llm-api\docs\swagger\swagger.yaml" "apps\platform\api\server.yaml" >nul
+else
+	@cp -f services/llm-api/docs/swagger/swagger-combined.json apps/platform/api/server.json 2>/dev/null || true
+	@cp -f services/llm-api/docs/swagger/swagger.yaml apps/platform/api/server.yaml 2>/dev/null || true
+endif
+	@echo " Swagger synced to apps/platform/api/"
+
+sync-docs: cli-build
+	@echo "Syncing docs to platform content..."
+ifeq ($(OS),Windows_NT)
+	@cd tools/jan-cli && jan-cli.exe docs sync
+else
+	@cd tools/jan-cli && ./jan-cli docs sync
 endif
 
 swagger-llm-api:
@@ -415,6 +451,36 @@ down-vllm:
 logs-vllm:
 	$(COMPOSE) --profile gpu --profile cpu logs -f
 
+# --- Platform Web Application ---
+
+.PHONY: up-platform down-platform restart-platform logs-platform build-platform
+
+up-platform:
+	@echo "Starting Platform web application..."
+	@echo "Note: Platform requires infra services (Kong, Keycloak) to be running."
+	@echo "Starting infra + platform..."
+	$(COMPOSE) --profile infra --profile platform up -d
+	@echo " Platform started"
+	@echo ""
+	@echo "Services:"
+	@echo "  - Platform:  http://localhost:3000"
+	@echo "  - Kong:      http://localhost:8000"
+	@echo "  - Keycloak:  http://localhost:8085"
+
+down-platform:
+	$(COMPOSE) --profile platform down
+
+restart-platform:
+	$(COMPOSE) --profile platform restart
+
+logs-platform:
+	$(COMPOSE) --profile platform logs -f platform
+
+build-platform:
+	@echo "Building Platform Docker image..."
+	$(COMPOSE) --profile platform build platform
+	@echo " Platform image built"
+
 # --- Full Stack ---
 
 .PHONY: up-full down-full restart-full logs stop down down-clean dev-full dev-full-down dev-full-stop
@@ -435,6 +501,7 @@ up-full: ## Start full stack (all services in Docker)
 	@echo "  - MCP Tools:  http://localhost:8091 (web search)"
 	@echo ""
 	@echo "Optional Services (add to COMPOSE_PROFILES in .env):"
+	@echo "  - Platform:       http://localhost:3000 (profile: platform)"
 	@echo "  - Code Sandbox:   (profile: sandbox - for code execution)"
 	@echo "  - Vector Store:   http://localhost:3015 (profile: vector)"
 	@echo "  - Memory Tools:   http://localhost:8090 (profile: memory)"

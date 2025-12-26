@@ -385,9 +385,9 @@ curl 'http://localhost:16686/api/traces?service=SERVICE&minDuration=2s'
 
 | Severity | Contact | Response Time | Channel |
 |----------|---------|---------------|---------|
-| P0 (Critical) | SRE On-Call | <5min | PagerDuty |
-| P1 (High) | Team Lead | <15min | Slack #incidents |
-| P2 (Medium) | Dev Team | <1h | Slack #engineering |
+| P0 (Critical) | SRE On-Call | &lt;5min | PagerDuty |
+| P1 (High) | Team Lead | &lt;15min | Slack #incidents |
+| P2 (Medium) | Dev Team | &lt;1h | Slack #engineering |
 | P3 (Low) | Ticket Queue | Next business day | Jira |
 
 ---

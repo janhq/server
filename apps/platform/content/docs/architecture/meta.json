@@ -1,0 +1,13 @@
+{
+  "title": "Architecture",
+  "pages": [
+    "index",
+    "system-design",
+    "services",
+    "data-flow",
+    "security",
+    "security-advanced",
+    "observability",
+    "test-flows"
+  ]
+}

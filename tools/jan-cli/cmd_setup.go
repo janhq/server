@@ -155,6 +155,39 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Ask about starting platform app
+	startPlatform := false
+	if !skipPrompts {
+		fmt.Println()
+		fmt.Println("=" + strings.Repeat("=", 50))
+		fmt.Println("🌐 Platform Web App Setup (Optional)")
+		fmt.Println()
+		fmt.Println("Would you like to start the Platform web app?")
+		fmt.Println("This provides:")
+		fmt.Println("  • Interactive API documentation")
+		fmt.Println("  • Admin dashboard")
+		fmt.Println("  • Web UI for Jan Server")
+		fmt.Println()
+		fmt.Print("Start Platform app? (y/N): ")
+
+		reader := bufio.NewReader(os.Stdin)
+		platformResponse, _ := reader.ReadString('\n')
+		platformResponse = strings.TrimSpace(strings.ToLower(platformResponse))
+
+		if platformResponse == "y" || platformResponse == "yes" {
+			startPlatform = true
+			fmt.Println("✓ Platform app will be started")
+			
+			// Update COMPOSE_PROFILES to include platform
+			if err := addPlatformProfile(envPath); err != nil {
+				fmt.Println("⚠️  Warning: Failed to add platform profile to .env")
+			}
+		} else {
+			fmt.Println("⏭️  Skipping platform app")
+			fmt.Println("You can start it later by adding 'platform' to COMPOSE_PROFILES in .env")
+		}
+	}
+
 	fmt.Println()
 	fmt.Println("=" + strings.Repeat("=", 50))
 	fmt.Println("🐳 Starting Docker services...")
@@ -197,6 +230,11 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	// Show Realtime API if enabled
 	if os.Getenv("REALTIME_API_ENABLED") == "true" {
 		fmt.Println("  • Realtime API:     http://localhost:8186")
+	}
+
+	// Show Platform if it was started
+	if startPlatform {
+		fmt.Println("  • Platform Web App: http://localhost:3000")
 	}
 
 	fmt.Println()
@@ -898,4 +936,52 @@ func parseProfiles(lines []string) []string {
 		}
 	}
 	return []string{"infra", "api", "mcp"}
+}
+
+func addPlatformProfile(envPath string) error {
+	// Read current .env
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("read .env: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	
+	// Find and update COMPOSE_PROFILES line
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Skip comments
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "COMPOSE_PROFILES=") {
+			value := strings.TrimPrefix(trimmed, "COMPOSE_PROFILES=")
+			profiles := strings.Split(value, ",")
+			
+			// Check if platform is already in the list
+			hasPlatform := false
+			for _, p := range profiles {
+				if strings.TrimSpace(p) == "platform" {
+					hasPlatform = true
+					break
+				}
+			}
+			
+			// Add platform if not present
+			if !hasPlatform {
+				profiles = append(profiles, "platform")
+				lines[i] = "COMPOSE_PROFILES=" + strings.Join(profiles, ",")
+			}
+			break
+		}
+	}
+
+	// Write back
+	newContent := strings.Join(lines, "\n")
+	if err := os.WriteFile(envPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("write .env: %w", err)
+	}
+
+	return nil
 }
