@@ -12,6 +12,7 @@ import (
 	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/conversation"
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
+	"jan-server/services/llm-api/internal/domain/query"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/mediaclient"
 	"jan-server/services/llm-api/internal/infrastructure/observability"
@@ -27,11 +28,11 @@ const (
 
 // ImageHandler handles image generation requests.
 type ImageHandler struct {
-	cfg                  *config.Config
-	providerService      *domainmodel.ProviderService
-	imageService         inference.ImageService
-	mediaClient          *mediaclient.Client
-	conversationService  *conversation.ConversationService
+	cfg                 *config.Config
+	providerService     *domainmodel.ProviderService
+	imageService        inference.ImageService
+	mediaClient         *mediaclient.Client
+	conversationService *conversation.ConversationService
 }
 
 // NewImageHandler creates a new ImageHandler instance.
@@ -66,7 +67,6 @@ func (h *ImageHandler) GenerateImage(
 	// Start OpenTelemetry span
 	ctx, span := observability.StartSpan(ctx, "llm-api", "ImageHandler.GenerateImage")
 	defer span.End()
-
 
 	startTime := time.Now()
 
@@ -237,9 +237,9 @@ func (h *ImageHandler) convertToHTTPResponse(
 				log.Warn().Err(err).Msg("[ImageHandler] Failed to upload to media-api, falling back to base64")
 				imgData.B64JSON = item.B64JSON
 			} else {
-				// Return jan_id in pseudo data URL format for later resolution
+				// Return presigned URL for immediate access
 				imgData.ID = mediaResp.ID
-				imgData.URL = fmt.Sprintf("data:image/png;base64,%s", mediaResp.ID)
+				imgData.URL = mediaResp.PresignedURL
 			}
 		} else if item.URL != "" {
 			// If provider returned a URL directly, use it
@@ -288,6 +288,16 @@ func (h *ImageHandler) storeInConversation(
 	userItemID, _ := idgen.GenerateSecureID("msg", 16)
 	assistantItemID, _ := idgen.GenerateSecureID("msg", 16)
 
+	shouldStoreUserPrompt := true
+	lastItem, err := h.getLastConversationItem(ctx, conv, branch)
+	if err == nil && lastItem != nil {
+		if lastItem.Role != nil && *lastItem.Role == conversation.ItemRoleTool &&
+			lastItem.Status != nil && *lastItem.Status == conversation.ItemStatusInProgress {
+			// Tool calls (like image generation) already have a user message in the conversation.
+			shouldStoreUserPrompt = false
+		}
+	}
+
 	userItem := conversation.Item{
 		PublicID:  userItemID,
 		Object:    "conversation.item",
@@ -328,12 +338,38 @@ func (h *ImageHandler) storeInConversation(
 		CreatedAt: time.Now().UTC(),
 	}
 
-	items := []conversation.Item{userItem, assistantItem}
+	items := make([]conversation.Item, 0, 2)
+	if shouldStoreUserPrompt {
+		items = append(items, userItem)
+	}
+	items = append(items, assistantItem)
 	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, branch, items); err != nil {
 		return fmt.Errorf("failed to add image items to conversation: %w", err)
 	}
 
 	return nil
+}
+
+func (h *ImageHandler) getLastConversationItem(
+	ctx context.Context,
+	conv *conversation.Conversation,
+	branch string,
+) (*conversation.Item, error) {
+	if h.conversationService == nil || conv == nil {
+		return nil, nil
+	}
+
+	limit := 1
+	pagination := &query.Pagination{
+		Limit: &limit,
+		Order: "desc",
+	}
+	items, err := h.conversationService.GetConversationItems(ctx, conv, branch, pagination)
+	if err != nil || len(items) == 0 {
+		return nil, err
+	}
+
+	return &items[0], nil
 }
 
 // calculateUsage provides an estimated token usage for billing purposes.
