@@ -94,7 +94,7 @@ func (r *ImageRoute) PostGeneration(reqCtx *gin.Context) {
 
 	var request imagerequest.ImageGenerationRequest
 	if err := reqCtx.ShouldBindJSON(&request); err != nil {
-		responses.HandleError(reqCtx, err, "Invalid request body")
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, "Invalid request body", "image-validation-000")
 		return
 	}
 

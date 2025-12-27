@@ -19,14 +19,19 @@ import (
 // ImageGenerateArgs defines the arguments for the generate_image tool
 type ImageGenerateArgs struct {
 	Prompt            string   `json:"prompt"`
+	Model             *string  `json:"model,omitempty"`
 	Size              *string  `json:"size,omitempty"`
 	N                 *int     `json:"n,omitempty"`
 	NumInferenceSteps *int     `json:"num_inference_steps,omitempty"`
 	CfgScale          *float64 `json:"cfg_scale,omitempty"`
+	Quality           *string  `json:"quality,omitempty"`
+	Style             *string  `json:"style,omitempty"`
+	User              *string  `json:"user,omitempty"`
+	ConversationID    *string  `json:"conversation_id,omitempty"`
+	Store             *bool    `json:"store,omitempty"`
 	// Context passthrough
 	ToolCallID     string `json:"tool_call_id,omitempty"`
 	RequestID      string `json:"request_id,omitempty"`
-	ConversationID string `json:"conversation_id,omitempty"`
 	UserID         string `json:"user_id,omitempty"`
 }
 
@@ -73,6 +78,10 @@ func (i *ImageGenerateMCP) RegisterTools(server *mcp.Server) {
 				"description": "Image size (e.g., 512x512, 1024x1024, 1792x1024, 1024x1792)",
 				"default":     "1024x1024",
 			},
+			"model": map[string]any{
+				"type":        []string{"string", "null"},
+				"description": "Image generation model (e.g., flux-schnell, flux-dev)",
+			},
 			"n": map[string]any{
 				"type":        []string{"integer", "null"},
 				"description": "Number of images to generate",
@@ -87,6 +96,26 @@ func (i *ImageGenerateMCP) RegisterTools(server *mcp.Server) {
 				"type":        []string{"number", "null"},
 				"description": "Classifier-free guidance scale",
 				"default":     4.0,
+			},
+			"quality": map[string]any{
+				"type":        []string{"string", "null"},
+				"description": "Image quality (standard, hd)",
+			},
+			"style": map[string]any{
+				"type":        []string{"string", "null"},
+				"description": "Image style (vivid, natural)",
+			},
+			"user": map[string]any{
+				"type":        []string{"string", "null"},
+				"description": "End-user identifier for abuse monitoring",
+			},
+			"conversation_id": map[string]any{
+				"type":        []string{"string", "null"},
+				"description": "Conversation ID to store image generation items",
+			},
+			"store": map[string]any{
+				"type":        []string{"boolean", "null"},
+				"description": "Whether to store the result in the conversation",
 			},
 		},
 		"required": []string{"prompt"},
@@ -115,7 +144,11 @@ func (i *ImageGenerateMCP) RegisterTools(server *mcp.Server) {
 		}
 
 		payload := map[string]any{
-			"prompt": input.Prompt,
+			"prompt":          input.Prompt,
+			"response_format": "url",
+		}
+		if input.Model != nil {
+			payload["model"] = *input.Model
 		}
 		if input.Size != nil {
 			payload["size"] = *input.Size
@@ -128,6 +161,23 @@ func (i *ImageGenerateMCP) RegisterTools(server *mcp.Server) {
 		}
 		if input.CfgScale != nil {
 			payload["cfg_scale"] = *input.CfgScale
+		}
+		if input.Quality != nil {
+			payload["quality"] = *input.Quality
+		}
+		if input.Style != nil {
+			payload["style"] = *input.Style
+		}
+		if input.User != nil {
+			payload["user"] = *input.User
+		}
+		if input.ConversationID != nil && strings.TrimSpace(*input.ConversationID) != "" {
+			payload["conversation_id"] = *input.ConversationID
+		} else if strings.TrimSpace(tracking.ConversationID) != "" {
+			payload["conversation_id"] = tracking.ConversationID
+		}
+		if input.Store != nil {
+			payload["store"] = *input.Store
 		}
 
 		bodyBytes, err := json.Marshal(payload)

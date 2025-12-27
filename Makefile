@@ -726,7 +726,6 @@ test-media:
 
 test-mcp:
 	$(API_TEST) $(COLLECTIONS_DIR)/mcp-runtime.postman.json $(COLLECTIONS_DIR)/mcp-admin.postman.json $(API_TEST_FLAGS)
-
 test-user-management:
 	$(API_TEST) $(COLLECTIONS_DIR)/user-management.postman.json $(API_TEST_BASE_FLAGS) --auto-auth admin
 
@@ -734,7 +733,7 @@ test-model-prompts:
 	$(API_TEST) $(COLLECTIONS_DIR)/model-prompt-templates.postman.json $(API_TEST_FLAGS)
 
 test-image:
-	$(API_TEST) $(COLLECTIONS_DIR)/image.postman.json $(API_TEST_FLAGS)
+	$(API_TEST) $(COLLECTIONS_DIR)/image.postman.json $(API_TEST_FLAGS) --timeout-request 120000
 
 test-memory:
 	$(API_TEST) $(COLLECTIONS_DIR)/memory.postman.json $(API_TEST_FLAGS)

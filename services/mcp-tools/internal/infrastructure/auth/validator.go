@@ -65,7 +65,6 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 		}
 
 		token, err := jwt.Parse(tokenString, v.jwks.Keyfunc,
-			jwt.WithAudience(v.cfg.Account),
 			jwt.WithIssuer(v.cfg.AuthIssuer),
 			jwt.WithValidMethods([]string{"RS256", "RS384", "RS512"}),
 		)
@@ -74,8 +73,41 @@ func (v *Validator) Middleware() gin.HandlerFunc {
 			return
 		}
 
+		if !audienceMatches(token, v.cfg.Account) {
+			abortUnauthorized(c, "invalid token")
+			return
+		}
+
 		c.Set("auth_token", token)
 		c.Next()
+	}
+}
+
+func audienceMatches(token *jwt.Token, expected string) bool {
+	if strings.TrimSpace(expected) == "" {
+		return true
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+	rawAud, ok := claims["aud"]
+	if !ok {
+		// Tokens without aud are accepted for backward compatibility.
+		return true
+	}
+	switch aud := rawAud.(type) {
+	case string:
+		return strings.EqualFold(aud, expected)
+	case []any:
+		for _, entry := range aud {
+			if s, ok := entry.(string); ok && strings.EqualFold(s, expected) {
+				return true
+			}
+		}
+		return false
+	default:
+		return false
 	}
 }
 
