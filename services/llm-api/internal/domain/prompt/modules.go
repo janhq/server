@@ -969,6 +969,11 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 			builder.WriteString(vars["SearchToolName"].(string))
 			builder.WriteString("\n")
 		}
+		if vars["HasScrapeTool"].(bool) {
+			builder.WriteString("- When you need to scrape or extract content from a webpage: use ")
+			builder.WriteString(vars["ScrapeToolName"].(string))
+			builder.WriteString("\n")
+		}
 		if vars["HasCodeTool"].(bool) {
 			builder.WriteString("- When you need to execute code: use ")
 			builder.WriteString(vars["CodeToolName"].(string))
@@ -977,6 +982,11 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 		if vars["HasBrowserTool"].(bool) {
 			builder.WriteString("- When you need to browse the web: use ")
 			builder.WriteString(vars["BrowserToolName"].(string))
+			builder.WriteString("\n")
+		}
+		if vars["HasImageTool"].(bool) {
+			builder.WriteString("- When you need to generate images: use ")
+			builder.WriteString(vars["ImageToolName"].(string))
 			builder.WriteString("\n")
 		}
 
@@ -1000,6 +1010,8 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 		"BrowserToolName": "",
 		"HasScrapeTool":   false,
 		"ScrapeToolName":  "",
+		"HasImageTool":    false,
+		"ImageToolName":   "",
 	}
 
 	if promptCtx == nil || len(promptCtx.Tools) == 0 {
@@ -1086,6 +1098,15 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 			strings.Contains(toolDescLower, "extract content") {
 			vars["HasScrapeTool"] = true
 			vars["ScrapeToolName"] = toolName
+		}
+
+		// Image generation tools (generate_image, image generation, etc.)
+		if strings.Contains(toolNameLower, "generate_image") ||
+			strings.Contains(toolNameLower, "image") ||
+			strings.Contains(toolDescLower, "generate image") ||
+			strings.Contains(toolDescLower, "image generation") {
+			vars["HasImageTool"] = true
+			vars["ImageToolName"] = toolName
 		}
 	}
 

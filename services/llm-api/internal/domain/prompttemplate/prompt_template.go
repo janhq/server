@@ -190,6 +190,7 @@ TOOL USAGE PATTERNS:
 {{end}}{{if .HasScrapeTool}}- When you need to scrape or extract content from a webpage: use {{.ScrapeToolName}}
 {{end}}{{if .HasCodeTool}}- When you need to execute code: use {{.CodeToolName}}
 {{end}}{{if .HasBrowserTool}}- When you need to browse the web: use {{.BrowserToolName}}
+{{end}}{{if .HasImageTool}}- When you need to generate images: use {{.ImageToolName}}
 {{end}}`
 
 // DefaultCodeAssistantPrompt is the default prompt for code assistance
