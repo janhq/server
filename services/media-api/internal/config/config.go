@@ -46,7 +46,7 @@ type Config struct {
 	S3AccessKeyID    string        `env:"MEDIA_S3_ACCESS_KEY_ID"`     // AWS standard naming
 	S3SecretKey      string        `env:"MEDIA_S3_SECRET_ACCESS_KEY"` // AWS standard naming
 	S3UsePathStyle   bool          `env:"MEDIA_S3_USE_PATH_STYLE" envDefault:"true"`
-	S3PresignTTL     time.Duration `env:"MEDIA_S3_PRESIGN_TTL" envDefault:"5m"`
+	S3PresignTTL     time.Duration `env:"MEDIA_S3_PRESIGN_TTL" envDefault:"168h"`
 
 	// Media Configuration
 	MaxMediaBytes      int64         `env:"MEDIA_MAX_BYTES" envDefault:"20971520"`

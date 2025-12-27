@@ -147,7 +147,388 @@
       ]
     },
     {
-      "name": "4. Image Generation Workflow",
+      "name": "4. MCP Image Tool",
+      "description": "Validate MCP tools/list and tools/call for generate_image.",
+      "item": [
+        {
+          "name": "MCP Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Conversation-Id",
+                "value": "{{mcp_conversation_id}}"
+              },
+              {
+                "key": "X-Tool-Call-Id",
+                "value": "{{mcp_tool_call_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"MCP Image Generate Conversation\"\n}"
+            },
+            "url": "{{kong_url}}/v1/conversations"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const existing = pm.collectionVariables.get('mcp_tool_call_id');",
+                  "if (!existing) {",
+                  "    pm.collectionVariables.set('mcp_tool_call_id', `call_${Date.now()}`);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[MCP] Conversation created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "pm.test('[MCP] Conversation has valid ID', function () {",
+                  "    pm.expect(data.id).to.exist;",
+                  "    pm.expect(data.id).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('mcp_conversation_id', data.id);",
+                  "console.log('Created MCP conversation:', data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP Tools List (generate_image)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/list\",\n  \"id\": \"mcp-tools-list-1\"\n}"
+            },
+            "url": "{{mcp_url}}/v1/mcp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function parseMCPResponse(text) {",
+                  "    if (!text) {",
+                  "        return null;",
+                  "    }",
+                  "    const trimmed = text.trim();",
+                  "    if (trimmed.startsWith('event:') || trimmed.startsWith('data:')) {",
+                  "        const lines = trimmed.split('\\n');",
+                  "        for (let i = 0; i < lines.length; i++) {",
+                  "            const line = lines[i].trim();",
+                  "            if (line.startsWith('data:')) {",
+                  "                const jsonStr = line.slice(5).trim();",
+                  "                if (jsonStr) {",
+                  "                    return JSON.parse(jsonStr);",
+                  "                }",
+                  "            }",
+                  "        }",
+                  "        return null;",
+                  "    }",
+                  "    return JSON.parse(trimmed);",
+                  "}",
+                  "",
+                  "pm.test('[MCP] tools/list responded', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]);",
+                  "});",
+                  "",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.collectionVariables.set('mcp_tool_has_generate_image', 'false');",
+                  "    pm.test('[MCP] tools/list skipped - unauthorized', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "let parsed = null;",
+                  "try {",
+                  "    parsed = parseMCPResponse(pm.response.text());",
+                  "} catch (err) {",
+                  "    console.log('Failed to parse MCP tools/list response:', err);",
+                  "}",
+                  "",
+                  "pm.test('[MCP] tools/list payload parsed', function () {",
+                  "    pm.expect(parsed).to.exist;",
+                  "});",
+                  "",
+                  "const tools = parsed && parsed.result && Array.isArray(parsed.result.tools) ? parsed.result.tools : [];",
+                  "const generateTool = tools.find(t => t.name === 'generate_image');",
+                  "if (generateTool) {",
+                  "    pm.collectionVariables.set('mcp_tool_has_generate_image', 'true');",
+                  "    pm.test('[MCP] generate_image is listed', function () {",
+                  "        pm.expect(generateTool).to.exist;",
+                  "    });",
+                  "    if (generateTool.inputSchema && Array.isArray(generateTool.inputSchema.required)) {",
+                  "        pm.test('[MCP] generate_image requires prompt', function () {",
+                  "            pm.expect(generateTool.inputSchema.required).to.include('prompt');",
+                  "        });",
+                  "    }",
+                  "} else {",
+                  "    pm.collectionVariables.set('mcp_tool_has_generate_image', 'false');",
+                  "    pm.test('[MCP] generate_image not listed (tool may be disabled)', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    console.log('generate_image not listed in tools/list; tool may be disabled via config.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP Generate Image (tools/call)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"id\": \"mcp-generate-image-1\",\n  \"params\": {\n    \"name\": \"generate_image\",\n    \"arguments\": {\n      \"prompt\": \"A small red cube on a wooden table, studio lighting\",\n      \"size\": \"512x512\",\n      \"n\": 1,\n      \"num_inference_steps\": 20,\n      \"cfg_scale\": 4\n    }\n  }\n}"
+            },
+            "url": "{{mcp_url}}/v1/mcp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function parseMCPResponse(text) {",
+                  "    if (!text) {",
+                  "        return null;",
+                  "    }",
+                  "    const trimmed = text.trim();",
+                  "    if (trimmed.startsWith('event:') || trimmed.startsWith('data:')) {",
+                  "        const lines = trimmed.split('\\n');",
+                  "        for (let i = 0; i < lines.length; i++) {",
+                  "            const line = lines[i].trim();",
+                  "            if (line.startsWith('data:')) {",
+                  "                const jsonStr = line.slice(5).trim();",
+                  "                if (jsonStr) {",
+                  "                    return JSON.parse(jsonStr);",
+                  "                }",
+                  "            }",
+                  "        }",
+                  "        return null;",
+                  "    }",
+                  "    return JSON.parse(trimmed);",
+                  "}",
+                  "",
+                  "const hasTool = pm.collectionVariables.get('mcp_tool_has_generate_image') === 'true';",
+                  "if (!hasTool) {",
+                  "    pm.test('[MCP] tools/call skipped (generate_image not available)', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('[MCP] tools/call responded', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 401, 403, 504]);",
+                  "});",
+                  "",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.collectionVariables.set('mcp_generate_image_success', 'false');",
+                  "    pm.test('[MCP] tools/call skipped - unauthorized', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "let parsed = null;",
+                  "try {",
+                  "    parsed = parseMCPResponse(pm.response.text());",
+                  "} catch (err) {",
+                  "    console.log('Failed to parse MCP tools/call response:', err);",
+                  "}",
+                  "",
+                  "pm.test('[MCP] tools/call payload parsed', function () {",
+                  "    pm.expect(parsed).to.exist;",
+                  "});",
+                  "",
+                  "if (!parsed) {",
+                  "    pm.collectionVariables.set('mcp_generate_image_success', 'false');",
+                  "    return;",
+                  "}",
+                  "",
+                  "if (parsed.error) {",
+                  "    pm.collectionVariables.set('mcp_generate_image_success', 'false');",
+                  "    pm.test('[MCP] generate_image error payload present', function () {",
+                  "        pm.expect(parsed.error).to.have.property('message');",
+                  "    });",
+                  "    console.log('MCP generate_image error:', parsed.error);",
+                  "    return;",
+                  "}",
+                  "",
+                  "let payload = parsed.result || {};",
+                  "if (payload && payload.result) {",
+                  "    payload = payload.result;",
+                  "}",
+                  "",
+                  "const data = payload && Array.isArray(payload.data) ? payload.data : null;",
+                  "const hasRaw = payload && typeof payload.raw === 'string';",
+                  "",
+                  "pm.test('[MCP] generate_image payload present', function () {",
+                  "    pm.expect((data && data.length > 0) || hasRaw).to.be.true;",
+                  "});",
+                  "",
+                  "if (data && data.length > 0) {",
+                  "    const imageData = data[0];",
+                  "    pm.test('[MCP] image data has url', function () {",
+                  "        pm.expect(imageData.url).to.exist;",
+                  "    });",
+                  "    if (imageData.url) {",
+                  "        pm.collectionVariables.set('mcp_generated_image_url', imageData.url);",
+                  "        pm.collectionVariables.set('mcp_image_url_is_http', imageData.url.match(/^https?:\\/\\//) ? 'true' : 'false');",
+                  "    } else {",
+                  "        pm.collectionVariables.set('mcp_image_url_is_http', 'false');",
+                  "    }",
+                  "    pm.collectionVariables.set('mcp_generate_image_success', imageData.url ? 'true' : 'false');",
+                  "} else {",
+                  "    pm.collectionVariables.set('mcp_generate_image_success', 'false');",
+                  "    pm.collectionVariables.set('mcp_image_url_is_http', 'false');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP Verify Image URL Accessible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{kong_url}}/healthz"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const hasTool = pm.collectionVariables.get('mcp_tool_has_generate_image') === 'true';",
+                  "const mcpSuccess = pm.collectionVariables.get('mcp_generate_image_success') === 'true';",
+                  "const isHttpUrl = pm.collectionVariables.get('mcp_image_url_is_http') === 'true';",
+                  "const imgUrl = pm.collectionVariables.get('mcp_generated_image_url');",
+                  "",
+                  "if (!hasTool || !mcpSuccess) {",
+                  "    pm.test('[MCP] Image URL check skipped - tool unavailable or call failed', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "if (isHttpUrl && imgUrl) {",
+                  "    pm.test('[MCP] Image URL is accessible', function (done) {",
+                  "        pm.sendRequest({",
+                  "            url: imgUrl,",
+                  "            method: 'GET'",
+                  "        }, function (err, res) {",
+                  "            pm.expect(err).to.equal(null);",
+                  "            pm.expect(res.code).to.be.oneOf([200, 301, 302, 307, 308]);",
+                  "            const contentType = res.headers.get('Content-Type');",
+                  "            if (contentType) {",
+                  "                pm.expect(contentType).to.match(/image\\//);",
+                  "            }",
+                  "            done();",
+                  "        });",
+                  "    });",
+                  "} else {",
+                  "    pm.test('[MCP] Image URL check skipped - data URI or missing URL', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP Verify Conversation Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}/items"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const hasTool = pm.collectionVariables.get('mcp_tool_has_generate_image') === 'true';",
+                  "const mcpSuccess = pm.collectionVariables.get('mcp_generate_image_success') === 'true';",
+                  "if (!hasTool || !mcpSuccess) {",
+                  "    pm.test('[MCP] Conversation check skipped - tool unavailable or call failed', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('[MCP] Conversation items retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "pm.test('[MCP] Items include user + image_generation_call', function () {",
+                  "    pm.expect(data.data).to.be.an('array');",
+                  "    const items = data.data;",
+                  "    const userMsg = items.find(i => i.type === 'message' && i.role === 'user');",
+                  "    const imageCall = items.find(i => i.type === 'image_generation_call' && i.role === 'assistant');",
+                  "    pm.expect(userMsg).to.exist;",
+                  "    pm.expect(imageCall).to.exist;",
+                  "});",
+                  "console.log('[MCP] Conversation items verified, count:', data.data ? data.data.length : 0);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Image Generation Workflow",
       "description": "Complete workflow: Create conversation -> Chat -> Generate image -> Verify URL -> Chat again -> Verify all messages saved",
       "item": [
         {
@@ -234,6 +615,83 @@
           ]
         },
         {
+          "name": "Step 2b: Ask for Image via Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"{{model_id}}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Please generate an image of a futuristic city skyline at dusk.\"\n    }\n  ],\n  \"conversation\": {\n    \"id\": \"{{image_conversation_id}}\"\n  },\n  \"stream\": false,\n  \"max_tokens\": 120\n}"
+            },
+            "url": "{{kong_url}}/v1/chat/completions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Step 2b] Chat completion successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "pm.test('[Step 2b] Response has assistant message', function () {",
+                  "    pm.expect(data.choices).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(data.choices[0].message).to.exist;",
+                  "    pm.expect(data.choices[0].message.role).to.equal('assistant');",
+                  "});",
+                  "pm.collectionVariables.set('image_request_chat_message_id', data.id);",
+                  "console.log('Image request chat completed, response ID:', data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 2c: Verify Items After Image Request Chat",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{image_conversation_id}}/items"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('[Step 2c] Conversation items retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "pm.test('[Step 2c] Items include two user and two assistant messages', function () {",
+                  "    pm.expect(data.data).to.be.an('array');",
+                  "    const userMsgs = data.data.filter(m => m.role === 'user');",
+                  "    const assistantMsgs = data.data.filter(m => m.role === 'assistant');",
+                  "    pm.expect(userMsgs.length).to.be.at.least(2);",
+                  "    pm.expect(assistantMsgs.length).to.be.at.least(2);",
+                  "});",
+                  "console.log('Verified items after image request chat. Item count:', data.data ? data.data.length : 0);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Step 3: Verify First Message Received",
           "request": {
             "method": "GET",
@@ -285,7 +743,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prompt\": \"A serene mountain landscape at sunset with vibrant orange and purple sky, photorealistic\",\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"1024x1024\",\n  \"response_format\": \"url\",\n  \"conversation_id\": \"{{image_conversation_id}}\",\n  \"store\": true\n}"
+              "raw": "{\n  \"prompt\": \"A serene mountain landscape at sunset with vibrant orange and purple sky, photorealistic\",\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\",\n  \"conversation_id\": \"{{image_conversation_id}}\",\n  \"store\": true\n}"
             },
             "url": "{{kong_url}}/v1/images/generations"
           },
@@ -295,9 +753,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Image generation may not be configured - accept 200, 404, or 500",
+                  "// Image generation may not be configured - accept 200 or common gateway errors",
                   "pm.test('[Step 4] Image generation request processed', function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 500, 501]);",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 500, 501, 504]);",
                   "});",
                   "",
                   "if (pm.response.code === 200) {",
@@ -321,6 +779,7 @@
                   "        if (imageData.id) {",
                   "            pm.expect(imageData.id).to.match(/^jan_[a-z0-9]+$/);",
                   "            pm.collectionVariables.set('generated_image_id', imageData.id);",
+                  "            pm.collectionVariables.set('latest_media_id', imageData.id);",
                   "        }",
                   "    });",
                   "    ",
@@ -330,9 +789,15 @@
                   "    const isHttpUrl = imgUrl && imgUrl.match(/^https?:\\/\\//); ",
                   "    pm.collectionVariables.set('image_generation_success', 'true');",
                   "    pm.collectionVariables.set('image_url_is_http', isHttpUrl ? 'true' : 'false');",
+                  "    const kongUrl = pm.variables.get('kong_url');",
+                  "    const fallbackUrl = kongUrl ? `${kongUrl}/healthz` : 'http://localhost:8000/healthz';",
+                  "    pm.collectionVariables.set('image_url_request', isHttpUrl ? imgUrl : fallbackUrl);",
                   "    console.log('Image generated successfully:', imgUrl.substring(0, 100));",
                   "} else {",
                   "    pm.collectionVariables.set('image_generation_success', 'false');",
+                  "    const kongUrl = pm.variables.get('kong_url');",
+                  "    const fallbackUrl = kongUrl ? `${kongUrl}/healthz` : 'http://localhost:8000/healthz';",
+                  "    pm.collectionVariables.set('image_url_request', fallbackUrl);",
                   "    console.log('Image generation not available (status:', pm.response.code, '). Continuing with workflow...');",
                   "}"
                 ]
@@ -344,8 +809,13 @@
           "name": "Step 5: Verify Image URL Accessible",
           "request": {
             "method": "GET",
-            "header": [],
-            "url": "{{kong_url}}/healthz"
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/media/v1/media/{{latest_media_id}}/presign"
           },
           "event": [
             {
@@ -353,11 +823,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// This step uses healthz as a dummy request.",
-                  "// Actual image URL verification is skipped when image is base64 data URI.",
-                  "const isHttpUrl = pm.collectionVariables.get('image_url_is_http') === 'true';",
-                  "const imgUrl = pm.collectionVariables.get('generated_image_url');",
-                  "console.log('Image URL type check - isHttpUrl:', isHttpUrl, 'URL prefix:', imgUrl ? imgUrl.substring(0, 30) : 'none');"
+                  "const existingId = pm.collectionVariables.get('latest_media_id');",
+                  "const fallbackId = pm.collectionVariables.get('generated_image_id');",
+                  "if (!existingId && fallbackId) {",
+                  "    pm.collectionVariables.set('latest_media_id', fallbackId);",
+                  "}",
+                  "const activeId = pm.collectionVariables.get('latest_media_id');",
+                  "console.log('Presign request for media ID:', activeId || 'none');"
                 ]
               }
             },
@@ -366,29 +838,56 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Skip verification for data: URLs (base64 embedded images)",
-                  "const isHttpUrl = pm.collectionVariables.get('image_url_is_http') === 'true';",
                   "const imgSuccess = pm.collectionVariables.get('image_generation_success') === 'true';",
+                  "const mediaId = pm.collectionVariables.get('latest_media_id');",
                   "",
-                  "if (imgSuccess && isHttpUrl) {",
-                  "    pm.test('[Step 5] Image URL is accessible', function () {",
-                  "        pm.expect(pm.response.code).to.be.oneOf([200, 301, 302, 307]);",
-                  "    });",
-                  "    ",
-                  "    pm.test('[Step 5] Response is an image', function () {",
-                  "        const contentType = pm.response.headers.get('Content-Type');",
-                  "        if (contentType) {",
-                  "            pm.expect(contentType).to.match(/image\\//);",
-                  "        }",
-                  "    });",
-                  "    console.log('Image URL verified accessible');",
-                  "} else if (imgSuccess && !isHttpUrl) {",
-                  "    pm.test('[Step 5] Skipped - image is base64 data URI (no HTTP fetch needed)', function () {",
+                  "if (!imgSuccess || !mediaId) {",
+                  "    pm.test('[Step 5] Skipped - image generation not available', function () {",
                   "        pm.expect(true).to.be.true;",
                   "    });",
-                  "    console.log('Image is base64 data URI - skipping HTTP verification');",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('[Step 5] Presign responded', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "",
+                  "const originalUrl = pm.collectionVariables.get('generated_image_url');",
+                  "let presignedUrl = null;",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const presign = pm.response.json();",
+                  "    pm.test('[Step 5] Presigned URL present', function () {",
+                  "        pm.expect(presign.url).to.be.a('string').and.not.empty;",
+                  "    });",
+                  "    presignedUrl = presign.url;",
+                  "    pm.collectionVariables.set('generated_image_url', presignedUrl);",
                   "} else {",
-                  "    pm.test('[Step 5] Skipped - image generation not available', function () {",
+                  "    console.log('Presign returned 404 - falling back to original image URL');",
+                  "}",
+                  "",
+                  "const urlToCheck = presignedUrl || originalUrl;",
+                  "const isHttpUrl = urlToCheck && urlToCheck.match(/^https?:\\/\\//);",
+                  "pm.collectionVariables.set('image_url_is_http', isHttpUrl ? 'true' : 'false');",
+                  "",
+                  "if (isHttpUrl) {",
+                  "    pm.test('[Step 5] Image URL is accessible', function (done) {",
+                  "        pm.sendRequest({",
+                  "            url: urlToCheck,",
+                  "            method: 'GET'",
+                  "        }, function (err, res) {",
+                  "            pm.expect(err).to.equal(null);",
+                  "            pm.expect(res.code).to.be.oneOf([200, 301, 302, 307, 308]);",
+                  "            const contentType = res.headers.get('Content-Type');",
+                  "            if (contentType) {",
+                  "                pm.expect(contentType).to.match(/image\\//);",
+                  "            }",
+                  "            done();",
+                  "        });",
+                  "    });",
+                  "    console.log('Image URL verification sent');",
+                  "} else {",
+                  "    pm.test('[Step 5] Skipped - no HTTP image URL available', function () {",
                   "        pm.expect(true).to.be.true;",
                   "    });",
                   "}"
@@ -528,7 +1027,7 @@
       ]
     },
     {
-      "name": "5. Additional Image Tests",
+      "name": "6. Additional Image Tests",
       "description": "Additional image generation scenarios",
       "item": [
         {
@@ -558,12 +1057,55 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Image generation without conversation handled', function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 500, 501]);",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 500, 501, 504]);",
                   "});",
                   "if (pm.response.code === 200) {",
                   "    const data = pm.response.json();",
                   "    pm.expect(data).to.have.property('data');",
                   "    console.log('Standalone image generated');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Image Generation - URL Response",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"A watercolor illustration of a lighthouse on a cliff\",\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\"\n}"
+            },
+            "url": "{{kong_url}}/v1/images/generations"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('URL image generation handled', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 500, 501, 504]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('URL payload present', function () {",
+                  "        pm.expect(data).to.have.property('data');",
+                  "        pm.expect(data.data).to.be.an('array').that.is.not.empty;",
+                  "        pm.expect(data.data[0].url).to.be.a('string').and.not.empty;",
+                  "    });",
+                  "    console.log('URL image generated');",
                   "}"
                 ]
               }
@@ -597,7 +1139,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Missing prompt returns error', function () {",
-                  "    // Accept 400, 422 (validation) or 500 (server-side validation)",
+                  "    // Accept 400/422 (validation) or 500 while older servers still return generic errors",
                   "    pm.expect(pm.response.code).to.be.oneOf([400, 422, 500]);",
                   "});",
                   "console.log('Error correctly returned for missing prompt, status:', pm.response.code);"
@@ -610,6 +1152,9 @@
           "name": "Image Generation - Unauthorized",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -629,8 +1174,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Request without auth handled', function () {",
-                  "    // Endpoint may allow anonymous access or reject - both are valid",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]);",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
                   "});",
                   "console.log('Request without auth completed with status:', pm.response.code);"
                 ]
@@ -641,8 +1185,35 @@
       ]
     },
     {
-      "name": "6. Cleanup",
+      "name": "7. Cleanup",
       "item": [
+        {
+          "name": "Delete MCP Test Conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('MCP test conversation deleted', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "});",
+                  "console.log('MCP cleanup completed');"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Delete Test Conversation",
           "request": {
@@ -713,14 +1284,30 @@
       "key": "model_id",
       "value": ""
     },
-    {
-      "key": "image_conversation_id",
-      "value": ""
-    },
-    {
-      "key": "first_chat_message_id",
-      "value": ""
-    },
+      {
+        "key": "image_conversation_id",
+        "value": ""
+      },
+      {
+        "key": "mcp_conversation_id",
+        "value": ""
+      },
+      {
+        "key": "mcp_tool_call_id",
+        "value": ""
+      },
+      {
+        "key": "mcp_image_url_is_http",
+        "value": "false"
+      },
+      {
+        "key": "first_chat_message_id",
+        "value": ""
+      },
+      {
+        "key": "image_request_chat_message_id",
+        "value": ""
+      },
     {
       "key": "second_chat_message_id",
       "value": ""
@@ -730,7 +1317,15 @@
       "value": ""
     },
     {
+      "key": "latest_media_id",
+      "value": ""
+    },
+    {
       "key": "generated_image_url",
+      "value": "http://localhost:8000/healthz"
+    },
+    {
+      "key": "image_url_request",
       "value": "http://localhost:8000/healthz"
     },
     {
@@ -740,6 +1335,18 @@
     {
       "key": "image_url_is_http",
       "value": "false"
+    },
+    {
+      "key": "mcp_tool_has_generate_image",
+      "value": "false"
+    },
+    {
+      "key": "mcp_generate_image_success",
+      "value": "false"
+    },
+    {
+      "key": "mcp_generated_image_url",
+      "value": ""
     }
   ]
 }

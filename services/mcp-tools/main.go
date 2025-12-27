@@ -120,6 +120,18 @@ func main() {
 		log.Warn().Msg("Memory tools URL not configured, memory_retrieve tool will not be available")
 	}
 
+	// Initialize image generation MCP
+	var imageMCP *mcp.ImageGenerateMCP
+	switch {
+	case !cfg.EnableImageGenerate:
+		log.Warn().Msg("generate_image MCP tool disabled via config")
+	case cfg.LLMAPIBaseURL != "":
+		imageMCP = mcp.NewImageGenerateMCP(cfg.LLMAPIBaseURL, cfg.EnableImageGenerate)
+		log.Info().Str("llm_api_url", cfg.LLMAPIBaseURL).Msg("Image generation MCP tool enabled")
+	default:
+		log.Warn().Msg("LLM_API_BASE_URL not configured, generate_image tool will not be available")
+	}
+
 	// Initialize external MCP providers
 	ctx := context.Background()
 	providerMCP := mcp.NewProviderMCP(providerConfig)
@@ -158,7 +170,7 @@ func main() {
 		serperMCP.SetToolConfigCache(toolConfigCache)
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, llmClient, toolConfigCache)
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, llmClient, toolConfigCache)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

@@ -969,6 +969,11 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 			builder.WriteString(vars["SearchToolName"].(string))
 			builder.WriteString("\n")
 		}
+		if vars["HasScrapeTool"].(bool) {
+			builder.WriteString("- When you need to scrape or extract content from a webpage: use ")
+			builder.WriteString(vars["ScrapeToolName"].(string))
+			builder.WriteString("\n")
+		}
 		if vars["HasCodeTool"].(bool) {
 			builder.WriteString("- When you need to execute code: use ")
 			builder.WriteString(vars["CodeToolName"].(string))
@@ -977,6 +982,11 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 		if vars["HasBrowserTool"].(bool) {
 			builder.WriteString("- When you need to browse the web: use ")
 			builder.WriteString(vars["BrowserToolName"].(string))
+			builder.WriteString("\n")
+		}
+		if vars["HasImageTool"].(bool) {
+			builder.WriteString("- When you need to generate images: use ")
+			builder.WriteString(vars["ImageToolName"].(string))
 			builder.WriteString("\n")
 		}
 
@@ -1000,6 +1010,8 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 		"BrowserToolName": "",
 		"HasScrapeTool":   false,
 		"ScrapeToolName":  "",
+		"HasImageTool":    false,
+		"ImageToolName":   "",
 	}
 
 	if promptCtx == nil || len(promptCtx.Tools) == 0 {
@@ -1008,7 +1020,7 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 
 	// Parse tools directly from request.Tools (OpenAI format)
 	tools := make([]map[string]string, 0, len(promptCtx.Tools))
-	
+
 	for _, tool := range promptCtx.Tools {
 		if tool.Type != openai.ToolTypeFunction {
 			continue
@@ -1016,7 +1028,7 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 
 		toolName := tool.Function.Name
 		toolDesc := tool.Function.Description
-		
+
 		// Extract parameters description
 		paramsDesc := ""
 		if tool.Function.Parameters != nil {
@@ -1046,46 +1058,55 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 		toolDescLower := strings.ToLower(toolDesc)
 
 		// Search tools (web search, google search, etc.)
-		if strings.Contains(toolNameLower, "search") || 
-		   strings.Contains(toolNameLower, "google") || 
-		   strings.Contains(toolNameLower, "web_search") ||
-		   strings.Contains(toolDescLower, "search") || 
-		   strings.Contains(toolDescLower, "web search") {
+		if strings.Contains(toolNameLower, "search") ||
+			strings.Contains(toolNameLower, "google") ||
+			strings.Contains(toolNameLower, "web_search") ||
+			strings.Contains(toolDescLower, "search") ||
+			strings.Contains(toolDescLower, "web search") {
 			vars["HasSearchTool"] = true
 			vars["SearchToolName"] = toolName
 		}
 
 		// Code execution tools (python, code, execute, etc.)
-		if strings.Contains(toolNameLower, "code") || 
-		   strings.Contains(toolNameLower, "execute") || 
-		   strings.Contains(toolNameLower, "python") ||
-		   strings.Contains(toolNameLower, "run_code") ||
-		   strings.Contains(toolDescLower, "execute code") || 
-		   strings.Contains(toolDescLower, "run code") {
+		if strings.Contains(toolNameLower, "code") ||
+			strings.Contains(toolNameLower, "execute") ||
+			strings.Contains(toolNameLower, "python") ||
+			strings.Contains(toolNameLower, "run_code") ||
+			strings.Contains(toolDescLower, "execute code") ||
+			strings.Contains(toolDescLower, "run code") {
 			vars["HasCodeTool"] = true
 			vars["CodeToolName"] = toolName
 		}
 
 		// Browser tools (browser_*, browse, navigate, etc.)
-		if strings.Contains(toolNameLower, "browser") || 
-		   strings.Contains(toolNameLower, "browse") ||
-		   strings.Contains(toolNameLower, "navigate") ||
-		   strings.Contains(toolNameLower, "screenshot") ||
-		   strings.HasPrefix(toolNameLower, "browser_") ||
-		   strings.Contains(toolDescLower, "browse") || 
-		   strings.Contains(toolDescLower, "web page") {
+		if strings.Contains(toolNameLower, "browser") ||
+			strings.Contains(toolNameLower, "browse") ||
+			strings.Contains(toolNameLower, "navigate") ||
+			strings.Contains(toolNameLower, "screenshot") ||
+			strings.HasPrefix(toolNameLower, "browser_") ||
+			strings.Contains(toolDescLower, "browse") ||
+			strings.Contains(toolDescLower, "web page") {
 			vars["HasBrowserTool"] = true
 			vars["BrowserToolName"] = toolName
 		}
 
 		// Scrape tools (scrape, web_scrape, extract, etc.)
-		if strings.Contains(toolNameLower, "scrape") || 
-		   strings.Contains(toolNameLower, "web_scrape") ||
-		   strings.Contains(toolNameLower, "extract") ||
-		   strings.Contains(toolDescLower, "scrape") || 
-		   strings.Contains(toolDescLower, "extract content") {
+		if strings.Contains(toolNameLower, "scrape") ||
+			strings.Contains(toolNameLower, "web_scrape") ||
+			strings.Contains(toolNameLower, "extract") ||
+			strings.Contains(toolDescLower, "scrape") ||
+			strings.Contains(toolDescLower, "extract content") {
 			vars["HasScrapeTool"] = true
 			vars["ScrapeToolName"] = toolName
+		}
+
+		// Image generation tools (generate_image, image generation, etc.)
+		if strings.Contains(toolNameLower, "generate_image") ||
+			strings.Contains(toolNameLower, "image") ||
+			strings.Contains(toolDescLower, "generate image") ||
+			strings.Contains(toolDescLower, "image generation") {
+			vars["HasImageTool"] = true
+			vars["ImageToolName"] = toolName
 		}
 	}
 
@@ -1375,6 +1396,11 @@ func (m *ChainOfThoughtModule) Apply(ctx context.Context, promptCtx *Context, me
 }
 
 func detectToolUsage(promptCtx *Context, messages []openai.ChatCompletionMessage) bool {
+	// If the request explicitly provides tool definitions, treat tools as enabled.
+	if promptCtx != nil && len(promptCtx.Tools) > 0 {
+		return true
+	}
+
 	if promptCtx != nil && promptCtx.Preferences != nil {
 		if useTools, ok := promptCtx.Preferences["use_tools"].(bool); ok && useTools {
 			return true
