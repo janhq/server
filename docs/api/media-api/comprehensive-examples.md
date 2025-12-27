@@ -586,7 +586,7 @@ console.log(`Screenshot saved: ${janId}`);
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MEDIA_S3_PRESIGN_TTL` | 5m | Presigned URL expiration time |
+| `MEDIA_S3_PRESIGN_TTL` | 720h | Presigned URL expiration time |
 | `MEDIA_MAX_BYTES` | 20971520 | Max file size (20MB) |
 | `MEDIA_RETENTION_DAYS` | 30 | Media retention period |
 | `MEDIA_REMOTE_FETCH_TIMEOUT` | 15s | Timeout for fetching remote URLs |

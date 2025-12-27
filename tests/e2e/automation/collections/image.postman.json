@@ -779,6 +779,7 @@
                   "        if (imageData.id) {",
                   "            pm.expect(imageData.id).to.match(/^jan_[a-z0-9]+$/);",
                   "            pm.collectionVariables.set('generated_image_id', imageData.id);",
+                  "            pm.collectionVariables.set('latest_media_id', imageData.id);",
                   "        }",
                   "    });",
                   "    ",
@@ -808,8 +809,13 @@
           "name": "Step 5: Verify Image URL Accessible",
           "request": {
             "method": "GET",
-            "header": [],
-            "url": "{{kong_url}}/healthz"
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/media/v1/media/{{latest_media_id}}/presign"
           },
           "event": [
             {
@@ -817,9 +823,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const isHttpUrl = pm.collectionVariables.get('image_url_is_http') === 'true';",
-                  "const imgUrl = pm.collectionVariables.get('generated_image_url');",
-                  "console.log('Image URL type check - isHttpUrl:', isHttpUrl, 'URL prefix:', imgUrl ? imgUrl.substring(0, 30) : 'none');"
+                  "const existingId = pm.collectionVariables.get('latest_media_id');",
+                  "const fallbackId = pm.collectionVariables.get('generated_image_id');",
+                  "if (!existingId && fallbackId) {",
+                  "    pm.collectionVariables.set('latest_media_id', fallbackId);",
+                  "}",
+                  "const activeId = pm.collectionVariables.get('latest_media_id');",
+                  "console.log('Presign request for media ID:', activeId || 'none');"
                 ]
               }
             },
@@ -828,15 +838,42 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Skip verification for data: URLs (base64 embedded images)",
-                  "const isHttpUrl = pm.collectionVariables.get('image_url_is_http') === 'true';",
                   "const imgSuccess = pm.collectionVariables.get('image_generation_success') === 'true';",
-                  "const imgUrl = pm.collectionVariables.get('generated_image_url');",
+                  "const mediaId = pm.collectionVariables.get('latest_media_id');",
                   "",
-                  "if (imgSuccess && isHttpUrl) {",
+                  "if (!imgSuccess || !mediaId) {",
+                  "    pm.test('[Step 5] Skipped - image generation not available', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('[Step 5] Presign responded', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "",
+                  "const originalUrl = pm.collectionVariables.get('generated_image_url');",
+                  "let presignedUrl = null;",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const presign = pm.response.json();",
+                  "    pm.test('[Step 5] Presigned URL present', function () {",
+                  "        pm.expect(presign.url).to.be.a('string').and.not.empty;",
+                  "    });",
+                  "    presignedUrl = presign.url;",
+                  "    pm.collectionVariables.set('generated_image_url', presignedUrl);",
+                  "} else {",
+                  "    console.log('Presign returned 404 - falling back to original image URL');",
+                  "}",
+                  "",
+                  "const urlToCheck = presignedUrl || originalUrl;",
+                  "const isHttpUrl = urlToCheck && urlToCheck.match(/^https?:\\/\\//);",
+                  "pm.collectionVariables.set('image_url_is_http', isHttpUrl ? 'true' : 'false');",
+                  "",
+                  "if (isHttpUrl) {",
                   "    pm.test('[Step 5] Image URL is accessible', function (done) {",
                   "        pm.sendRequest({",
-                  "            url: imgUrl,",
+                  "            url: urlToCheck,",
                   "            method: 'GET'",
                   "        }, function (err, res) {",
                   "            pm.expect(err).to.equal(null);",
@@ -849,13 +886,8 @@
                   "        });",
                   "    });",
                   "    console.log('Image URL verification sent');",
-                  "} else if (imgSuccess && !isHttpUrl) {",
-                  "    pm.test('[Step 5] Skipped - image is base64 data URI (no HTTP fetch needed)', function () {",
-                  "        pm.expect(true).to.be.true;",
-                  "    });",
-                  "    console.log('Image is base64 data URI - skipping HTTP verification');",
                   "} else {",
-                  "    pm.test('[Step 5] Skipped - image generation not available', function () {",
+                  "    pm.test('[Step 5] Skipped - no HTTP image URL available', function () {",
                   "        pm.expect(true).to.be.true;",
                   "    });",
                   "}"
@@ -1282,6 +1314,10 @@
     },
     {
       "key": "generated_image_id",
+      "value": ""
+    },
+    {
+      "key": "latest_media_id",
       "value": ""
     },
     {

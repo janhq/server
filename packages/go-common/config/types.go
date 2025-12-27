@@ -319,7 +319,7 @@ type S3Config struct {
 	UsePathStyle bool `yaml:"use_path_style" json:"use_path_style" env:"MEDIA_S3_USE_PATH_STYLE" envDefault:"true" description:"Use S3 path-style addressing"`
 
 	// Presigned URL TTL
-	PresignTTL time.Duration `yaml:"presign_ttl" json:"presign_ttl" env:"MEDIA_S3_PRESIGN_TTL" envDefault:"5m" description:"Presigned URL TTL"`
+	PresignTTL time.Duration `yaml:"presign_ttl" json:"presign_ttl" env:"MEDIA_S3_PRESIGN_TTL" envDefault:"720h" description:"Presigned URL TTL"`
 }
 
 // ResponseAPIConfig contains settings for the Response API service
