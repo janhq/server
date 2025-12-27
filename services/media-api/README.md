@@ -20,7 +20,7 @@
 Client uploads an image directly through the media-api (via data URL or remote URL) and receives:
 
 - `jan_id` - Persistent identifier for the media
-- `presigned_url` - Short-lived URL for immediate access (default 30 days TTL)
+- `presigned_url` - Short-lived URL for immediate access (default 7 days TTL)
 
 ```bash
 curl -X POST http://localhost:8285/v1/media \
@@ -143,7 +143,7 @@ Populate the repo-level `.env` (via `make env-create`) and tweak the following k
 | `MEDIA_S3_ACCESS_KEY_ID` / `MEDIA_S3_SECRET_ACCESS_KEY` | Credentials (`XXXXX` / `YYYY`). |
 | `MEDIA_S3_BUCKET` | Target bucket (`platform-dev`). |
 | `MEDIA_MAX_BYTES` | Max upload size (default 20 MB). |
-| `MEDIA_S3_PRESIGN_TTL` | Lifespan of presigned URLs (default 30 days). |
+| `MEDIA_S3_PRESIGN_TTL` | Lifespan of presigned URLs (default 7 days). |
 | `MEDIA_RETENTION_DAYS` | Metadata retention window. |
 | `AUTH_ENABLED` | Set to `true` to enforce Keycloak-issued JWTs (required in shared environments). |
 | `AUTH_ISSUER` | Expected Keycloak issuer claim (e.g., `http://localhost:8085/realms/jan`). |

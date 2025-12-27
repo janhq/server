@@ -147,7 +147,7 @@ Depth 4:
 
 **Best practices:**
 1. Store `jan_*` IDs in your database, not presigned URLs (URLs expire)
-2. Resolve only when needed (presigned URLs valid 30 days)
+2. Resolve only when needed (presigned URLs valid 7 days)
 3. Use batch resolution for multiple images
 4. Let LLM API handle resolution when possible
 
@@ -160,7 +160,7 @@ Need to display image?
 ├─ Stored as jan_* ID?
 │  └─ Call /v1/media/resolve → Get presigned URL → Display
 └─ Already have presigned URL?
-   ├─ Check expiry (valid 30 days)
+   ├─ Check expiry (valid 7 days)
    │  ├─ Expired? → Call /v1/media/{id}/presign → Get new URL
    │  └─ Valid? → Use directly
    └─ Unknown? → Resolve to be safe

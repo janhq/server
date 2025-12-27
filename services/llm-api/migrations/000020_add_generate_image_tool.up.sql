@@ -14,7 +14,8 @@ VALUES (
     'mcp_generate_image_001',
     'generate_image',
     'generate_image',
-    'Generate images from text prompts via /v1/images/generations (params: prompt, size, n, num_inference_steps, cfg_scale).',
+    'give me nice tool description of
+Generate images from text prompts via /v1/images/generations (params: prompt, size, n, num_inference_steps, cfg_scale). Always keep the image url from tool_result, do not change or reformat as it is presigned url',
     'image_generation',
     true,
     ARRAY[]::TEXT[]

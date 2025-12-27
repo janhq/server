@@ -15,7 +15,7 @@ Examples: [API examples index](../examples/README.md) includes uploads, jan_* ID
 
 - **Upload images** - From URLs or base64 data. See [Upload Method Guide](../decision-guides.md#media-upload-methods) to choose the best approach.
 - **Get jan_* IDs** - Unique identifiers for each image. See [Jan ID System Guide](../decision-guides.md#jan-id-system) to understand how they work.
-- **Generate download links** - Temporary URLs that expire after 30 days. See [Presigned URL Workflow](../decision-guides.md#presigned-url-workflow).
+- **Generate download links** - Temporary URLs that expire after 7 days. See [Presigned URL Workflow](../decision-guides.md#presigned-url-workflow).
 - **Prevent duplicates** - Same image uploaded twice gets same ID
 - **Store in S3** - Images saved to cloud storage
 
@@ -60,7 +60,7 @@ MEDIA_S3_USE_PATH_STYLE=true
 # Public endpoint for download links (falls back to MEDIA_S3_ENDPOINT when empty)
 MEDIA_S3_PUBLIC_ENDPOINT=https://cdn.example.com
 # Presigned URL lifetime
-MEDIA_S3_PRESIGN_TTL=720h
+MEDIA_S3_PRESIGN_TTL=168h
 # Upload limits + retention
 MEDIA_MAX_BYTES=20971520      # 20 MB
 MEDIA_RETENTION_DAYS=30
@@ -330,10 +330,10 @@ Media is deduplicated by content hash (SHA-256):
 ## Presigned URL Management
 
 ### TTL Configuration
-Default: 30 days (2592000 seconds)
+Default: 7 days (604800 seconds)
 
 ```bash
-MEDIA_S3_PRESIGN_TTL=720h # 30 days
+MEDIA_S3_PRESIGN_TTL=168h # 7 days
 MEDIA_S3_PRESIGN_TTL=30m # 30 minutes
 MEDIA_S3_PRESIGN_TTL=1h # 1 hour
 ```
