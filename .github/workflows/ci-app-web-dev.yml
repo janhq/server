@@ -8,6 +8,7 @@ on:
       - main
     paths:
       - "apps/web/**"
+      - .github/workflows/ci-app-web-dev.yml
   pull_request:
     branches:
       - dev
@@ -15,6 +16,7 @@ on:
       - main
     paths:
       - "apps/web/**"
+      - .github/workflows/ci-app-web-dev.yml
 
 jobs:
   build-docker-x64:
