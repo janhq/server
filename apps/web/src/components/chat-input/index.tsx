@@ -27,12 +27,13 @@ import { useCapabilities } from '@/stores/capabilities-store'
 import { useProjects } from '@/stores/projects-store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useIsMobileDevice } from '@/hooks/use-is-mobile-device'
-import { toast } from 'sonner'
+import { toast } from '@/components/ui/sonner'
 import {
   FolderIcon,
   GlobeIcon,
+  ImageIcon,
   LightbulbIcon,
-  MegaphoneIcon,
+  TelescopeIcon,
   Settings2,
   X,
 } from 'lucide-react'
@@ -52,7 +53,12 @@ import {
 } from '@/components/ui/tooltip'
 import { useBrowserConnection } from '@/stores/browser-connection-store'
 import { useProfile } from '@/stores/profile-store'
-import { CHAT_STATUS, CONNECTION_STATE, SESSION_STORAGE_KEY, SESSION_STORAGE_PREFIX } from '@/constants'
+import {
+  CHAT_STATUS,
+  CONNECTION_STATE,
+  SESSION_STORAGE_KEY,
+  SESSION_STORAGE_PREFIX,
+} from '@/constants'
 
 /**
  * Generates a meaningful title from message text.
@@ -133,8 +139,7 @@ const ChatInput = ({
   )
   const isMobile = useIsMobile()
   const isMobileDevice = useIsMobileDevice()
-  const isBrowserSupported = useMemo(() => isChromeBrowser(), [])
-  const shouldShowBrowserUI = isBrowserSupported && !isMobileDevice
+  const isChromiumBrowser = useMemo(() => isChromeBrowser(), [])
 
   // Auto-focus on chat input when component mounts (desktop only)
   useEffect(() => {
@@ -169,26 +174,45 @@ const ChatInput = ({
   )
   const browserEnabled = useCapabilities((state) => state.browserEnabled)
   const reasoningEnabled = useCapabilities((state) => state.reasoningEnabled)
+  const imageGenerationEnabled = useCapabilities(
+    (state) => state.imageGenerationEnabled
+  )
   const toggleSearch = useCapabilities((state) => state.toggleSearch)
   const toggleDeepResearch = useCapabilities(
     (state) => state.toggleDeepResearch
   )
   const toggleBrowser = useCapabilities((state) => state.toggleBrowser)
   const toggleInstruct = useCapabilities((state) => state.toggleReasoning)
+  const toggleImageGeneration = useCapabilities(
+    (state) => state.toggleImageGeneration
+  )
   const hydrateCapabilities = useCapabilities((state) => state.hydrate)
+
   const setSearchEnabled = useCapabilities((state) => state.setSearchEnabled)
   const setDeepResearchEnabled = useCapabilities(
     (state) => state.setDeepResearchEnabled
   )
   const setBrowserEnabled = useCapabilities((state) => state.setBrowserEnabled)
+  const setReasoningEnabled = useCapabilities(
+    (state) => state.setReasoningEnabled
+  )
+  const setImageGenerationEnabled = useCapabilities(
+    (state) => state.setImageGenerationEnabled
+  )
 
   const fetchPreferences = useProfile((state) => state.fetchPreferences)
+  const fetchSettings = useProfile((state) => state.fetchSettings)
   const pref = useProfile((state) => state.preferences)
+  const settings = useProfile((state) => state.settings)
 
   const isSupportTools = modelDetail.supports_tools
   const isSupportReasoning = modelDetail.supports_reasoning
   const isSupportDeepResearch = isSupportTools && isSupportReasoning
   const isSupportInstruct = modelDetail.supports_instruct
+  const isBrowserSupported = isChromiumBrowser && modelDetail.supports_browser
+  const shouldShowBrowserUI = isBrowserSupported && !isMobileDevice
+  const isSupportImageGeneration =
+    settings?.server_capabilities?.image_generation_enabled ?? false
 
   // Auto-disable capabilities when model doesn't support them
   useEffect(() => {
@@ -216,7 +240,10 @@ const ChatInput = ({
 
   // Auto-disable browser capability when disconnected
   useEffect(() => {
-    if (browserConnectionState === CONNECTION_STATE.DISCONNECTED && browserEnabled) {
+    if (
+      browserConnectionState === CONNECTION_STATE.DISCONNECTED &&
+      browserEnabled
+    ) {
       setBrowserEnabled(false)
     }
   }, [browserConnectionState, browserEnabled, setBrowserEnabled])
@@ -230,6 +257,7 @@ const ChatInput = ({
 
   useEffect(() => {
     fetchPreferences()
+    fetchSettings()
   }, [])
 
   useEffect(() => {
@@ -237,6 +265,17 @@ const ChatInput = ({
       hydrateCapabilities(pref.preferences)
     }
   }, [pref, hydrateCapabilities])
+
+  // Auto-disable image generation when server doesn't support it
+  useEffect(() => {
+    if (!isSupportImageGeneration && imageGenerationEnabled) {
+      setImageGenerationEnabled(false)
+    }
+  }, [
+    isSupportImageGeneration,
+    imageGenerationEnabled,
+    setImageGenerationEnabled,
+  ])
 
   const handleError = (err: {
     code: 'max_files' | 'max_file_size' | 'accept' | 'max_images'
@@ -260,56 +299,59 @@ const ChatInput = ({
       text: trimmedText,
     }
 
-    if (selectedModel) {
-      if (initialConversation) {
-        if (isPrivateChat) {
+    if (!selectedModel) {
+      toast.warning('Please select a model to start chatting.')
+      return
+    }
+
+    if (initialConversation) {
+      if (isPrivateChat) {
+        sessionStorage.setItem(
+          SESSION_STORAGE_KEY.INITIAL_MESSAGE_TEMPORARY,
+          JSON.stringify(normalizedMessage)
+        )
+        navigate({
+          to: '/threads/temporary',
+        })
+
+        return
+      }
+
+      const conversationPayload: CreateConversationPayload = {
+        title: generateThreadTitle(normalizedMessage.text),
+        ...(projectId && { project_id: String(projectId) }),
+        ...(selectedProjectId && { project_id: selectedProjectId }),
+        metadata: {
+          model_id: selectedModel.id,
+          model_provider: selectedModel.owned_by,
+          is_favorite: 'false',
+        },
+      }
+
+      createConversation(conversationPayload)
+        .then((conversation) => {
+          // Store the initial message in sessionStorage for the new conversation
           sessionStorage.setItem(
-            SESSION_STORAGE_KEY.INITIAL_MESSAGE_TEMPORARY,
+            `${SESSION_STORAGE_PREFIX.INITIAL_MESSAGE}${conversation.id}`,
             JSON.stringify(normalizedMessage)
           )
+
+          // Clear selected project after creating conversation
+          setSelectedProjectId(null)
+
+          // Redirect to the conversation detail page
           navigate({
-            to: '/threads/temporary',
+            to: '/threads/$conversationId',
+            params: { conversationId: conversation.id },
           })
 
           return
-        }
-
-        const conversationPayload: CreateConversationPayload = {
-          title: generateThreadTitle(normalizedMessage.text),
-          ...(projectId && { project_id: String(projectId) }),
-          ...(selectedProjectId && { project_id: selectedProjectId }),
-          metadata: {
-            model_id: selectedModel.id,
-            model_provider: selectedModel.owned_by,
-            is_favorite: 'false',
-          },
-        }
-
-        createConversation(conversationPayload)
-          .then((conversation) => {
-            // Store the initial message in sessionStorage for the new conversation
-            sessionStorage.setItem(
-              `${SESSION_STORAGE_PREFIX.INITIAL_MESSAGE}${conversation.id}`,
-              JSON.stringify(normalizedMessage)
-            )
-
-            // Clear selected project after creating conversation
-            setSelectedProjectId(null)
-
-            // Redirect to the conversation detail page
-            navigate({
-              to: '/threads/$conversationId',
-              params: { conversationId: conversation.id },
-            })
-
-            return
-          })
-          .catch((error) => {
-            console.error('Failed to create initial conversation:', error)
-          })
-      } else {
-        submit?.(normalizedMessage)
-      }
+        })
+        .catch((error) => {
+          console.error('Failed to create initial conversation:', error)
+        })
+    } else {
+      submit?.(normalizedMessage)
     }
   }
 
@@ -319,7 +361,8 @@ const ChatInput = ({
         className={cn(
           'w-full relative rounded-3xl p-[1.5px]',
           !initialConversation &&
-            (status === CHAT_STATUS.STREAMING || status === CHAT_STATUS.SUBMITTED) &&
+            (status === CHAT_STATUS.STREAMING ||
+              status === CHAT_STATUS.SUBMITTED) &&
             'overflow-hidden outline-0'
         )}
       >
@@ -349,7 +392,10 @@ const ChatInput = ({
             <PromptInputBody>
               <PromptInputTextarea
                 ref={textareaRef}
-                disabled={status === CHAT_STATUS.STREAMING || status === CHAT_STATUS.SUBMITTED}
+                disabled={
+                  status === CHAT_STATUS.STREAMING ||
+                  status === CHAT_STATUS.SUBMITTED
+                }
               />
             </PromptInputBody>
             <PromptInputFooter>
@@ -376,25 +422,43 @@ const ChatInput = ({
                   deepResearchEnabled={deepResearchEnabled}
                   browserEnabled={browserEnabled}
                   reasoningEnabled={reasoningEnabled}
+                  imageGenerationEnabled={imageGenerationEnabled}
                   disablePreferences={status === CHAT_STATUS.STREAMING}
                   toggleSearch={() => {
                     toggleSearch()
                     setBrowserEnabled(false)
+                    setImageGenerationEnabled(false)
                   }}
                   toggleDeepResearch={() => {
                     toggleDeepResearch()
                     setBrowserEnabled(false)
+                    setImageGenerationEnabled(false)
                   }}
                   toggleBrowser={() => {
                     toggleBrowser()
                     setDeepResearchEnabled(false)
                     setSearchEnabled(false)
+                    setImageGenerationEnabled(false)
+                  }}
+                  toggleImageGeneration={() => {
+                    toggleImageGeneration()
+                    // Disable all other capabilities when image generation is enabled
+                    if (!imageGenerationEnabled) {
+                      setSearchEnabled(false)
+                      setDeepResearchEnabled(false)
+                      setBrowserEnabled(false)
+                      setReasoningEnabled(false)
+                    }
                   }}
                   isBrowserSupported={isBrowserSupported}
-                  toggleInstruct={toggleInstruct}
+                  toggleInstruct={() => {
+                    toggleInstruct()
+                    setImageGenerationEnabled(false)
+                  }}
                   isSupportTools={isSupportTools}
                   isSupportDeepResearch={isSupportDeepResearch}
                   isSupportReasoningToggle={isSupportInstruct}
+                  isSupportImageGeneration={isSupportImageGeneration}
                 >
                   <Button
                     className="rounded-full mx-1 size-8"
@@ -406,92 +470,118 @@ const ChatInput = ({
                 </SettingChatInput>
                 {isSupportInstruct &&
                   reasoningEnabled &&
-                  !deepResearchEnabled && (
+                  !deepResearchEnabled &&
+                  !imageGenerationEnabled && (
                     <PromptInputButton
                       variant="outline"
                       className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
                       disabled={status === CHAT_STATUS.STREAMING}
-                      onClick={toggleInstruct}
+                      onClick={() => {
+                        toggleInstruct()
+                        setImageGenerationEnabled(false)
+                      }}
                     >
                       <LightbulbIcon className="text-primary size-4 group-hover:hidden" />
                       <X className="text-primary size-4 hidden group-hover:block" />
                       <span className="text-primary">Think</span>
                     </PromptInputButton>
                   )}
-                {searchEnabled && !deepResearchEnabled && (
-                  <PromptInputButton
-                    variant="outline"
-                    className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
-                    disabled={status === CHAT_STATUS.STREAMING}
-                    onClick={toggleSearch}
-                  >
-                    <GlobeIcon className="text-primary size-4 group-hover:hidden" />
-                    <X className="text-primary size-4 hidden group-hover:block" />
-                    <span className="text-primary">Search</span>
-                  </PromptInputButton>
-                )}
-                {deepResearchEnabled && (
+                {searchEnabled &&
+                  !deepResearchEnabled &&
+                  !imageGenerationEnabled && (
+                    <PromptInputButton
+                      variant="outline"
+                      className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
+                      disabled={status === CHAT_STATUS.STREAMING}
+                      onClick={toggleSearch}
+                    >
+                      <GlobeIcon className="text-primary size-4 group-hover:hidden" />
+                      <X className="text-primary size-4 hidden group-hover:block" />
+                      <span className="text-primary">Search</span>
+                    </PromptInputButton>
+                  )}
+                {deepResearchEnabled && !imageGenerationEnabled && (
                   <PromptInputButton
                     variant="outline"
                     className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
                     disabled={status === CHAT_STATUS.STREAMING}
                     onClick={toggleDeepResearch}
                   >
-                    <MegaphoneIcon className="text-primary size-4 group-hover:hidden" />
+                    <TelescopeIcon className="text-primary size-4 group-hover:hidden" />
                     <X className="text-primary size-4 hidden group-hover:block" />
                     <span className="text-primary">Deep Research</span>
                   </PromptInputButton>
                 )}
-                {browserEnabled && shouldShowBrowserUI && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <PromptInputButton
-                        variant="outline"
-                        className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
-                        disabled={status === CHAT_STATUS.STREAMING}
-                        onClick={toggleBrowser}
-                      >
-                        <div className="size-4 flex items-center justify-center group-hover:hidden">
-                          {browserConnectionState === CONNECTION_STATE.ERROR && (
-                            <div className="size-3 bg-red-400 rounded-full" />
-                          )}
-                          {browserConnectionState === CONNECTION_STATE.CONNECTING && (
-                            <div className="size-3 animate-pulse bg-blue-400 rounded-full" />
-                          )}
-                          {browserConnectionState === CONNECTION_STATE.CONNECTED && (
-                            <div className="size-3 bg-green-400 rounded-full" />
-                          )}
-                        </div>
-                        <X className="text-primary size-4 hidden group-hover:block" />
-                        <span className="text-primary">Browse</span>
-                      </PromptInputButton>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {browserConnectionState === CONNECTION_STATE.ERROR && (
-                        <p>Connection error</p>
-                      )}
-                      {browserConnectionState === CONNECTION_STATE.CONNECTING && (
-                        <p>Connecting...</p>
-                      )}
-                      {browserConnectionState === CONNECTION_STATE.CONNECTED && (
-                        <p>Ready to use</p>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {selectedProjectId && !isPrivateChat && (
+                {browserEnabled &&
+                  shouldShowBrowserUI &&
+                  !imageGenerationEnabled && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <PromptInputButton
+                          variant="outline"
+                          className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
+                          disabled={status === CHAT_STATUS.STREAMING}
+                          onClick={toggleBrowser}
+                        >
+                          <div className="size-4 flex items-center justify-center group-hover:hidden">
+                            {browserConnectionState ===
+                              CONNECTION_STATE.ERROR && (
+                              <div className="size-3 bg-red-400 rounded-full" />
+                            )}
+                            {browserConnectionState ===
+                              CONNECTION_STATE.CONNECTING && (
+                              <div className="size-3 animate-pulse bg-blue-400 rounded-full" />
+                            )}
+                            {browserConnectionState ===
+                              CONNECTION_STATE.CONNECTED && (
+                              <div className="size-3 bg-green-400 rounded-full" />
+                            )}
+                          </div>
+                          <X className="text-primary size-4 hidden group-hover:block" />
+                          <span className="text-primary">Browse</span>
+                        </PromptInputButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {browserConnectionState === CONNECTION_STATE.ERROR && (
+                          <p>Connection error</p>
+                        )}
+                        {browserConnectionState ===
+                          CONNECTION_STATE.CONNECTING && <p>Connecting...</p>}
+                        {browserConnectionState ===
+                          CONNECTION_STATE.CONNECTED && <p>Ready to use</p>}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                {selectedProjectId &&
+                  !isPrivateChat &&
+                  !imageGenerationEnabled && (
+                    <PromptInputButton
+                      variant="outline"
+                      className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
+                      disabled={status === CHAT_STATUS.STREAMING}
+                      onClick={() => setSelectedProjectId(null)}
+                    >
+                      <FolderIcon className="text-primary size-4 group-hover:hidden" />
+                      <X className="text-primary size-4 hidden group-hover:block" />
+                      <span className="text-primary">
+                        {projects.find((p) => p.id === selectedProjectId)
+                          ?.name || 'Project'}
+                      </span>
+                    </PromptInputButton>
+                  )}
+                {isSupportImageGeneration && imageGenerationEnabled && (
                   <PromptInputButton
                     variant="outline"
                     className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
                     disabled={status === CHAT_STATUS.STREAMING}
-                    onClick={() => setSelectedProjectId(null)}
+                    onClick={() => {
+                      toggleImageGeneration()
+                      // Re-enable other capabilities when image generation is toggled off
+                    }}
                   >
-                    <FolderIcon className="text-primary size-4 group-hover:hidden" />
+                    <ImageIcon className="text-primary size-4 group-hover:hidden" />
                     <X className="text-primary size-4 hidden group-hover:block" />
-                    <span className="text-primary">
-                      {projects.find((p) => p.id === selectedProjectId)?.name ||
-                        'Project'}
-                    </span>
+                    <span className="text-primary">Create Image</span>
                   </PromptInputButton>
                 )}
               </PromptInputTools>
@@ -502,7 +592,8 @@ const ChatInput = ({
                   status={status}
                   className="rounded-full"
                   variant={
-                    status === CHAT_STATUS.STREAMING || status === CHAT_STATUS.SUBMITTED
+                    status === CHAT_STATUS.STREAMING ||
+                    status === CHAT_STATUS.SUBMITTED
                       ? 'destructive'
                       : 'default'
                   }
@@ -510,7 +601,8 @@ const ChatInput = ({
               </div>
             </PromptInputFooter>
           </PromptInput>
-          {(status === CHAT_STATUS.STREAMING || status === CHAT_STATUS.SUBMITTED) && (
+          {(status === CHAT_STATUS.STREAMING ||
+            status === CHAT_STATUS.SUBMITTED) && (
             <div className="absolute inset-0 ">
               <BorderAnimate rx="10%" ry="10%">
                 <div

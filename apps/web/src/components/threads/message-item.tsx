@@ -1,7 +1,13 @@
 /* eslint-disable no-case-declarations */
 import { memo, useState } from 'react'
 import type { UIMessage, ChatStatus } from 'ai'
-import { TOOL_STATE, CHAT_STATUS, CONTENT_TYPE, MESSAGE_ROLE } from '@/constants'
+import {
+  TOOL_STATE,
+  CHAT_STATUS,
+  CONTENT_TYPE,
+  MESSAGE_ROLE,
+} from '@/constants'
+import { useResolvedMediaUrl } from '@/hooks/use-resolved-media-url'
 import {
   Message,
   MessageContent,
@@ -23,7 +29,15 @@ import {
   ToolInput,
   ToolOutput,
 } from '@/components/ai-elements/tool'
-import { CopyIcon, CheckIcon, RefreshCcwIcon } from 'lucide-react'
+import {
+  Dialog,
+  DialogTitle,
+  DialogOverlay,
+  DialogPortal,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { CopyIcon, CheckIcon, RefreshCcwIcon, DownloadIcon, XIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { twMerge } from 'tailwind-merge'
 import { cn } from '@/lib/utils'
 
@@ -46,6 +60,10 @@ export const MessageItem = memo(
     onRegenerate,
   }: MessageItemProps) => {
     const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+    const [previewImage, setPreviewImage] = useState<{
+      url: string
+      filename?: string
+    } | null>(null)
 
     const handleCopy = (text: string) => {
       navigator.clipboard.writeText(text.trim())
@@ -55,6 +73,23 @@ export const MessageItem = memo(
 
     const handleRegenerate = () => {
       onRegenerate?.(message.id)
+    }
+
+    const handleDownload = async (url: string, filename?: string) => {
+      try {
+        const response = await fetch(url)
+        const blob = await response.blob()
+        const blobUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = filename || 'generated-image.png'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(blobUrl)
+        document.body.removeChild(a)
+      } catch (error) {
+        console.error('Failed to download image:', error)
+      }
     }
 
     const isStreaming = isLastMessage && status === CHAT_STATUS.STREAMING
@@ -112,7 +147,8 @@ export const MessageItem = memo(
             <MessageActions
               className={cn(
                 'mt-1 gap-0 transition-opacity',
-                status === CHAT_STATUS.STREAMING && 'opacity-0 pointer-events-none'
+                status === CHAT_STATUS.STREAMING &&
+                  'opacity-0 pointer-events-none'
               )}
             >
               <MessageAction onClick={() => handleCopy(part.text)} label="Copy">
@@ -134,21 +170,70 @@ export const MessageItem = memo(
     }
 
     const renderFilePart = (
-      part: { filename?: string },
-      partIndex: number
-    ) => (
-      <MessageAttachments className="mb-2" key={`${message.id}-${partIndex}`}>
-        <MessageAttachment
-          data={part as any}
-          key={part.filename || 'image'}
-        />
-      </MessageAttachments>
-    )
-
-    const renderReasoningPart = (
-      part: { text: string },
+      part: { filename?: string; url?: string; mediaType?: string },
       partIndex: number
     ) => {
+      const isAssistant = message.role === MESSAGE_ROLE.ASSISTANT
+      const isImage = part.mediaType?.startsWith('image/')
+      const isLastPart = partIndex === message.parts.length - 1
+
+      // Resolve Jan media URL to displayable URL using shared hook
+      const { displayUrl, isLoading } = useResolvedMediaUrl(part.url)
+
+      return (
+        <Message
+          key={`${message.id}-${partIndex}`}
+          from={message.role}
+          className="group"
+        >
+          <MessageAttachments
+            className={cn(
+              isAssistant && 'ml-0 mr-auto' // Left-align for assistant
+            )}
+          >
+            <MessageAttachment
+              data={part as any}
+              key={part.filename || 'image'}
+              className={cn(
+                isAssistant && 'size-64', // Bigger for assistant (size-64 = 16rem = 256px vs size-24 = 6rem = 96px)
+                isImage && !isLoading && displayUrl && 'cursor-pointer'
+              )}
+              onClick={() => {
+                if (isImage && displayUrl && !isLoading) {
+                  setPreviewImage({
+                    url: displayUrl,
+                    filename: part.filename,
+                  })
+                }
+              }}
+            />
+          </MessageAttachments>
+
+          {/* Message actions for assistant images */}
+          {message.role === MESSAGE_ROLE.ASSISTANT &&
+            isImage &&
+            displayUrl &&
+            isLastPart && (
+              <MessageActions
+                className={cn(
+                  'gap-0 transition-opacity',
+                  status === CHAT_STATUS.STREAMING &&
+                    'opacity-0 pointer-events-none'
+                )}
+              >
+                <MessageAction
+                  onClick={() => handleDownload(displayUrl, part.filename)}
+                  label="Download"
+                >
+                  <DownloadIcon className="text-muted-foreground size-3" />
+                </MessageAction>
+              </MessageActions>
+            )}
+        </Message>
+      )
+    }
+
+    const renderReasoningPart = (part: { text: string }, partIndex: number) => {
       const isLastPart = partIndex === message.parts.length - 1
 
       // Only open if this reasoning part is actively being streamed
@@ -220,20 +305,73 @@ export const MessageItem = memo(
     }
 
     return (
-      <div>
-        {message.parts.map((part, i) => {
-          switch (part.type) {
-            case CONTENT_TYPE.TEXT:
-              return renderTextPart(part, i)
-            case CONTENT_TYPE.FILE:
-              return renderFilePart(part, i)
-            case CONTENT_TYPE.REASONING:
-              return renderReasoningPart(part, i)
-            default:
-              return renderToolPart(part, i)
-          }
-        })}
-      </div>
+      <>
+        <div>
+          {message.parts.map((part, i) => {
+            switch (part.type) {
+              case CONTENT_TYPE.TEXT:
+                return renderTextPart(part, i)
+              case CONTENT_TYPE.FILE:
+                return renderFilePart(part, i)
+              case CONTENT_TYPE.REASONING:
+                return renderReasoningPart(part, i)
+              default:
+                return renderToolPart(part, i)
+            }
+          })}
+        </div>
+
+        {/* Image Preview Dialog */}
+        <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+          <DialogPortal>
+            <DialogOverlay
+              className="bg-black/90 backdrop-blur-md data-[state=open]:animate-none data-[state=closed]:animate-none"
+              onClick={() => setPreviewImage(null)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <DialogTitle className="sr-only">
+                {previewImage?.filename || 'Image Preview'}
+              </DialogTitle>
+
+              {/* Action buttons */}
+              <div className="absolute top-4 right-4 z-10 flex gap-2 pointer-events-auto">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="rounded-full bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg"
+                  onClick={() => {
+                    if (previewImage?.url) {
+                      handleDownload(previewImage.url, previewImage.filename)
+                    }
+                  }}
+                >
+                  <DownloadIcon className="size-4" />
+                  <span className="sr-only">Download</span>
+                </Button>
+                <DialogClose asChild>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="rounded-full bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg"
+                  >
+                    <XIcon className="size-4" />
+                    <span className="sr-only">Close</span>
+                  </Button>
+                </DialogClose>
+              </div>
+
+              {/* Image */}
+              {previewImage && (
+                <img
+                  src={previewImage.url}
+                  alt={previewImage.filename || 'Preview'}
+                  className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg pointer-events-auto"
+                />
+              )}
+            </div>
+          </DialogPortal>
+        </Dialog>
+      </>
     )
   },
   (prevProps, nextProps) => {
