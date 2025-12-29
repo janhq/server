@@ -3,16 +3,12 @@ name: CI - Web App (Dev)
 on:
   push:
     branches:
-      - dev
-      - dev-test
       - main
     paths:
       - "apps/web/**"
       - .github/workflows/ci-app-web-dev.yml
   pull_request:
     branches:
-      - dev
-      - dev-test
       - main
     paths:
       - "apps/web/**"

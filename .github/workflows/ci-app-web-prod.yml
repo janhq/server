@@ -2,8 +2,8 @@ name: CI  - Web App (Prod)
 
 on:
   push:
-    branches:
-      - prod-web
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+-app-web"
 
 jobs:
   build-and-deploy:
