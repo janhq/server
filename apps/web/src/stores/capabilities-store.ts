@@ -6,14 +6,17 @@ interface CapabilitiesState {
   deepResearchEnabled: boolean
   browserEnabled: boolean
   reasoningEnabled: boolean
+  imageGenerationEnabled: boolean
   setSearchEnabled: (enabled: boolean) => void
   setDeepResearchEnabled: (enabled: boolean) => void
   setBrowserEnabled: (enabled: boolean) => void
   setReasoningEnabled: (enabled: boolean) => void
+  setImageGenerationEnabled: (enabled: boolean) => void
   toggleSearch: () => void
   toggleDeepResearch: () => void
   toggleBrowser: () => void
   toggleReasoning: () => void
+  toggleImageGeneration: () => void
   hydrate: (preferences: Partial<Preferences>) => void
 }
 
@@ -24,6 +27,7 @@ export const useCapabilities = create<CapabilitiesState>()(
       browserEnabled: false,
       deepResearchEnabled: false,
       reasoningEnabled: false,
+      imageGenerationEnabled: false,
       setSearchEnabled: (enabled: boolean) => {
         set({ searchEnabled: enabled })
         updatePreferencesInBackground({ enable_search: enabled })
@@ -40,29 +44,58 @@ export const useCapabilities = create<CapabilitiesState>()(
         set({ reasoningEnabled: enabled })
         updatePreferencesInBackground({ enable_thinking: enabled })
       },
+      setImageGenerationEnabled: (enabled: boolean) => {
+        set({ imageGenerationEnabled: enabled })
+      },
       toggleSearch: () =>
         set((state) => {
           const newValue = !state.searchEnabled
-          updatePreferencesInBackground({ enable_search: newValue })
+          updatePreferencesInBackground({
+            enable_search: newValue,
+            enable_image_generation: newValue
+              ? false
+              : state.imageGenerationEnabled,
+          })
           return { searchEnabled: newValue }
         }),
       toggleDeepResearch: () =>
         set((state) => {
           const newValue = !state.deepResearchEnabled
-          updatePreferencesInBackground({ enable_deep_research: newValue })
+          updatePreferencesInBackground({
+            enable_deep_research: newValue,
+            enable_image_generation: newValue
+              ? false
+              : state.imageGenerationEnabled,
+          })
           return { deepResearchEnabled: newValue }
         }),
       toggleBrowser: () =>
         set((state) => {
           const newValue = !state.browserEnabled
-          updatePreferencesInBackground({ enable_browser: newValue })
+          updatePreferencesInBackground({
+            enable_browser: newValue,
+            enable_image_generation: newValue
+              ? false
+              : state.imageGenerationEnabled,
+          })
           return { browserEnabled: newValue }
         }),
       toggleReasoning: () =>
         set((state) => {
           const newValue = !state.reasoningEnabled
-          updatePreferencesInBackground({ enable_thinking: newValue })
+          updatePreferencesInBackground({
+            enable_thinking: newValue,
+            enable_image_generation: newValue
+              ? false
+              : state.imageGenerationEnabled,
+          })
           return { reasoningEnabled: newValue }
+        }),
+      toggleImageGeneration: () =>
+        set((state) => {
+          const newValue = !state.imageGenerationEnabled
+          updatePreferencesInBackground({ enable_image_generation: newValue })
+          return { imageGenerationEnabled: newValue }
         }),
       hydrate: (preferences: Partial<Preferences>) =>
         set({
@@ -70,6 +103,7 @@ export const useCapabilities = create<CapabilitiesState>()(
           browserEnabled: preferences.enable_browser ?? false,
           deepResearchEnabled: preferences.enable_deep_research ?? false,
           reasoningEnabled: preferences.enable_thinking ?? false,
+          imageGenerationEnabled: preferences.enable_image_generation ?? false,
         }),
     }),
     {
@@ -101,7 +135,9 @@ async function updatePreferencesInBackground(
       const preferencesToUpdate = { ...pendingPreferences }
       pendingPreferences = {} // Reset pending preferences
 
-      await useProfile.getState().updatePreferences({ preferences: preferencesToUpdate })
+      await useProfile
+        .getState()
+        .updatePreferences({ preferences: preferencesToUpdate })
     } catch (error) {
       console.error('Failed to update preferences:', error)
     } finally {

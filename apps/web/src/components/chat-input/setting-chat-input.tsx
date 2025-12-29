@@ -12,9 +12,10 @@ import {
   ChromiumIcon,
   CircleCheck,
   GlobeIcon,
+  ImageIcon,
   Leaf,
   LightbulbIcon,
-  MegaphoneIcon,
+  TelescopeIcon,
   SmileIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -34,14 +35,17 @@ interface SettingChatInputProps {
   deepResearchEnabled: boolean
   browserEnabled: boolean
   reasoningEnabled: boolean
+  imageGenerationEnabled?: boolean
   toggleInstruct: () => void
   toggleBrowser: () => void
   toggleSearch: () => void
   toggleDeepResearch: () => void
+  toggleImageGeneration?: () => void
   isBrowserSupported: boolean
   isSupportTools: boolean
   isSupportReasoningToggle: boolean
   isSupportDeepResearch: boolean
+  isSupportImageGeneration?: boolean
   disablePreferences: boolean
   selectedTone?: ToneOption
   onToneChange?: (tone: ToneOption) => void
@@ -62,14 +66,17 @@ export const SettingChatInput = ({
   deepResearchEnabled,
   browserEnabled,
   reasoningEnabled,
+  imageGenerationEnabled = false,
   toggleInstruct,
   toggleSearch,
   toggleDeepResearch,
   toggleBrowser,
+  toggleImageGeneration,
   isBrowserSupported,
   isSupportTools,
   isSupportDeepResearch,
   isSupportReasoningToggle,
+  isSupportImageGeneration = false,
   selectedTone = 'Friendly',
   disablePreferences,
   onToneChange,
@@ -123,41 +130,30 @@ export const SettingChatInput = ({
           </DropDrawerSubContent>
         </DropDrawerSub>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DropDrawerItem
-                onSelect={(e) => e.preventDefault()}
-                disabled={
-                  !isSupportReasoningToggle ||
-                  deepResearchEnabled ||
-                  disablePreferences
-                }
-              >
-                <div className="flex gap-2 items-center justify-between w-full">
-                  <div className="flex gap-2 items-center w-full">
-                    <LightbulbIcon />
-                    <span>Think</span>
+        {isSupportReasoningToggle && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropDrawerItem
+                  onSelect={(e) => e.preventDefault()}
+                  disabled={deepResearchEnabled || disablePreferences}
+                >
+                  <div className="flex gap-2 items-center justify-between w-full">
+                    <div className="flex gap-2 items-center w-full">
+                      <LightbulbIcon />
+                      <span>Think</span>
+                    </div>
+                    <Switch
+                      disabled={disablePreferences}
+                      checked={deepResearchEnabled ? true : reasoningEnabled}
+                      onCheckedChange={toggleInstruct}
+                    />
                   </div>
-                  <Switch
-                    disabled={!isSupportReasoningToggle || disablePreferences}
-                    checked={
-                      !isSupportReasoningToggle || deepResearchEnabled
-                        ? true
-                        : reasoningEnabled
-                    }
-                    onCheckedChange={toggleInstruct}
-                  />
-                </div>
-              </DropDrawerItem>
-            </div>
-          </TooltipTrigger>
-          {!isSupportReasoningToggle && (
-            <TooltipContent>
-              <p>The model does not have toggle-based reasoning capabilities</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
+                </DropDrawerItem>
+              </div>
+            </TooltipTrigger>
+          </Tooltip>
+        )}
         {shouldShowBrowserControl && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -182,64 +178,88 @@ export const SettingChatInput = ({
             </TooltipTrigger>
           </Tooltip>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DropDrawerItem
-                onSelect={(e) => e.preventDefault()}
-                disabled={!isSupportTools || disablePreferences}
-              >
-                <div className="flex gap-2 items-center justify-between w-full">
-                  <div className="flex gap-2 items-center w-full">
-                    <GlobeIcon />
-                    <span>Search</span>
+        {isSupportTools && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropDrawerItem
+                  onSelect={(e) => e.preventDefault()}
+                  disabled={disablePreferences}
+                >
+                  <div className="flex gap-2 items-center justify-between w-full">
+                    <div className="flex gap-2 items-center w-full">
+                      <GlobeIcon />
+                      <span>Search</span>
+                    </div>
+                    <Switch
+                      checked={deepResearchEnabled ? true : searchEnabled}
+                      onCheckedChange={toggleSearch}
+                      disabled={deepResearchEnabled || disablePreferences}
+                    />
                   </div>
-                  <Switch
-                    checked={deepResearchEnabled ? true : searchEnabled}
-                    onCheckedChange={toggleSearch}
-                    disabled={
-                      !isSupportTools ||
-                      deepResearchEnabled ||
-                      disablePreferences
-                    }
-                  />
-                </div>
-              </DropDrawerItem>
-            </div>
-          </TooltipTrigger>
-          {!isSupportTools && (
-            <TooltipContent>
-              <p>This model doesn't support search</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DropDrawerItem
-                onSelect={(e) => e.preventDefault()}
-                disabled={!isSupportDeepResearch || disablePreferences}
-              >
-                <div className="flex gap-2 items-center justify-between w-full">
-                  <div className="flex gap-2 items-center w-full">
-                    <MegaphoneIcon />
-                    <span>Deep Research</span>
+                </DropDrawerItem>
+              </div>
+            </TooltipTrigger>
+          </Tooltip>
+        )}
+        {isSupportDeepResearch && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropDrawerItem
+                  onSelect={(e) => e.preventDefault()}
+                  disabled={disablePreferences}
+                >
+                  <div className="flex gap-2 items-center justify-between w-full">
+                    <div className="flex gap-2 items-center w-full">
+                      <TelescopeIcon />
+                      <span>Deep Research</span>
+                    </div>
+                    <Switch
+                      checked={deepResearchEnabled}
+                      onCheckedChange={toggleDeepResearch}
+                      disabled={disablePreferences}
+                    />
                   </div>
-                  <Switch
-                    checked={deepResearchEnabled}
-                    onCheckedChange={toggleDeepResearch}
-                    disabled={!isSupportDeepResearch || disablePreferences}
-                  />
-                </div>
-              </DropDrawerItem>
-            </div>
-          </TooltipTrigger>
-          {!isSupportDeepResearch && (
-            <TooltipContent>
-              <p>This model doesn't support deep research</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
+                </DropDrawerItem>
+              </div>
+            </TooltipTrigger>
+          </Tooltip>
+        )}
+        {isSupportImageGeneration && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropDrawerItem
+                  onSelect={(e) => e.preventDefault()}
+                  disabled={!isSupportImageGeneration || disablePreferences}
+                >
+                  <div className="flex gap-2 items-center justify-between w-full">
+                    <div className="flex gap-2 items-center w-full">
+                      <ImageIcon />
+                      <span>Create Image</span>
+                    </div>
+                    <Switch
+                      checked={
+                        imageGenerationEnabled &&
+                        !deepResearchEnabled &&
+                        !browserEnabled &&
+                        !searchEnabled
+                      }
+                      onCheckedChange={toggleImageGeneration}
+                      disabled={!isSupportImageGeneration || disablePreferences}
+                    />
+                  </div>
+                </DropDrawerItem>
+              </div>
+            </TooltipTrigger>
+            {!isSupportImageGeneration && (
+              <TooltipContent>
+                <p>This server doesn't support image generation</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
 
         {/* Temporary hide till we have connector */}
         {/* <DropDrawerSeparator />
