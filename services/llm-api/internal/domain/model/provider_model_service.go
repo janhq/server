@@ -52,6 +52,38 @@ func (s *ProviderModelService) FindActiveByModelKey(ctx context.Context, modelPu
 	}, nil)
 }
 
+func (s *ProviderModelService) FindActiveByProviderOriginalModelID(ctx context.Context, originalModelID string) ([]*ProviderModel, error) {
+	if strings.TrimSpace(originalModelID) == "" {
+		return nil, nil
+	}
+	key := strings.TrimSpace(originalModelID)
+	active := ptr.ToBool(true)
+	return s.providerModelRepo.FindByFilter(ctx, ProviderModelFilter{
+		ProviderOriginalModelID: &key,
+		Active:                  active,
+	}, nil)
+}
+
+func (s *ProviderModelService) FindByModelKey(ctx context.Context, modelPublicID string) ([]*ProviderModel, error) {
+	if strings.TrimSpace(modelPublicID) == "" {
+		return nil, nil
+	}
+	key := strings.TrimSpace(modelPublicID)
+	return s.providerModelRepo.FindByFilter(ctx, ProviderModelFilter{
+		ModelPublicID: &key,
+	}, nil)
+}
+
+func (s *ProviderModelService) FindByProviderOriginalModelID(ctx context.Context, originalModelID string) ([]*ProviderModel, error) {
+	if strings.TrimSpace(originalModelID) == "" {
+		return nil, nil
+	}
+	key := strings.TrimSpace(originalModelID)
+	return s.providerModelRepo.FindByFilter(ctx, ProviderModelFilter{
+		ProviderOriginalModelID: &key,
+	}, nil)
+}
+
 func (s *ProviderModelService) FindActiveByProviderIDsAndKey(ctx context.Context, providerIDs []uint, modelPublicID string) ([]*ProviderModel, error) {
 	if strings.TrimSpace(modelPublicID) == "" {
 		return nil, nil

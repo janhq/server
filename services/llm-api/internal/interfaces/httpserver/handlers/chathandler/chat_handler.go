@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	openai "github.com/sashabaranov/go-openai"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
+	"jan-server/services/llm-api/internal/config"
 	"jan-server/services/llm-api/internal/domain/conversation"
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
 	"jan-server/services/llm-api/internal/domain/project"
@@ -129,9 +131,6 @@ func (h *ChatHandler) CreateChatCompletion(
 			observability.RecordError(ctx, err)
 			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get or create conversation")
 		}
-
-		// Auto-generate title from first message if conversation was just created
-		conv = h.updateConversationTitleFromMessages(ctx, userID, conv, request.Messages)
 
 		// Prepend conversation items to messages
 		conversationID = conv.PublicID
@@ -462,6 +461,10 @@ func (h *ChatHandler) CreateChatCompletion(
 				go h.memoryHandler.ObserveConversation(conv, userID, newMessages, response, finishReason)
 			}
 		}
+	}
+
+	if conv != nil && response != nil {
+		conv = h.updateConversationTitleFromCompletion(ctx, userID, conv, newMessages, response)
 	}
 
 	// Calculate total duration
@@ -882,16 +885,55 @@ func (h *ChatHandler) createConversationWithReferrer(ctx context.Context, userID
 
 // generateTitleFromMessage generates a conversation title from the first user message
 func (h *ChatHandler) generateTitleFromMessage(messages []openai.ChatCompletionMessage) string {
+	maxLen := conversationTitleMaxLength()
 	// Find the first user message
 	for _, msg := range messages {
 		if msg.Role == "user" && msg.Content != "" {
-			title := stringutils.GenerateTitle(msg.Content, 60)
+			title := stringutils.GenerateTitle(msg.Content, maxLen)
 			if title != "" {
+				log.Debug().
+					Int("title_max_len", maxLen).
+					Str("title", title).
+					Msg("generated title from first user message")
 				return title
 			}
 		}
 	}
+	log.Debug().Msg("falling back to default conversation title")
 	return "New Conversation"
+}
+
+func (h *ChatHandler) generateTitleFromMessages(ctx context.Context, messages []openai.ChatCompletionMessage) string {
+	cfg := config.GetGlobal()
+	if cfg == nil {
+		log.Warn().Msg("config not loaded; falling back to default title generator")
+		return h.generateTitleFromMessage(messages)
+	}
+
+	log.Debug().
+		Bool("title_generation_enabled", cfg.ConversationTitleGenerationEnabled).
+		Str("title_generation_model_id", cfg.ConversationTitleGenerationModelID).
+		Int("message_count", len(messages)).
+		Str("message_summary", summarizeTitleMessages(messages)).
+		Msg("preparing conversation title generation")
+
+	if cfg != nil && cfg.ConversationTitleGenerationEnabled {
+		maxLen := conversationTitleMaxLength()
+		if title, err := h.generateTitleWithModel(ctx, cfg.ConversationTitleGenerationModelID, messages, maxLen); err == nil && title != "" {
+			log.Info().
+				Int("title_max_len", maxLen).
+				Str("title", title).
+				Msg("generated conversation title from model")
+			return title
+		} else if err != nil {
+			log.Warn().
+				Err(err).
+				Int("title_max_len", maxLen).
+				Msg("model title generation failed; falling back to first message")
+		}
+	}
+
+	return h.generateTitleFromMessage(messages)
 }
 
 // updateConversationTitleFromMessages updates conversation title if it's still default and returns the updated conversation
@@ -902,7 +944,7 @@ func (h *ChatHandler) updateConversationTitleFromMessages(ctx context.Context, u
 
 	// Only update if title is not set or is empty
 	if conv.Title == nil || *conv.Title == "" {
-		newTitle := h.generateTitleFromMessage(messages)
+		newTitle := h.generateTitleFromMessages(ctx, messages)
 		if newTitle != "" {
 			// Update the conversation title
 			titleCopy := newTitle
@@ -918,6 +960,305 @@ func (h *ChatHandler) updateConversationTitleFromMessages(ctx context.Context, u
 		}
 	}
 	return conv
+}
+
+func (h *ChatHandler) updateConversationTitleFromCompletion(ctx context.Context, userID uint, conv *conversation.Conversation, messages []openai.ChatCompletionMessage, response *openai.ChatCompletionResponse) *conversation.Conversation {
+	if conv == nil || response == nil || len(response.Choices) == 0 {
+		return conv
+	}
+	userMessageCount := countUserMessages(messages)
+	if !h.shouldUpdateTitleForUserMessageCount(messages) {
+		return conv
+	}
+	if isTitleLocked(conv) {
+		log.Debug().
+			Str("conversation_id", conv.PublicID).
+			Msg("conversation title locked; skipping title update")
+		return conv
+	}
+	if conv.Title != nil && strings.TrimSpace(*conv.Title) != "" {
+		currentTitle := strings.TrimSpace(*conv.Title)
+		defaultTitle := strings.TrimSpace(h.generateTitleFromMessage(messages))
+		if userMessageCount == 1 && (defaultTitle == "" || !strings.EqualFold(currentTitle, defaultTitle)) {
+			log.Debug().
+				Str("conversation_id", conv.PublicID).
+				Str("title", *conv.Title).
+				Msg("conversation title already set; skipping title update")
+			return conv
+		}
+		log.Debug().
+			Str("conversation_id", conv.PublicID).
+			Str("title", currentTitle).
+			Str("default_title", defaultTitle).
+			Msg("conversation title matches default; attempting update")
+	}
+
+	combined := append([]openai.ChatCompletionMessage{}, messages...)
+	combined = append(combined, response.Choices[0].Message)
+	log.Debug().
+		Str("conversation_id", conv.PublicID).
+		Uint("user_id", userID).
+		Int("message_count", len(combined)).
+		Str("message_summary", summarizeTitleMessages(combined)).
+		Msg("building conversation title from completion")
+	newTitle := h.generateTitleFromMessages(ctx, combined)
+	if newTitle == "" {
+		log.Warn().
+			Str("conversation_id", conv.PublicID).
+			Msg("generated empty title; skipping update")
+		return conv
+	}
+
+	titleCopy := newTitle
+	updateInput := conversation.UpdateConversationInput{
+		Title: &titleCopy,
+	}
+	updatedConv, err := h.conversationService.UpdateConversationWithInput(ctx, userID, conv.PublicID, updateInput)
+	if err != nil {
+		log.Warn().
+			Err(err).
+			Str("conversation_id", conv.PublicID).
+			Msg("failed to update conversation title after completion")
+		return conv
+	}
+	log.Info().
+		Str("conversation_id", updatedConv.PublicID).
+		Str("title", newTitle).
+		Msg("conversation title updated after completion")
+	return updatedConv
+}
+
+func (h *ChatHandler) shouldUpdateTitleForUserMessageCount(messages []openai.ChatCompletionMessage) bool {
+	count := countUserMessages(messages)
+	if count == 1 || count%5 == 0 {
+		return true
+	}
+	log.Debug().
+		Int("user_message_count", count).
+		Msg("user message count does not trigger title update; skipping")
+	return false
+}
+
+func countUserMessages(messages []openai.ChatCompletionMessage) int {
+	count := 0
+	for _, msg := range messages {
+		if msg.Role == openai.ChatMessageRoleUser {
+			count++
+		}
+	}
+	return count
+}
+
+func isTitleLocked(conv *conversation.Conversation) bool {
+	if conv == nil || conv.Metadata == nil {
+		return false
+	}
+	value, ok := conv.Metadata["title_locked"]
+	if !ok {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(value), "true")
+}
+
+func (h *ChatHandler) generateTitleWithModel(ctx context.Context, modelPublicID string, messages []openai.ChatCompletionMessage, maxLen int) (string, error) {
+	modelPublicID = strings.TrimSpace(modelPublicID)
+	if modelPublicID == "" {
+		return "", fmt.Errorf("title generation model id is empty")
+	}
+
+	log.Debug().
+		Str("title_generation_model_id", modelPublicID).
+		Int("title_max_len", maxLen).
+		Int("message_count", len(messages)).
+		Str("message_summary", summarizeTitleMessages(messages)).
+		Msg("selecting provider model for title generation")
+
+	selectedProviderModel, selectedProvider, err := h.providerHandler.SelectProviderModelForModelPublicID(ctx, modelPublicID)
+	if err != nil {
+		selectedProviderModel, selectedProvider, err = h.providerHandler.SelectProviderModelForProviderOriginalModelID(ctx, modelPublicID)
+	}
+	if err != nil {
+		selectedProviderModel, selectedProvider, err = h.providerHandler.SelectProviderModelForModelPublicIDIncludingInactive(ctx, modelPublicID)
+	}
+	if err != nil {
+		selectedProviderModel, selectedProvider, err = h.providerHandler.SelectProviderModelForProviderOriginalModelIDIncludingInactive(ctx, modelPublicID)
+		if err != nil {
+			return "", err
+		}
+	}
+	if selectedProviderModel == nil || selectedProvider == nil {
+		return "", fmt.Errorf("title generation model provider not found")
+	}
+	if !selectedProviderModel.Active {
+		log.Warn().
+			Str("provider_id", selectedProvider.PublicID).
+			Str("provider_name", selectedProvider.DisplayName).
+			Str("model_public_id", selectedProviderModel.ModelPublicID).
+			Str("provider_original_model_id", selectedProviderModel.ProviderOriginalModelID).
+			Msg("title generation using inactive provider model")
+	}
+
+	log.Debug().
+		Str("provider_id", selectedProvider.PublicID).
+		Str("provider_name", selectedProvider.DisplayName).
+		Str("model_public_id", selectedProviderModel.ModelPublicID).
+		Str("provider_original_model_id", selectedProviderModel.ProviderOriginalModelID).
+		Msg("selected provider model for title generation")
+
+	chatClient, err := h.inferenceProvider.GetChatCompletionClient(ctx, selectedProvider)
+	if err != nil {
+		return "", err
+	}
+
+	var modelCatalog *domainmodel.ModelCatalog
+	if selectedProviderModel.ModelCatalogID != nil {
+		if catalog, catalogErr := h.providerHandler.GetModelCatalogByID(ctx, *selectedProviderModel.ModelCatalogID); catalogErr == nil {
+			modelCatalog = catalog
+		}
+	}
+
+	promptMessages := buildConversationTitlePromptMessages(messages, maxLen)
+	log.Debug().
+		Int("prompt_message_count", len(promptMessages)).
+		Str("prompt_summary", summarizeTitleMessages(promptMessages)).
+		Msg("prepared title generation prompt")
+	llmRequest := chat.CompletionRequest{
+		ChatCompletionRequest: openai.ChatCompletionRequest{
+			Model:       selectedProviderModel.ProviderOriginalModelID,
+			Messages:    promptMessages,
+			MaxTokens:   64,
+			Temperature: 0.2,
+		},
+	}
+	if modelCatalog != nil {
+		h.applyModelDefaultsFromCatalog(&llmRequest, modelCatalog)
+	}
+
+	log.Debug().
+		Str("provider_original_model_id", selectedProviderModel.ProviderOriginalModelID).
+		Float32("temperature", llmRequest.Temperature).
+		Int("max_tokens", llmRequest.MaxTokens).
+		Msg("calling model for title generation")
+
+	response, err := chatClient.CreateChatCompletion(ctx, "", llmRequest)
+	if err != nil {
+		return "", err
+	}
+	if response == nil || len(response.Choices) == 0 {
+		return "", fmt.Errorf("empty title generation response")
+	}
+
+	rawTitle := strings.TrimSpace(response.Choices[0].Message.Content)
+	if rawTitle == "" {
+		return "", fmt.Errorf("empty title generation content")
+	}
+
+	title := stringutils.GenerateTitle(rawTitle, maxLen)
+	if title == "" {
+		return "", fmt.Errorf("title generation result is empty after sanitization")
+	}
+	log.Debug().
+		Str("raw_title", rawTitle).
+		Str("sanitized_title", title).
+		Msg("title generation completed")
+	return title, nil
+}
+
+func buildConversationTitlePromptMessages(messages []openai.ChatCompletionMessage, maxLen int) []openai.ChatCompletionMessage {
+	systemPrompt := "You generate short, descriptive conversation titles. Return only the title text with no quotes or extra words."
+	userPrompt := fmt.Sprintf(
+		"Create a concise title for this conversation. Max length: %d characters.\nConversation:\n%s",
+		maxLen,
+		formatConversationForTitlePrompt(messages),
+	)
+
+	return []openai.ChatCompletionMessage{
+		{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: systemPrompt,
+		},
+		{
+			Role:    openai.ChatMessageRoleUser,
+			Content: userPrompt,
+		},
+	}
+}
+
+func formatConversationForTitlePrompt(messages []openai.ChatCompletionMessage) string {
+	if len(messages) == 0 {
+		return "(no messages)"
+	}
+
+	var builder strings.Builder
+	for i, msg := range messages {
+		content := extractChatMessageText(msg)
+		if strings.TrimSpace(content) == "" {
+			content = "(no text content)"
+		}
+		builder.WriteString(fmt.Sprintf("%d. %s: %s\n", i+1, msg.Role, content))
+	}
+
+	return strings.TrimSpace(builder.String())
+}
+
+func extractChatMessageText(msg openai.ChatCompletionMessage) string {
+	if msg.Content != "" {
+		return msg.Content
+	}
+
+	if len(msg.MultiContent) > 0 {
+		var parts []string
+		for _, part := range msg.MultiContent {
+			if part.Type == openai.ChatMessagePartTypeText && strings.TrimSpace(part.Text) != "" {
+				parts = append(parts, part.Text)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, " ")
+		}
+	}
+
+	if msg.FunctionCall != nil && msg.FunctionCall.Name != "" {
+		return fmt.Sprintf("Function call: %s", msg.FunctionCall.Name)
+	}
+
+	if len(msg.ToolCalls) > 0 {
+		var names []string
+		for _, call := range msg.ToolCalls {
+			if call.Function.Name != "" {
+				names = append(names, call.Function.Name)
+			}
+		}
+		if len(names) > 0 {
+			return fmt.Sprintf("Tool calls: %s", strings.Join(names, ", "))
+		}
+	}
+
+	return ""
+}
+
+func conversationTitleMaxLength() int {
+	return conversation.DefaultConversationValidationConfig().MaxTitleLength
+}
+
+func summarizeTitleMessages(messages []openai.ChatCompletionMessage) string {
+	if len(messages) == 0 {
+		return "(no messages)"
+	}
+
+	parts := make([]string, 0, len(messages))
+	for _, msg := range messages {
+		text := extractChatMessageText(msg)
+		preview := strings.TrimSpace(text)
+		if len(preview) > 120 {
+			preview = preview[:120] + "..."
+		}
+		if preview == "" {
+			preview = "(no text)"
+		}
+		parts = append(parts, fmt.Sprintf("%s:%s", msg.Role, preview))
+	}
+	return strings.Join(parts, " | ")
 }
 
 // getOrCreateConversation retrieves an existing conversation or creates a new one with optional referrer

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -102,6 +103,10 @@ type Config struct {
 	// Conversation Sharing
 	ConversationSharingEnabled bool `env:"CONVERSATION_SHARING_ENABLED" envDefault:"false"`
 
+	// Conversation Title Generation
+	ConversationTitleGenerationEnabled bool   `env:"CONVERSATION_TITLE_GENERATION_ENABLED" envDefault:"false"`
+	ConversationTitleGenerationModelID string `env:"CONVERSATION_TITLE_GENERATION_MODEL_ID" envDefault:"LFM2-8B-A1B"`
+
 	// Image Generation
 	ImageGenerationEnabled     bool          `env:"IMAGE_GENERATION_ENABLED" envDefault:"false"`
 	ImageGenerationTimeout     time.Duration `env:"IMAGE_GENERATION_TIMEOUT" envDefault:"120s"`
@@ -122,6 +127,13 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("parse env: %w", err)
+	}
+
+	if llmLogLevel := strings.TrimSpace(os.Getenv("LLM_API_LOG_LEVEL")); llmLogLevel != "" {
+		cfg.LogLevel = llmLogLevel
+	}
+	if llmLogFormat := strings.TrimSpace(os.Getenv("LLM_API_LOG_FORMAT")); llmLogFormat != "" {
+		cfg.LogFormat = llmLogFormat
 	}
 
 	cfg.JanProviderConfigSet = strings.TrimSpace(cfg.JanProviderConfigSet)
@@ -197,6 +209,11 @@ func Load() (*Config, error) {
 	cfg.LogLevel = strings.ToLower(cfg.LogLevel)
 	cfg.LogFormat = strings.ToLower(cfg.LogFormat)
 	cfg.EnvReloadedAt = time.Now()
+
+	cfg.ConversationTitleGenerationModelID = strings.TrimSpace(cfg.ConversationTitleGenerationModelID)
+	if cfg.ConversationTitleGenerationModelID == "" {
+		cfg.ConversationTitleGenerationModelID = "LFM2-8B-A1B"
+	}
 
 	// Update global singletons for backwards compatibility
 	globalConfig = cfg

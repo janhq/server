@@ -90,17 +90,30 @@ func (h *ConversationHandler) CreateConversation(
 	// Sanitize title if provided
 	var sanitizedTitle *string
 	if req.Title != nil && *req.Title != "" {
-		title := stringutils.GenerateTitle(*req.Title, 256)
+		rawTitle := strings.TrimSpace(*req.Title)
+		if strings.EqualFold(rawTitle, "New Conversation") {
+			rawTitle = ""
+		}
+		title := ""
+		if rawTitle != "" {
+			title = stringutils.GenerateTitle(rawTitle, 256)
+		}
 		if title != "" {
 			sanitizedTitle = &title
 		}
 	}
 
+	metadata := req.Metadata
+	if metadata == nil {
+		metadata = map[string]string{}
+	}
+	metadata["title_locked"] = "false"
+
 	// Create conversation
 	input := conversation.CreateConversationInput{
 		UserID:          userID,
 		Title:           sanitizedTitle,
-		Metadata:        req.Metadata,
+		Metadata:        metadata,
 		Referrer:        req.Referrer,
 		ProjectID:       projectID,
 		ProjectPublicID: projectPublicID,
@@ -160,15 +173,44 @@ func (h *ConversationHandler) UpdateConversation(
 	// Sanitize title if provided
 	var sanitizedTitle *string
 	if req.Title != nil && *req.Title != "" {
-		title := stringutils.GenerateTitle(*req.Title, 256)
+		rawTitle := strings.TrimSpace(*req.Title)
+		if strings.EqualFold(rawTitle, "New Conversation") {
+			rawTitle = ""
+		}
+		title := ""
+		if rawTitle != "" {
+			title = stringutils.GenerateTitle(rawTitle, 256)
+		}
 		if title != "" {
 			sanitizedTitle = &title
 		}
 	}
 
+	metadata := req.Metadata
+	if sanitizedTitle != nil {
+		conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, conversationID, userID)
+		if err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to get conversation")
+		}
+		branchName := conv.ActiveBranch
+		if branchName == "" {
+			branchName = conversation.BranchMain
+		}
+		itemCount, err := h.conversationService.CountConversationItems(ctx, conv, branchName)
+		if err != nil {
+			return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "failed to count conversation items")
+		}
+		if metadata == nil {
+			metadata = map[string]string{}
+		}
+		if itemCount > 1 {
+			metadata["title_locked"] = "true"
+		}
+	}
+
 	input := conversation.UpdateConversationInput{
 		Title:    sanitizedTitle,
-		Metadata: req.Metadata,
+		Metadata: metadata,
 		Referrer: req.Referrer,
 	}
 

@@ -119,6 +119,7 @@ type ProviderModelFilter struct {
 	ModelCatalogID *uint
 	ModelPublicID  *string
 	ModelPublicIDs *[]string
+	ProviderOriginalModelID *string
 	Active         *bool
 	SupportsImages *bool
 	SearchText     *string

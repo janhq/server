@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
@@ -74,6 +75,17 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
+	}
+
+	if strings.TrimSpace(os.Getenv("MCP_TOOLS_LOG_LEVEL")) == "" {
+		if global := strings.TrimSpace(os.Getenv("LOG_LEVEL")); global != "" {
+			cfg.LogLevel = global
+		}
+	}
+	if strings.TrimSpace(os.Getenv("MCP_TOOLS_LOG_FORMAT")) == "" {
+		if global := strings.TrimSpace(os.Getenv("LOG_FORMAT")); global != "" {
+			cfg.LogFormat = global
+		}
 	}
 	if cfg.AuthEnabled {
 		if strings.TrimSpace(cfg.AuthIssuer) == "" {
