@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM registry.menlo.ai/dockerhub/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -38,7 +38,7 @@ ENV VITE_GA_ID=$VITE_GA_ID
 RUN npx vite build
 
 # Production stage
-FROM nginx:alpine AS runner
+FROM registry.menlo.ai/dockerhub/nginx:alpine AS runner
 
 WORKDIR /usr/share/nginx/html
 
