@@ -26,7 +26,7 @@ jobs:
       tags: registry.menlo.ai/jan-server/web:dev-${{ github.sha }}
       build-args: |
         JAN_BASE_URL=https://api-dev.jan.ai/v1
-        JAN_API_BASE_URL=https://api-dev.jan.ai
+        JAN_API_BASE_URL=https://api-dev.jan.ai/
         ENVIRONMENT=dev
         VITE_AUTH_URL=https://auth-dev.jan.ai
         VITE_AUTH_REALM=jan
