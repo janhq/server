@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies and build
-RUN npm ci
+RUN npm install
 ARG NEXT_PUBLIC_JAN_BASE_URL
 ENV NEXT_PUBLIC_JAN_BASE_URL=$NEXT_PUBLIC_JAN_BASE_URL
 RUN npm run build
