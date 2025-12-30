@@ -18,11 +18,11 @@ Comprehensive guide for deploying Jan Server to various environments.
 
 Jan Server supports multiple deployment strategies to accommodate different use cases:
 
-| Environment | Use Case | Orchestrator | Recommended For |
-|-------------|----------|--------------|-----------------|
-| **Kubernetes** | Production, Staging | Kubernetes/Helm | Scalable production deployments |
-| **Docker Compose** | Development, Testing | Docker Compose | Local development and testing |
-| **Hybrid Mode** | Development | Native + Docker | Fast iteration and debugging |
+| Environment        | Use Case             | Orchestrator    | Recommended For                 |
+| ------------------ | -------------------- | --------------- | ------------------------------- |
+| **Kubernetes**     | Production, Staging  | Kubernetes/Helm | Scalable production deployments |
+| **Docker Compose** | Development, Testing | Docker Compose  | Local development and testing   |
+| **Hybrid Mode**    | Development          | Native + Docker | Fast iteration and debugging    |
 
 ## Prerequisites
 
@@ -316,7 +316,7 @@ providers:
 Create a `docker-compose.vllm-multi.yml`:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   vllm-1:
@@ -537,13 +537,13 @@ docker compose -f docker-compose.vllm-multi.yml up -d
 
 For optimal multi-vLLM performance:
 
-| Setting | Recommendation | Notes |
-|---------|-----------------|-------|
-| **Instances** | 2-4 per operator | Balance cost vs redundancy |
-| **Batch Size** | 1-4 per instance | Depends on VRAM available |
-| **Model Size** | 7B or smaller | For multi-instance on typical GPUs |
-| **Tensor Parallelism** | Enabled if multi-GPU per instance | Reduces latency |
-| **Quantization** | 8-bit or GPTQ | Reduces VRAM usage |
+| Setting                | Recommendation                    | Notes                              |
+| ---------------------- | --------------------------------- | ---------------------------------- |
+| **Instances**          | 2-4 per operator                  | Balance cost vs redundancy         |
+| **Batch Size**         | 1-4 per instance                  | Depends on VRAM available          |
+| **Model Size**         | 7B or smaller                     | For multi-instance on typical GPUs |
+| **Tensor Parallelism** | Enabled if multi-GPU per instance | Reduces latency                    |
+| **Quantization**       | 8-bit or GPTQ                     | Reduces VRAM usage                 |
 
 ### Cost Optimization
 
@@ -611,26 +611,26 @@ EOF
 
 ### Minimum (Development)
 
-| Component | CPU | Memory |
-|-----------|-----|--------|
-| LLM API | 250m | 256Mi |
-| Media API | 250m | 256Mi |
-| MCP Tools | 250m | 256Mi |
-| PostgreSQL | 250m | 256Mi |
-| Redis | 100m | 128Mi |
-| Keycloak | 500m | 512Mi |
-| **Total** | **~1.5 CPU** | **~2Gi** |
+| Component  | CPU          | Memory   |
+| ---------- | ------------ | -------- |
+| LLM API    | 250m         | 256Mi    |
+| Media API  | 250m         | 256Mi    |
+| MCP Tools  | 250m         | 256Mi    |
+| PostgreSQL | 250m         | 256Mi    |
+| Redis      | 100m         | 128Mi    |
+| Keycloak   | 500m         | 512Mi    |
+| **Total**  | **~1.5 CPU** | **~2Gi** |
 
 ### Recommended (Production)
 
-| Component | CPU | Memory | Replicas |
-|-----------|-----|--------|----------|
-| LLM API | 1000m | 1Gi | 3 |
-| Media API | 500m | 512Mi | 2 |
-| MCP Tools | 500m | 512Mi | 2 |
-| PostgreSQL | 2000m | 4Gi | 1 (or managed) |
-| Redis | 500m | 1Gi | 3 (cluster) |
-| Keycloak | 1000m | 1Gi | 2 |
+| Component  | CPU   | Memory | Replicas       |
+| ---------- | ----- | ------ | -------------- |
+| LLM API    | 1000m | 1Gi    | 3              |
+| Media API  | 500m  | 512Mi  | 2              |
+| MCP Tools  | 500m  | 512Mi  | 2              |
+| PostgreSQL | 2000m | 4Gi    | 1 (or managed) |
+| Redis      | 500m  | 1Gi    | 3 (cluster)    |
+| Keycloak   | 1000m | 1Gi    | 2              |
 
 ### Storage Requirements
 
@@ -695,6 +695,7 @@ kubectl exec -n jan-server <service-pod> -- nc -zv jan-server-postgresql 5432
 #### Image Pull Failures
 
 For minikube:
+
 ```bash
 # Verify images are loaded
 minikube image ls | grep jan/
@@ -704,6 +705,7 @@ minikube image load jan/llm-api:latest
 ```
 
 For production:
+
 ```bash
 # Check image pull policy
 kubectl get deployment -n jan-server jan-server-llm-api -o yaml | grep pullPolicy
@@ -723,6 +725,7 @@ kubectl get deployment -n jan-server jan-server-llm-api -o yaml | grep pullPolic
 ## Support
 
 For additional help:
+
 - Review [Getting Started](../quickstart.md)
 - Check [Troubleshooting Guide](troubleshooting.md)
 - See [Architecture Documentation](../architecture/README.md)

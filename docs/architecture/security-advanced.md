@@ -62,6 +62,7 @@ For unauthenticated users, Jan Server supports guest login via POST /llm/auth/gu
 ### Permission Matrix
 
 Permissions vary by role:
+
 - **Guest**: Can only GET /models
 - **Standard**: Can GET/POST/PATCH conversations, GET models, LIMITED chat completions, upload 5 files
 - **Premium**: All Standard permissions plus DELETE conversations, unlimited chat completions, upload 100 files, webhooks
@@ -77,7 +78,7 @@ RBAC is implemented using decorators that check user roles and permissions from 
 
 ### Data in Transit (TLS/SSL)
 
-**TLS 1.3 Configuration**: Uses cipher suites TLS_AES_256_GCM_SHA384 (preferred), TLS_CHACHA20_POLY1305_SHA256, and TLS_AES_128_GCM_SHA256. Certificates issued by DigiCert/Let's Encrypt with 1-year validity and auto-renewal 30 days before expiry. SAN covers *.jan.ai and jan.ai. Perfect Forward Secrecy enabled. HSTS configured with max-age=31536000 and includeSubDomains.
+**TLS 1.3 Configuration**: Uses cipher suites TLS_AES_256_GCM_SHA384 (preferred), TLS_CHACHA20_POLY1305_SHA256, and TLS_AES_128_GCM_SHA256. Certificates issued by DigiCert/Let's Encrypt with 1-year validity and auto-renewal 30 days before expiry. SAN covers \*.jan.ai and jan.ai. Perfect Forward Secrecy enabled. HSTS configured with max-age=31536000 and includeSubDomains.
 
 #### Certificate Pinning
 

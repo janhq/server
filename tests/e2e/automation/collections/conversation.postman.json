@@ -92,9 +92,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.response.to.have.status(200);"
-                ]
+                "exec": ["pm.response.to.have.status(200);"]
               }
             }
           ]
@@ -255,13 +253,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -312,13 +305,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -359,13 +347,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -397,14 +380,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/projects/{{project_id_1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects",
-                "{{project_id_1}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -441,13 +418,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/projects?limit=2",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"],
               "query": [
                 {
                   "key": "limit",
@@ -504,13 +476,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/projects?limit=2&cursor={{next_cursor}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"],
               "query": [
                 {
                   "key": "limit",
@@ -559,14 +526,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects/{{project_id_1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects",
-                "{{project_id_1}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -606,14 +567,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects/{{project_id_1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects",
-                "{{project_id_1}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -652,14 +607,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects/{{project_id_1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects",
-                "{{project_id_1}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects", "{{project_id_1}}"]
             }
           },
           "event": [
@@ -698,14 +647,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects/{{project_id_2}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects",
-                "{{project_id_2}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects", "{{project_id_2}}"]
             }
           },
           "event": [
@@ -745,14 +688,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects/{{project_id_2}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects",
-                "{{project_id_2}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects", "{{project_id_2}}"]
             }
           },
           "event": [
@@ -791,13 +728,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -836,13 +768,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/projects",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "projects"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "projects"]
             }
           },
           "event": [
@@ -912,13 +839,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"]
             }
           }
         },
@@ -957,14 +879,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{conversationId1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations",
-                "{{conversationId1}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{conversationId1}}"]
             }
           }
         },
@@ -1156,13 +1072,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"]
             }
           },
           "event": [
@@ -1212,13 +1123,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"]
             }
           },
           "event": [
@@ -1258,13 +1164,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations?project_id={{project_id_1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"],
               "query": [
                 {
                   "key": "project_id",
@@ -1309,13 +1210,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations?project_id={{project_id_1}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"],
               "query": [
                 {
                   "key": "project_id",
@@ -1365,13 +1261,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations?limit=100",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"],
               "query": [
                 {
                   "key": "limit",
@@ -1651,9 +1542,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}/items",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -1826,15 +1715,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}/share",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations",
-                "{{share_test_conv_id}}",
-                "share"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{share_test_conv_id}}", "share"]
             }
           },
           "event": [
@@ -1916,15 +1798,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}/share",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations",
-                "{{share_test_conv_id}}",
-                "share"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{share_test_conv_id}}", "share"]
             }
           },
           "event": [
@@ -1961,15 +1836,8 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/v1/public/shares/{{share_slug}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "public",
-                "shares",
-                "{{share_slug}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{share_slug}}"]
             }
           },
           "event": [
@@ -2014,9 +1882,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{share_test_conv_id}}/shares/{{share_id}}",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2048,15 +1914,8 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/v1/public/shares/{{share_slug}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "public",
-                "shares",
-                "{{share_slug}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{share_slug}}"]
             }
           },
           "event": [
@@ -2094,15 +1953,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/TEMPORARY_CHAT_ID/share",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations",
-                "TEMPORARY_CHAT_ID",
-                "share"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "TEMPORARY_CHAT_ID", "share"]
             }
           },
           "event": [
@@ -2217,15 +2069,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{cascade_conv_id}}/share",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations",
-                "{{cascade_conv_id}}",
-                "share"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations", "{{cascade_conv_id}}", "share"]
             }
           },
           "event": [
@@ -2252,15 +2097,8 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/v1/public/shares/{{cascade_share_slug}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "public",
-                "shares",
-                "{{cascade_share_slug}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{cascade_share_slug}}"]
             }
           },
           "event": [
@@ -2312,15 +2150,8 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/v1/public/shares/{{cascade_share_slug}}",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "public",
-                "shares",
-                "{{cascade_share_slug}}"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "public", "shares", "{{cascade_share_slug}}"]
             }
           },
           "event": [
@@ -2492,9 +2323,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2538,9 +2367,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2594,9 +2421,7 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2635,9 +2460,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2675,9 +2498,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/{{new_branch_name}}/activate",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2717,9 +2538,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items?branch={{new_branch_name}}",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2801,9 +2620,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items?branch={{new_branch_name}}",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2856,9 +2673,7 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items/{{edit_target_item_id}}/edit",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2913,9 +2728,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -2971,9 +2784,7 @@
             },
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/items/{{regen_target_item_id}}/regenerate",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -3036,9 +2847,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/{{new_branch_name}}",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -3078,9 +2887,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/main/activate",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -3120,9 +2927,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/{{new_branch_name}}",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -3159,9 +2964,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -3200,9 +3003,7 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations/{{branch_test_conv_id}}/branches/main",
-              "host": [
-                "{{kong_url}}"
-              ],
+              "host": ["{{kong_url}}"],
               "path": [
                 "v1",
                 "conversations",
@@ -3386,13 +3187,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations?limit=50",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"],
               "query": [
                 {
                   "key": "limit",
@@ -3499,13 +3295,8 @@
             ],
             "url": {
               "raw": "{{kong_url}}/v1/conversations?limit=50",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "v1",
-                "conversations"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["v1", "conversations"],
               "query": [
                 {
                   "key": "limit",

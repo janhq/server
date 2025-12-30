@@ -4,16 +4,16 @@ Generate images from text prompts using the OpenAI-compatible Images API.
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/auth/guest-login` | Get authentication token |
-| GET | `/v1/models` | List available models |
-| POST | `/v1/conversations` | Create conversation |
-| POST | `/v1/chat/completions` | Send chat message |
-| POST | `/v1/images/generations` | Generate image from prompt |
-| GET | `/v1/conversations/{id}/items` | Get conversation messages |
-| GET | `/v1/conversations/{id}` | Get conversation details |
-| DELETE | `/v1/conversations/{id}` | Delete conversation |
+| Method | Endpoint                       | Description                |
+| ------ | ------------------------------ | -------------------------- |
+| POST   | `/auth/guest-login`            | Get authentication token   |
+| GET    | `/v1/models`                   | List available models      |
+| POST   | `/v1/conversations`            | Create conversation        |
+| POST   | `/v1/chat/completions`         | Send chat message          |
+| POST   | `/v1/images/generations`       | Generate image from prompt |
+| GET    | `/v1/conversations/{id}/items` | Get conversation messages  |
+| GET    | `/v1/conversations/{id}`       | Get conversation details   |
+| DELETE | `/v1/conversations/{id}`       | Delete conversation        |
 
 ## Configuration
 
@@ -35,6 +35,7 @@ curl -X POST http://localhost:8000/auth/guest-login \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJSUzI1NiIs...",
@@ -61,6 +62,7 @@ curl -X POST http://localhost:8000/v1/conversations \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "conv_abc123",
@@ -104,6 +106,7 @@ curl -X POST http://localhost:8000/v1/images/generations \
 ```
 
 **Response:**
+
 ```json
 {
   "created": 1735200000,
@@ -154,22 +157,22 @@ curl -X DELETE http://localhost:8000/v1/conversations/{{conversation_id}} \
 
 ## Image Generation Parameters
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `prompt` | string | ✅ Yes | - | Text description of the image |
-| `model` | string | No | `flux-schnell` | Model: `flux-schnell`, `flux-dev` |
-| `n` | integer | No | `1` | Number of images (1-10) |
-| `size` | string | No | `1024x1024` | Size: `512x512`, `1024x1024`, `1792x1024`, `1024x1792` |
-| `response_format` | string | No | `url` | Format: `url` or `b64_json` |
-| `conversation_id` | string | No | - | Link to conversation |
-| `store` | boolean | No | `true` | Save to conversation history |
+| Parameter         | Type    | Required | Default        | Description                                            |
+| ----------------- | ------- | -------- | -------------- | ------------------------------------------------------ |
+| `prompt`          | string  | ✅ Yes   | -              | Text description of the image                          |
+| `model`           | string  | No       | `flux-schnell` | Model: `flux-schnell`, `flux-dev`                      |
+| `n`               | integer | No       | `1`            | Number of images (1-10)                                |
+| `size`            | string  | No       | `1024x1024`    | Size: `512x512`, `1024x1024`, `1792x1024`, `1024x1792` |
+| `response_format` | string  | No       | `url`          | Format: `url` or `b64_json`                            |
+| `conversation_id` | string  | No       | -              | Link to conversation                                   |
+| `store`           | boolean | No       | `true`         | Save to conversation history                           |
 
 ## Error Responses
 
-| Status | Description |
-|--------|-------------|
-| 400 | Invalid request (missing prompt, invalid size) |
-| 401 | Unauthorized (missing/invalid token) |
-| 404 | Image provider not configured |
-| 500 | Provider error |
-| 501 | Feature not enabled |
+| Status | Description                                    |
+| ------ | ---------------------------------------------- |
+| 400    | Invalid request (missing prompt, invalid size) |
+| 401    | Unauthorized (missing/invalid token)           |
+| 404    | Image provider not configured                  |
+| 500    | Provider error                                 |
+| 501    | Feature not enabled                            |

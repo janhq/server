@@ -1,7 +1,8 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 @source '../node_modules/streamdown/dist/index.js';
-@import './fonts.css';
+@source '../../../packages/interfaces/src/**/*.{ts,tsx}';
+@import "./fonts.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -42,8 +43,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --animate-hue-rotate: hue-rotate 4s infinite;
-  --font-studio: 'StudioFeixenSans';
-  --font-sans: 'Inter', sans-serif;
+  --font-studio: "StudioFeixenSans";
+  --font-sans: "Inter", sans-serif;
 }
 
 :root {
@@ -54,7 +55,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.4925 0.101 145.65);
+  --primary: oklch(0.7003 0.1611 35.09);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -88,7 +89,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.4925 0.101 145.65);
+  --primary: oklch(0.7003 0.1611 35.09);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -131,7 +132,7 @@
     stroke-width: 1.5;
   }
 
-  [data-streamdown='code-block-header'] {
+  [data-streamdown="code-block-header"] {
     padding: 8px 16px !important;
   }
 

@@ -27,19 +27,21 @@ Complete working examples for all LLM API endpoints with Python, JavaScript, and
 ### Get Bearer Token
 
 **JavaScript:**
+
 ```javascript
 // Get guest token
 const authResponse = await fetch("http://localhost:8000/llm/auth/guest-login", {
-  method: "POST"
+  method: "POST",
 });
 const authData = await authResponse.json();
 const token = authData.access_token;
 
 // Use in subsequent requests
-const headers = { "Authorization": `Bearer ${token}` };
+const headers = { Authorization: `Bearer ${token}` };
 ```
 
 **cURL:**
+
 ```bash
 # Get token
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
@@ -51,12 +53,13 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/conversations
 ### Refresh Token
 
 **JavaScript:**
+
 ```javascript
 // Refresh expired token
 const refreshResponse = await fetch("http://localhost:8000/llm/auth/refresh", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ refresh_token: refreshToken })
+  body: JSON.stringify({ refresh_token: refreshToken }),
 });
 
 const newTokens = await refreshResponse.json();
@@ -66,6 +69,7 @@ console.log(`Token refreshed, expires in: ${newTokens.expires_in}s`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/llm/auth/refresh \
   -H "Content-Type: application/json" \
@@ -75,15 +79,16 @@ curl -X POST http://localhost:8000/llm/auth/refresh \
 ### Revoke Token
 
 **JavaScript:**
+
 ```javascript
 // Revoke token
 const revokeResponse = await fetch("http://localhost:8000/llm/auth/revoke", {
   method: "POST",
   headers: {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   },
-  body: JSON.stringify({ token: token })
+  body: JSON.stringify({ token: token }),
 });
 
 if (revokeResponse.ok) {
@@ -92,6 +97,7 @@ if (revokeResponse.ok) {
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/llm/auth/revoke \
   -H "Authorization: Bearer $TOKEN" \
@@ -104,20 +110,24 @@ curl -X POST http://localhost:8000/llm/auth/revoke \
 #### Create API Key
 
 **JavaScript:**
+
 ```javascript
 // Create API key
-const createKeyResponse = await fetch("http://localhost:8000/llm/auth/api-keys", {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
+const createKeyResponse = await fetch(
+  "http://localhost:8000/llm/auth/api-keys",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: "Mobile App Key",
+      expires_in_days: 365,
+      scopes: ["read", "write"],
+    }),
   },
-  body: JSON.stringify({
-    name: "Mobile App Key",
-    expires_in_days: 365,
-    scopes: ["read", "write"]
-  })
-});
+);
 
 const keyData = (await createKeyResponse.json()).data;
 console.log(`API Key: ${keyData.key}`);
@@ -128,6 +138,7 @@ const apiKey = keyData.key;
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/llm/auth/api-keys \
   -H "Authorization: Bearer $TOKEN" \
@@ -142,21 +153,26 @@ curl -X POST http://localhost:8000/llm/auth/api-keys \
 #### List API Keys
 
 **JavaScript:**
+
 ```javascript
 // List API keys
-const listKeysResponse = await fetch("http://localhost:8000/llm/auth/api-keys", {
-  headers: { "Authorization": `Bearer ${token}` }
-});
+const listKeysResponse = await fetch(
+  "http://localhost:8000/llm/auth/api-keys",
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  },
+);
 
 const keys = (await listKeysResponse.json()).data;
 console.log(`Total API keys: ${keys.length}`);
-keys.forEach(key => {
+keys.forEach((key) => {
   const status = key.is_active ? "Active" : "Revoked";
   console.log(`  - ${key.name} (${key.id}) - ${status}`);
 });
 ```
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/llm/auth/api-keys | jq
@@ -165,6 +181,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 #### Revoke API Key
 
 **JavaScript:**
+
 ```javascript
 // Revoke API key
 const keyId = "key_abc123";
@@ -173,8 +190,8 @@ const revokeKeyResponse = await fetch(
   `http://localhost:8000/llm/auth/api-keys/${keyId}`,
   {
     method: "DELETE",
-    headers: { "Authorization": `Bearer ${token}` }
-  }
+    headers: { Authorization: `Bearer ${token}` },
+  },
 );
 
 if (revokeKeyResponse.ok) {
@@ -183,6 +200,7 @@ if (revokeKeyResponse.ok) {
 ```
 
 **cURL:**
+
 ```bash
 KEY_ID="key_abc123"
 curl -X DELETE "http://localhost:8000/llm/auth/api-keys/$KEY_ID" \
@@ -192,13 +210,14 @@ curl -X DELETE "http://localhost:8000/llm/auth/api-keys/$KEY_ID" \
 #### Use API Key
 
 **JavaScript:**
+
 ```javascript
 // Use API key for authentication
 const apiKey = "sk_prod_abc123xyz...";
 const apiHeaders = { "X-API-Key": apiKey };
 
 const response = await fetch("http://localhost:8000/v1/conversations", {
-  headers: apiHeaders
+  headers: apiHeaders,
 });
 
 const conversations = (await response.json()).data;
@@ -206,6 +225,7 @@ console.log(`Found ${conversations.length} conversations`);
 ```
 
 **cURL:**
+
 ```bash
 API_KEY="sk_prod_abc123xyz..."
 curl -H "X-API-Key: $API_KEY" \
@@ -219,23 +239,24 @@ curl -H "X-API-Key: $API_KEY" \
 ### Create Conversation
 
 **JavaScript:**
+
 ```javascript
 const token = "your-token-here";
-const headers = { "Authorization": `Bearer ${token}` };
+const headers = { Authorization: `Bearer ${token}` };
 
 const response = await fetch("http://localhost:8000/v1/conversations", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    title: `Chat - ${new Date().toISOString().split('T')[0]}`,
+    title: `Chat - ${new Date().toISOString().split("T")[0]}`,
     metadata: {
       source: "javascript-example",
-      project_id: "proj_123"
-    }
-  })
+      project_id: "proj_123",
+    },
+  }),
 });
 
 const { data: conversation } = await response.json();
@@ -243,6 +264,7 @@ console.log(`Created conversation: ${conversation.id}`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations \
   -H "Authorization: Bearer $TOKEN" \
@@ -258,19 +280,21 @@ curl -X POST http://localhost:8000/v1/conversations \
 ### List Conversations
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   "http://localhost:8000/v1/conversations?limit=20&offset=0",
-  { headers }
+  { headers },
 );
 const { data: conversations } = await response.json();
 
-conversations.forEach(conv => {
+conversations.forEach((conv) => {
   console.log(`- ${conv.title} (${conv.id})`);
 });
 ```
 
 **cURL:**
+
 ```bash
 curl "http://localhost:8000/v1/conversations?limit=20&offset=0" \
   -H "Authorization: Bearer $TOKEN" | jq '.data[] | {id, title}'
@@ -279,12 +303,13 @@ curl "http://localhost:8000/v1/conversations?limit=20&offset=0" \
 ### Get Single Conversation
 
 **JavaScript:**
+
 ```javascript
 const conversationId = "conv_abc123";
 
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}`,
-  { headers }
+  { headers },
 );
 const { data: conversation } = await response.json();
 
@@ -295,6 +320,7 @@ console.log(`Messages: ${conversation.items.length}`);
 ### Update Conversation
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}`,
@@ -302,13 +328,13 @@ const response = await fetch(
     method: "PATCH",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       title: "Updated Title",
-      metadata: { project_id: "proj_new" }
-    })
-  }
+      metadata: { project_id: "proj_new" },
+    }),
+  },
 );
 const { data: updated } = await response.json();
 console.log(`Updated: ${updated.title}`);
@@ -317,13 +343,14 @@ console.log(`Updated: ${updated.title}`);
 ### Delete Conversation
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}`,
   {
     method: "DELETE",
-    headers
-  }
+    headers,
+  },
 );
 
 if (response.status === 204) {
@@ -334,6 +361,7 @@ if (response.status === 204) {
 ### Bulk Delete Conversations
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   "http://localhost:8000/v1/conversations/bulk-delete",
@@ -341,12 +369,12 @@ const response = await fetch(
     method: "POST",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      conversation_ids: ["conv_old1", "conv_old2", "conv_old3"]
-    })
-  }
+      conversation_ids: ["conv_old1", "conv_old2", "conv_old3"],
+    }),
+  },
 );
 
 const { data: result } = await response.json();
@@ -356,6 +384,7 @@ console.log(`Deleted: ${result.deleted_count} conversations`);
 ### Share Conversation
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}/share`,
@@ -363,14 +392,14 @@ const response = await fetch(
     method: "POST",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      expires_in: 7 * 24 * 3600,  // 7 days
+      expires_in: 7 * 24 * 3600, // 7 days
       read_only: true,
-      allow_feedback: false
-    })
-  }
+      allow_feedback: false,
+    }),
+  },
 );
 
 const { data: shareData } = await response.json();
@@ -384,6 +413,7 @@ console.log(`Share link: ${shareData.share_link}`);
 ### Send Message
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}/items`,
@@ -391,14 +421,14 @@ const response = await fetch(
     method: "POST",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       role: "user",
       content: "Hello! How are you?",
-      content_type: "text"
-    })
-  }
+      content_type: "text",
+    }),
+  },
 );
 
 const { data: message } = await response.json();
@@ -408,14 +438,15 @@ console.log(`Message ID: ${message.id}`);
 ### Get Messages
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}/items?limit=50&offset=0`,
-  { headers }
+  { headers },
 );
 
 const { data: messages } = await response.json();
-messages.forEach(msg => {
+messages.forEach((msg) => {
   console.log(`${msg.role.toUpperCase()}: ${msg.content}`);
 });
 ```
@@ -423,6 +454,7 @@ messages.forEach(msg => {
 ### Edit Message
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}/items/${messageId}`,
@@ -430,12 +462,12 @@ const response = await fetch(
     method: "PATCH",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      content: "Updated message content"
-    })
-  }
+      content: "Updated message content",
+    }),
+  },
 );
 
 const { data: updated } = await response.json();
@@ -445,6 +477,7 @@ console.log(`Updated at: ${updated.updated_at}`);
 ### Regenerate Message
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}/items/${messageId}/regenerate`,
@@ -452,14 +485,14 @@ const response = await fetch(
     method: "POST",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       model: "jan-v2-30b",
       temperature: 0.8,
-      max_tokens: 500
-    })
-  }
+      max_tokens: 500,
+    }),
+  },
 );
 
 const { data: regenerated } = await response.json();
@@ -469,13 +502,14 @@ console.log(`New content: ${regenerated.content}`);
 ### Delete Message
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${conversationId}/items/${messageId}`,
   {
     method: "DELETE",
-    headers
-  }
+    headers,
+  },
 );
 
 if (response.status === 204) {
@@ -490,23 +524,24 @@ if (response.status === 204) {
 ### Stream Response (OpenAI Compatible)
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/chat/completions", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: "Write a short poem about AI." }
+      { role: "user", content: "Write a short poem about AI." },
     ],
     temperature: 0.7,
     max_tokens: 200,
-    stream: true
-  })
+    stream: true,
+  }),
 });
 
 const reader = response.body.getReader();
@@ -515,10 +550,10 @@ const decoder = new TextDecoder();
 while (true) {
   const { done, value } = await reader.read();
   if (done) break;
-  
+
   const text = decoder.decode(value);
   const lines = text.split("\n");
-  
+
   for (const line of lines) {
     if (line.startsWith("data: ")) {
       const data = JSON.parse(line.replace("data: ", ""));
@@ -532,22 +567,21 @@ while (true) {
 ### Non-Streaming Response
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/chat/completions", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
-    messages: [
-      { role: "user", content: "Explain quantum computing briefly." }
-    ],
+    messages: [{ role: "user", content: "Explain quantum computing briefly." }],
     temperature: 0.7,
     max_tokens: 150,
-    stream: false
-  })
+    stream: false,
+  }),
 });
 
 const result = await response.json();
@@ -563,14 +597,14 @@ console.log(`Tokens: ${result.usage.total_tokens}`);
 ### List Available Models
 
 **JavaScript:**
+
 ```javascript
-const response = await fetch(
-  "http://localhost:8000/v1/models/catalogs",
-  { headers }
-);
+const response = await fetch("http://localhost:8000/v1/models/catalogs", {
+  headers,
+});
 
 const { data: models } = await response.json();
-models.forEach(model => {
+models.forEach((model) => {
   console.log(`- ${model.name} (${model.id})`);
   console.log(`  Provider: ${model.provider}`);
 });
@@ -579,14 +613,15 @@ models.forEach(model => {
 ### Get Models by Capability
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   "http://localhost:8000/v1/models/catalogs?capability=browser",
-  { headers }
+  { headers },
 );
 
 const { data: browserModels } = await response.json();
-browserModels.forEach(model => {
+browserModels.forEach((model) => {
   console.log(`Browser-capable: ${model.name}`);
 });
 ```
@@ -598,11 +633,11 @@ browserModels.forEach(model => {
 ### Get User Settings
 
 **JavaScript:**
+
 ```javascript
-const response = await fetch(
-  "http://localhost:8000/v1/users/me/settings",
-  { headers }
-);
+const response = await fetch("http://localhost:8000/v1/users/me/settings", {
+  headers,
+});
 
 const { data: settings } = await response.json();
 console.log(`Base style: ${settings.profile_settings.base_style}`);
@@ -612,32 +647,30 @@ console.log(`Nickname: ${settings.profile_settings.nick_name}`);
 ### Update User Settings
 
 **JavaScript:**
+
 ```javascript
-const response = await fetch(
-  "http://localhost:8000/v1/users/me/settings",
-  {
-    method: "PATCH",
-    headers: {
-      ...headers,
-      "Content-Type": "application/json"
+const response = await fetch("http://localhost:8000/v1/users/me/settings", {
+  method: "PATCH",
+  headers: {
+    ...headers,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    profile_settings: {
+      base_style: "Professional",
+      nick_name: "Assistant Pro",
+      occupation: "Software Engineer",
     },
-    body: JSON.stringify({
-      profile_settings: {
-        base_style: "Professional",
-        nick_name: "Assistant Pro",
-        occupation: "Software Engineer"
-      },
-      memory_config: {
-        min_similarity: 0.85,
-        max_items: 10
-      },
-      advanced_settings: {
-        web_search_enabled: true,
-        code_execution_enabled: false
-      }
-    })
-  }
-);
+    memory_config: {
+      min_similarity: 0.85,
+      max_items: 10,
+    },
+    advanced_settings: {
+      web_search_enabled: true,
+      code_execution_enabled: false,
+    },
+  }),
+});
 
 const { data: updated } = await response.json();
 console.log("Settings updated successfully");
@@ -652,24 +685,26 @@ console.log("Settings updated successfully");
 #### List Provider Models
 
 **JavaScript:**
+
 ```javascript
 const adminToken = "your-admin-token";
-const adminHeaders = { "Authorization": `Bearer ${adminToken}` };
+const adminHeaders = { Authorization: `Bearer ${adminToken}` };
 
 const response = await fetch(
   "http://localhost:8000/v1/admin/models/provider-models",
-  { headers: adminHeaders }
+  { headers: adminHeaders },
 );
 
 const providerModels = (await response.json()).data;
 console.log(`Total provider models: ${providerModels.length}`);
-providerModels.forEach(model => {
+providerModels.forEach((model) => {
   const status = model.enabled ? "Enabled" : "Disabled";
   console.log(`  - ${model.model_id} (${model.provider}) - ${status}`);
 });
 ```
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
   http://localhost:8000/v1/admin/models/provider-models | jq
@@ -678,12 +713,13 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
 #### Get Provider Model Details
 
 **JavaScript:**
+
 ```javascript
 const modelId = "gpt-4o-mini";
 
 const response = await fetch(
   `http://localhost:8000/v1/admin/models/provider-models/${modelId}`,
-  { headers: adminHeaders }
+  { headers: adminHeaders },
 );
 
 const model = (await response.json()).data;
@@ -694,6 +730,7 @@ console.log(`Capabilities: ${model.capabilities}`);
 ```
 
 **cURL:**
+
 ```bash
 MODEL_ID="gpt-4o-mini"
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -703,6 +740,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
 #### Update Provider Model Configuration
 
 **JavaScript:**
+
 ```javascript
 const modelId = "claude-3-5-sonnet-20241022";
 
@@ -712,17 +750,17 @@ const response = await fetch(
     method: "PATCH",
     headers: {
       ...adminHeaders,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       enabled: true,
       default_temperature: 0.7,
       rate_limit: {
-        requests_per_minute: 50
+        requests_per_minute: 50,
       },
-      tags: ["production"]
-    })
-  }
+      tags: ["production"],
+    }),
+  },
 );
 
 const updatedModel = (await response.json()).data;
@@ -730,6 +768,7 @@ console.log(`Model ${modelId} updated`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X PATCH "http://localhost:8000/v1/admin/models/provider-models/claude-3-5-sonnet-20241022" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -744,6 +783,7 @@ curl -X PATCH "http://localhost:8000/v1/admin/models/provider-models/claude-3-5-
 #### Bulk Toggle Provider Models
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   "http://localhost:8000/v1/admin/models/provider-models/bulk-toggle",
@@ -751,14 +791,14 @@ const response = await fetch(
     method: "POST",
     headers: {
       ...adminHeaders,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       model_ids: ["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet-20241022"],
       enabled: true,
-      reason: "Enabling primary production models"
-    })
-  }
+      reason: "Enabling primary production models",
+    }),
+  },
 );
 
 const result = (await response.json()).data;
@@ -766,6 +806,7 @@ console.log(`Updated ${result.count} models`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/admin/models/provider-models/bulk-toggle \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -780,14 +821,15 @@ curl -X POST http://localhost:8000/v1/admin/models/provider-models/bulk-toggle \
 #### List Model Catalogs (Admin)
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   "http://localhost:8000/v1/admin/models/catalogs?provider=openai&enabled=true",
-  { headers: adminHeaders }
+  { headers: adminHeaders },
 );
 
 const catalogs = (await response.json()).data;
-catalogs.forEach(catalog => {
+catalogs.forEach((catalog) => {
   console.log(`Catalog: ${catalog.public_id}`);
   console.log(`  Models: ${catalog.models.length}`);
   console.log(`  Usage: ${catalog.total_requests} requests`);
@@ -795,6 +837,7 @@ catalogs.forEach(catalog => {
 ```
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
   "http://localhost:8000/v1/admin/models/catalogs?provider=openai" | jq
@@ -803,6 +846,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" \
 #### Bulk Toggle Model Catalogs
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/admin/models/catalogs/bulk-toggle \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -833,7 +877,7 @@ curl -X POST http://localhost:8000/v1/admin/models/catalogs/bulk-toggle \
 - [Decision Guide: Memory Configuration](../decision-guides.md#memory-architecture-user-settings) - Understanding user settings
 - [Decision Guide: Authentication Methods](../decision-guides.md#authentication-method-selection) - Choose auth approach
 - [Response API](../response-api/) - Multi-step tool orchestration
-- [Media API](../media-api/) - Image uploads and jan_* IDs
+- [Media API](../media-api/) - Image uploads and jan\_\* IDs
 - [MCP Tools](../mcp-tools/) - Available tools
 - [Error Codes Guide](../error-codes.md) - Error handling
 - [Rate Limiting Guide](../rate-limiting.md) - Quota management

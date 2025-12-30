@@ -1,37 +1,19 @@
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
-import mdx from 'eslint-plugin-mdx';
+import { baseConfig, typescriptConfig } from '../../eslint.base.config.mjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript', 'prettier'),
+/**
+ * ESLint configuration for apps/platform
+ * This is a Next.js/Node.js platform service
+ */
+export default [
+  ...baseConfig,
   {
-    ignores: [
-      'node_modules/**',
-      '.next/**',
-      'out/**',
-      'build/**',
-      '.source/**',
-      'next-env.d.ts',
-    ],
-  },
-  {
-    files: ['**/*.mdx'],
-    ...mdx.flat,
-    processor: mdx.createRemarkProcessor({
-      lintCodeBlocks: true,
-    }),
-    rules: {
-      'mdx/no-unescaped-entities': 'warn',
+    ...typescriptConfig,
+    languageOptions: {
+      ...typescriptConfig.languageOptions,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 ];
-
-export default eslintConfig;

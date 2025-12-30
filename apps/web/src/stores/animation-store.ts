@@ -1,10 +1,10 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
 interface AnimationState {
-  sidebarAnimated: boolean
-  modelSelectorAnimated: boolean
-  setSidebarAnimated: () => void
-  setModelSelectorAnimated: () => void
+  sidebarAnimated: boolean;
+  modelSelectorAnimated: boolean;
+  setSidebarAnimated: () => void;
+  setModelSelectorAnimated: () => void;
 }
 
 export const useAnimationStore = create<AnimationState>()((set) => ({
@@ -12,4 +12,4 @@ export const useAnimationStore = create<AnimationState>()((set) => ({
   modelSelectorAnimated: false,
   setSidebarAnimated: () => set({ sidebarAnimated: true }),
   setModelSelectorAnimated: () => set({ modelSelectorAnimated: true }),
-}))
+}));

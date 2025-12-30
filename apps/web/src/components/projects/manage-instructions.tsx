@@ -3,28 +3,28 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Field, FieldError, FieldGroup } from '@/components/ui/field'
-import { Textarea } from '@/components/ui/textarea'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useProjects } from '@/stores/projects-store'
-import { useEffect } from 'react'
-import { useIsMobile } from '@/hooks/use-mobile'
+} from "@janhq/interfaces/dialog";
+import { Button } from "@janhq/interfaces/button";
+import { Field, FieldError, FieldGroup } from "@janhq/interfaces/field";
+import { Textarea } from "@janhq/interfaces/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useProjects } from "@/stores/projects-store";
+import { useEffect } from "react";
+import { useIsMobile } from "@janhq/interfaces/hooks/use-mobile";
 
 const manageInstructionsSchema = z.object({
   instruction: z.string().optional(),
-})
+});
 
-type ManageInstructionsFormData = z.infer<typeof manageInstructionsSchema>
+type ManageInstructionsFormData = z.infer<typeof manageInstructionsSchema>;
 
 interface ManageInstructionsProps {
-  open: boolean
-  project: Project | null
-  onSuccess?: () => void
-  onOpenChange?: (open: boolean) => void
+  open: boolean;
+  project: Project | null;
+  onSuccess?: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ManageInstructions({
@@ -33,7 +33,7 @@ export function ManageInstructions({
   onSuccess,
   onOpenChange,
 }: ManageInstructionsProps) {
-  const updateProject = useProjects((state) => state.updateProject)
+  const updateProject = useProjects((state) => state.updateProject);
   const {
     register,
     handleSubmit,
@@ -42,36 +42,36 @@ export function ManageInstructions({
     setValue,
   } = useForm<ManageInstructionsFormData>({
     resolver: zodResolver(manageInstructionsSchema),
-  })
+  });
 
   // Set initial value when project changes
   useEffect(() => {
     if (project) {
-      setValue('instruction', project.instruction || '')
+      setValue("instruction", project.instruction || "");
     }
-  }, [project, setValue])
+  }, [project, setValue]);
 
   const handleClose = () => {
-    onOpenChange?.(false)
-  }
+    onOpenChange?.(false);
+  };
 
   const onSubmit = async (data: ManageInstructionsFormData) => {
-    if (!project) return
+    if (!project) return;
 
     try {
       await updateProject(project.id, {
         name: project.name,
-        instruction: data.instruction || '',
-      })
-      reset()
-      handleClose()
-      onSuccess?.()
+        instruction: data.instruction || "",
+      });
+      reset();
+      handleClose();
+      onSuccess?.();
     } catch (error) {
-      console.error('Failed to update project instructions:', error)
+      console.error("Failed to update project instructions:", error);
     }
-  }
+  };
 
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile();
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -97,7 +97,7 @@ export function ManageInstructions({
                     rows={6}
                     className="max-h-100"
                     autoFocus={isMobile ? false : true}
-                    {...register('instruction')}
+                    {...register("instruction")}
                   />
                   {errors.instruction && (
                     <FieldError>{errors.instruction.message}</FieldError>
@@ -119,7 +119,7 @@ export function ManageInstructions({
                       disabled={isSubmitting}
                       className="rounded-full"
                     >
-                      {isSubmitting ? 'Saving...' : 'Save Changes'}
+                      {isSubmitting ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
                 </Field>
@@ -129,5 +129,5 @@ export function ManageInstructions({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -23,11 +23,10 @@ Kong is configured to load custom plugins via environment variables:
 
 ```yaml
 environment:
- KONG_PLUGINS: bundled,keycloak-apikey # Load bundled + custom plugins
- KONG_LUA_PACKAGE_PATH: /usr/local/kong/plugins/?.lua;; # Plugin search path
+  KONG_PLUGINS: bundled,keycloak-apikey # Load bundled + custom plugins
+  KONG_LUA_PACKAGE_PATH: /usr/local/kong/plugins/?.lua;; # Plugin search path
 
-volumes:
- -../kong/plugins:/usr/local/kong/plugins:ro # Mount plugins directory
+volumes: -../kong/plugins:/usr/local/kong/plugins:ro # Mount plugins directory
 ```
 
 ### Verification
@@ -93,7 +92,7 @@ Update `docker/infrastructure.yml`:
 
 ```yaml
 environment:
- KONG_PLUGINS: bundled,keycloak-apikey,my-plugin # Add your plugin
+  KONG_PLUGINS: bundled,keycloak-apikey,my-plugin # Add your plugin
 ```
 
 ### 5. Use in kong.yml
@@ -111,17 +110,20 @@ plugins:
 ### Debugging
 
 1. **Enable debug logging:**
+
 ```yaml
 environment:
- KONG_LOG_LEVEL: debug
+  KONG_LOG_LEVEL: debug
 ```
 
 2. **Watch logs in real-time:**
+
 ```bash
 docker logs kong -f
 ```
 
 3. **Add debug statements:**
+
 ```lua
 kong.log.debug("Variable value: ", some_variable)
 kong.log.err("Error occurred: ", error_message)
@@ -130,11 +132,13 @@ kong.log.err("Error occurred: ", error_message)
 ### Testing Locally
 
 1. **Reload Kong after changes:**
+
 ```bash
 docker restart kong
 ```
 
 2. **Test plugin behavior:**
+
 ```bash
 # Make test request
 curl -v http://localhost:8000/your-endpoint \
@@ -156,6 +160,7 @@ Kong executes plugins in priority order (higher = earlier):
 ```
 
 Set priority in `handler.lua`:
+
 ```lua
 local MyPluginHandler = {
  PRIORITY = 1002, -- Your priority
@@ -240,6 +245,7 @@ return kong.response.exit(401, {
 **Symptom**: Plugin not in `/plugins/enabled`
 
 **Solutions**:
+
 1. Check `KONG_PLUGINS` includes your plugin name
 2. Verify plugin files are mounted correctly
 3. Check file permissions (must be readable)
@@ -250,6 +256,7 @@ return kong.response.exit(401, {
 **Symptom**: Kong fails to start
 
 **Solutions**:
+
 1. Check Kong logs: `docker logs kong`
 2. Validate Lua syntax: `luac -p handler.lua`
 3. Check schema format matches Kong requirements
@@ -259,6 +266,7 @@ return kong.response.exit(401, {
 **Symptom**: Plugin loaded but not running
 
 **Solutions**:
+
 1. Verify plugin is configured in `kong.yml`
 2. Check route/service matches request
 3. Ensure priority doesn't conflict with other plugins
@@ -269,6 +277,7 @@ return kong.response.exit(401, {
 **Symptom**: Slow response times
 
 **Solutions**:
+
 1. Profile plugin execution time
 2. Add caching for expensive operations
 3. Use connection pooling for HTTP requests

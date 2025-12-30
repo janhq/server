@@ -826,11 +826,14 @@ export default function ModelCatalogsManagementPage() {
                   const top_k = getNumericValue('top_k', true);
                   if (top_k !== undefined) defaultParams.top_k = top_k;
                   const presence_penalty = getNumericValue('presence_penalty');
-                  if (presence_penalty !== undefined) defaultParams.presence_penalty = presence_penalty;
+                  if (presence_penalty !== undefined)
+                    defaultParams.presence_penalty = presence_penalty;
                   const repetition_penalty = getNumericValue('repetition_penalty');
-                  if (repetition_penalty !== undefined) defaultParams.repetition_penalty = repetition_penalty;
+                  if (repetition_penalty !== undefined)
+                    defaultParams.repetition_penalty = repetition_penalty;
                   const frequency_penalty = getNumericValue('frequency_penalty');
-                  if (frequency_penalty !== undefined) defaultParams.frequency_penalty = frequency_penalty;
+                  if (frequency_penalty !== undefined)
+                    defaultParams.frequency_penalty = frequency_penalty;
 
                   // Parse tags
                   const tagsStr = formData.get('tags') as string;
@@ -843,7 +846,7 @@ export default function ModelCatalogsManagementPage() {
 
                   const contextLengthStr = formData.get('context_length') as string;
 
-                    handleEditCatalog({
+                  handleEditCatalog({
                     model_display_name: formData.get('model_display_name') as string,
                     description: formData.get('description') as string,
                     family: formData.get('family') as string,
@@ -851,7 +854,8 @@ export default function ModelCatalogsManagementPage() {
                     notes: formData.get('notes') as string,
                     is_moderated: formData.get('is_moderated') === 'on',
                     experimental: formData.get('experimental') === 'on',
-                    requires_feature_flag: (formData.get('requires_feature_flag') as string) || null,
+                    requires_feature_flag:
+                      (formData.get('requires_feature_flag') as string) || null,
                     supports_images: formData.get('supports_images') === 'on',
                     supports_embeddings: formData.get('supports_embeddings') === 'on',
                     supports_reasoning: formData.get('supports_reasoning') === 'on',
@@ -1337,7 +1341,8 @@ export default function ModelCatalogsManagementPage() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                const input = e.currentTarget
+                                  .previousElementSibling as HTMLInputElement;
                                 if (input) input.value = '';
                               }}
                               className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent border rounded-md transition-colors"
@@ -1369,7 +1374,8 @@ export default function ModelCatalogsManagementPage() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                const input = e.currentTarget
+                                  .previousElementSibling as HTMLInputElement;
                                 if (input) input.value = '';
                               }}
                               className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent border rounded-md transition-colors"
@@ -1400,7 +1406,8 @@ export default function ModelCatalogsManagementPage() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                const input = e.currentTarget
+                                  .previousElementSibling as HTMLInputElement;
                                 if (input) input.value = '';
                               }}
                               className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent border rounded-md transition-colors"
@@ -1423,7 +1430,8 @@ export default function ModelCatalogsManagementPage() {
                               max="2"
                               defaultValue={
                                 (selectedCatalog.supported_parameters &&
-                                  (selectedCatalog.supported_parameters as any).default?.presence_penalty) ||
+                                  (selectedCatalog.supported_parameters as any).default
+                                    ?.presence_penalty) ||
                                 ''
                               }
                               placeholder="e.g., 0.0"
@@ -1432,7 +1440,8 @@ export default function ModelCatalogsManagementPage() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                const input = e.currentTarget
+                                  .previousElementSibling as HTMLInputElement;
                                 if (input) input.value = '';
                               }}
                               className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent border rounded-md transition-colors"
@@ -1454,7 +1463,8 @@ export default function ModelCatalogsManagementPage() {
                               min="0"
                               defaultValue={
                                 (selectedCatalog.supported_parameters &&
-                                  (selectedCatalog.supported_parameters as any).default?.repetition_penalty) ||
+                                  (selectedCatalog.supported_parameters as any).default
+                                    ?.repetition_penalty) ||
                                 ''
                               }
                               placeholder="e.g., 1.0"
@@ -1463,7 +1473,8 @@ export default function ModelCatalogsManagementPage() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                const input = e.currentTarget
+                                  .previousElementSibling as HTMLInputElement;
                                 if (input) input.value = '';
                               }}
                               className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent border rounded-md transition-colors"
@@ -1496,7 +1507,8 @@ export default function ModelCatalogsManagementPage() {
                             <button
                               type="button"
                               onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                                const input = e.currentTarget
+                                  .previousElementSibling as HTMLInputElement;
                                 if (input) input.value = '';
                               }}
                               className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent border rounded-md transition-colors"
@@ -1710,148 +1722,154 @@ export default function ModelCatalogsManagementPage() {
                       </code>
                     </div>
 
-                {selectedCatalog.family && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Family</label>
-                    <p className="text-sm">{selectedCatalog.family}</p>
-                  </div>
-                )}
-
-                {selectedCatalog.notes && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Notes</label>
-                    <p className="text-sm whitespace-pre-wrap">{selectedCatalog.notes}</p>
-                  </div>
-                )}
-
-                {selectedCatalog.architecture && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Architecture</label>
-                    {typeof selectedCatalog.architecture === 'string' ? (
-                      <p className="text-sm">{selectedCatalog.architecture}</p>
-                    ) : (
-                      <div className="bg-muted/50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                        <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(selectedCatalog.architecture, null, 2)}
-                        </pre>
+                    {selectedCatalog.family && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Family</label>
+                        <p className="text-sm">{selectedCatalog.family}</p>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* Capabilities */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">Capabilities</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_images ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Vision Support</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_embeddings ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Embeddings</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_reasoning ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Reasoning</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_audio ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Audio</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_video ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Video</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_tools ?? true ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Tool Calling</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${selectedCatalog.supports_browser ? 'bg-green-500' : 'bg-gray-300'}`}
-                      />
-                      <span className="text-sm">Browser</span>
-                    </div>
-                  </div>
-                </div>
+                    {selectedCatalog.notes && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Notes</label>
+                        <p className="text-sm whitespace-pre-wrap">{selectedCatalog.notes}</p>
+                      </div>
+                    )}
 
-                {/* Supported Parameters */}
-                {selectedCatalog.supported_parameters &&
-                  typeof selectedCatalog.supported_parameters === 'object' && (
+                    {selectedCatalog.architecture && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Architecture</label>
+                        {typeof selectedCatalog.architecture === 'string' ? (
+                          <p className="text-sm">{selectedCatalog.architecture}</p>
+                        ) : (
+                          <div className="bg-muted/50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                            <pre className="text-xs whitespace-pre-wrap">
+                              {JSON.stringify(selectedCatalog.architecture, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Capabilities */}
                     <div>
-                      <label className="block text-sm font-medium mb-2">Supported Parameters</label>
-                      <div className="bg-muted/50 rounded-lg p-3 max-h-60 overflow-y-auto">
-                        <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(selectedCatalog.supported_parameters, null, 2)}
-                        </pre>
+                      <label className="block text-sm font-medium mb-2">Capabilities</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${selectedCatalog.supports_images ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Vision Support</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${selectedCatalog.supports_embeddings ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Embeddings</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${selectedCatalog.supports_reasoning ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Reasoning</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${selectedCatalog.supports_audio ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Audio</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${selectedCatalog.supports_video ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Video</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${(selectedCatalog.supports_tools ?? true) ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Tool Calling</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${selectedCatalog.supports_browser ? 'bg-green-500' : 'bg-gray-300'}`}
+                          />
+                          <span className="text-sm">Browser</span>
+                        </div>
                       </div>
                     </div>
-                  )}
 
-                {/* Status Update */}
-                {selectedCatalog.status && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Status</label>
-                    <div className="flex gap-2">
-                      <span className="px-3 py-1.5 bg-primary/10 text-primary rounded-md text-sm">
-                        Current: {selectedCatalog.status}
-                      </span>
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleUpdateStatus(selectedCatalog.id, e.target.value);
-                            setShowDetailsModal(false);
-                            setSelectedCatalog(null);
-                          }
-                        }}
-                        defaultValue=""
-                        className="px-3 py-1.5 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="">Change status...</option>
-                        {statuses
-                          .filter((s) => s !== selectedCatalog.status)
-                          .map((status) => (
-                            <option key={status} value={status}>
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
+                    {/* Supported Parameters */}
+                    {selectedCatalog.supported_parameters &&
+                      typeof selectedCatalog.supported_parameters === 'object' && (
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Supported Parameters
+                          </label>
+                          <div className="bg-muted/50 rounded-lg p-3 max-h-60 overflow-y-auto">
+                            <pre className="text-xs whitespace-pre-wrap">
+                              {JSON.stringify(selectedCatalog.supported_parameters, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
 
-                {/* Timestamps */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  {selectedCatalog.created_at && (
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Created</label>
-                      <p className="text-sm">
-                        {new Date(selectedCatalog.created_at).toLocaleString()}
-                      </p>
+                    {/* Status Update */}
+                    {selectedCatalog.status && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Status</label>
+                        <div className="flex gap-2">
+                          <span className="px-3 py-1.5 bg-primary/10 text-primary rounded-md text-sm">
+                            Current: {selectedCatalog.status}
+                          </span>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleUpdateStatus(selectedCatalog.id, e.target.value);
+                                setShowDetailsModal(false);
+                                setSelectedCatalog(null);
+                              }
+                            }}
+                            defaultValue=""
+                            className="px-3 py-1.5 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Change status...</option>
+                            {statuses
+                              .filter((s) => s !== selectedCatalog.status)
+                              .map((status) => (
+                                <option key={status} value={status}>
+                                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timestamps */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                      {selectedCatalog.created_at && (
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">
+                            Created
+                          </label>
+                          <p className="text-sm">
+                            {new Date(selectedCatalog.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedCatalog.updated_at && (
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">
+                            Updated
+                          </label>
+                          <p className="text-sm">
+                            {new Date(selectedCatalog.updated_at).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {selectedCatalog.updated_at && (
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Updated</label>
-                      <p className="text-sm">
-                        {new Date(selectedCatalog.updated_at).toLocaleString()}
-                      </p>
-                    </div>
-                  )}
-                </div>
                   </>
                 )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { PromptTemplate } from '@/lib/admin/api';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import type { PromptTemplate } from '@/lib/admin/api';
 
 interface PreviewModalProps {
   open: boolean;
@@ -29,13 +29,9 @@ export function PreviewModal({ open, onClose, template }: PreviewModalProps) {
             <Badge variant={template.is_active ? 'default' : 'secondary'}>
               {template.is_active ? 'Active' : 'Inactive'}
             </Badge>
-            {template.is_system && (
-              <Badge variant="destructive">System</Badge>
-            )}
+            {template.is_system && <Badge variant="destructive">System</Badge>}
           </DialogTitle>
-          <DialogDescription>
-            {template.description || 'No description provided'}
-          </DialogDescription>
+          <DialogDescription>{template.description || 'No description provided'}</DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[calc(90vh-200px)] overflow-y-auto">
@@ -62,9 +58,7 @@ export function PreviewModal({ open, onClose, template }: PreviewModalProps) {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Last Updated:</span>
-                  <span className="ml-2">
-                    {new Date(template.updated_at).toLocaleDateString()}
-                  </span>
+                  <span className="ml-2">{new Date(template.updated_at).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
@@ -90,7 +84,9 @@ export function PreviewModal({ open, onClose, template }: PreviewModalProps) {
                   <div className="flex flex-wrap gap-2">
                     {template.variables.map((variable, index) => (
                       <code key={index} className="bg-muted px-3 py-1 rounded text-xs">
-                        {'{{'}{variable}{'}}'}
+                        {'{{'}
+                        {variable}
+                        {'}}'}
                       </code>
                     ))}
                   </div>

@@ -14,6 +14,7 @@
     "@ai-sdk/openai-compatible": "^1.0.28",
     "@ai-sdk/react": "^2.0.109",
     "@hookform/resolvers": "^5.2.2",
+    "@janhq/interfaces": "file:../../packages/interfaces",
     "@janhq/mcp-web-client": "^0.14.4",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -32,6 +33,7 @@
     "@tailwindcss/vite": "^4.1.17",
     "@tanstack/react-router": "^1.140.0",
     "ai": "5.0.108",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -53,6 +55,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.5.2",
     "@eslint/js": "^9.39.1",
     "@tanstack/router-plugin": "^1.140.0",
     "@types/node": "^24.10.1",

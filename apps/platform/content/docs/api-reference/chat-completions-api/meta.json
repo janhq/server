@@ -1,7 +1,4 @@
 {
   "title": "Chat Completions API",
-  "pages": [
-    "models/get",
-    "completions/post"
-  ]
+  "pages": ["models/get", "completions/post"]
 }

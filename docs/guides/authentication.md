@@ -11,10 +11,10 @@ This guide describes the Kong + Keycloak solution that fronts every `/llm/*` req
 
 ## 2. Kong Authentication Flow
 
-| Plugin | Purpose | Key config |
-| ------ | ------- | ---------- |
-| `jwt` | Validates Keycloak JWTs | `key_claim_name: iss`, `claims_to_verify: ["exp","nbf"]`, `maximum_expiration: 3600`, `anonymous: kong-anon-jwt`, `secret_is_base64: false`, `run_on_preflight: false` |
-| `keycloak-apikey` | Validates API keys via LLM API | `validation_url: http://llm-api:8080/auth/validate-api-key`, `hide_credentials: true`, `validation_timeout: 5000`, `run_on_preflight: false` |
+| Plugin                                     | Purpose                              | Key config                                                                                                                                                             |
+| ------------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jwt`                                      | Validates Keycloak JWTs              | `key_claim_name: iss`, `claims_to_verify: ["exp","nbf"]`, `maximum_expiration: 3600`, `anonymous: kong-anon-jwt`, `secret_is_base64: false`, `run_on_preflight: false` |
+| `keycloak-apikey`                          | Validates API keys via LLM API       | `validation_url: http://llm-api:8080/auth/validate-api-key`, `hide_credentials: true`, `validation_timeout: 5000`, `run_on_preflight: false`                           |
 | `request-termination` (anonymous fallback) | Returns 401 when neither plugin runs |
 
 The routes define **OR logic**: requests are accepted if either the JWT or API key plugin succeeds. Kong also injects `X-Auth-Method` (value `jwt` or `apikey`) and user context headers (`X-User-ID`, `X-User-Subject`, `X-User-Email`, `X-User-Username`) so downstream services know who authenticated the call.
@@ -44,15 +44,16 @@ Client
 
 - **Format**: Keys use the `sk_` prefix plus 32 random characters. The shared secret is shown only once (on creation). Services store only the SHA-256 hash inside Keycloak user attributes and PostgreSQL (`api_keys` table from `000001_init_schema.up.sql`).
 - **Endpoints** (require JWT auth):
- - `POST /auth/api-keys` - Create a new API key tied to the authenticated user.
- - `GET /auth/api-keys` - List active keys for the calling user.
- - `DELETE /auth/api-keys/{id}` - Revoke a key.
- - `POST /auth/validate-api-key` - Public validation endpoint called by Kong's plugin.
+- `POST /auth/api-keys` - Create a new API key tied to the authenticated user.
+- `GET /auth/api-keys` - List active keys for the calling user.
+- `DELETE /auth/api-keys/{id}` - Revoke a key.
+- `POST /auth/validate-api-key` - Public validation endpoint called by Kong's plugin.
 - **Validation Flow**:
- 1. Kong receives `X-API-Key` from the client.
- 2. `keycloak-apikey` calls `http://llm-api:8080/auth/validate-api-key`.
- 3. LLM API hashes the key, compares it against Keycloak attributes, and responds with user data (or `401` when invalid).
- 4. Kong injects user headers and marks the request as authenticated (can now enforce rate limits per consumer).
+
+1.  Kong receives `X-API-Key` from the client.
+2.  `keycloak-apikey` calls `http://llm-api:8080/auth/validate-api-key`.
+3.  LLM API hashes the key, compares it against Keycloak attributes, and responds with user data (or `401` when invalid).
+4.  Kong injects user headers and marks the request as authenticated (can now enforce rate limits per consumer).
 
 ## 5. Keycloak Integration Notes
 

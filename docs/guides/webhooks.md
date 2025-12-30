@@ -37,19 +37,19 @@ WEBHOOK_SECRET = "your-webhook-secret"
 @app.post("/webhooks/jan-server")
 async def handle_webhook(request: Request):
     """Handle webhooks from Jan Server"""
-    
+
     # 1. Verify signature
     signature = request.headers.get("X-Signature")
     timestamp = request.headers.get("X-Timestamp")
-    
+
     body = await request.body()
-    
+
     if not verify_signature(body, signature, timestamp):
         raise HTTPException(status_code=401, detail="Invalid signature")
-    
+
     # 2. Parse event
     event = json.loads(body)
-    
+
     # 3. Handle event
     if event["type"] == "conversation.created":
         await handle_conversation_created(event)
@@ -57,7 +57,7 @@ async def handle_webhook(request: Request):
         await handle_message_sent(event)
     elif event["type"] == "model.updated":
         await handle_model_updated(event)
-    
+
     return {"status": "ok"}
 
 def verify_signature(body: bytes, signature: str, timestamp: str) -> bool:
@@ -96,6 +96,7 @@ Events will now be POST'd to your webhook URL in real-time!
 ### Conversation Events
 
 #### conversation.created
+
 Fired when a new conversation is created.
 
 ```json
@@ -117,6 +118,7 @@ Fired when a new conversation is created.
 ```
 
 #### conversation.updated
+
 Fired when conversation is modified (title, metadata, etc).
 
 ```json
@@ -138,6 +140,7 @@ Fired when conversation is modified (title, metadata, etc).
 ```
 
 #### conversation.deleted
+
 Fired when conversation is deleted.
 
 ```json
@@ -157,6 +160,7 @@ Fired when conversation is deleted.
 ### Message Events
 
 #### message.sent
+
 Fired when a new message is sent in conversation.
 
 ```json
@@ -180,6 +184,7 @@ Fired when a new message is sent in conversation.
 ```
 
 #### message.edited
+
 Fired when message is edited/regenerated.
 
 ```json
@@ -198,6 +203,7 @@ Fired when message is edited/regenerated.
 ```
 
 #### message.deleted
+
 Fired when message is deleted.
 
 ```json
@@ -217,6 +223,7 @@ Fired when message is deleted.
 ### Model & Tool Events
 
 #### model.added
+
 Fired when new model/provider added to catalog.
 
 ```json
@@ -234,6 +241,7 @@ Fired when new model/provider added to catalog.
 ```
 
 #### model.updated
+
 Fired when model configuration changes.
 
 ```json
@@ -255,6 +263,7 @@ Fired when model configuration changes.
 ```
 
 #### mcp_tool.enabled
+
 Fired when MCP tool is enabled.
 
 ```json
@@ -272,6 +281,7 @@ Fired when MCP tool is enabled.
 ```
 
 #### mcp_tool.disabled
+
 Fired when MCP tool is disabled.
 
 ```json
@@ -349,11 +359,11 @@ Use wildcards to subscribe to event families:
 ```json
 {
   "events": [
-    "conversation.*",      // All conversation events
-    "message.*",           // All message events
-    "model.*",             // All model events
-    "mcp_tool.*",          // All MCP tool events
-    "*"                    // All events
+    "conversation.*", // All conversation events
+    "message.*", // All message events
+    "model.*", // All model events
+    "mcp_tool.*", // All MCP tool events
+    "*" // All events
   ]
 }
 ```
@@ -412,11 +422,13 @@ Attempt 8: 24 hours later
 ```
 
 Webhooks are retried for:
+
 - `5xx` server errors
 - Connection timeouts
 - Network errors
 
 **Not** retried for:
+
 - `4xx` client errors (except timeout)
 - Successful delivery (2xx response)
 
@@ -431,17 +443,17 @@ processed_events = set()
 @app.post("/webhooks/jan-server")
 async def handle_webhook(request: Request):
     event_id = request.headers.get("X-Event-ID")
-    
+
     # Skip if already processed
     if event_id in processed_events:
         return {"status": "ok", "cached": True}
-    
+
     # Process event
     await process_event(await request.json())
-    
+
     # Mark as processed
     processed_events.add(event_id)
-    
+
     return {"status": "ok"}
 ```
 
@@ -454,17 +466,17 @@ Return appropriate HTTP status codes:
 async def handle_webhook(request: Request):
     try:
         event = await request.json()
-        
+
         # Process event
         await process_event(event)
-        
+
         # Return 200-299 for success
         return {"status": "ok"}, 200
-    
+
     except ValueError:
         # 4xx errors are not retried
         return {"error": "Invalid JSON"}, 400
-    
+
     except Exception as e:
         # 5xx errors trigger retry
         logger.error(f"Webhook processing failed: {e}")
@@ -491,26 +503,26 @@ def verify_webhook_signature(
 ) -> bool:
     """
     Verify webhook signature
-    
+
     Args:
         body: Raw request body bytes
         signature: X-Signature header value
         timestamp: X-Timestamp header value
         secret: Your webhook secret
         max_age: Max age of timestamp in seconds
-    
+
     Returns:
         True if signature is valid
     """
-    
+
     # 1. Check timestamp freshness (prevent replay attacks)
     import time
     event_time = int(timestamp)
     current_time = int(time.time())
-    
+
     if abs(current_time - event_time) > max_age:
         return False
-    
+
     # 2. Compute expected signature
     message = f"{timestamp}.{body.decode()}"
     expected_sig = hmac.new(
@@ -518,7 +530,7 @@ def verify_webhook_signature(
         message.encode(),
         hashlib.sha256
     ).hexdigest()
-    
+
     # 3. Compare using constant-time comparison
     return hmac.compare_digest(signature, expected_sig)
 ```
@@ -538,28 +550,28 @@ MAX_BODY_SIZE = 1_000_000  # 1MB
 @app.post("/webhooks/jan-server")
 async def handle_webhook(request: Request):
     """Secure webhook endpoint"""
-    
+
     # 1. Check content type
     if request.headers.get("content-type") != "application/json":
         raise HTTPException(status_code=400, detail="Invalid content type")
-    
+
     # 2. Read body (with size limit)
     body = await request.body()
     if len(body) > MAX_BODY_SIZE:
         raise HTTPException(status_code=413, detail="Payload too large")
-    
+
     # 3. Verify signature
     signature = request.headers.get("X-Signature")
     timestamp = request.headers.get("X-Timestamp")
-    
+
     if not signature or not timestamp:
         logger.warning("Missing signature or timestamp headers")
         raise HTTPException(status_code=401, detail="Missing headers")
-    
+
     if not verify_webhook_signature(body, signature, timestamp, WEBHOOK_SECRET):
         logger.warning(f"Invalid signature from {request.client.host}")
         raise HTTPException(status_code=401, detail="Invalid signature")
-    
+
     # 4. Parse and process
     try:
         event = json.loads(body)
@@ -569,7 +581,7 @@ async def handle_webhook(request: Request):
     except Exception as e:
         logger.error(f"Webhook processing error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Processing error")
-    
+
     return {"status": "ok"}
 ```
 
@@ -586,11 +598,11 @@ import aiohttp
 @app.post("/webhooks/jan-server")
 async def handle_webhook(request: Request):
     event = await request.json()
-    
+
     if event["type"] == "conversation.created":
         conversation = event["data"]
         user_id = conversation["user_id"]
-        
+
         # Send notification to user
         await send_notification(
             user_id=user_id,
@@ -598,7 +610,7 @@ async def handle_webhook(request: Request):
             body=f"Conversation created: {conversation['title']}",
             data={"conversation_id": conversation["conversation_id"]}
         )
-    
+
     return {"status": "ok"}
 
 async def send_notification(user_id: str, title: str, body: str, data: dict):
@@ -622,19 +634,19 @@ async def send_notification(user_id: str, title: str, body: str, data: dict):
 @app.post("/webhooks/jan-server")
 async def handle_webhook(request: Request):
     event = await request.json()
-    
+
     if event["type"] == "model.updated":
         model_data = event["data"]
-        
+
         # Update external system
         await sync_model_to_external_db(
             model_id=model_data["model_id"],
             changes=model_data["changes"]
         )
-        
+
         # Invalidate cache
         await cache.delete(f"model_{model_data['model_id']}")
-    
+
     return {"status": "ok"}
 
 async def sync_model_to_external_db(model_id: str, changes: dict):
@@ -657,7 +669,7 @@ from datetime import datetime
 @app.post("/webhooks/jan-server")
 async def handle_webhook(request: Request):
     event = await request.json()
-    
+
     # Log all events to audit database
     await log_audit_event(
         event_type=event["type"],
@@ -666,7 +678,7 @@ async def handle_webhook(request: Request):
         data=event["data"],
         received_at=datetime.now()
     )
-    
+
     return {"status": "ok"}
 
 async def log_audit_event(event_type: str, event_id: str, timestamp: str, data: dict, received_at: datetime):
@@ -722,7 +734,7 @@ import time
 @pytest.mark.asyncio
 async def test_conversation_created_webhook(client):
     """Test conversation.created webhook"""
-    
+
     # Prepare webhook payload
     event = {
         "type": "conversation.created",
@@ -734,10 +746,10 @@ async def test_conversation_created_webhook(client):
             "title": "Test Conversation"
         }
     }
-    
+
     body = json.dumps(event).encode()
     timestamp = str(int(time.time()))
-    
+
     # Compute signature
     message = f"{timestamp}.{body.decode()}"
     signature = hmac.new(
@@ -745,7 +757,7 @@ async def test_conversation_created_webhook(client):
         message.encode(),
         hashlib.sha256
     ).hexdigest()
-    
+
     # Send webhook
     response = await client.post(
         "/webhooks/jan-server",
@@ -756,9 +768,9 @@ async def test_conversation_created_webhook(client):
             "X-Event-ID": event["id"]
         }
     )
-    
+
     assert response.status_code == 200
-    
+
     # Verify event was processed
     processed_event = await db.fetch_one(
         "SELECT * FROM processed_events WHERE event_id = $1",
@@ -848,12 +860,12 @@ if response_status >= 500:
 
 ## Webhook Delivery Guarantees
 
-| Guarantee | Behavior |
-|-----------|----------|
-| **At-least-once** | Events delivered at least once; check event ID for duplicates |
-| **Order not guaranteed** | Events may arrive out of order; use timestamps |
-| **No guaranteed latency** | Typically < 5 seconds; retry delays can extend this |
-| **30-day retention** | Event logs available for 30 days in admin API |
+| Guarantee                 | Behavior                                                      |
+| ------------------------- | ------------------------------------------------------------- |
+| **At-least-once**         | Events delivered at least once; check event ID for duplicates |
+| **Order not guaranteed**  | Events may arrive out of order; use timestamps                |
+| **No guaranteed latency** | Typically < 5 seconds; retry delays can extend this           |
+| **30-day retention**      | Event logs available for 30 days in admin API                 |
 
 ---
 

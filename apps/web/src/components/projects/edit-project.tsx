@@ -3,36 +3,36 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Field, FieldError, FieldGroup } from '@/components/ui/field'
+} from "@janhq/interfaces/dialog";
+import { Button } from "@janhq/interfaces/button";
+import { Field, FieldError, FieldGroup } from "@janhq/interfaces/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from '@/components/ui/input-group'
-import { Textarea } from '@/components/ui/textarea'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useProjects } from '@/stores/projects-store'
-import { Folder } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { ApiError } from '@/lib/api-client'
+} from "@janhq/interfaces/input-group";
+import { Textarea } from "@janhq/interfaces/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useProjects } from "@/stores/projects-store";
+import { Folder } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useIsMobile } from "@janhq/interfaces/hooks/use-mobile";
+import { ApiError } from "@/lib/api-client";
 
 const editProjectSchema = z.object({
-  name: z.string().min(1, 'Project name is required'),
+  name: z.string().min(1, "Project name is required"),
   instruction: z.string().optional(),
-})
+});
 
-type EditProjectFormData = z.infer<typeof editProjectSchema>
+type EditProjectFormData = z.infer<typeof editProjectSchema>;
 
 interface EditProjectProps {
-  open: boolean
-  project: Project | null
-  onSuccess?: () => void
-  onOpenChange?: (open: boolean) => void
+  open: boolean;
+  project: Project | null;
+  onSuccess?: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function EditProject({
@@ -41,8 +41,8 @@ export function EditProject({
   onSuccess,
   onOpenChange,
 }: EditProjectProps) {
-  const updateProject = useProjects((state) => state.updateProject)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const updateProject = useProjects((state) => state.updateProject);
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -51,43 +51,43 @@ export function EditProject({
     setValue,
   } = useForm<EditProjectFormData>({
     resolver: zodResolver(editProjectSchema),
-  })
+  });
 
   // Set initial values when project changes
   useEffect(() => {
     if (project) {
-      setValue('name', project.name)
-      setValue('instruction', project.instruction || '')
+      setValue("name", project.name);
+      setValue("instruction", project.instruction || "");
     }
-  }, [project, setValue])
+  }, [project, setValue]);
 
   const handleClose = () => {
-    onOpenChange?.(false)
-    setServerError(null)
-  }
+    onOpenChange?.(false);
+    setServerError(null);
+  };
 
   const onSubmit = async (data: EditProjectFormData) => {
-    if (!project) return
+    if (!project) return;
 
-    setServerError(null)
+    setServerError(null);
     try {
       await updateProject(project.id, {
         name: data.name,
-        instruction: data.instruction || '',
-      })
-      reset()
-      handleClose()
-      onSuccess?.()
+        instruction: data.instruction || "",
+      });
+      reset();
+      handleClose();
+      onSuccess?.();
     } catch (error) {
       if (error instanceof ApiError && error.isDuplicateProjectName()) {
-        setServerError(error.message)
+        setServerError(error.message);
       } else {
-        console.error('Failed to update project:', error)
+        console.error("Failed to update project:", error);
       }
     }
-  }
+  };
 
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile();
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -117,7 +117,7 @@ export function EditProject({
                       placeholder="Name"
                       autoComplete="off"
                       autoFocus={isMobile ? false : true}
-                      {...register('name', {
+                      {...register("name", {
                         onChange: () => setServerError(null),
                       })}
                     />
@@ -135,7 +135,7 @@ export function EditProject({
                     placeholder="Project instructions (optional)"
                     rows={4}
                     className="max-h-100"
-                    {...register('instruction')}
+                    {...register("instruction")}
                   />
                   {errors.instruction && (
                     <FieldError>{errors.instruction.message}</FieldError>
@@ -157,7 +157,7 @@ export function EditProject({
                       disabled={isSubmitting}
                       className="rounded-full"
                     >
-                      {isSubmitting ? 'Saving...' : 'Save Changes'}
+                      {isSubmitting ? "Saving..." : "Save Changes"}
                     </Button>
                   </div>
                 </Field>
@@ -167,5 +167,5 @@ export function EditProject({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,8 +1,4 @@
 {
   "title": "Admin Provider API",
-  "pages": [
-    "providers/get",
-    "providers/post",
-    "providers/patch"
-  ]
+  "pages": ["providers/get", "providers/post", "providers/patch"]
 }

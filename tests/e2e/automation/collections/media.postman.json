@@ -19,9 +19,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.expect(pm.response.code).to.be.oneOf([200, 401]);"
-                ]
+                "exec": ["pm.expect(pm.response.code).to.be.oneOf([200, 401]);"]
               }
             }
           ]
@@ -47,13 +45,8 @@
             },
             "url": {
               "raw": "{{kong_url}}/auth/guest-login",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "auth",
-                "guest-login"
-              ]
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "guest-login"]
             }
           },
           "event": [
@@ -93,12 +86,8 @@
         ],
         "url": {
           "raw": "{{kong_url}}/media/healthz",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "healthz"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["healthz"]
         }
       },
       "event": [
@@ -144,14 +133,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media/prepare-upload",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media",
-            "prepare-upload"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media", "prepare-upload"]
         }
       },
       "event": [
@@ -222,13 +205,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media"]
         }
       },
       "event": [
@@ -311,13 +289,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media"]
         }
       },
       "event": [
@@ -387,13 +360,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media"]
         }
       },
       "event": [
@@ -446,14 +414,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media/resolve",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media",
-            "resolve"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media", "resolve"]
         }
       },
       "event": [
@@ -511,14 +473,8 @@
         ],
         "url": {
           "raw": "{{kong_url}}/media/v1/media/{{latest_media_id}}",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media",
-            "{{latest_media_id}}"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media", "{{latest_media_id}}"]
         }
       },
       "event": [
@@ -573,15 +529,8 @@
         ],
         "url": {
           "raw": "{{kong_url}}/media/v1/media/{{latest_media_id}}/presign",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media",
-            "{{latest_media_id}}",
-            "presign"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media", "{{latest_media_id}}", "presign"]
         }
       },
       "event": [
@@ -639,14 +588,8 @@
         ],
         "url": {
           "raw": "{{kong_url}}/media/v1/media/jan_nonexistent123",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media",
-            "jan_nonexistent123"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media", "jan_nonexistent123"]
         }
       },
       "event": [
@@ -693,13 +636,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media"]
         }
       },
       "event": [
@@ -739,13 +677,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media"]
         }
       },
       "event": [
@@ -787,14 +720,8 @@
         },
         "url": {
           "raw": "{{kong_url}}/media/v1/media/resolve",
-          "host": [
-            "{{kong_url}}/media"
-          ],
-          "path": [
-            "v1",
-            "media",
-            "resolve"
-          ]
+          "host": ["{{kong_url}}/media"],
+          "path": ["v1", "media", "resolve"]
         }
       },
       "event": [

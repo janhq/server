@@ -6,7 +6,7 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
+} from "@janhq/interfaces/dropdrawer";
 import {
   BriefcaseBusinessIcon,
   ChromiumIcon,
@@ -18,48 +18,48 @@ import {
   TelescopeIcon,
   SmileIcon,
   type LucideIcon,
-} from 'lucide-react'
-import { Switch } from '@/components/ui/switch'
+} from "lucide-react";
+import { Switch } from "@janhq/interfaces/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { isExtensionAvailable } from '@janhq/mcp-web-client'
-import { useIsMobileDevice } from '@/hooks/use-is-mobile-device'
+} from "@janhq/interfaces/tooltip";
+import { isExtensionAvailable } from "@janhq/mcp-web-client";
+import { useIsMobileDevice } from "@janhq/interfaces/hooks/use-is-mobile-device";
 
-type ToneOption = 'Friendly' | 'Concise' | 'Professional'
+type ToneOption = "Friendly" | "Concise" | "Professional";
 
 interface SettingChatInputProps {
-  searchEnabled: boolean
-  deepResearchEnabled: boolean
-  browserEnabled: boolean
-  reasoningEnabled: boolean
-  imageGenerationEnabled?: boolean
-  toggleInstruct: () => void
-  toggleBrowser: () => void
-  toggleSearch: () => void
-  toggleDeepResearch: () => void
-  toggleImageGeneration?: () => void
-  isBrowserSupported: boolean
-  isSupportTools: boolean
-  isSupportReasoningToggle: boolean
-  isSupportDeepResearch: boolean
-  isSupportImageGeneration?: boolean
-  disablePreferences: boolean
-  selectedTone?: ToneOption
-  onToneChange?: (tone: ToneOption) => void
-  children: React.ReactNode
+  searchEnabled: boolean;
+  deepResearchEnabled: boolean;
+  browserEnabled: boolean;
+  reasoningEnabled: boolean;
+  imageGenerationEnabled?: boolean;
+  toggleInstruct: () => void;
+  toggleBrowser: () => void;
+  toggleSearch: () => void;
+  toggleDeepResearch: () => void;
+  toggleImageGeneration?: () => void;
+  isBrowserSupported: boolean;
+  isSupportTools: boolean;
+  isSupportReasoningToggle: boolean;
+  isSupportDeepResearch: boolean;
+  isSupportImageGeneration?: boolean;
+  disablePreferences: boolean;
+  selectedTone?: ToneOption;
+  onToneChange?: (tone: ToneOption) => void;
+  children: React.ReactNode;
 }
 
 const toneOptions: { value: ToneOption; label: string; icon: LucideIcon }[] = [
-  { value: 'Friendly', label: 'Friendly', icon: SmileIcon },
-  { value: 'Concise', label: 'Concise', icon: CircleCheck },
-  { value: 'Professional', label: 'Professional', icon: BriefcaseBusinessIcon },
-]
+  { value: "Friendly", label: "Friendly", icon: SmileIcon },
+  { value: "Concise", label: "Concise", icon: CircleCheck },
+  { value: "Professional", label: "Professional", icon: BriefcaseBusinessIcon },
+];
 
-declare const EXTENSION_ID: string
-declare const CHROME_STORE_URL: string
+declare const EXTENSION_ID: string;
+declare const CHROME_STORE_URL: string;
 
 export const SettingChatInput = ({
   searchEnabled,
@@ -77,24 +77,24 @@ export const SettingChatInput = ({
   isSupportDeepResearch,
   isSupportReasoningToggle,
   isSupportImageGeneration = false,
-  selectedTone = 'Friendly',
+  selectedTone = "Friendly",
   disablePreferences,
   onToneChange,
   children,
 }: SettingChatInputProps) => {
-  const isMobileDevice = useIsMobileDevice()
-  const shouldShowBrowserControl = !isMobileDevice && isBrowserSupported
+  const isMobileDevice = useIsMobileDevice();
+  const shouldShowBrowserControl = !isMobileDevice && isBrowserSupported;
 
   const toggleBrowserAttempt = async () => {
-    if (!isBrowserSupported) return
-    const browserUseAvailable = await isExtensionAvailable(EXTENSION_ID)
+    if (!isBrowserSupported) return;
+    const browserUseAvailable = await isExtensionAvailable(EXTENSION_ID);
     if ((browserUseAvailable && !browserEnabled) || browserEnabled) {
-      toggleBrowser()
+      toggleBrowser();
     } else {
       // Redirect to chrome extension store
-      window.open(CHROME_STORE_URL, '_blank')
+      window.open(CHROME_STORE_URL, "_blank");
     }
-  }
+  };
   return (
     <DropDrawer>
       <DropDrawerTrigger asChild>{children}</DropDrawerTrigger>
@@ -112,8 +112,8 @@ export const SettingChatInput = ({
               <DropDrawerItem
                 key={tone.value}
                 onSelect={(e) => {
-                  e.preventDefault()
-                  onToneChange?.(tone.value)
+                  e.preventDefault();
+                  onToneChange?.(tone.value);
                 }}
               >
                 <div className="flex gap-2 items-center justify-between w-full">
@@ -273,5 +273,5 @@ export const SettingChatInput = ({
         </DropDrawerItem> */}
       </DropDrawerContent>
     </DropDrawer>
-  )
-}
+  );
+};

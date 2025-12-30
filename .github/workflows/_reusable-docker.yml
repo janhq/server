@@ -32,6 +32,11 @@ on:
         type: string
         default: ""
         description: "The build args to use for docker build"
+      build-contexts:
+        required: false
+        type: string
+        default: ""
+        description: "Additional build contexts (e.g., name=path)"
       tags:
         required: false
         type: string
@@ -92,3 +97,4 @@ jobs:
           push: ${{ inputs.is_push }}
           tags: ${{ inputs.tags }}
           build-args: ${{ inputs.build-args }}
+          build-contexts: ${{ inputs.build-contexts }}

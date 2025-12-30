@@ -48,13 +48,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/guest-login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "guest-login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "guest-login"]
             }
           },
           "response": []
@@ -123,14 +118,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/providers",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "providers"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "providers"]
             }
           },
           "response": []
@@ -168,15 +157,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/providers/:id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "providers",
-                ":id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "providers", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -218,15 +200,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/providers/:public_id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "providers",
-                ":public_id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "providers", ":public_id"],
               "variable": [
                 {
                   "key": "public_id",
@@ -266,14 +241,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/providers?kind=openrouter",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "providers"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "providers"],
               "query": [
                 {
                   "key": "kind",
@@ -313,14 +282,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/providers?active=true",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "providers"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "providers"],
               "query": [
                 {
                   "key": "active",
@@ -356,15 +319,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?provider_id={{provider_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "provider_id",
@@ -410,15 +366,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?limit=10&offset=0",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "limit",
@@ -467,16 +416,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models/:id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models",
-                ":id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -517,15 +458,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?provider_id={{provider_id}}&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "provider_id",
@@ -567,15 +501,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?category=Chat&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "category",
@@ -617,15 +544,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?active=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "active",
@@ -665,15 +585,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?sort_by=category_order,model_order&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "sort_by",
@@ -715,15 +628,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?search=gpt&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "search",
@@ -778,16 +684,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models/:id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models",
-                ":id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -832,9 +730,7 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models/bulk-toggle",
-              "host": [
-                "{{base_url}}"
-              ],
+              "host": ["{{base_url}}"],
               "path": [
                 "v1",
                 "admin",
@@ -882,15 +778,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?limit=10&offset=0",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "limit",
@@ -937,16 +826,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs/:id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs",
-                ":id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -983,16 +864,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs/:public_id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs",
-                ":public_id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs", ":public_id"],
               "variable": [
                 {
                   "key": "public_id",
@@ -1031,15 +904,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?family=gpt-4&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "family",
@@ -1082,15 +948,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?supports_embeddings=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "supports_embeddings",
@@ -1133,15 +992,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?supports_images=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "supports_images",
@@ -1184,15 +1036,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?supports_reasoning=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "supports_reasoning",
@@ -1227,15 +1072,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?supports_audio=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "supports_audio",
@@ -1270,15 +1108,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?supports_video=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "supports_video",
@@ -1321,15 +1152,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs?status=filled&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs"],
               "query": [
                 {
                   "key": "status",
@@ -1379,16 +1203,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs/:id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs",
-                ":id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1434,16 +1250,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/models/catalogs/bulk-toggle",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "catalogs",
-                "bulk-toggle"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "catalogs", "bulk-toggle"]
             }
           },
           "response": []
@@ -1480,16 +1288,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/providers/:id?include_counts=true",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "providers",
-                ":id"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "providers", ":id"],
               "query": [
                 {
                   "key": "include_counts",
@@ -1532,15 +1332,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?include_catalog=true&limit=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "include_catalog",
@@ -1581,15 +1374,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/v1/admin/models/provider-models?active=true&family=gpt-4&supports_images=true&include_catalog=true",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "models",
-                "provider-models"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "models", "provider-models"],
               "query": [
                 {
                   "key": "active",

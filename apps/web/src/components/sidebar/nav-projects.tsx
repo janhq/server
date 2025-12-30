@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useState } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import {
   SidebarGroup,
   SidebarMenu,
   useSidebar,
-} from '@/components/ui/sidebar'
+} from "@/components/sidebar/sidebar";
 import {
   Dialog,
   DialogClose,
@@ -14,44 +14,47 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+} from "@janhq/interfaces/dialog";
+import { Button } from "@janhq/interfaces/button";
 
-import { useProjects } from '@/stores/projects-store'
-import { AnimatedGroupLabel, AnimatedProjectItem } from '@/components/sidebar/items'
+import { useProjects } from "@/stores/projects-store";
+import {
+  AnimatedGroupLabel,
+  AnimatedProjectItem,
+} from "@/components/sidebar/items";
 
 export function NavProjects({ startIndex = 3 }: { startIndex?: number }) {
-  const { isMobile } = useSidebar()
-  const navigate = useNavigate()
-  const params = useParams({ strict: false }) as { projectId?: string }
-  const projects = useProjects((state) => state.projects)
-  const deleteProject = useProjects((state) => state.deleteProject)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<Project | null>(null)
+  const { isMobile } = useSidebar();
+  const navigate = useNavigate();
+  const params = useParams({ strict: false }) as { projectId?: string };
+  const projects = useProjects((state) => state.projects);
+  const deleteProject = useProjects((state) => state.deleteProject);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Project | null>(null);
 
   const handleDeleteClick = (item: Project) => {
-    setItemToDelete(item)
-    setDeleteDialogOpen(true)
-  }
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return
+    if (!itemToDelete) return;
 
     try {
-      await deleteProject(itemToDelete.id)
-      setDeleteDialogOpen(false)
-      setItemToDelete(null)
+      await deleteProject(itemToDelete.id);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
       // If we're currently viewing the deleted project, redirect to home
       if (params.projectId === itemToDelete.id) {
-        navigate({ to: '/' })
+        navigate({ to: "/" });
       }
     } catch (error) {
-      console.error('Failed to delete project:', error)
+      console.error("Failed to delete project:", error);
     }
-  }
+  };
 
   if (projects.length === 0) {
-    return null
+    return null;
   }
 
   return (
@@ -77,7 +80,7 @@ export function NavProjects({ startIndex = 3 }: { startIndex?: number }) {
           <DialogHeader>
             <DialogTitle>Delete Project</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
+              Are you sure you want to delete{" "}
               <span className="font-semibold">
                 &quot;{itemToDelete?.name}&quot;?
               </span>
@@ -101,5 +104,5 @@ export function NavProjects({ startIndex = 3 }: { startIndex?: number }) {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

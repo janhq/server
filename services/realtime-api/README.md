@@ -22,20 +22,20 @@ Stale sessions (created but never connected) are cleaned up after `SESSION_STALE
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/v1/realtime/sessions` | Create a new realtime session |
-| `GET` | `/v1/realtime/sessions` | List all sessions for the current user |
-| `GET` | `/v1/realtime/sessions/:id` | Get a specific session |
-| `DELETE` | `/v1/realtime/sessions/:id` | Delete a session |
+| Method   | Endpoint                    | Description                            |
+| -------- | --------------------------- | -------------------------------------- |
+| `POST`   | `/v1/realtime/sessions`     | Create a new realtime session          |
+| `GET`    | `/v1/realtime/sessions`     | List all sessions for the current user |
+| `GET`    | `/v1/realtime/sessions/:id` | Get a specific session                 |
+| `DELETE` | `/v1/realtime/sessions/:id` | Delete a session                       |
 
 ### Health Endpoints (Public)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Service info |
-| `GET` | `/healthz` | Health check |
-| `GET` | `/readyz` | Readiness check |
+| Method | Endpoint   | Description     |
+| ------ | ---------- | --------------- |
+| `GET`  | `/`        | Service info    |
+| `GET`  | `/healthz` | Health check    |
+| `GET`  | `/readyz`  | Readiness check |
 
 ## Quick Start
 
@@ -139,7 +139,7 @@ curl http://localhost:8186/v1/realtime/sessions/sess_abc123def456 \
 Use the `client_secret.value` (LiveKit token) and `ws_url` to connect:
 
 ```javascript
-import { Room } from 'livekit-client';
+import { Room } from "livekit-client";
 
 const room = new Room();
 await room.connect(response.ws_url, response.client_secret.value);

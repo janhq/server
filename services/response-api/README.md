@@ -43,34 +43,36 @@ Useful targets:
 
 ## Configuration
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `SERVICE_NAME` | Logical service name | `response-api` |
-| `HTTP_PORT` | HTTP listen port | `8082` |
-| `DB_POSTGRESQL_WRITE_DSN` | PostgreSQL DSN | `postgres://postgres:postgres@localhost:5432/response_api?sslmode=disable` |
-| `LLM_API_URL` | Base URL for `llm-api` | `http://localhost:8080` |
-| `MCP_TOOLS_URL` | Base URL for `mcp-tools` | `http://localhost:8091` |
-| `MAX_TOOL_EXECUTION_DEPTH` | Max recursive tool chain depth | `8` |
-| `TOOL_EXECUTION_TIMEOUT` | Per-tool call timeout | `45s` |
-| `BACKGROUND_WORKER_COUNT` | Number of concurrent background workers | `4` |
-| `BACKGROUND_TASK_TIMEOUT` | Max execution time per background task | `600s` |
-| `BACKGROUND_POLL_INTERVAL` | How often workers poll for tasks | `2s` |
-| `WEBHOOK_TIMEOUT` | HTTP timeout for webhook delivery | `10s` |
-| `WEBHOOK_MAX_RETRIES` | Number of webhook retry attempts | `3` |
-| `WEBHOOK_RETRY_DELAY` | Delay between webhook retries | `2s` |
-| `AUTH_ENABLED` + `AUTH_*` | Toggle and configure OIDC validation | disabled |
+| Variable                   | Description                             | Default                                                                    |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------------------------- |
+| `SERVICE_NAME`             | Logical service name                    | `response-api`                                                             |
+| `HTTP_PORT`                | HTTP listen port                        | `8082`                                                                     |
+| `DB_POSTGRESQL_WRITE_DSN`  | PostgreSQL DSN                          | `postgres://postgres:postgres@localhost:5432/response_api?sslmode=disable` |
+| `LLM_API_URL`              | Base URL for `llm-api`                  | `http://localhost:8080`                                                    |
+| `MCP_TOOLS_URL`            | Base URL for `mcp-tools`                | `http://localhost:8091`                                                    |
+| `MAX_TOOL_EXECUTION_DEPTH` | Max recursive tool chain depth          | `8`                                                                        |
+| `TOOL_EXECUTION_TIMEOUT`   | Per-tool call timeout                   | `45s`                                                                      |
+| `BACKGROUND_WORKER_COUNT`  | Number of concurrent background workers | `4`                                                                        |
+| `BACKGROUND_TASK_TIMEOUT`  | Max execution time per background task  | `600s`                                                                     |
+| `BACKGROUND_POLL_INTERVAL` | How often workers poll for tasks        | `2s`                                                                       |
+| `WEBHOOK_TIMEOUT`          | HTTP timeout for webhook delivery       | `10s`                                                                      |
+| `WEBHOOK_MAX_RETRIES`      | Number of webhook retry attempts        | `3`                                                                        |
+| `WEBHOOK_RETRY_DELAY`      | Delay between webhook retries           | `2s`                                                                       |
+| `AUTH_ENABLED` + `AUTH_*`  | Toggle and configure OIDC validation    | disabled                                                                   |
 
 See `.env.template` in the repo root for the full list including tracing/logging knobs.
 
 ### Recommended Settings
 
 **Development:**
+
 ```bash
 BACKGROUND_WORKER_COUNT=2
 BACKGROUND_TASK_TIMEOUT=300s
 ```
 
 **Production:**
+
 ```bash
 BACKGROUND_WORKER_COUNT=8
 BACKGROUND_TASK_TIMEOUT=600s
@@ -100,12 +102,14 @@ The Response API supports OpenAI-compatible background mode for asynchronous res
 ### Architecture
 
 **Components:**
+
 1. **PostgreSQL-backed Queue**: Uses the `responses` table with `SELECT FOR UPDATE SKIP LOCKED` for reliable task distribution
 2. **Worker Pool**: Fixed-size pool of background workers (default: 4) that poll for queued tasks
 3. **Webhook Notifications**: HTTP POST callbacks when tasks complete or fail
 4. **Graceful Cancellation**: Queued or in-progress tasks can be cancelled
 
 **Task Lifecycle:**
+
 ```
 Client Request (background=true, store=true)
     ↓
@@ -129,6 +133,7 @@ Send Webhook Notification (async, non-blocking)
 #### Creating a Background Response
 
 **Request:**
+
 ```http
 POST /v1/responses
 Content-Type: application/json
@@ -146,6 +151,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -164,12 +170,14 @@ Authorization: Bearer <token>
 #### Polling for Status
 
 **Request:**
+
 ```http
 GET /v1/responses/resp_abc123
 Authorization: Bearer <token>
 ```
 
 **Response (In Progress):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -180,6 +188,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (Completed):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -199,12 +208,14 @@ Authorization: Bearer <token>
 #### Cancelling a Background Task
 
 **Request:**
+
 ```http
 POST /v1/responses/resp_abc123/cancel
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "id": "resp_abc123",
@@ -215,6 +226,7 @@ Authorization: Bearer <token>
 ```
 
 **Cancellation Behavior:**
+
 - If status is `queued`: Immediately marks cancelled, prevents worker pickup
 - If status is `in_progress`: Marks cancelled, but task may complete normally (cooperative cancellation)
 - If status is `completed` or `failed`: No-op, returns current state
@@ -222,6 +234,7 @@ Authorization: Bearer <token>
 ### Webhook Notifications
 
 **Webhook Payload (Completed):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -234,6 +247,7 @@ Authorization: Bearer <token>
 ```
 
 **Webhook Payload (Failed):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -248,6 +262,7 @@ Authorization: Bearer <token>
 ```
 
 **Webhook Delivery:**
+
 - **Method**: HTTP POST
 - **Content-Type**: `application/json`
 - **Headers**:
@@ -292,6 +307,7 @@ curl http://localhost:8082/v1/responses/resp_xxx \
 Comprehensive test suite available at `tests/automation/responses-background-webhook.json`:
 
 **Test Suites:**
+
 1. Setup & Authentication
 2. Basic Background Mode
 3. Background with Webhooks
@@ -382,20 +398,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Start services
         run: docker-compose up -d response-api
-      
+
       - name: Wait for health check
         run: |
           timeout 60 bash -c 'until curl -f http://localhost:8082/healthz; do sleep 2; done'
-      
+
       - name: Run tests
         run: |
           jan-cli api-test run tests/automation/responses-background-webhook.json \
             --timeout-request 60000 \
             --reporters cli
-      
+
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
@@ -410,6 +426,7 @@ jobs:
 **Issue**: Tasks remain in `queued` status and never get processed
 
 **Solutions**:
+
 1. Check worker logs: `docker logs <container> --tail 100`
 2. Verify workers are running: Look for "worker started" messages
 3. Check database connectivity: Workers need access to PostgreSQL
@@ -420,6 +437,7 @@ jobs:
 **Issue**: Workers running but not dequeuing tasks
 
 **Solutions**:
+
 1. Check for database locks: `SELECT * FROM pg_locks WHERE granted = false;`
 2. Verify `BACKGROUND_POLL_INTERVAL` setting
 3. Check worker logs for errors
@@ -430,6 +448,7 @@ jobs:
 **Issue**: Tasks complete but webhooks not received
 
 **Solutions**:
+
 1. Check webhook URL is accessible from Docker network
 2. Use `http://host.docker.internal:<port>` for local development
 3. Check response-api logs for webhook delivery errors
@@ -441,6 +460,7 @@ jobs:
 **Issue**: Tasks marked as failed with timeout errors
 
 **Solutions**:
+
 1. Increase `BACKGROUND_TASK_TIMEOUT` (default: 600s)
 2. Optimize LLM prompts to reduce processing time
 3. Check LLM API availability and response times
@@ -451,9 +471,9 @@ jobs:
 **Issue**: Many tasks queued, slow processing
 
 **Solutions**:
+
 1. Increase `BACKGROUND_WORKER_COUNT`
 2. Scale horizontally: Run multiple response-api instances
 3. Monitor database performance
 4. Check LLM API rate limits
 5. Consider task prioritization (future enhancement)
-

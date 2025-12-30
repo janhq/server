@@ -26,18 +26,21 @@ Values Generator -----> values-dev.yaml (1 replica, minimal resources)
 ## Generated Structure
 
 ### Global Values
+
 ```yaml
 global:
- environment: development
- imagePullPolicy: IfNotPresent
- labels:
- app.kubernetes.io/name: jan-server
- app.kubernetes.io/version: 1.0.0
- app.kubernetes.io/environment: development
+  environment: development
+  imagePullPolicy: IfNotPresent
+  labels:
+  app.kubernetes.io/name: jan-server
+  app.kubernetes.io/version: 1.0.0
+  app.kubernetes.io/environment: development
 ```
 
 ### Service Values
+
 Each service gets:
+
 - **Deployment**: replicas, image, resources
 - **Service**: type, ports
 - **Health Checks**: liveness/readiness probes
@@ -45,6 +48,7 @@ Each service gets:
 - **Secrets**: References to K8s secrets
 
 Example:
+
 ```yaml
 services:
  llm-api:
@@ -84,7 +88,9 @@ services:
 ```
 
 ### Infrastructure Values
+
 Database and auth configuration:
+
 ```yaml
 infrastructure:
  database:
@@ -118,6 +124,7 @@ infrastructure:
 ## Environment Profiles
 
 ### Development
+
 - Single replica per service
 - Minimal resources (100m CPU, 128Mi RAM requests)
 - `imagePullPolicy: Never` (use local images)
@@ -125,6 +132,7 @@ infrastructure:
 - Lower health check thresholds
 
 ### Staging
+
 - 2 replicas per service
 - Moderate resources (250m CPU, 256Mi RAM requests)
 - `imagePullPolicy: IfNotPresent`
@@ -132,6 +140,7 @@ infrastructure:
 - Production-like settings
 
 ### Production
+
 - 3 replicas per service
 - Full resources (500m CPU, 512Mi RAM requests)
 - `imagePullPolicy: Always`
@@ -179,34 +188,37 @@ go run generate_values.go
 ```
 
 Generates:
+
 - `values-dev.yaml` - Development environment
 - `values-prod.yaml` - Production environment
 
 ## Configuration Mapping
 
-| Config Path | Helm Values Path | Notes |
-|-------------|-----------------|-------|
-| `meta.version` | `global.labels["app.kubernetes.io/version"]`, `*.image.tag` | Version across all components |
-| `meta.environment` | `global.environment`, `global.labels["app.kubernetes.io/environment"]` | Environment name |
-| `services.llm_api.http_port` | `services.llm-api.service.port` | Service port mapping |
-| `services.llm_api.log_level` | `services.llm-api.configMap.LOG_LEVEL` | Config as ConfigMap |
-| `infrastructure.database.postgres.*` | `infrastructure.database.postgres.*` | Direct mapping |
-| `infrastructure.auth.keycloak.*` | `infrastructure.auth.keycloak.*` | Direct mapping |
+| Config Path                          | Helm Values Path                                                       | Notes                         |
+| ------------------------------------ | ---------------------------------------------------------------------- | ----------------------------- |
+| `meta.version`                       | `global.labels["app.kubernetes.io/version"]`, `*.image.tag`            | Version across all components |
+| `meta.environment`                   | `global.environment`, `global.labels["app.kubernetes.io/environment"]` | Environment name              |
+| `services.llm_api.http_port`         | `services.llm-api.service.port`                                        | Service port mapping          |
+| `services.llm_api.log_level`         | `services.llm-api.configMap.LOG_LEVEL`                                 | Config as ConfigMap           |
+| `infrastructure.database.postgres.*` | `infrastructure.database.postgres.*`                                   | Direct mapping                |
+| `infrastructure.auth.keycloak.*`     | `infrastructure.auth.keycloak.*`                                       | Direct mapping                |
 
 ## Secret Management
 
 **Important**: The generator creates **references** to secrets, not the secrets themselves.
 
 Secret references in values:
+
 ```yaml
 services:
- llm-api:
- secrets:
- - database-credentials # -> maps to K8s Secret
- - keycloak-credentials
+  llm-api:
+  secrets:
+    - database-credentials # -> maps to K8s Secret
+    - keycloak-credentials
 ```
 
 You must create K8s secrets separately:
+
 ```bash
 kubectl create secret generic database-credentials \
  --from-literal=password=<db-password>
@@ -221,18 +233,19 @@ Secrets are managed by DevOps via Kubernetes Secrets, HashiCorp Vault, or enviro
 
 ### Default Resources
 
-| Service | CPU Request | CPU Limit | Memory Request | Memory Limit |
-|---------|------------|-----------|----------------|--------------|
-| llm-api | 500m | 1000m | 512Mi | 1Gi |
-| mcp-tools | 250m | 500m | 256Mi | 512Mi |
-| media-api | 250m | 500m | 256Mi | 512Mi |
-| response-api | 250m | 500m | 256Mi | 512Mi |
-| postgres | 1000m | 2000m | 1Gi | 2Gi |
-| keycloak | 500m | 1000m | 512Mi | 1Gi |
+| Service      | CPU Request | CPU Limit | Memory Request | Memory Limit |
+| ------------ | ----------- | --------- | -------------- | ------------ |
+| llm-api      | 500m        | 1000m     | 512Mi          | 1Gi          |
+| mcp-tools    | 250m        | 500m      | 256Mi          | 512Mi        |
+| media-api    | 250m        | 500m      | 256Mi          | 512Mi        |
+| response-api | 250m        | 500m      | 256Mi          | 512Mi        |
+| postgres     | 1000m       | 2000m     | 1Gi            | 2Gi          |
+| keycloak     | 500m        | 1000m     | 512Mi          | 1Gi          |
 
 ### Scaling Recommendations
 
 For production workloads:
+
 - **High traffic**: Increase replicas (3-5+)
 - **Heavy AI workloads**: Increase llm-api resources (2-4 CPU, 2-4Gi RAM)
 - **Large databases**: Increase postgres resources and persistence size
@@ -240,33 +253,36 @@ For production workloads:
 ## Health Checks
 
 ### Liveness Probes
+
 - Detect crashed containers
 - Restart unhealthy containers
 - Higher failure threshold (3-5)
 
 ### Readiness Probes
+
 - Detect startup completion
 - Remove from service during issues
 - Lower failure threshold (3)
 
 Generated probes:
+
 ```yaml
 livenessProbe:
- httpGet:
- path: /health
- port: 8080
- initialDelaySeconds: 30
- periodSeconds: 10
- timeoutSeconds: 5
- failureThreshold: 3
+  httpGet:
+  path: /health
+  port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
 readinessProbe:
- httpGet:
- path: /health
- port: 8080
- initialDelaySeconds: 10
- periodSeconds: 5
- timeoutSeconds: 3
- failureThreshold: 3
+  httpGet:
+  path: /health
+  port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
 ```
 
 ## Integration with Helm
@@ -298,7 +314,7 @@ helm install jan-server k8s/jan-server \
 - name: Generate Helm Values
  run: |
  go run pkg/config/k8s/examples/generate_values.go
- 
+
 - name: Deploy to K8s
  run: |
  helm upgrade --install jan-server k8s/jan-server \

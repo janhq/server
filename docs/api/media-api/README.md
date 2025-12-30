@@ -4,9 +4,10 @@ The Media API handles image uploads and storage.
 
 ## Quick Start
 
-Examples: [API examples index](../examples/README.md) includes uploads, jan_* IDs, and OCR/preview flows.
+Examples: [API examples index](../examples/README.md) includes uploads, jan\_\* IDs, and OCR/preview flows.
 
 ### URLs
+
 - **Direct access**: http://localhost:8285
 - **Through gateway**: http://localhost:8000/media (Kong prefixes `/media` before forwarding)
 - **Inside Docker**: http://media-api:8285
@@ -14,18 +15,18 @@ Examples: [API examples index](../examples/README.md) includes uploads, jan_* ID
 ## What You Can Do
 
 - **Upload images** - From URLs or base64 data. See [Upload Method Guide](../decision-guides.md#media-upload-methods) to choose the best approach.
-- **Get jan_* IDs** - Unique identifiers for each image. See [Jan ID System Guide](../decision-guides.md#jan-id-system) to understand how they work.
+- **Get jan\_\* IDs** - Unique identifiers for each image. See [Jan ID System Guide](../decision-guides.md#jan-id-system) to understand how they work.
 - **Generate download links** - Temporary URLs that expire after 7 days. See [Presigned URL Workflow](../decision-guides.md#presigned-url-workflow).
 - **Prevent duplicates** - Same image uploaded twice gets same ID
 - **Store in S3** - Images saved to cloud storage
 
 ## Service Ports & Configuration
 
-| Component | Port | Key Environment Variables |
-|-----------|------|--------------------------|
-| **HTTP Server** | 8285 | `MEDIA_API_PORT` |
-| **Database (PostgreSQL)** | 5432 | `DB_POSTGRESQL_WRITE_DSN`, `DB_POSTGRESQL_READ1_DSN` (optional replica) |
-| **Object Storage (S3-compatible)** | 443 | `MEDIA_STORAGE_BACKEND` (`s3` or `local`), `MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY` |
+| Component                          | Port | Key Environment Variables                                                                                                                 |
+| ---------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **HTTP Server**                    | 8285 | `MEDIA_API_PORT`                                                                                                                          |
+| **Database (PostgreSQL)**          | 5432 | `DB_POSTGRESQL_WRITE_DSN`, `DB_POSTGRESQL_READ1_DSN` (optional replica)                                                                   |
+| **Object Storage (S3-compatible)** | 443  | `MEDIA_STORAGE_BACKEND` (`s3` or `local`), `MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_ACCESS_KEY_ID`, `MEDIA_S3_SECRET_ACCESS_KEY` |
 
 ### Required Environment Variables
 
@@ -80,6 +81,7 @@ All endpoints require authentication through the Kong gateway.
 **For complete authentication documentation, see [Authentication Guide](../README.md#authentication)**
 
 **Quick example:**
+
 ```bash
 # Get guest token
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
@@ -90,6 +92,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 **Key points:**
+
 - Use Kong gateway (port 8000) for all client requests: `http://localhost:8000/media/...`
 - Both Bearer tokens and API keys (`X-API-Key`) work through Kong
 - Direct service access (port 8285) requires valid JWT token
@@ -131,13 +134,14 @@ curl -X POST http://localhost:8000/media/v1/media \
 ```
 
 **Response:**
+
 ```json
 {
- "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "mime": "image/jpeg",
- "bytes": 45678,
- "deduped": false,
- "presigned_url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=..."
+  "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+  "mime": "image/jpeg",
+  "bytes": 45678,
+  "deduped": false,
+  "presigned_url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=..."
 }
 ```
 
@@ -171,19 +175,20 @@ curl -X POST http://localhost:8000/media/v1/media/upload \
 The service converts the upload to a data URL and stores it on disk (`MEDIA_LOCAL_STORAGE_PATH`).
 
 **Response:**
+
 ```json
 {
- "jan_id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "presigned_url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=...",
- "presigned_post": {
- "url": "https://s3.menlo.ai",
- "fields": {
- "key": "images/jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "policy": "...",
- "x-amz-signature": "...",
- "x-amz-date": "..."
- }
- }
+  "jan_id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+  "presigned_url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=...",
+  "presigned_post": {
+    "url": "https://s3.menlo.ai",
+    "fields": {
+      "key": "images/jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+      "policy": "...",
+      "x-amz-signature": "...",
+      "x-amz-date": "..."
+    }
+  }
 }
 ```
 
@@ -206,15 +211,16 @@ curl -X POST http://localhost:8000/media/v1/media/resolve \
 ```
 
 **Response:**
+
 ```json
 {
- "media": [
- {
- "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "presigned_url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=...",
- "expires_at": "2025-11-10T10:35:00Z"
- }
- ]
+  "media": [
+    {
+      "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+      "presigned_url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=...",
+      "expires_at": "2025-11-10T10:35:00Z"
+    }
+  ]
 }
 ```
 
@@ -230,14 +236,15 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 **Response:**
+
 ```json
 {
- "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "mime": "image/jpeg",
- "bytes": 45678,
- "created_at": "2025-11-10T10:30:00Z",
- "presigned_url": "https://s3.menlo.ai/...",
- "expires_at": "2025-11-10T10:35:00Z"
+  "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+  "mime": "image/jpeg",
+  "bytes": 45678,
+  "created_at": "2025-11-10T10:30:00Z",
+  "presigned_url": "https://s3.menlo.ai/...",
+  "expires_at": "2025-11-10T10:35:00Z"
 }
 ```
 
@@ -253,15 +260,17 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 **Response:**
+
 ```json
 {
- "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=...",
- "expires_in": 300
+  "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+  "url": "https://s3.menlo.ai/platform-dev/images/jan_...?X-Amz-Signature=...",
+  "expires_in": 300
 }
 ```
 
 **Use Cases:**
+
 - Get download URL after client-side upload via `prepare-upload`
 - Refresh expired presigned URLs
 - Obtain direct S3 access for large file downloads
@@ -284,6 +293,7 @@ curl http://localhost:8285/healthz
 **Format**: `jan_` prefix + 26-character base32 identifier
 
 ### Characteristics
+
 - **Globally Unique**: No collision across instances
 - **Sortable**: Sequential generation ensures chronological ordering
 - **Opaque**: No encoded information (privacy-preserving)
@@ -322,14 +332,15 @@ Media is deduplicated by content hash (SHA-256):
 
 ```json
 {
- "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
- "deduped": true
+  "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
+  "deduped": true
 }
 ```
 
 ## Presigned URL Management
 
 ### TTL Configuration
+
 Default: 7 days (604800 seconds)
 
 ```bash
@@ -339,6 +350,7 @@ MEDIA_S3_PRESIGN_TTL=1h # 1 hour
 ```
 
 ### Expiration
+
 - URLs are valid for specified TTL
 - Each request to resolve/get generates new presigned URL
 - Expired URLs are no longer valid
@@ -346,6 +358,7 @@ MEDIA_S3_PRESIGN_TTL=1h # 1 hour
 ## Storage Flow
 
 ### 1. Remote URL Upload
+
 ```
 Client -> Media API (remote_url)
  v
@@ -359,6 +372,7 @@ Client <- Media API (jan_id + presigned_url)
 ```
 
 ### 2. Client-Side Direct Upload
+
 ```
 Client -> Media API (prepare-upload request)
  v
@@ -375,22 +389,23 @@ Client <- Media API (download presigned_url)
 
 ## Error Handling
 
-| Status | Error | Cause |
-|--------|-------|-------|
-| 400 | Invalid request | Malformed parameters |
-| 401 | Unauthorized | Missing/invalid bearer token |
-| 404 | Not found | Media ID doesn't exist |
-| 413 | Payload too large | Exceeds max file size |
-| 500 | S3 error | Storage operation failed |
+| Status | Error             | Cause                        |
+| ------ | ----------------- | ---------------------------- |
+| 400    | Invalid request   | Malformed parameters         |
+| 401    | Unauthorized      | Missing/invalid bearer token |
+| 404    | Not found         | Media ID doesn't exist       |
+| 413    | Payload too large | Exceeds max file size        |
+| 500    | S3 error          | Storage operation failed     |
 
 Example error:
+
 ```json
 {
- "error": {
- "message": "File size exceeds maximum allowed",
- "type": "size_error",
- "code": "max_size_exceeded"
- }
+  "error": {
+    "message": "File size exceeds maximum allowed",
+    "type": "size_error",
+    "code": "max_size_exceeded"
+  }
 }
 ```
 

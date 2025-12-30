@@ -1,13 +1,15 @@
-import { fetchJsonWithAuth } from '@/lib/api-client'
+import { fetchJsonWithAuth } from "@/lib/api-client";
 
-declare const JAN_API_BASE_URL: string
+declare const JAN_API_BASE_URL: string;
 
 export const projectService = {
   /**
    * Get all projects
    */
   getProjects: async (): Promise<ProjectsResponse> => {
-    return fetchJsonWithAuth<ProjectsResponse>(`${JAN_API_BASE_URL}v1/projects`)
+    return fetchJsonWithAuth<ProjectsResponse>(
+      `${JAN_API_BASE_URL}v1/projects`,
+    );
   },
 
   /**
@@ -15,8 +17,8 @@ export const projectService = {
    */
   getProject: async (projectId: string): Promise<Project> => {
     return fetchJsonWithAuth<Project>(
-      `${JAN_API_BASE_URL}v1/projects/${projectId}`
-    )
+      `${JAN_API_BASE_URL}v1/projects/${projectId}`,
+    );
   },
 
   /**
@@ -24,9 +26,9 @@ export const projectService = {
    */
   createProject: async (data: CreateProjectRequest): Promise<Project> => {
     return fetchJsonWithAuth<Project>(`${JAN_API_BASE_URL}v1/projects`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
-    })
+    });
   },
 
   /**
@@ -34,15 +36,15 @@ export const projectService = {
    */
   updateProject: async (
     projectId: string,
-    data: UpdateProjectRequest
+    data: UpdateProjectRequest,
   ): Promise<Project> => {
     return fetchJsonWithAuth<Project>(
       `${JAN_API_BASE_URL}v1/projects/${projectId}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(data),
-      }
-    )
+      },
+    );
   },
 
   /**
@@ -52,8 +54,8 @@ export const projectService = {
     return fetchJsonWithAuth<DeleteProjectResponse>(
       `${JAN_API_BASE_URL}v1/projects/${projectId}`,
       {
-        method: 'DELETE',
-      }
-    )
+        method: "DELETE",
+      },
+    );
   },
-}
+};

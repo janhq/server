@@ -5,44 +5,51 @@ Comprehensive how-to guides for working with Jan Server. For incident response a
 ## Available Guides
 
 ### Development
+
 - **[Development Guide](development.md)** - Complete development workflow, setup, and best practices
 - **[Development Guide](development.md)** - Full Docker, dev-full (hybrid), and native execution modes
 - **[Testing Guide](testing.md)** - Unit tests, integration tests, and testing best practices
 
 ### Operations (how-to)
+
 - **[Monitoring](monitoring.md)** - Observability, metrics, traces, and dashboards
 - **[Deployment](deployment.md)** - Kubernetes, Docker Compose, and hybrid deployment strategies
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions (links out to runbooks where applicable)
 
 ### Special Topics
+
 - **[MCP Testing](mcp-testing.md)** - Testing MCP (Model Context Protocol) integration
 
 ## Quick Links
 
 ### For Developers
-| Task | Guide |
-|------|-------|
-| Setup local environment | [Development Guide](development.md) |
-| Run services natively | [Development Guide - Dev-Full Mode](development.md#dev-full-mode-hybrid-debugging) |
-| Write and run tests | [Testing Guide](testing.md) |
-| Debug issues | [Troubleshooting](troubleshooting.md) |
+
+| Task                    | Guide                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| Setup local environment | [Development Guide](development.md)                                                |
+| Run services natively   | [Development Guide - Dev-Full Mode](development.md#dev-full-mode-hybrid-debugging) |
+| Write and run tests     | [Testing Guide](testing.md)                                                        |
+| Debug issues            | [Troubleshooting](troubleshooting.md)                                              |
 
 ### For DevOps
-| Task | Guide |
-|------|-------|
-| Deploy to production | [Deployment Guide](deployment.md) |
-| Setup monitoring | [Monitoring](monitoring.md) |
-| Troubleshoot issues | [Troubleshooting](troubleshooting.md) (see runbooks for on-call steps) |
+
+| Task                 | Guide                                                                  |
+| -------------------- | ---------------------------------------------------------------------- |
+| Deploy to production | [Deployment Guide](deployment.md)                                      |
+| Setup monitoring     | [Monitoring](monitoring.md)                                            |
+| Troubleshoot issues  | [Troubleshooting](troubleshooting.md) (see runbooks for on-call steps) |
 
 ### For QA
-| Task | Guide |
-|------|-------|
-| Run integration tests | [Testing Guide](testing.md) |
-| Test MCP tools | [MCP Testing](mcp-testing.md) |
+
+| Task                  | Guide                         |
+| --------------------- | ----------------------------- |
+| Run integration tests | [Testing Guide](testing.md)   |
+| Test MCP tools        | [MCP Testing](mcp-testing.md) |
 
 ## Common Tasks
 
 ### Development Workflow
+
 ```bash
 # 1. Setup development environment (.env + infra/docker/.env)
 make setup
@@ -99,6 +106,7 @@ See [Monitoring Guide](monitoring.md) for details.
 ## Getting Help
 
 Each guide includes:
+
 - Step-by-step instructions
 - Code examples
 - Common pitfalls

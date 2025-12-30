@@ -51,6 +51,7 @@ make mcp-full
 ```
 
 This will start:
+
 - **SearXNG** (http://localhost:8086) - Meta search engine
 - **Vector Store MCP** (http://localhost:3015) - Lightweight embedding service for file search
 - **SandboxFusion** (http://localhost:3010) - Python code interpreter
@@ -72,6 +73,7 @@ curl -X POST http://localhost:8091/v1/mcp \
 ```
 
 Expected response includes:
+
 - `google_search` - Internal Serper tool
 - `scrape` - Internal Serper tool
 - `code-sandbox_*` - Tools from Code Sandbox MCP
@@ -138,6 +140,7 @@ networks:
 ### mcp-tools Service
 
 The `mcp-tools` service is configured to:
+
 1. Mount the config directory: `./services/mcp-tools/configs:/app/configs:ro`
 2. Connect to both default and mcp-network
 3. Reference MCP providers by Docker service names
@@ -176,12 +179,14 @@ mcp-tools:
 ### Tool Naming Convention
 
 External tools are prefixed with their provider name:
+
 - `code-sandbox_write_file_sandbox` - Write files into a sandbox workspace
 - `code-sandbox_sandbox_exec` - Execute Python/shell commands inside the sandbox
 - `playwright_navigate` - Navigate browser via Playwright MCP
 - `playwright_screenshot` - Take screenshot via Playwright MCP
 
 Internal tools keep their original names:
+
 - `google_search` - Serper search (internal)
 - `scrape` - Serper scraper (internal)
 
@@ -234,12 +239,12 @@ make mcp-with-tools
 
 ## Makefile Commands
 
-| Command | Description |
-|---------|-------------|
-| `make mcp-full` | Start MCP services only (SearXNG, Code Sandbox, Playwright) |
-| `make mcp-down` | Stop MCP services |
-| `make mcp-with-tools` | Start MCP services + mcp-tools bridge |
-| `make mcp-down-all` | Stop all MCP-related services |
+| Command               | Description                                                 |
+| --------------------- | ----------------------------------------------------------- |
+| `make mcp-full`       | Start MCP services only (SearXNG, Code Sandbox, Playwright) |
+| `make mcp-down`       | Stop MCP services                                           |
+| `make mcp-with-tools` | Start MCP services + mcp-tools bridge                       |
+| `make mcp-down-all`   | Stop all MCP-related services                               |
 
 ## Troubleshooting
 
@@ -286,16 +291,16 @@ docker exec -it jan-server-mcp-tools-1 ping -c 2 playwright-mcp
 
 The bridge supports these MCP protocol methods:
 
-| Method | Description | Status |
-|--------|-------------|--------|
-| `initialize` | Initialize MCP session |  Supported |
-| `tools/list` | List available tools |  Supported |
-| `tools/call` | Execute a tool |  Supported |
-| `ping` | Health check |  Supported |
-| `prompts/list` | List prompts | Work TODO |
-| `prompts/call` | Execute prompt | Work TODO |
-| `resources/list` | List resources | Work TODO |
-| `resources/read` | Read resource | Work TODO |
+| Method           | Description            | Status    |
+| ---------------- | ---------------------- | --------- |
+| `initialize`     | Initialize MCP session | Supported |
+| `tools/list`     | List available tools   | Supported |
+| `tools/call`     | Execute a tool         | Supported |
+| `ping`           | Health check           | Supported |
+| `prompts/list`   | List prompts           | Work TODO |
+| `prompts/call`   | Execute prompt         | Work TODO |
+| `resources/list` | List resources         | Work TODO |
+| `resources/read` | Read resource          | Work TODO |
 
 ## References
 

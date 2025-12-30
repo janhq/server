@@ -1,18 +1,18 @@
-import { MoreHorizontal, Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { MoreHorizontal, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
+} from "@janhq/interfaces/dropdrawer";
 import {
   SidebarGroup,
   SidebarMenu,
   useSidebar,
-} from '@/components/ui/sidebar'
+} from "@/components/sidebar/sidebar";
 import {
   Dialog,
   DialogClose,
@@ -21,110 +21,113 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+} from "@janhq/interfaces/dialog";
+import { Button } from "@janhq/interfaces/button";
+import { Input } from "@janhq/interfaces/input";
 
-import { useConversations } from '@/stores/conversation-store'
-import { useChatSessions, isSessionBusy } from '@/stores/chat-session-store'
-import { AnimatedGroupLabel, AnimatedChatItem } from '@/components/sidebar/items'
+import { useConversations } from "@/stores/conversation-store";
+import { useChatSessions, isSessionBusy } from "@/stores/chat-session-store";
+import {
+  AnimatedGroupLabel,
+  AnimatedChatItem,
+} from "@/components/sidebar/items";
 
 export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
-  const { isMobile, setOpenMobile } = useSidebar()
-  const navigate = useNavigate()
-  const params = useParams({ strict: false }) as { conversationId?: string }
-  const allConversations = useConversations((state) => state.conversations)
+  const { isMobile, setOpenMobile } = useSidebar();
+  const navigate = useNavigate();
+  const params = useParams({ strict: false }) as { conversationId?: string };
+  const allConversations = useConversations((state) => state.conversations);
   const deleteConversation = useConversations(
-    (state) => state.deleteConversation
-  )
+    (state) => state.deleteConversation,
+  );
   const deleteAllConversations = useConversations(
-    (state) => state.deleteAllConversations
-  )
+    (state) => state.deleteAllConversations,
+  );
   const updateConversation = useConversations(
-    (state) => state.updateConversation
-  )
-  const sessions = useChatSessions((state) => state.sessions)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false)
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<Conversation | null>(null)
-  const [itemToRename, setItemToRename] = useState<Conversation | null>(null)
-  const [newTitle, setNewTitle] = useState('')
+    (state) => state.updateConversation,
+  );
+  const sessions = useChatSessions((state) => state.sessions);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Conversation | null>(null);
+  const [itemToRename, setItemToRename] = useState<Conversation | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
   // Filter conversations to only show those without a project_id
   const conversations = allConversations.filter(
-    (conversation) => !conversation.project_id
-  )
+    (conversation) => !conversation.project_id,
+  );
 
   const handleDeleteClick = (item: Conversation) => {
-    setItemToDelete(item)
-    setDeleteDialogOpen(true)
-  }
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return
+    if (!itemToDelete) return;
 
     try {
-      await deleteConversation(itemToDelete.id)
-      setDeleteDialogOpen(false)
-      setItemToDelete(null)
+      await deleteConversation(itemToDelete.id);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
       // If we're currently viewing the deleted conversation, redirect to home
       if (params.conversationId === itemToDelete.id) {
-        navigate({ to: '/' })
+        navigate({ to: "/" });
       }
     } catch (error) {
-      console.error('Failed to delete conversation:', error)
+      console.error("Failed to delete conversation:", error);
     }
-  }
+  };
 
   const handleDeleteAllClick = () => {
-    setDeleteAllDialogOpen(true)
-  }
+    setDeleteAllDialogOpen(true);
+  };
 
   const handleConfirmDeleteAll = async () => {
     try {
       // Delete all conversations
-      await deleteAllConversations()
-      setDeleteAllDialogOpen(false)
+      await deleteAllConversations();
+      setDeleteAllDialogOpen(false);
       // Redirect to home after deleting all
-      navigate({ to: '/' })
+      navigate({ to: "/" });
     } catch (error) {
-      console.error('Failed to delete all conversations:', error)
+      console.error("Failed to delete all conversations:", error);
     }
-  }
+  };
 
   const handleMoveToProject = async (
     conversationId: string,
-    projectId: string
+    projectId: string,
   ) => {
     try {
-      await updateConversation(conversationId, { project_id: projectId })
+      await updateConversation(conversationId, { project_id: projectId });
     } catch (error) {
-      console.error('Failed to move conversation to project:', error)
+      console.error("Failed to move conversation to project:", error);
     }
-  }
+  };
 
   const handleRenameClick = (item: Conversation) => {
-    setItemToRename(item)
-    setNewTitle(item.title)
-    setRenameDialogOpen(true)
-  }
+    setItemToRename(item);
+    setNewTitle(item.title);
+    setRenameDialogOpen(true);
+  };
 
   const handleConfirmRename = async () => {
-    if (!itemToRename || !newTitle.trim()) return
+    if (!itemToRename || !newTitle.trim()) return;
 
     try {
-      await updateConversation(itemToRename.id, { title: newTitle.trim() })
-      setRenameDialogOpen(false)
-      setItemToRename(null)
-      setNewTitle('')
+      await updateConversation(itemToRename.id, { title: newTitle.trim() });
+      setRenameDialogOpen(false);
+      setItemToRename(null);
+      setNewTitle("");
     } catch (error) {
-      console.error('Failed to rename conversation:', error)
+      console.error("Failed to rename conversation:", error);
     }
-  }
+  };
 
   if (conversations.length === 0) {
-    return null
+    return null;
   }
 
   return (
@@ -140,8 +143,8 @@ export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
             </DropDrawerTrigger>
             <DropDrawerContent
               className="md:w-40"
-              side={isMobile ? 'bottom' : 'right'}
-              align={isMobile ? 'end' : 'start'}
+              side={isMobile ? "bottom" : "right"}
+              align={isMobile ? "end" : "start"}
             >
               <DropDrawerItem
                 variant="destructive"
@@ -178,7 +181,7 @@ export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
           <DialogHeader>
             <DialogTitle>Delete Chat</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
+              Are you sure you want to delete{" "}
               <span className="font-semibold">
                 &quot;{itemToDelete?.title}&quot;?
               </span>
@@ -207,7 +210,7 @@ export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
           <DialogHeader>
             <DialogTitle>Delete All Chats</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete all{' '}
+              Are you sure you want to delete all{" "}
               <span className="font-semibold">
                 {conversations.length} chats
               </span>
@@ -244,8 +247,8 @@ export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Enter new title"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newTitle.trim()) {
-                    handleConfirmRename()
+                  if (e.key === "Enter" && newTitle.trim()) {
+                    handleConfirmRename();
                   }
                 }}
               />
@@ -268,5 +271,5 @@ export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

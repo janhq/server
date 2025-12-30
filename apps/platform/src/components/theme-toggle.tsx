@@ -35,11 +35,7 @@ export function ThemeToggle() {
       className="rounded-lg"
       aria-label="Toggle theme"
     >
-      {theme === 'dark' ? (
-        <Moon className="h-4 w-4" />
-      ) : (
-        <Sun className="h-4 w-4" />
-      )}
+      {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
     </Button>
   );
 }

@@ -1,40 +1,40 @@
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { cn } from "@/lib/utils";
+import { Button } from "@janhq/interfaces/button";
 import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Google } from '@/components/ui/svgs/google'
-import { buildGoogleAuthUrl } from '@/lib/oauth'
-import { useState } from 'react'
+} from "@janhq/interfaces/dialog";
+import { Google } from "@janhq/interfaces/svgs/google";
+import { buildGoogleAuthUrl } from "@/lib/oauth";
+import { useState } from "react";
 
 export function LoginForm({
   className,
   ...props
-}: React.ComponentProps<'div'>) {
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+}: React.ComponentProps<"div">) {
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
     try {
-      setIsGoogleLoading(true)
+      setIsGoogleLoading(true);
 
       // Store the current URL to redirect back after OAuth
-      const currentUrl = window.location.pathname + window.location.search
+      const currentUrl = window.location.pathname + window.location.search;
 
       // Build Keycloak authorization URL with Google IdP
-      const authUrl = await buildGoogleAuthUrl(currentUrl)
+      const authUrl = await buildGoogleAuthUrl(currentUrl);
       // Redirect to Keycloak for Google OAuth
-      window.location.href = authUrl
+      window.location.href = authUrl;
     } catch (error) {
-      console.error('Google login error:', error)
-      setIsGoogleLoading(false)
+      console.error("Google login error:", error);
+      setIsGoogleLoading(false);
       // TODO: Show error toast to user
     }
-  }
+  };
 
   return (
-    <div className={cn('flex flex-col gap-3', className)} {...props}>
+    <div className={cn("flex flex-col gap-3", className)} {...props}>
       <DialogHeader className="mb-2 text-left">
         <DialogTitle>Login to your account</DialogTitle>
         <DialogDescription>
@@ -48,8 +48,8 @@ export function LoginForm({
         disabled={isGoogleLoading}
       >
         <Google className="size-4" />
-        {isGoogleLoading ? 'Redirecting...' : 'Continue with Google'}
+        {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
       </Button>
     </div>
-  )
+  );
 }

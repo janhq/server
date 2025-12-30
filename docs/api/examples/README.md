@@ -9,11 +9,12 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
 - [LLM API Examples](#llm-api) - Chat, conversations, models, user settings
 - [Image Generation Examples](#image-generation) - Generate images from text prompts
 - [Response API Examples](#response-api) - Multi-step tool orchestration
-- [Media API Examples](#media-api) - Image uploads and jan_* IDs
+- [Media API Examples](#media-api) - Image uploads and jan\_\* IDs
 - [MCP Tools Examples](#mcp-tools) - Search, scrape, vector store, code execution
 - [Cross-Service Examples](#cross-service-examples) - Integration patterns
 
 ## LLM API
+
 - **[Comprehensive Examples](../llm-api/comprehensive-examples.md)** - Full coverage including:
   - Authentication (guest tokens, API keys, JWT refresh)
   - Chat completions (basic, streaming, with context)
@@ -24,6 +25,7 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
   - User settings (preferences, API keys)
 
 ## Image Generation
+
 - **[Image Generation Guide](../../guides/image-generation.md)** - Generate images from text prompts:
   - Basic image generation
   - Multiple models (flux-schnell, flux-dev)
@@ -33,6 +35,7 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
   - Error handling
 
 ## Response API
+
 - **[Comprehensive Examples](../response-api/comprehensive-examples.md)** - Multi-step orchestration including:
   - Single tool execution
   - Multi-step workflows (chaining tools)
@@ -41,6 +44,7 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
   - Error handling and retries
 
 ## Media API
+
 - **[Comprehensive Examples](../media-api/comprehensive-examples.md)** - Image handling including:
   - Upload from URL
   - Upload from base64/data URL
@@ -49,6 +53,7 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
   - Integration with LLM API (vision models)
 
 ## MCP Tools
+
 - **[Comprehensive Examples](../mcp-tools/comprehensive-examples.md)** - Tool execution including:
   - Tool discovery (list tools, get schemas)
   - Google search (with filters, location)
@@ -60,6 +65,7 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
 ## Cross-Service Examples
 
 ### Image Generation + Conversation (LLM + Media)
+
 ```bash
 # 1. Create a conversation
 CONV_RESP=$(curl -s -X POST http://localhost:8000/v1/conversations \
@@ -102,6 +108,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```
 
 ### Vision + Chat (Media + LLM)
+
 ```bash
 # 1. Upload image via Media API
 IMAGE_RESP=$(curl -s -X POST http://localhost:8000/media/v1/media/upload \
@@ -128,6 +135,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```
 
 ### Search + Response (MCP + Response API)
+
 ```bash
 # Multi-step: Search, scrape, analyze
 curl -X POST http://localhost:8000/response/v1/responses \
@@ -146,6 +154,7 @@ curl -X POST http://localhost:8000/response/v1/responses \
 ## SDK Examples
 
 For SDK-specific examples (Python, JavaScript, Go), see:
+
 - Python SDK: `../sdks/python.md` (when available)
 - JavaScript SDK: `../sdks/javascript.md` (when available)
 - Go SDK: `../sdks/go.md` (when available)
@@ -153,11 +162,13 @@ For SDK-specific examples (Python, JavaScript, Go), see:
 ## Testing Examples
 
 All examples assume:
+
 1. Jan Server is running (`make up-full`)
 2. You have a valid access token
 3. Kong Gateway is available at `http://localhost:8000`
 
 **Get an access token:**
+
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
 export TOKEN
@@ -166,6 +177,7 @@ export TOKEN
 ## Quick Start
 
 **Try a basic chat:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/chat/completions \
   -H "Authorization: Bearer $TOKEN" \
@@ -177,6 +189,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```
 
 **Try a web search:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \

@@ -930,19 +930,13 @@
       "type": "object"
     },
     "conversation.ItemRating": {
-      "enum": [
-        "like",
-        "unlike"
-      ],
+      "enum": ["like", "unlike"],
       "type": "string",
       "x-enum-comments": {
         "ItemRatingLike": "Positive feedback (like)",
         "ItemRatingUnlike": "Negative feedback (unlike)"
       },
-      "x-enum-varnames": [
-        "ItemRatingLike",
-        "ItemRatingUnlike"
-      ]
+      "x-enum-varnames": ["ItemRatingLike", "ItemRatingUnlike"]
     },
     "conversation.ItemRole": {
       "enum": [
@@ -1295,9 +1289,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "type": "object"
     },
     "conversationhandler.DeleteItemResponse": {
@@ -1329,9 +1321,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "content"
-      ],
+      "required": ["content"],
       "type": "object"
     },
     "conversationhandler.EditMessageResponse": {
@@ -1448,9 +1438,7 @@
           "type": "array"
         }
       },
-      "required": [
-        "items"
-      ],
+      "required": ["items"],
       "type": "object"
     },
     "conversationrequests.UpdateConversationRequest": {
@@ -1500,9 +1488,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "status"
-      ],
+      "required": ["status"],
       "type": "object"
     },
     "conversationresponses.BulkConversationsDeletedResponse": {
@@ -1904,11 +1890,7 @@
       "type": "object"
     },
     "model.ModelCatalogStatus": {
-      "enum": [
-        "init",
-        "filled",
-        "updated"
-      ],
+      "enum": ["init", "filled", "updated"],
       "type": "string",
       "x-enum-comments": {
         "ModelCatalogStatusFilled": "may update from Provider like OpenRouter",
@@ -2015,10 +1997,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "prompt_template_id",
-        "template_key"
-      ],
+      "required": ["prompt_template_id", "template_key"],
       "type": "object"
     },
     "modelprompthandler.EffectiveTemplateResponse": {
@@ -2685,11 +2664,7 @@
       "type": "object"
     },
     "openai.ChatCompletionResponseFormatType": {
-      "enum": [
-        "json_object",
-        "json_schema",
-        "text"
-      ],
+      "enum": ["json_object", "json_schema", "text"],
       "type": "string",
       "x-enum-varnames": [
         "ChatCompletionResponseFormatTypeJSONObject",
@@ -2723,10 +2698,7 @@
       "type": "object"
     },
     "openai.ChatMessagePartType": {
-      "enum": [
-        "text",
-        "image_url"
-      ],
+      "enum": ["text", "image_url"],
       "type": "string",
       "x-enum-varnames": [
         "ChatMessagePartTypeText",
@@ -2833,11 +2805,7 @@
       "type": "object"
     },
     "openai.ImageURLDetail": {
-      "enum": [
-        "high",
-        "low",
-        "auto"
-      ],
+      "enum": ["high", "low", "auto"],
       "type": "string",
       "x-enum-varnames": [
         "ImageURLDetailHigh",
@@ -2949,12 +2917,7 @@
       "type": "object"
     },
     "openai.ServiceTier": {
-      "enum": [
-        "auto",
-        "default",
-        "flex",
-        "priority"
-      ],
+      "enum": ["auto", "default", "flex", "priority"],
       "type": "string",
       "x-enum-varnames": [
         "ServiceTierAuto",
@@ -3013,13 +2976,9 @@
       "type": "object"
     },
     "openai.ToolType": {
-      "enum": [
-        "function"
-      ],
+      "enum": ["function"],
       "type": "string",
-      "x-enum-varnames": [
-        "ToolTypeFunction"
-      ]
+      "x-enum-varnames": ["ToolTypeFunction"]
     },
     "openai.TopLogProbs": {
       "properties": {
@@ -3078,9 +3037,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "type": "object"
     },
     "projectreq.UpdateProjectRequest": {
@@ -3210,12 +3167,7 @@
           "type": "array"
         }
       },
-      "required": [
-        "category",
-        "content",
-        "name",
-        "template_key"
-      ],
+      "required": ["category", "content", "name", "template_key"],
       "type": "object"
     },
     "prompttemplate.UpdatePromptTemplateRequest": {
@@ -3360,10 +3312,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "name",
-        "vendor"
-      ],
+      "required": ["name", "vendor"],
       "type": "object"
     },
     "requestmodels.BulkEnableModelsRequest": {
@@ -3385,9 +3334,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "enable"
-      ],
+      "required": ["enable"],
       "type": "object"
     },
     "requestmodels.BulkToggleCatalogsRequest": {
@@ -3411,9 +3358,7 @@
           "type": "array"
         }
       },
-      "required": [
-        "enable"
-      ],
+      "required": ["enable"],
       "type": "object"
     },
     "requestmodels.EndpointDTO": {
@@ -3619,19 +3564,14 @@
         },
         "scope": {
           "description": "\"conversation\" or \"item\"",
-          "enum": [
-            "conversation",
-            "item"
-          ],
+          "enum": ["conversation", "item"],
           "type": "string"
         },
         "title": {
           "type": "string"
         }
       },
-      "required": [
-        "scope"
-      ],
+      "required": ["scope"],
       "type": "object"
     },
     "shareresponses.AnnotationResp": {
@@ -3995,11 +3935,7 @@
       "type": "object"
     },
     "usersettings.BaseStyle": {
-      "enum": [
-        "Concise",
-        "Friendly",
-        "Professional"
-      ],
+      "enum": ["Concise", "Friendly", "Professional"],
       "type": "string",
       "x-enum-varnames": [
         "BaseStyleConcise",
@@ -4159,13 +4095,9 @@
   "paths": {
     "/auth/api-keys": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Returns all API keys created by the authenticated user. Key values are not returned, only metadata.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of API keys with metadata",
@@ -4192,14 +4124,10 @@
           }
         ],
         "summary": "List user's API keys",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Creates a new API key for the authenticated user. API keys provide programmatic access without requiring user credentials.",
         "parameters": [
           {
@@ -4212,9 +4140,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "API key created successfully with key value",
@@ -4247,16 +4173,12 @@
           }
         ],
         "summary": "Create API key",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/api-keys/{id}": {
       "delete": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Revokes and deletes an API key by ID. Deleted keys can no longer be used for authentication.",
         "parameters": [
           {
@@ -4267,9 +4189,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "204": {
             "description": "API key deleted successfully"
@@ -4299,16 +4219,12 @@
           }
         ],
         "summary": "Delete API key",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/callback": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Handles the OAuth2 callback from Keycloak, exchanges authorization code for JWT tokens",
         "parameters": [
           {
@@ -4326,9 +4242,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "JWT tokens",
@@ -4370,20 +4284,14 @@
           }
         },
         "summary": "Handle Keycloak OAuth2 callback",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/guest-login": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Creates a temporary guest user account and returns JWT tokens. Guest users have limited access and can be upgraded to full accounts later.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Guest user created with access and refresh tokens",
@@ -4399,16 +4307,12 @@
           }
         },
         "summary": "Create guest user account",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/keycloak/callback": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Handles the OAuth2 callback from Keycloak, exchanges authorization code for tokens using PKCE",
         "parameters": [
           {
@@ -4444,9 +4348,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "302": {
             "description": "Redirects to frontend URL with tokens in URL fragment"
@@ -4486,16 +4388,12 @@
           }
         },
         "summary": "Handle Keycloak OAuth2 callback",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/keycloak/login": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Redirects the user to Keycloak's authorization endpoint to authenticate. Returns the authorization URL for frontend redirection with PKCE.",
         "parameters": [
           {
@@ -4505,9 +4403,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Authorization URL and state parameter",
@@ -4536,16 +4432,12 @@
           }
         },
         "summary": "Initiate Keycloak OAuth2 login",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/login": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Returns the Keycloak authorization URL for frontend to redirect users. Supports OAuth2 authorization code flow with PKCE.",
         "parameters": [
           {
@@ -4555,9 +4447,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Authorization URL and state parameter",
@@ -4581,20 +4471,14 @@
           }
         },
         "summary": "Initiate Keycloak OAuth2 login",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/logout": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Revokes the current access token and clears authentication cookies. After logout, the user must re-authenticate.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully logged out",
@@ -4621,20 +4505,14 @@
           }
         ],
         "summary": "Logout user",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/me": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Returns the authenticated user's profile information including user ID, email, roles, and guest status.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "User profile information",
@@ -4661,16 +4539,12 @@
           }
         ],
         "summary": "Get current user information",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/refresh-token": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Exchanges a valid refresh token for a new access token. Refresh token must be provided in Authorization header or refresh_token cookie.",
         "parameters": [
           {
@@ -4682,9 +4556,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "New access token and refresh token",
@@ -4706,16 +4578,12 @@
           }
         },
         "summary": "Refresh access token",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/revoke": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Revokes a refresh token to invalidate it",
         "parameters": [
           {
@@ -4733,9 +4601,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Token revoked successfully",
@@ -4762,16 +4628,12 @@
           }
         },
         "summary": "Revoke Keycloak refresh token",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/upgrade": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Converts a guest user account to a permanent account with email/password credentials. Guest flag is removed and user gains full access.",
         "parameters": [
           {
@@ -4784,9 +4646,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Account upgraded successfully with new tokens",
@@ -4819,16 +4679,12 @@
           }
         ],
         "summary": "Upgrade guest to permanent account",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/validate": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Validates an access token against Keycloak's userinfo endpoint",
         "parameters": [
           {
@@ -4839,9 +4695,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Token is valid with user information",
@@ -4871,16 +4725,12 @@
           }
         },
         "summary": "Validate Keycloak access token",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/auth/validate-api-key": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Internal endpoint used by Kong API Gateway to validate API keys. Not intended for direct client use.",
         "parameters": [
           {
@@ -4893,9 +4743,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "API key is valid with user information",
@@ -4917,16 +4765,12 @@
           }
         },
         "summary": "Validate API key (Kong Plugin)",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/mcp": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Handles Model Context Protocol (MCP) requests over HTTP. Supports MCP methods: initialize, ping, tools/list, tools/call, prompts/list, prompts/call, resources/list, resources/read.\n\n**Available Tools:**\n- `google_search`: Web search via pluggable engines (Serper/SearXNG) with params: q, gl, hl, location, num, tbs, page, autocorrect, domain_allow_list, location_hint, offline_mode. Returns structured citations.\n- `scrape`: Web page scraping (params: url, includeMarkdown) returning text, preview, cache_status, and metadata.\n- `file_search_index` / `file_search_query`: Index arbitrary text and run similarity queries against the lightweight vector store.\n- `python_exec`: Execute trusted code through SandboxFusion (params: code, language, session_id, approved) to retrieve stdout/stderr/artifacts.\n- `memory_retrieve`: Retrieve relevant user preferences, project context, or conversation history (params: query, user_id, project_id, max_user_items, max_project_items, min_similarity). Returns personalized context.\n\n**MCP Protocol:**\n- Request format: JSON-RPC 2.0 with method and params\n- Response format: Server-Sent Events (SSE) stream\n- Stateless mode (no session management)",
         "parameters": [
           {
@@ -4939,9 +4783,7 @@
             }
           }
         ],
-        "produces": [
-          "text/event-stream"
-        ],
+        "produces": ["text/event-stream"],
         "responses": {
           "200": {
             "description": "Streamed MCP response in SSE format",
@@ -4963,16 +4805,12 @@
           }
         },
         "summary": "MCP endpoint for tool execution",
-        "tags": [
-          "MCP API"
-        ]
+        "tags": ["MCP API"]
       }
     },
     "/v1/admin/mcp-tools": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get a paginated list of MCP tools with optional filtering",
         "parameters": [
           {
@@ -5008,9 +4846,7 @@
             "type": "integer"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5029,16 +4865,12 @@
           }
         },
         "summary": "List MCP tools",
-        "tags": [
-          "Admin - MCP Tools"
-        ]
+        "tags": ["Admin - MCP Tools"]
       }
     },
     "/v1/admin/mcp-tools/{id}": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get an MCP tool by public ID",
         "parameters": [
           {
@@ -5049,9 +4881,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5079,14 +4909,10 @@
           }
         },
         "summary": "Get an MCP tool",
-        "tags": [
-          "Admin - MCP Tools"
-        ]
+        "tags": ["Admin - MCP Tools"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update an existing MCP tool configuration (Name is read-only)",
         "parameters": [
           {
@@ -5106,9 +4932,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5145,9 +4969,7 @@
           }
         },
         "summary": "Update an MCP tool",
-        "tags": [
-          "Admin - MCP Tools"
-        ]
+        "tags": ["Admin - MCP Tools"]
       }
     },
     "/v1/admin/models/catalogs": {
@@ -5185,9 +5007,7 @@
             "type": "boolean"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of model catalogs",
@@ -5214,16 +5034,12 @@
           }
         ],
         "summary": "List all model catalogs",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       }
     },
     "/v1/admin/models/catalogs/bulk-toggle": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Enable or disable provider models for specific catalogs or ALL catalogs, with optional exception list. Supports \"enable/disable all except\" patterns globally or scoped to catalogs.",
         "parameters": [
           {
@@ -5236,9 +5052,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Bulk operation result with counts and status",
@@ -5271,9 +5085,7 @@
           }
         ],
         "summary": "Bulk enable/disable provider models by catalog IDs or all catalogs",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       }
     },
     "/v1/admin/models/catalogs/{model_public_id}": {
@@ -5288,9 +5100,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Model catalog details",
@@ -5323,14 +5133,10 @@
           }
         ],
         "summary": "Get a model catalog entry",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Updates metadata for a model catalog entry. Marks it as manually updated to prevent auto-sync overwrites.",
         "parameters": [
           {
@@ -5350,9 +5156,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Updated model catalog",
@@ -5385,16 +5189,12 @@
           }
         ],
         "summary": "Update a model catalog entry",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       }
     },
     "/v1/admin/models/prompt-templates/assign/{model_id}": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Assign or update a prompt template assignment for a model catalog",
         "parameters": [
           {
@@ -5414,9 +5214,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5459,16 +5257,12 @@
           }
         },
         "summary": "Assign a prompt template to a model",
-        "tags": [
-          "Admin - Model Prompt Templates"
-        ]
+        "tags": ["Admin - Model Prompt Templates"]
       }
     },
     "/v1/admin/models/prompt-templates/effective/{model_id}": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get all resolved templates for a model, including global defaults",
         "parameters": [
           {
@@ -5479,9 +5273,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5509,16 +5301,12 @@
           }
         },
         "summary": "Get effective templates for a model",
-        "tags": [
-          "Admin - Model Prompt Templates"
-        ]
+        "tags": ["Admin - Model Prompt Templates"]
       }
     },
     "/v1/admin/models/prompt-templates/list/{model_id}": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get all prompt template assignments for a model catalog",
         "parameters": [
           {
@@ -5529,9 +5317,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5559,16 +5345,12 @@
           }
         },
         "summary": "List model prompt template assignments",
-        "tags": [
-          "Admin - Model Prompt Templates"
-        ]
+        "tags": ["Admin - Model Prompt Templates"]
       }
     },
     "/v1/admin/models/prompt-templates/unassign/{template_key}/{model_id}": {
       "delete": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Remove a prompt template assignment, reverting to global default",
         "parameters": [
           {
@@ -5586,9 +5368,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "204": {
             "description": "No Content"
@@ -5613,16 +5393,12 @@
           }
         },
         "summary": "Remove a prompt template assignment from a model",
-        "tags": [
-          "Admin - Model Prompt Templates"
-        ]
+        "tags": ["Admin - Model Prompt Templates"]
       }
     },
     "/v1/admin/models/prompt-templates/update/{template_key}/{model_id}": {
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update an existing prompt template assignment",
         "parameters": [
           {
@@ -5649,9 +5425,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -5688,9 +5462,7 @@
           }
         },
         "summary": "Update a prompt template assignment",
-        "tags": [
-          "Admin - Model Prompt Templates"
-        ]
+        "tags": ["Admin - Model Prompt Templates"]
       }
     },
     "/v1/admin/models/provider-models": {
@@ -5740,9 +5512,7 @@
             "type": "boolean"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of provider models",
@@ -5769,16 +5539,12 @@
           }
         ],
         "summary": "List all provider models",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       }
     },
     "/v1/admin/models/provider-models/bulk-toggle": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Enables or disables provider models with flexible patterns: enable all, disable all, enable all except, or disable all except. Optionally filter by provider.",
         "parameters": [
           {
@@ -5791,9 +5557,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Bulk operation result with counts and status",
@@ -5820,9 +5584,7 @@
           }
         ],
         "summary": "Bulk enable or disable provider models",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       }
     },
     "/v1/admin/models/provider-models/{provider_model_public_id}": {
@@ -5837,9 +5599,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Provider model details",
@@ -5872,14 +5632,10 @@
           }
         ],
         "summary": "Get a provider model",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Updates configuration for a provider model including pricing, limits, and feature flags",
         "parameters": [
           {
@@ -5899,9 +5655,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Updated provider model",
@@ -5934,16 +5688,12 @@
           }
         ],
         "summary": "Update a provider model",
-        "tags": [
-          "Admin Model API"
-        ]
+        "tags": ["Admin Model API"]
       }
     },
     "/v1/admin/prompt-templates": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get a paginated list of prompt templates with optional filtering",
         "parameters": [
           {
@@ -5985,9 +5735,7 @@
             "type": "integer"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -6006,14 +5754,10 @@
           }
         },
         "summary": "List prompt templates",
-        "tags": [
-          "Admin - Prompt Templates"
-        ]
+        "tags": ["Admin - Prompt Templates"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Create a new prompt template",
         "parameters": [
           {
@@ -6026,9 +5770,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "Created",
@@ -6065,16 +5807,12 @@
           }
         },
         "summary": "Create a prompt template",
-        "tags": [
-          "Admin - Prompt Templates"
-        ]
+        "tags": ["Admin - Prompt Templates"]
       }
     },
     "/v1/admin/prompt-templates/{id}": {
       "delete": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Delete a prompt template (system templates cannot be deleted)",
         "parameters": [
           {
@@ -6085,9 +5823,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "204": {
             "description": "No Content"
@@ -6121,14 +5857,10 @@
           }
         },
         "summary": "Delete a prompt template",
-        "tags": [
-          "Admin - Prompt Templates"
-        ]
+        "tags": ["Admin - Prompt Templates"]
       },
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get a prompt template by public ID",
         "parameters": [
           {
@@ -6139,9 +5871,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -6169,14 +5899,10 @@
           }
         },
         "summary": "Get a prompt template",
-        "tags": [
-          "Admin - Prompt Templates"
-        ]
+        "tags": ["Admin - Prompt Templates"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update an existing prompt template",
         "parameters": [
           {
@@ -6196,9 +5922,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -6235,16 +5959,12 @@
           }
         },
         "summary": "Update a prompt template",
-        "tags": [
-          "Admin - Prompt Templates"
-        ]
+        "tags": ["Admin - Prompt Templates"]
       }
     },
     "/v1/admin/prompt-templates/{id}/duplicate": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Create a copy of an existing prompt template with a new name (key is auto-generated)",
         "parameters": [
           {
@@ -6264,9 +5984,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "Created",
@@ -6312,17 +6030,13 @@
           }
         },
         "summary": "Duplicate a prompt template",
-        "tags": [
-          "Admin - Prompt Templates"
-        ]
+        "tags": ["Admin - Prompt Templates"]
       }
     },
     "/v1/admin/providers": {
       "get": {
         "description": "Retrieves all providers with their model counts",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of providers with model counts",
@@ -6346,14 +6060,10 @@
           }
         ],
         "summary": "Get all providers",
-        "tags": [
-          "Admin Provider API"
-        ]
+        "tags": ["Admin Provider API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Registers a new provider and synchronizes its available models.",
         "parameters": [
           {
@@ -6366,9 +6076,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Registered provider with synced models",
@@ -6395,9 +6103,7 @@
           }
         ],
         "summary": "Register a provider",
-        "tags": [
-          "Admin Provider API"
-        ]
+        "tags": ["Admin Provider API"]
       }
     },
     "/v1/admin/providers/{provider_public_id}": {
@@ -6412,9 +6118,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "204": {
             "description": "Provider deleted"
@@ -6438,9 +6142,7 @@
           }
         ],
         "summary": "Delete a provider",
-        "tags": [
-          "Admin Provider API"
-        ]
+        "tags": ["Admin Provider API"]
       },
       "get": {
         "description": "Retrieves a provider by its public ID",
@@ -6453,9 +6155,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Provider details",
@@ -6482,14 +6182,10 @@
           }
         ],
         "summary": "Get a provider",
-        "tags": [
-          "Admin Provider API"
-        ]
+        "tags": ["Admin Provider API"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Updates an existing provider's configuration",
         "parameters": [
           {
@@ -6509,9 +6205,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Updated provider",
@@ -6544,9 +6238,7 @@
           }
         ],
         "summary": "Update a provider",
-        "tags": [
-          "Admin Provider API"
-        ]
+        "tags": ["Admin Provider API"]
       }
     },
     "/v1/admin/usage": {
@@ -6566,9 +6258,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -6610,16 +6300,12 @@
           }
         ],
         "summary": "Get platform-wide token usage (Admin only)",
-        "tags": [
-          "Usage"
-        ]
+        "tags": ["Usage"]
       }
     },
     "/v1/auth/logout": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Remove refresh tokens to perform logout and invalidate Keycloak session. Accepts refresh token from cookie, Authorization header, or request body.",
         "parameters": [
           {
@@ -6637,9 +6323,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully logged out",
@@ -6658,14 +6342,10 @@
           }
         },
         "summary": "Logout",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Remove refresh tokens to perform logout and invalidate Keycloak session. Accepts refresh token from cookie, Authorization header, or request body.",
         "parameters": [
           {
@@ -6683,9 +6363,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully logged out",
@@ -6704,17 +6382,13 @@
           }
         },
         "summary": "Logout",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/v1/auth/me": {
       "get": {
         "description": "Retrieves the profile of the authenticated user",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved user profile",
@@ -6735,16 +6409,12 @@
           }
         ],
         "summary": "Get user profile",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/v1/auth/refresh-token": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Use a valid refresh token to obtain a new access token",
         "parameters": [
           {
@@ -6756,9 +6426,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully refreshed the access token",
@@ -6780,16 +6448,12 @@
           }
         },
         "summary": "Refresh an access token",
-        "tags": [
-          "Authentication API"
-        ]
+        "tags": ["Authentication API"]
       }
     },
     "/v1/chat/completions": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Generates a model response for the given chat conversation. This is a standard chat completion API that supports both streaming and non-streaming modes without conversation persistence.\n\n**Streaming Mode (stream=true):**\n- Returns Server-Sent Events (SSE) with real-time streaming\n- Streams completion chunks directly from the inference model\n- Final event contains \"[DONE]\" marker\n\n**Non-Streaming Mode (stream=false or omitted):**\n- Returns single JSON response with complete completion\n- Standard OpenAI ChatCompletionResponse format\n\n**Storage Options:**\n- `store=true`: Persist the latest input message and assistant response to the active conversation\n- `store_reasoning=true`: Additionally persist reasoning content provided by the model\n- When `store` is omitted or false, the conversation remains read-only\n\n**Features:**\n- Supports all OpenAI ChatCompletionRequest parameters\n- Optional conversation context for conversation persistence\n- User authentication required\n- Direct inference model integration",
         "parameters": [
           {
@@ -6802,10 +6466,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json",
-          "text/event-stream"
-        ],
+        "produces": ["application/json", "text/event-stream"],
         "responses": {
           "200": {
             "description": "Successful streaming response (when stream=true) - SSE format with data: {json} events",
@@ -6838,17 +6499,13 @@
           }
         ],
         "summary": "Create a chat completion",
-        "tags": [
-          "Chat Completions API"
-        ]
+        "tags": ["Chat Completions API"]
       }
     },
     "/v1/conversations": {
       "delete": {
         "description": "Permanently delete all conversations for the authenticated user\n\n**WARNING: This is a destructive operation that cannot be undone.**\n\n**Features:**\n- Deletes ALL conversations owned by the authenticated user\n- Automatically cascades to delete all associated items and shares\n- Returns the count of deleted conversations\n- Requires valid authentication to ensure ownership verification\n\n**Security:**\n- Only deletes conversations owned by the authenticated user\n- Cannot delete other users' conversations\n- Authentication is mandatory",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully deleted all conversations",
@@ -6875,9 +6532,7 @@
           }
         ],
         "summary": "Delete all conversations",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       },
       "get": {
         "description": "List conversations for the authenticated user with optional referrer filtering.",
@@ -6913,9 +6568,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved conversations",
@@ -6948,14 +6601,10 @@
           }
         ],
         "summary": "List conversations",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Create a new conversation to store and retrieve conversation state across Response API calls\n\n**Features:**\n- Create conversation with optional metadata (max 16 key-value pairs)\n- Add up to 20 initial items to the conversation\n- Returns conversation ID with `conv_` prefix\n- Supports OpenAI Conversations API format\n\n**Metadata Constraints:**\n- Maximum 16 key-value pairs\n- Keys: max 64 characters\n- Values: max 512 characters",
         "parameters": [
           {
@@ -6968,9 +6617,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully created conversation",
@@ -7003,9 +6650,7 @@
           }
         ],
         "summary": "Create a conversation",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       }
     },
     "/v1/conversations/{conv_public_id}": {
@@ -7020,9 +6665,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully deleted conversation",
@@ -7061,9 +6704,7 @@
           }
         ],
         "summary": "Delete a conversation",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       },
       "get": {
         "description": "Retrieve a conversation by ID with ownership verification\n\n**Features:**\n- Retrieves conversation metadata including creation timestamp\n- Automatic ownership verification (user can only access their own conversations)\n- Returns OpenAI-compatible conversation object\n\n**Response Fields:**\n- `id`: Conversation ID with `conv_` prefix\n- `object`: Always \"conversation\"\n- `created_at`: Unix timestamp\n- `metadata`: User-defined key-value pairs",
@@ -7076,9 +6717,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved conversation",
@@ -7117,14 +6756,10 @@
           }
         ],
         "summary": "Get a conversation",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update a conversation's metadata while preserving existing items\n\n**Features:**\n- Update metadata key-value pairs\n- Replaces entire metadata object (not merged)\n- Items remain unchanged\n- Automatic ownership verification\n\n**Metadata Constraints:**\n- Maximum 16 key-value pairs\n- Keys: max 64 characters\n- Values: max 512 characters",
         "parameters": [
           {
@@ -7144,9 +6779,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully updated conversation",
@@ -7185,9 +6818,7 @@
           }
         ],
         "summary": "Update a conversation",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       }
     },
     "/v1/conversations/{conv_public_id}/branches": {
@@ -7202,9 +6833,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved branches",
@@ -7231,14 +6860,10 @@
           }
         ],
         "summary": "List branches",
-        "tags": [
-          "Conversation Branches"
-        ]
+        "tags": ["Conversation Branches"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Create a new branch in a conversation, optionally forking from an existing item",
         "parameters": [
           {
@@ -7258,9 +6883,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "Successfully created branch",
@@ -7293,9 +6916,7 @@
           }
         ],
         "summary": "Create a branch",
-        "tags": [
-          "Conversation Branches"
-        ]
+        "tags": ["Conversation Branches"]
       }
     },
     "/v1/conversations/{conv_public_id}/branches/{branch_name}": {
@@ -7346,9 +6967,7 @@
           }
         ],
         "summary": "Delete a branch",
-        "tags": [
-          "Conversation Branches"
-        ]
+        "tags": ["Conversation Branches"]
       },
       "get": {
         "description": "Get details of a specific branch",
@@ -7368,9 +6987,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved branch",
@@ -7397,9 +7014,7 @@
           }
         ],
         "summary": "Get branch details",
-        "tags": [
-          "Conversation Branches"
-        ]
+        "tags": ["Conversation Branches"]
       }
     },
     "/v1/conversations/{conv_public_id}/branches/{branch_name}/activate": {
@@ -7421,9 +7036,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Branch activated successfully",
@@ -7450,9 +7063,7 @@
           }
         ],
         "summary": "Activate a branch",
-        "tags": [
-          "Conversation Branches"
-        ]
+        "tags": ["Conversation Branches"]
       }
     },
     "/v1/conversations/{conv_public_id}/items": {
@@ -7484,10 +7095,7 @@
           {
             "default": "desc",
             "description": "Sort order: asc or desc",
-            "enum": [
-              "asc",
-              "desc"
-            ],
+            "enum": ["asc", "desc"],
             "in": "query",
             "name": "order",
             "type": "string"
@@ -7503,9 +7111,7 @@
             "type": "array"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved items list",
@@ -7544,14 +7150,10 @@
           }
         ],
         "summary": "List conversation items",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Add items to a conversation. You may add up to 20 items at a time.\n\n**Features:**\n- Bulk item creation (max 20 items per request)\n- Automatic item ID generation with `msg_` prefix\n- Items added to conversation's active branch (default: MAIN)\n- Returns list of created items with generated IDs\n\n**Item Types:**\n- `message`: User or assistant messages\n- `tool_call`: Tool/function call items\n- `tool_response`: Tool/function response items\n- Other OpenAI-compatible item types\n\n**Constraints:**\n- Maximum 20 items per request\n- Each item must have valid type and content\n- Items are immutable after creation",
         "parameters": [
           {
@@ -7581,9 +7183,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully created items",
@@ -7622,16 +7222,12 @@
           }
         ],
         "summary": "Create conversation items",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       }
     },
     "/v1/conversations/{conv_public_id}/items/by-call-id/{call_id}": {
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update a conversation item's status and output using its call_id.\nThis endpoint is primarily used by MCP tools to report tool execution results.\n\n**Features:**\n- Find item by call_id (e.g., call_xxx) instead of item_id\n- Update status to completed, failed, or cancelled\n- Store tool output or error message\n- Automatic timestamp for completion\n\n**Use Cases:**\n- MCP tool reports successful execution with output\n- MCP tool reports failure with error message\n- Tool call status tracking and observability",
         "parameters": [
           {
@@ -7658,9 +7254,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully updated item",
@@ -7699,9 +7293,7 @@
           }
         ],
         "summary": "Update item by call ID",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       }
     },
     "/v1/conversations/{conv_public_id}/items/{item_id}": {
@@ -7723,9 +7315,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully deleted item, returns branch info",
@@ -7764,9 +7354,7 @@
           }
         ],
         "summary": "Delete a conversation item",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       },
       "get": {
         "description": "Retrieve a single item from a conversation by item ID\n\n**Features:**\n- Retrieve specific item by ID\n- Returns complete item with all content\n- Automatic ownership verification via conversation\n- Optional include parameter for additional fields\n\n**Response Fields:**\n- `id`: Item ID with `msg_` prefix\n- `type`: Item type (message, tool_call, etc.)\n- `role`: Role for message items (user, assistant)\n- `content`: Item content array\n- `status`: Item status (completed, incomplete, etc.)\n- `created_at`: Unix timestamp",
@@ -7796,9 +7384,7 @@
             "type": "array"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Successfully retrieved item",
@@ -7837,16 +7423,12 @@
           }
         ],
         "summary": "Get a conversation item",
-        "tags": [
-          "Conversations API"
-        ]
+        "tags": ["Conversations API"]
       }
     },
     "/v1/conversations/{conv_public_id}/items/{item_id}/edit": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Edit a user message and create a new branch with the edited content",
         "parameters": [
           {
@@ -7873,9 +7455,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Message edited successfully",
@@ -7908,16 +7488,12 @@
           }
         ],
         "summary": "Edit a message",
-        "tags": [
-          "Message Actions"
-        ]
+        "tags": ["Message Actions"]
       }
     },
     "/v1/conversations/{conv_public_id}/items/{item_id}/regenerate": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Regenerate an assistant response by creating a new branch",
         "parameters": [
           {
@@ -7943,9 +7519,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Regeneration initiated",
@@ -7978,16 +7552,12 @@
           }
         ],
         "summary": "Regenerate a response",
-        "tags": [
-          "Message Actions"
-        ]
+        "tags": ["Message Actions"]
       }
     },
     "/v1/conversations/{conv_public_id}/share": {
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Creates a public share link for a conversation or a single message",
         "parameters": [
           {
@@ -8007,9 +7577,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "Share created successfully",
@@ -8054,9 +7622,7 @@
           }
         ],
         "summary": "Create a share for a conversation",
-        "tags": [
-          "Shares API"
-        ]
+        "tags": ["Shares API"]
       }
     },
     "/v1/conversations/{conv_public_id}/shares": {
@@ -8071,9 +7637,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of shares",
@@ -8106,9 +7670,7 @@
           }
         ],
         "summary": "List shares for a conversation",
-        "tags": [
-          "Shares API"
-        ]
+        "tags": ["Shares API"]
       }
     },
     "/v1/conversations/{conv_public_id}/shares/{share_id}": {
@@ -8130,9 +7692,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Share revoked successfully",
@@ -8165,17 +7725,13 @@
           }
         ],
         "summary": "Revoke a share",
-        "tags": [
-          "Shares API"
-        ]
+        "tags": ["Shares API"]
       }
     },
     "/v1/healthz": {
       "get": {
         "description": "Returns the health status of the API server. Used by orchestrators and monitoring systems.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Health status OK",
@@ -8188,20 +7744,14 @@
           }
         },
         "summary": "Health check endpoint",
-        "tags": [
-          "Server API"
-        ]
+        "tags": ["Server API"]
       }
     },
     "/v1/mcp-tools": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get all active MCP tools (public endpoint for mcp-tools service)",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8220,16 +7770,12 @@
           }
         },
         "summary": "List all active MCP tools",
-        "tags": [
-          "MCP Tools"
-        ]
+        "tags": ["MCP Tools"]
       }
     },
     "/v1/mcp-tools/{key}": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get an MCP tool by its unique tool key (public endpoint for mcp-tools service)",
         "parameters": [
           {
@@ -8240,9 +7786,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8270,32 +7814,23 @@
           }
         },
         "summary": "Get an MCP tool by key",
-        "tags": [
-          "MCP Tools"
-        ]
+        "tags": ["MCP Tools"]
       }
     },
     "/v1/models": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Retrieves a list of available models that can be used for chat completions or other tasks. Returns either simple model list or detailed list with provider metadata based on X-PROVIDER-DATA header.",
         "parameters": [
           {
             "description": "Set to 'true' to include provider metadata in response",
-            "enum": [
-              "true",
-              "false"
-            ],
+            "enum": ["true", "false"],
             "in": "header",
             "name": "X-PROVIDER-DATA",
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of models with provider metadata (when X-PROVIDER-DATA=true)",
@@ -8322,9 +7857,7 @@
           }
         ],
         "summary": "List available models",
-        "tags": [
-          "Chat Completions API"
-        ]
+        "tags": ["Chat Completions API"]
       }
     },
     "/v1/models/catalogs/{model_public_id}": {
@@ -8339,9 +7872,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Model catalog details",
@@ -8374,20 +7905,14 @@
           }
         ],
         "summary": "Get a model catalog entry",
-        "tags": [
-          "Model API"
-        ]
+        "tags": ["Model API"]
       }
     },
     "/v1/models/providers": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Retrieves a list of available model providers that can be used for inference.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of providers",
@@ -8408,9 +7933,7 @@
           }
         ],
         "summary": "List model providers",
-        "tags": [
-          "Model API"
-        ]
+        "tags": ["Model API"]
       }
     },
     "/v1/projects": {
@@ -8436,9 +7959,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8465,14 +7986,10 @@
           }
         ],
         "summary": "List projects",
-        "tags": [
-          "Projects API"
-        ]
+        "tags": ["Projects API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Create a new project for grouping conversations",
         "parameters": [
           {
@@ -8485,9 +8002,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "Created",
@@ -8520,9 +8035,7 @@
           }
         ],
         "summary": "Create project",
-        "tags": [
-          "Projects API"
-        ]
+        "tags": ["Projects API"]
       }
     },
     "/v1/projects/{project_id}": {
@@ -8537,9 +8050,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8572,9 +8083,7 @@
           }
         ],
         "summary": "Delete project",
-        "tags": [
-          "Projects API"
-        ]
+        "tags": ["Projects API"]
       },
       "get": {
         "description": "Get a single project by ID",
@@ -8587,9 +8096,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8622,14 +8129,10 @@
           }
         ],
         "summary": "Get project",
-        "tags": [
-          "Projects API"
-        ]
+        "tags": ["Projects API"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update project name, instruction, or archived status",
         "parameters": [
           {
@@ -8649,9 +8152,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8690,16 +8191,12 @@
           }
         ],
         "summary": "Update project",
-        "tags": [
-          "Projects API"
-        ]
+        "tags": ["Projects API"]
       }
     },
     "/v1/prompt-templates/{key}": {
       "get": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Get a prompt template by its unique template key (public endpoint)",
         "parameters": [
           {
@@ -8710,9 +8207,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8740,9 +8235,7 @@
           }
         },
         "summary": "Get a prompt template by key",
-        "tags": [
-          "Prompt Templates"
-        ]
+        "tags": ["Prompt Templates"]
       }
     },
     "/v1/public/shares/{slug}": {
@@ -8757,9 +8250,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Public share content",
@@ -8781,9 +8272,7 @@
           }
         },
         "summary": "Get a public share by slug",
-        "tags": [
-          "Public Shares API"
-        ]
+        "tags": ["Public Shares API"]
       },
       "head": {
         "description": "Checks if a share exists and is accessible (for preloading)",
@@ -8808,17 +8297,13 @@
           }
         },
         "summary": "Check if a public share exists",
-        "tags": [
-          "Public Shares API"
-        ]
+        "tags": ["Public Shares API"]
       }
     },
     "/v1/readyz": {
       "get": {
         "description": "Returns the readiness status of the API server. Indicates if the service is ready to accept traffic.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Readiness status ready",
@@ -8831,17 +8316,13 @@
           }
         },
         "summary": "Readiness check endpoint",
-        "tags": [
-          "Server API"
-        ]
+        "tags": ["Server API"]
       }
     },
     "/v1/realtime/sessions": {
       "get": {
         "description": "Lists all active sessions for the current user",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8868,18 +8349,12 @@
           }
         ],
         "summary": "List realtime sessions",
-        "tags": [
-          "Realtime API"
-        ]
+        "tags": ["Realtime API"]
       },
       "post": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Creates a new realtime session with LiveKit token. No request body required.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "201": {
             "description": "Created",
@@ -8906,9 +8381,7 @@
           }
         ],
         "summary": "Create a realtime session",
-        "tags": [
-          "Realtime API"
-        ]
+        "tags": ["Realtime API"]
       }
     },
     "/v1/realtime/sessions/{id}": {
@@ -8923,9 +8396,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -8958,9 +8429,7 @@
           }
         ],
         "summary": "Delete a realtime session",
-        "tags": [
-          "Realtime API"
-        ]
+        "tags": ["Realtime API"]
       },
       "get": {
         "description": "Retrieves a specific session by ID. Users can only access their own sessions.",
@@ -8973,9 +8442,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9008,9 +8475,7 @@
           }
         ],
         "summary": "Get a realtime session",
-        "tags": [
-          "Realtime API"
-        ]
+        "tags": ["Realtime API"]
       }
     },
     "/v1/shares": {
@@ -9025,9 +8490,7 @@
             "type": "boolean"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "List of shares",
@@ -9054,9 +8517,7 @@
           }
         ],
         "summary": "List all shares for the authenticated user",
-        "tags": [
-          "Shares API"
-        ]
+        "tags": ["Shares API"]
       }
     },
     "/v1/shares/{share_id}": {
@@ -9071,9 +8532,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Share revoked successfully",
@@ -9106,9 +8565,7 @@
           }
         ],
         "summary": "Revoke a share by share ID",
-        "tags": [
-          "Shares API"
-        ]
+        "tags": ["Shares API"]
       }
     },
     "/v1/usage/me": {
@@ -9128,9 +8585,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9163,9 +8618,7 @@
           }
         ],
         "summary": "Get current user's token usage",
-        "tags": [
-          "Usage"
-        ]
+        "tags": ["Usage"]
       }
     },
     "/v1/usage/me/daily": {
@@ -9185,9 +8638,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9223,9 +8674,7 @@
           }
         ],
         "summary": "Get current user's daily token usage",
-        "tags": [
-          "Usage"
-        ]
+        "tags": ["Usage"]
       }
     },
     "/v1/usage/projects/{id}": {
@@ -9252,9 +8701,7 @@
             "type": "string"
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9296,17 +8743,13 @@
           }
         ],
         "summary": "Get project's token usage",
-        "tags": [
-          "Usage"
-        ]
+        "tags": ["Usage"]
       }
     },
     "/v1/users/me/settings": {
       "get": {
         "description": "Retrieve current user's settings including memory preferences",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9333,14 +8776,10 @@
           }
         ],
         "summary": "Get user settings",
-        "tags": [
-          "User Settings"
-        ]
+        "tags": ["User Settings"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update current user's settings (partial update supported)",
         "parameters": [
           {
@@ -9353,9 +8792,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9388,17 +8825,13 @@
           }
         ],
         "summary": "Update user settings",
-        "tags": [
-          "User Settings"
-        ]
+        "tags": ["User Settings"]
       }
     },
     "/v1/users/me/settings/preferences": {
       "get": {
         "description": "Retrieve current user's preferences only",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9425,14 +8858,10 @@
           }
         ],
         "summary": "Get user preferences",
-        "tags": [
-          "User Settings"
-        ]
+        "tags": ["User Settings"]
       },
       "patch": {
-        "consumes": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
         "description": "Update current user's preferences only",
         "parameters": [
           {
@@ -9445,9 +8874,7 @@
             }
           }
         ],
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "OK",
@@ -9480,17 +8907,13 @@
           }
         ],
         "summary": "Update user preferences",
-        "tags": [
-          "User Settings"
-        ]
+        "tags": ["User Settings"]
       }
     },
     "/v1/version": {
       "get": {
         "description": "Returns the current build version of the API server and environment reload timestamp.",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "Version information including version number and environment reload timestamp",
@@ -9503,9 +8926,7 @@
           }
         },
         "summary": "Get API build version",
-        "tags": [
-          "Server API"
-        ]
+        "tags": ["Server API"]
       }
     }
   },

@@ -59,6 +59,7 @@ Infrastructure (repositories, cache, providers)
 ```
 
 **Rules:**
+
 - Domain packages only import other domain packages plus injected interfaces (e.g., repository interfaces).
 - Infrastructure implements those interfaces and may import external drivers (PostgreSQL, Redis, provider SDKs, etc.).
 - Interfaces (HTTP) bind requests to domain services. Do not place business logic in Gin handlers.
@@ -67,14 +68,14 @@ Infrastructure (repositories, cache, providers)
 
 ## File Placement Cheat Sheet
 
-| Task | Location | Example |
-|------|----------|---------|
-| New domain aggregate | `services/<svc>/internal/domain/<aggregate>/` | `services/llm-api/internal/domain/conversation/` |
-| New HTTP endpoint | `services/<svc>/internal/interfaces/httpserver/routes/<area>/` | `services/llm-api/internal/interfaces/httpserver/routes/v1/conversations/` |
-| New schema/table | `services/<svc>/internal/infrastructure/database/dbschema/` |
+| Task                      | Location                                                             | Example                                                                    |
+| ------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| New domain aggregate      | `services/<svc>/internal/domain/<aggregate>/`                        | `services/llm-api/internal/domain/conversation/`                           |
+| New HTTP endpoint         | `services/<svc>/internal/interfaces/httpserver/routes/<area>/`       | `services/llm-api/internal/interfaces/httpserver/routes/v1/conversations/` |
+| New schema/table          | `services/<svc>/internal/infrastructure/database/dbschema/`          |
 | Repository implementation | `services/<svc>/internal/infrastructure/database/repository/<name>/` |
-| Cache / provider client | `services/<svc>/internal/infrastructure/<cache or provider>/` |
-| Shared helper | `services/<svc>/internal/utils/<category>/` |
+| Cache / provider client   | `services/<svc>/internal/infrastructure/<cache or provider>/`        |
+| Shared helper             | `services/<svc>/internal/utils/<category>/`                          |
 
 ### Domain Entity Package
 

@@ -1,7 +1,7 @@
 # Jan CLI - Complete Guide
 
-**Last Updated**: January 2025 
-**Status**: Production Ready OK 
+**Last Updated**: January 2025
+**Status**: Production Ready OK
 **Version**: 1.0.0
 
 Complete documentation for the Jan CLI tool - installation, usage, commands, and technical details.
@@ -55,17 +55,20 @@ make cli-install
 ```
 
 This will:
+
 1. Build the `jan-cli` binary
 2. Install to your user's local bin directory
 3. Display PATH setup instructions
 
 **Installation Locations:**
+
 - **Linux/macOS:** `~/bin/jan-cli`
 - **Windows:** `%USERPROFILE%\bin\jan-cli.exe`
 
 ### Add to PATH
 
 **Windows (PowerShell):**
+
 ```powershell
 # Temporary (current session)
 $env:PATH += ";$env:USERPROFILE\bin"
@@ -77,6 +80,7 @@ $env:PATH += ";$env:USERPROFILE\bin"
 ```
 
 **Linux/macOS (Bash/Zsh):**
+
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 export PATH="$PATH:$HOME/bin"
@@ -122,6 +126,7 @@ make cli-install
 ```
 
 **What it does:**
+
 1. Builds the binary with `go build`
 2. Creates `~/bin` or `%USERPROFILE%\bin` if needed
 3. Copies binary to bin directory
@@ -130,6 +135,7 @@ make cli-install
 6. Shows PATH setup instructions if needed
 
 **After installation:**
+
 ```bash
 # Add to PATH (see instructions from install output)
 # Then use from anywhere
@@ -153,12 +159,14 @@ Run directly from project root using wrapper scripts:
 ```
 
 **Advantages:**
+
 - No installation needed
 - Auto-builds if binary missing or outdated
 - Always uses latest code
 - Good for development
 
 **Disadvantages:**
+
 - Must be run from project root
 - Requires file extension (.sh or.ps1)
 
@@ -189,16 +197,19 @@ make cli-clean # Remove the binary
 ```
 
 **cli-build** - Builds binary in `tools/jan-cli/`:
+
 - Linux/macOS: `tools/jan-cli/jan-cli`
 - Windows: `tools/jan-cli/jan-cli.exe`
 
 **cli-install** - Builds and installs:
+
 1. Calls `cli-build`
 2. Creates bin directory if needed
 3. Copies binary
 4. Shows PATH instructions
 
 **cli-clean** - Removes binary:
+
 - Useful for clean rebuilds
 - Frees disk space
 
@@ -263,8 +274,9 @@ jan-cli config validate --verbose
 ```
 
 **Output:**
+
 - OK Configuration valid
-- [X] Validation errors with details
+- [x] Validation errors with details
 
 ### config export
 
@@ -288,12 +300,14 @@ jan-cli config export --env production --format env
 ```
 
 **Formats:**
+
 - `env` - Shell environment variables (`KEY=value`)
 - `docker-env` - Docker Compose env file
 - `json` - JSON format
 - `yaml` - YAML format
 
 **Flags:**
+
 - `--format <format>` - Output format (required)
 - `--output <file>` - Output file (default: stdout)
 - `--env <environment>` - Environment to export
@@ -318,6 +332,7 @@ jan-cli config show llm-api --env production
 ```
 
 **Flags:**
+
 - `<service>` - Service name (optional)
 - `--format <format>` - Output format (yaml, json)
 - `--env <environment>` - Environment
@@ -354,6 +369,7 @@ jan-cli service list
 ```
 
 **Output:**
+
 ```
 Available services:
  llm-api:8080 LLM API - OpenAI-compatible chat completions
@@ -409,12 +425,14 @@ jan-cli dev setup
 ```
 
 **What it does:**
+
 1. Creates required directories (logs/, tmp/, uploads/)
 2. Creates Docker networks (jan-network, jan-dev)
 3. Generates.env file from templates
 4. Optional: Sets up Docker environment
 
 **Features:**
+
 - OK Cross-platform (Windows, Linux, macOS)
 - OK Docker optional (warns if not available)
 - OK Idempotent (safe to run multiple times)
@@ -432,6 +450,7 @@ jan-cli dev scaffold worker-service --template api --port 8999
 ```
 
 What it does today:
+
 - Copies `services/template-api` to `services/<name>`
 - Replaces placeholders (module import paths, README text, comments)
 - Prints next steps (run `go mod tidy`, update docker-compose, add Kong routes)
@@ -459,6 +478,7 @@ jan-cli swagger generate --service media-api
 ```
 
 **Requirements:**
+
 - Service must have Swagger annotations in code
 - `swag` CLI tool must be installed (`go install github.com/swaggo/swag/cmd/swag@latest`)
 
@@ -471,43 +491,51 @@ jan-cli swagger generate --service media-api
 **Problem:** The bin directory is not in your PATH.
 
 **Solution:**
+
 1. Check if `~/bin` exists:
- ```bash
- ls ~/bin/jan-cli
- ```
+
+```bash
+ls ~/bin/jan-cli
+```
 
 2. Add to PATH:
- ```bash
- export PATH="$PATH:$HOME/bin"
- ```
+
+```bash
+export PATH="$PATH:$HOME/bin"
+```
 
 3. Make permanent by adding to `~/.bashrc` or `~/.zshrc`:
- ```bash
- echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc
- source ~/.bashrc
- ```
+
+```bash
+echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc
+source ~/.bashrc
+```
 
 ### "jan-cli is not recognized" (Windows)
 
 **Problem:** The bin directory is not in your PATH.
 
 **Solution:**
+
 1. Check if file exists:
- ```powershell
- Test-Path $env:USERPROFILE\bin\jan-cli.exe
- ```
+
+```powershell
+Test-Path $env:USERPROFILE\bin\jan-cli.exe
+```
 
 2. Add to PATH (temporary):
- ```powershell
- $env:PATH += ";$env:USERPROFILE\bin"
- ```
+
+```powershell
+$env:PATH += ";$env:USERPROFILE\bin"
+```
 
 3. Make permanent:
- ```powershell
- notepad $PROFILE
- # Add this line:
- $env:PATH += ";$env:USERPROFILE\bin"
- ```
+
+```powershell
+notepad $PROFILE
+# Add this line:
+$env:PATH += ";$env:USERPROFILE\bin"
+```
 
 4. Restart PowerShell
 
@@ -516,6 +544,7 @@ jan-cli swagger generate --service media-api
 **Problem:** The binary is not executable.
 
 **Solution:**
+
 ```bash
 chmod +x ~/bin/jan-cli
 ```
@@ -527,6 +556,7 @@ The `make cli-install` target handles this automatically, but if you installed m
 **Problem:** Installed binary is outdated after modifying source code.
 
 **Solution:**
+
 ```bash
 # Rebuild and reinstall
 make cli-install
@@ -541,24 +571,29 @@ make cli-install
 **Problem:** Wrapper script shows errors or doesn't build.
 
 **Solution:**
+
 1. Ensure Go is installed:
- ```bash
- go version
- ```
+
+```bash
+go version
+```
 
 2. Ensure in project root:
- ```bash
- pwd # Should show jan-server directory
- ```
+
+```bash
+pwd # Should show jan-server directory
+```
 
 3. Check script is executable (Linux/macOS):
- ```bash
- chmod +x jan-cli.sh
- ```
+
+```bash
+chmod +x jan-cli.sh
+```
 
 4. Try manual build:
- ```bash
- cd tools/jan-cli && go build
+
+````bash
+cd tools/jan-cli && go build
 
 ---
 
@@ -581,17 +616,19 @@ jan-cli completion fish > ~/.config/fish/completions/jan-cli.fish
 # PowerShell
 jan-cli completion powershell > jan-cli.ps1
 # Then source it in your profile
-```
+````
 
 ### Enable Completion
 
 **Bash:**
+
 ```bash
 # Add to ~/.bashrc
 source /etc/bash_completion.d/jan-cli
 ```
 
 **Zsh:**
+
 ```zsh
 # Add to ~/.zshrc
 autoload -U compinit
@@ -599,11 +636,13 @@ compinit
 ```
 
 **Fish:**
+
 ```fish
 # Completion is auto-loaded from ~/.config/fish/completions/
 ```
 
 **PowerShell:**
+
 ```powershell
 # Add to $PROFILE
 . /path/to/jan-cli.ps1
@@ -618,6 +657,7 @@ compinit
 Jan CLI uses [spf13/cobra](https://github.com/spf13/cobra) v1.8.1, the industry-standard CLI framework.
 
 **Why Cobra:**
+
 - Used by kubectl, docker, gh, helm
 - Auto-generated help text
 - Built-in completion generation
@@ -626,6 +666,7 @@ Jan CLI uses [spf13/cobra](https://github.com/spf13/cobra) v1.8.1, the industry-
 - POSIX-compliant
 
 **Dependencies:**
+
 ```go
 require (
  github.com/spf13/cobra v1.8.1
@@ -651,12 +692,14 @@ tools/jan-cli/
 ### Build Details
 
 **Build Command:**
+
 ```bash
 cd tools/jan-cli
 go build -o jan-cli
 ```
 
 **Cross-Platform Builds:**
+
 ```bash
 # Linux
 GOOS=linux GOARCH=amd64 go build -o jan-cli-linux
@@ -673,12 +716,14 @@ GOOS=windows GOARCH=amd64 go build -o jan-cli.exe
 ### Wrapper Scripts
 
 **PowerShell (jan-cli.ps1):**
+
 - Auto-builds if binary missing or outdated
 - Checks all `*.go` files for changes
 - Supports all jan-cli commands
 - Works on Windows PowerShell 5.1+
 
 **Bash (jan-cli.sh):**
+
 - Auto-builds if binary missing or outdated
 - Checks all `*.go` files for changes
 - Supports all jan-cli commands
@@ -760,18 +805,21 @@ jan-cli swagger generate --service llm-api
 ## Summary
 
 **Quick Reference:**
+
 - **Build:** `make cli-build`
 - **Install:** `make cli-install`
 - **Clean:** `make cli-clean`
 - **Use:** `jan-cli <command>`
 
 **Recommended Workflow:**
+
 1. Run `make cli-install` once
 2. Add to PATH as instructed
 3. Use `jan-cli` from anywhere
 4. Run `make cli-install` again after updates
 
 **Key Commands:**
+
 - `jan-cli config validate` - Validate configuration
 - `jan-cli config generate` - Generate schemas
 - `jan-cli service list` - List services
@@ -789,6 +837,6 @@ jan-cli swagger generate --service llm-api
 
 ---
 
-**Status:** Production Ready OK 
-**Version:** 1.0.0 
+**Status:** Production Ready OK
+**Version:** 1.0.0
 **Cross-Platform:** Windows, Linux, macOS

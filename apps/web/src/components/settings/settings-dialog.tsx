@@ -1,29 +1,29 @@
-import { useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
+import { useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
-import { GeneralSettings } from '@/components/settings/general-settings'
+} from "@janhq/interfaces/dialog";
+import { cn } from "@/lib/utils";
+import { GeneralSettings } from "@/components/settings/general-settings";
 import {
   Settings2,
   type LucideIcon,
   LeafIcon,
   Share2Icon,
   LockKeyhole,
-} from 'lucide-react'
+} from "lucide-react";
 
-import { PersonalizationSettings } from './personalization-setting'
-import { SharesSettings } from './shares-settings'
-import { PrivacySettings } from './privacy-settings'
-import { URL_PARAM, SETTINGS_SECTION } from '@/constants'
+import { PersonalizationSettings } from "./personalization-setting";
+import { SharesSettings } from "./shares-settings";
+import { PrivacySettings } from "./privacy-settings";
+import { URL_PARAM, SETTINGS_SECTION } from "@/constants";
 
 interface SettingsDialogProps {
-  open: boolean
-  section?: string
+  open: boolean;
+  section?: string;
 }
 
 type SettingsSection =
@@ -31,58 +31,62 @@ type SettingsSection =
   // | 'apps-connectors'
   | typeof SETTINGS_SECTION.PRIVACY
   | typeof SETTINGS_SECTION.PERSONALIZATION
-  | typeof SETTINGS_SECTION.SHARES
+  | typeof SETTINGS_SECTION.SHARES;
 
 const sections: Array<{
-  id: SettingsSection
-  label: string
-  icon: LucideIcon
+  id: SettingsSection;
+  label: string;
+  icon: LucideIcon;
 }> = [
-  { id: SETTINGS_SECTION.GENERAL, label: 'General', icon: Settings2 },
-  { id: SETTINGS_SECTION.PERSONALIZATION, label: 'Personalization', icon: LeafIcon },
-  { id: SETTINGS_SECTION.SHARES, label: 'Share Links', icon: Share2Icon },
+  { id: SETTINGS_SECTION.GENERAL, label: "General", icon: Settings2 },
+  {
+    id: SETTINGS_SECTION.PERSONALIZATION,
+    label: "Personalization",
+    icon: LeafIcon,
+  },
+  { id: SETTINGS_SECTION.SHARES, label: "Share Links", icon: Share2Icon },
   // { id: 'apps-connectors', label: 'Connectors', icon: ShapesIcon },
-  { id: SETTINGS_SECTION.PRIVACY, label: 'Privacy', icon: LockKeyhole },
-]
+  { id: SETTINGS_SECTION.PRIVACY, label: "Privacy", icon: LockKeyhole },
+];
 
 export function SettingsDialog({
   open,
   section = SETTINGS_SECTION.GENERAL,
 }: SettingsDialogProps) {
-  const router = useRouter()
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState<SettingsSection>(
-    section as SettingsSection
-  )
+    section as SettingsSection,
+  );
 
   const handleClose = () => {
-    const url = new URL(window.location.href)
-    url.searchParams.delete(URL_PARAM.SETTING)
-    router.navigate({ to: url.pathname + url.search })
-  }
+    const url = new URL(window.location.href);
+    url.searchParams.delete(URL_PARAM.SETTING);
+    router.navigate({ to: url.pathname + url.search });
+  };
 
   const handleSectionChange = (newSection: SettingsSection) => {
-    setActiveSection(newSection)
-    const url = new URL(window.location.href)
-    url.searchParams.set(URL_PARAM.SETTING, newSection)
-    router.navigate({ to: url.pathname + url.search })
-  }
+    setActiveSection(newSection);
+    const url = new URL(window.location.href);
+    url.searchParams.set(URL_PARAM.SETTING, newSection);
+    router.navigate({ to: url.pathname + url.search });
+  };
 
   const renderContent = () => {
     switch (activeSection) {
       case SETTINGS_SECTION.GENERAL:
-        return <GeneralSettings />
+        return <GeneralSettings />;
       // case 'apps-connectors':
       //   return <AppsConnectorSettings />
       case SETTINGS_SECTION.PERSONALIZATION:
-        return <PersonalizationSettings />
+        return <PersonalizationSettings />;
       case SETTINGS_SECTION.SHARES:
-        return <SharesSettings />
+        return <SharesSettings />;
       case SETTINGS_SECTION.PRIVACY:
-        return <PrivacySettings />
+        return <PrivacySettings />;
       default:
-        return <GeneralSettings />
+        return <GeneralSettings />;
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -104,10 +108,10 @@ export function SettingsDialog({
                   key={s.id}
                   onClick={() => handleSectionChange(s.id)}
                   className={cn(
-                    'flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors text-left whitespace-nowrap shrink-0',
+                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors text-left whitespace-nowrap shrink-0",
                     activeSection === s.id
-                      ? 'bg-muted text-foreground'
-                      : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
                   )}
                 >
                   <s.icon className="size-4 shrink-0" />
@@ -124,5 +128,5 @@ export function SettingsDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

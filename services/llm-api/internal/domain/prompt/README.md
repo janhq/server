@@ -30,21 +30,25 @@ vLLM or Remote Provider
 The processor includes several built-in modules that are automatically applied based on context:
 
 #### 1. **Memory Module** (Optional)
+
 - **Purpose**: Injects user-specific memory/preferences into prompts
 - **Activation**: Enabled via `PROMPT_ORCHESTRATION_MEMORY=true`
 - **Example**: Adds "User prefers concise answers" to system prompt
 
 #### 2. **Code Assistant Module** (Always Active)
+
 - **Purpose**: Enhances prompts for code-related questions
 - **Activation**: Automatically detects code keywords (function, implement, debug, etc.)
 - **Adds**: Code formatting guidelines, best practices, error handling tips
 
 #### 3. **Chain-of-Thought Module** (Always Active)
+
 - **Purpose**: Encourages step-by-step reasoning for complex questions
 - **Activation**: Detects questions with reasoning keywords (why, how, explain, analyze)
 - **Adds**: Instructions to break down problems and think systematically
 
 #### 4. **Tool Instructions Module** (Optional)
+
 - **Purpose**: Adds instructions for tool usage
 - **Activation**: Enabled via `PROMPT_ORCHESTRATION_TOOLS=true` and user preferences
 - **Adds**: Tool selection and usage guidelines
@@ -53,12 +57,12 @@ The processor includes several built-in modules that are automatically applied b
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROMPT_ORCHESTRATION_ENABLED` | `true` | Enable/disable the processor |
-| `PROMPT_ORCHESTRATION_MEMORY` | `false` | Enable memory injection |
-| `PROMPT_ORCHESTRATION_TEMPLATES` | `true` | Enable template-based prompts |
-| `PROMPT_ORCHESTRATION_TOOLS` | `false` | Enable tool usage instructions |
+| Variable                         | Default | Description                    |
+| -------------------------------- | ------- | ------------------------------ |
+| `PROMPT_ORCHESTRATION_ENABLED`   | `true`  | Enable/disable the processor   |
+| `PROMPT_ORCHESTRATION_MEMORY`    | `false` | Enable memory injection        |
+| `PROMPT_ORCHESTRATION_TEMPLATES` | `true`  | Enable template-based prompts  |
+| `PROMPT_ORCHESTRATION_TOOLS`     | `false` | Enable tool usage instructions |
 
 ### YAML Configuration
 
@@ -130,15 +134,17 @@ if err != nil {
 ## Example Transformations
 
 ### Before Processing
+
 ```json
 {
   "messages": [
-    {"role": "user", "content": "How do I implement binary search in Go?"}
+    { "role": "user", "content": "How do I implement binary search in Go?" }
   ]
 }
 ```
 
 ### After Processing (Code Assistant + Memory modules applied)
+
 ```json
 {
   "messages": [
@@ -146,7 +152,7 @@ if err != nil {
       "role": "system",
       "content": "You are Jan, a helpful AI assistant.\n\nUse the following personal memory for this user:\n- User prefers detailed code examples\n- User is learning Go\n\nWhen providing code assistance:\n1. Provide clear, well-commented code\n2. Explain your approach and reasoning\n3. Include error handling where appropriate\n4. Follow best practices and conventions\n5. Suggest testing approaches when relevant"
     },
-    {"role": "user", "content": "How do I implement binary search in Go?"}
+    { "role": "user", "content": "How do I implement binary search in Go?" }
   ]
 }
 ```
@@ -161,6 +167,7 @@ go test ./internal/domain/prompt/... -v
 ```
 
 Tests cover:
+
 - Individual module behavior
 - Module conditional logic
 - Processor integration
@@ -169,10 +176,12 @@ Tests cover:
 ## Observability
 
 The processor emits OpenTelemetry events:
+
 - `processing_prompts`: When processing starts
 - `prompts_processed`: When processing completes successfully
 
 Logs include:
+
 - Applied modules list
 - Processing errors (non-fatal)
 - Conversation and user context

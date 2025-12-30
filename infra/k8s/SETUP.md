@@ -68,6 +68,7 @@ kubectl get nodes
 ```
 
 You should see:
+
 ```
 Kubernetes control plane is running at https://kubernetes.docker.internal:6443
 ```
@@ -198,6 +199,7 @@ kubectl get svc -n jan-server
 ```
 
 Wait until all pods show `Running` status (this may take 2-5 minutes):
+
 ```
 NAME                                    READY   STATUS    RESTARTS   AGE
 jan-server-keycloak-xxx                 1/1     Running   0          3m
@@ -338,6 +340,7 @@ kubectl describe pod -n jan-server <pod-name>
 This means Docker images are not available. You need to:
 
 1. Build the Docker images locally:
+
    ```powershell
    cd d:\Working\Menlo\jan-server
    docker compose build
@@ -466,6 +469,7 @@ mediaApi:
 ```
 
 Deploy with:
+
 ```powershell
 helm install jan-server ./jan-server `
   --namespace jan-server `

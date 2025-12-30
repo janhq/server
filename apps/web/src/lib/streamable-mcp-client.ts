@@ -1,10 +1,10 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { JanMCPOAuthProvider } from './mcp-oauth-provider'
-import { fetchWithAuth } from '@/lib/api-client'
-import { MCP, CONTENT_TYPE } from '@/constants'
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { JanMCPOAuthProvider } from "./mcp-oauth-provider";
+import { fetchWithAuth } from "@/lib/api-client";
+import { MCP, CONTENT_TYPE } from "@/constants";
 
-declare const JAN_API_BASE_URL: string
+declare const JAN_API_BASE_URL: string;
 
 /**
  * MCP Service - Provides Model Context Protocol functionality
@@ -16,17 +16,17 @@ declare const JAN_API_BASE_URL: string
  * - Executes tool calls with proper session handling
  */
 export class StreamableHttpMCPClient implements ToolCallClient {
-  private mcpEndpoint = 'mcp'
-  private mcpClient: Client | null = null
-  private oauthProvider: JanMCPOAuthProvider
-  private apiUrl = JAN_API_BASE_URL
-  private clientName = 'jan-app-client'
+  private mcpEndpoint = "mcp";
+  private mcpClient: Client | null = null;
+  private oauthProvider: JanMCPOAuthProvider;
+  private apiUrl = JAN_API_BASE_URL;
+  private clientName = "jan-app-client";
 
   constructor(clientName?: string, apiUrl?: string, mcpEndpoint?: string) {
-    this.clientName = clientName ?? 'jan-app-client'
-    this.apiUrl = apiUrl ?? JAN_API_BASE_URL
-    this.mcpEndpoint = mcpEndpoint ?? 'mcp'
-    this.oauthProvider = new JanMCPOAuthProvider()
+    this.clientName = clientName ?? "jan-app-client";
+    this.apiUrl = apiUrl ?? JAN_API_BASE_URL;
+    this.mcpEndpoint = mcpEndpoint ?? "mcp";
+    this.oauthProvider = new JanMCPOAuthProvider();
   }
 
   /**
@@ -40,11 +40,11 @@ export class StreamableHttpMCPClient implements ToolCallClient {
       // Close existing client if any
       if (this.mcpClient) {
         try {
-          await this.mcpClient.close()
+          await this.mcpClient.close();
         } catch (error) {
-          console.warn('Error closing existing MCP client:', error)
+          console.warn("Error closing existing MCP client:", error);
         }
-        this.mcpClient = null
+        this.mcpClient = null;
       }
 
       // Create transport with OAuth provider (handles token refresh automatically)
@@ -53,30 +53,30 @@ export class StreamableHttpMCPClient implements ToolCallClient {
         {
           authProvider: this.oauthProvider,
           // No sessionId needed - server will generate one automatically
-        }
-      )
+        },
+      );
 
       // Create MCP client
       this.mcpClient = new Client(
         {
           name: this.clientName,
-          version: '1.0.0',
+          version: "1.0.0",
         },
         {
           capabilities: {},
-        }
-      )
+        },
+      );
 
       // Connect to MCP server (OAuth provider handles auth automatically)
-      await this.mcpClient.connect(transport)
+      await this.mcpClient.connect(transport);
 
       console.log(
-        'MCP client connected successfully, session ID:',
-        transport.sessionId
-      )
+        "MCP client connected successfully, session ID:",
+        transport.sessionId,
+      );
     } catch (error) {
-      console.error('Failed to initialize MCP client:', error)
-      throw error
+      console.error("Failed to initialize MCP client:", error);
+      throw error;
     }
   }
 
@@ -86,7 +86,7 @@ export class StreamableHttpMCPClient implements ToolCallClient {
    */
   private async ensureInitialized(): Promise<void> {
     if (!this.mcpClient) {
-      await this.initializeMCPClient()
+      await this.initializeMCPClient();
     }
   }
 
@@ -105,35 +105,35 @@ export class StreamableHttpMCPClient implements ToolCallClient {
    */
   async getTools(): Promise<MCPTool[]> {
     try {
-      await this.ensureInitialized()
+      await this.ensureInitialized();
 
       if (!this.mcpClient) {
-        throw new Error('MCP client not initialized')
+        throw new Error("MCP client not initialized");
       }
 
       // Use MCP SDK to list tools
-      const result = await this.mcpClient.listTools()
-      console.log('MCP tools/list response:', result)
+      const result = await this.mcpClient.listTools();
+      console.log("MCP tools/list response:", result);
 
-      let tools: MCPTool[] = []
+      let tools: MCPTool[] = [];
 
       if (result.tools && Array.isArray(result.tools)) {
         tools = result.tools.map((tool) => ({
           name: tool.name,
-          description: tool.description || '',
+          description: tool.description || "",
           inputSchema: (tool.inputSchema || {}) as Record<string, unknown>,
           server: MCP.SERVER_NAME,
-        }))
+        }));
       } else {
-        console.warn('No tools found in MCP server response')
+        console.warn("No tools found in MCP server response");
       }
 
-      console.log(tools)
+      console.log(tools);
 
-      return tools
+      return tools;
     } catch (error) {
-      console.error('Failed to fetch MCP tools:', error)
-      throw error
+      console.error("Failed to fetch MCP tools:", error);
+      throw error;
     }
   }
 
@@ -171,125 +171,130 @@ export class StreamableHttpMCPClient implements ToolCallClient {
   async callTool(
     payload: CallToolPayload,
     metadata?: {
-      conversationId?: string
-      toolCallId?: string
-      signal?: AbortSignal
-    }
+      conversationId?: string;
+      toolCallId?: string;
+      signal?: AbortSignal;
+    },
   ): Promise<MCPToolCallResult> {
     try {
       // Check if already aborted
       if (metadata?.signal?.aborted) {
-        return createErrorResult('Tool call was cancelled')
+        return createErrorResult("Tool call was cancelled");
       }
 
       // Build headers
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      }
+        "Content-Type": "application/json",
+      };
 
       if (metadata?.conversationId) {
-        headers['X-Conversation-Id'] = metadata.conversationId
+        headers["X-Conversation-Id"] = metadata.conversationId;
       }
       if (metadata?.toolCallId) {
-        headers['X-Tool-Call-Id'] = metadata.toolCallId
+        headers["X-Tool-Call-Id"] = metadata.toolCallId;
       }
 
       // Build JSON-RPC request
       const jsonRpcRequest = {
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id: Date.now(),
-        method: 'tools/call',
+        method: "tools/call",
         params: {
           name: payload.toolName,
           arguments: payload.arguments,
         },
-      }
+      };
 
-      console.log(`Calling MCP tool ${payload.toolName} with headers:`, headers)
+      console.log(
+        `Calling MCP tool ${payload.toolName} with headers:`,
+        headers,
+      );
 
       // Make fetch request with abort signal
       const response = await fetchWithAuth(
         `${JAN_API_BASE_URL}${this.mcpEndpoint}`,
         {
-          method: 'POST',
+          method: "POST",
           headers,
           body: JSON.stringify(jsonRpcRequest),
           signal: metadata?.signal, // Pass abort signal to fetch
-        }
-      )
+        },
+      );
 
       if (!response.ok) {
-        const errorText = await response.text()
+        const errorText = await response.text();
         return createErrorResult(
-          `MCP tool call failed: ${response.status} ${response.statusText} - ${errorText}`
-        )
+          `MCP tool call failed: ${response.status} ${response.statusText} - ${errorText}`,
+        );
       }
 
       // Handle both direct JSON and SSE responses
-      const contentType = response.headers.get('content-type') || ''
-      let result: any
+      const contentType = response.headers.get("content-type") || "";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let result: any;
 
-      if (contentType.includes('text/event-stream')) {
+      if (contentType.includes("text/event-stream")) {
         // Parse SSE response
-        const text = await response.text()
-        const lines = text.split('\n')
+        const text = await response.text();
+        const lines = text.split("\n");
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             try {
-              result = JSON.parse(line.substring(6))
-              break
-            } catch (e) {
-              console.warn('Failed to parse SSE line:', line)
+              result = JSON.parse(line.substring(6));
+              break;
+            } catch {
+              console.warn("Failed to parse SSE line:", line);
             }
           }
         }
       } else {
         // Direct JSON response
-        result = await response.json()
+        result = await response.json();
       }
 
       if (!result) {
-        return createErrorResult('No valid response from MCP server')
+        return createErrorResult("No valid response from MCP server");
       }
 
       // Check for JSON-RPC error
       if (result.error) {
-        return createErrorResult(result.error.message || 'Tool call failed')
+        return createErrorResult(result.error.message || "Tool call failed");
       }
 
       // Extract content from result
-      const toolResult = result.result || result
+      const toolResult = result.result || result;
       if (toolResult.isError) {
         const errorText =
           Array.isArray(toolResult.content) && toolResult.content.length > 0
             ? toolResult.content[0].type === CONTENT_TYPE.TEXT
               ? toolResult.content[0].text
-              : 'Tool call failed'
-            : 'Tool call failed'
-        return createErrorResult(errorText)
+              : "Tool call failed"
+            : "Tool call failed";
+        return createErrorResult(errorText);
       }
 
       const content = Array.isArray(toolResult.content)
-        ? toolResult.content.map((item: any) => item)
-        : [{ type: CONTENT_TYPE.TEXT, text: 'No content returned' }]
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          toolResult.content.map((item: any) => item)
+        : [{ type: CONTENT_TYPE.TEXT, text: "No content returned" }];
 
       console.log(`[MCP] Tool call succeeded:`, {
         toolName: payload.toolName,
         contentItems: content.length,
-      })
-      return { error: '', content }
+      });
+      return { error: "", content };
     } catch (error) {
       // Handle abort errors separately
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log(`MCP tool call ${payload.toolName} was cancelled`)
-        return createErrorResult('Tool call was cancelled')
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log(`MCP tool call ${payload.toolName} was cancelled`);
+        return createErrorResult("Tool call was cancelled");
       }
 
       const errorMessage =
-        error instanceof Error ? error.message : String(error)
-      console.error(`Failed to call MCP tool ${payload.toolName}:`, error)
+        error instanceof Error ? error.message : String(error);
+      console.error(`Failed to call MCP tool ${payload.toolName}:`, error);
 
-      return createErrorResult(errorMessage)
+      return createErrorResult(errorMessage);
     }
   }
 
@@ -299,16 +304,16 @@ export class StreamableHttpMCPClient implements ToolCallClient {
    */
   async isHealthy(): Promise<boolean> {
     if (!this.mcpClient) {
-      return false
+      return false;
     }
 
     try {
       // Try to list tools as health check (OAuth provider handles auth)
-      await this.mcpClient.listTools()
-      return true
+      await this.mcpClient.listTools();
+      return true;
     } catch (error) {
-      console.warn('MCP health check failed:', error)
-      return false
+      console.warn("MCP health check failed:", error);
+      return false;
     }
   }
 
@@ -318,11 +323,11 @@ export class StreamableHttpMCPClient implements ToolCallClient {
   async disconnect(): Promise<void> {
     if (this.mcpClient) {
       try {
-        await this.mcpClient.close()
+        await this.mcpClient.close();
       } catch (error) {
-        console.warn('Error closing MCP client:', error)
+        console.warn("Error closing MCP client:", error);
       }
-      this.mcpClient = null
+      this.mcpClient = null;
     }
   }
 
@@ -337,8 +342,8 @@ export class StreamableHttpMCPClient implements ToolCallClient {
 /** Create an error result with the given message */
 export const createErrorResult = (
   error: string,
-  text?: string
+  text?: string,
 ): MCPToolCallResult => ({
   error,
   content: [{ type: CONTENT_TYPE.TEXT, text: text || error }],
-})
+});

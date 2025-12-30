@@ -1,13 +1,19 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM registry.menlo.ai/dockerhub/node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy the interfaces package from the additional context
+COPY --from=interfaces . ./packages/interfaces
+
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json ./
+
+# Fix the path reference for the local dependency
+RUN sed -i 's|file:../../packages/interfaces|file:./packages/interfaces|g' package.json
 
 # Install dependencies
-RUN npm install
+RUN npm install --workspaces=false
 
 # Copy source files
 COPY . .
@@ -32,7 +38,7 @@ ENV VITE_GA_ID=$VITE_GA_ID
 RUN npx vite build
 
 # Production stage
-FROM nginx:alpine AS runner
+FROM registry.menlo.ai/dockerhub/nginx:alpine AS runner
 
 WORKDIR /usr/share/nginx/html
 

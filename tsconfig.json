@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/web" },
+    { "path": "./apps/platform" },
+    { "path": "./packages/interfaces" }
+  ]
+}

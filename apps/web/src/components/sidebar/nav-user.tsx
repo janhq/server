@@ -1,6 +1,6 @@
-import { ChevronsUpDown, LogOut, SettingsIcon } from 'lucide-react'
+import { ChevronsUpDown, LogOut, SettingsIcon } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from "@janhq/interfaces/avatar";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -8,32 +8,32 @@ import {
   DropDrawerLabel,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
+} from "@janhq/interfaces/dropdrawer";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { useAuth } from '@/stores/auth-store'
-import { useRouter } from '@tanstack/react-router'
-import { getInitialsAvatar } from '@/lib/utils'
-import { URL_PARAM, SETTINGS_SECTION } from '@/constants'
+} from "@/components/sidebar/sidebar";
+import { useAuth } from "@/stores/auth-store";
+import { useRouter } from "@tanstack/react-router";
+import { getInitialsAvatar } from "@/lib/utils";
+import { URL_PARAM, SETTINGS_SECTION } from "@/constants";
 
 export function NavUser() {
-  const user = useAuth((state) => state.user)
-  const isGuest = useAuth((state) => state.isGuest)
-  const logout = useAuth((state) => state.logout)
-  const router = useRouter()
+  const user = useAuth((state) => state.user);
+  const isGuest = useAuth((state) => state.isGuest);
+  const logout = useAuth((state) => state.logout);
+  const router = useRouter();
 
   if (!user || isGuest) {
-    return null
+    return null;
   }
 
   const handleOpenSettings = (section: string = SETTINGS_SECTION.GENERAL) => {
-    const url = new URL(window.location.href)
-    url.searchParams.set(URL_PARAM.SETTING, section)
-    router.navigate({ to: url.pathname + url.search })
-  }
+    const url = new URL(window.location.href);
+    url.searchParams.set(URL_PARAM.SETTING, section);
+    router.navigate({ to: url.pathname + url.search });
+  };
 
   return (
     <SidebarMenu>
@@ -101,11 +101,11 @@ export function NavUser() {
             <DropDrawerSeparator />
             <DropDrawerItem
               onClick={async () => {
-                await logout()
+                await logout();
                 router.navigate({
-                  to: '/',
+                  to: "/",
                   replace: true,
-                })
+                });
               }}
             >
               <div className="flex gap-2 items-center justify-center">
@@ -117,5 +117,5 @@ export function NavUser() {
         </DropDrawer>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

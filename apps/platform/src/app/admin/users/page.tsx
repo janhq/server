@@ -88,15 +88,15 @@ export default function UserManagementPage() {
   // The API returns user's groups as paths like "/guest", "/pilot_users"
   function findGroupByRef(groupRef: string | Group): Group | undefined {
     if (typeof groupRef !== 'string') return groupRef;
-    return groups.find(
-      (g) => g.id === groupRef || g.name === groupRef || g.path === groupRef
-    );
+    return groups.find((g) => g.id === groupRef || g.name === groupRef || g.path === groupRef);
   }
 
   // Helper function to check if a user is in a group
   function isUserInGroup(userGroupRef: string | Group, group: Group): boolean {
     if (typeof userGroupRef === 'string') {
-      return userGroupRef === group.id || userGroupRef === group.name || userGroupRef === group.path;
+      return (
+        userGroupRef === group.id || userGroupRef === group.name || userGroupRef === group.path
+      );
     }
     return userGroupRef.id === group.id;
   }

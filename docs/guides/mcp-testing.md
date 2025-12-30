@@ -13,6 +13,7 @@ Validate the MCP (Model Context Protocol) toolchain end to end. Every command be
   - SandboxFusion (optional): http://localhost:3010
 
 Check health quickly:
+
 ```bash
 make health-check       # full stack health summary
 curl http://localhost:8091/healthz
@@ -28,6 +29,7 @@ make test-mcp-integration
 ```
 
 The target executes:
+
 ```bash
 jan-cli api-test run tests/automation/mcp-postman-scripts.json \
   --env-var "kong_url=http://localhost:8000" \
@@ -36,6 +38,7 @@ jan-cli api-test run tests/automation/mcp-postman-scripts.json \
 ```
 
 Expectations:
+
 - Guest token requests succeed (`/llm/auth/guest-login`)
 - MCP search variants (domain filter, offline) return structured JSON
 - Tool list includes `google_search`, `scrape`, `file_search_index`, `file_search_query`, `python_exec`
@@ -102,14 +105,15 @@ curl -s http://localhost:3010/run_code -H "Content-Type: application/json" -d '{
 
 ## 4. Logs and Troubleshooting
 
-| Component | Logs | Notes |
-|-----------|------|-------|
-| Kong | `make logs` or `docker compose logs kong` | Confirms `/mcp` route, auth headers, upstream failures |
-| MCP Tools | `make logs-mcp` | Watch tool dispatch, vector store responses, sandbox output |
-| Vector Store | `docker compose logs vector-store` | Service name is `vector-store` in `docker/services-mcp.yml` |
-| SandboxFusion | `docker compose logs sandboxfusion` (if enabled) | Verify HTTP 200s and stdout capturing |
+| Component     | Logs                                             | Notes                                                       |
+| ------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| Kong          | `make logs` or `docker compose logs kong`        | Confirms `/mcp` route, auth headers, upstream failures      |
+| MCP Tools     | `make logs-mcp`                                  | Watch tool dispatch, vector store responses, sandbox output |
+| Vector Store  | `docker compose logs vector-store`               | Service name is `vector-store` in `docker/services-mcp.yml` |
+| SandboxFusion | `docker compose logs sandboxfusion` (if enabled) | Verify HTTP 200s and stdout capturing                       |
 
 Common fixes:
+
 - **401/403**: ensure guest token exists or provide API key headers when hitting Kong
 - **Timeouts to vector store**: confirm service is part of the `mcp` profile (`COMPOSE_PROFILES` includes `mcp`)
 - **Sandbox errors**: include the required `language` parameter; see `services/mcp-tools/internal/sandboxfusion`

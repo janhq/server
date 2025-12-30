@@ -44,6 +44,7 @@ All HTTP requests are automatically traced via the `TracingMiddleware`. This mid
 - Injects trace context into the request context
 
 **Attributes captured:**
+
 - `http.method`
 - `http.route`
 - `http.url`
@@ -84,30 +85,30 @@ import (
 
 func MyBusinessLogic(ctx context.Context) error {
     cfg := config.GetGlobal()
-    
+
     // Start a new span
     ctx, span := observability.StartSpan(ctx, cfg.ServiceName, "MyBusinessLogic.ProcessData")
     defer span.End()
-    
+
     // Add custom attributes
     observability.AddSpanAttributes(ctx,
         attribute.String("user.id", "12345"),
         attribute.Int("batch.size", 100),
     )
-    
+
     // Add events
     observability.AddSpanEvent(ctx, "validation_started")
-    
+
     // Do some work...
     if err := doWork(); err != nil {
         // Record errors
         observability.RecordError(ctx, err)
         return err
     }
-    
+
     // Set success status
     observability.SetSpanStatus(ctx, codes.Ok, "completed successfully")
-    
+
     return nil
 }
 ```
@@ -119,13 +120,13 @@ Create child spans for sub-operations:
 ```go
 func ProcessBatch(ctx context.Context, items []Item) error {
     cfg := config.GetGlobal()
-    
+
     // Parent span
     ctx, span := observability.StartSpan(ctx, cfg.ServiceName, "ProcessBatch")
     defer span.End()
-    
+
     observability.AddSpanAttributes(ctx, attribute.Int("batch.size", len(items)))
-    
+
     for i, item := range items {
         // Child span for each item
         _, itemSpan := observability.StartSpan(ctx, cfg.ServiceName, "ProcessItem")
@@ -133,16 +134,16 @@ func ProcessBatch(ctx context.Context, items []Item) error {
             attribute.Int("item.index", i),
             attribute.String("item.id", item.ID),
         )
-        
+
         if err := processItem(ctx, item); err != nil {
             observability.RecordError(ctx, err)
             itemSpan.End()
             continue
         }
-        
+
         itemSpan.End()
     }
-    
+
     return nil
 }
 ```
@@ -159,11 +160,11 @@ import (
 
 func MyFunction(ctx context.Context) {
     log := logger.GetLogger()
-    
+
     // Get trace context
     traceID := observability.GetTraceID(ctx)
     spanID := observability.GetSpanID(ctx)
-    
+
     log.Info().
         Str("trace_id", traceID).
         Str("span_id", spanID).
@@ -194,23 +195,23 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
     // Start span for the entire use case
     ctx, span := observability.StartSpan(ctx, uc.cfg.ServiceName, "ChatCompletionUseCase.Execute")
     defer span.End()
-    
+
     observability.AddSpanAttributes(ctx,
         attribute.String("model", req.Model),
         attribute.Int("message.count", len(req.Messages)),
     )
-    
+
     // Database operation (create child span)
     observability.AddSpanEvent(ctx, "fetching_conversation")
     ctx, dbSpan := observability.StartSpan(ctx, uc.cfg.ServiceName, "FetchConversation")
     conversation, err := uc.repo.FindByID(ctx, req.ConversationID)
     dbSpan.End()
-    
+
     if err != nil {
         observability.RecordError(ctx, err)
         return nil, err
     }
-    
+
     // LLM call (create child span)
     observability.AddSpanEvent(ctx, "calling_llm")
     ctx, llmSpan := observability.StartSpan(ctx, uc.cfg.ServiceName, "LLMInference")
@@ -218,15 +219,15 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
         attribute.String("llm.provider", "vllm"),
         attribute.String("llm.model", req.Model),
     )
-    
+
     response, err := uc.callLLM(ctx, req)
     llmSpan.End()
-    
+
     if err != nil {
         observability.RecordError(ctx, err)
         return nil, err
     }
-    
+
     // Save result
     ctx, saveSpan := observability.StartSpan(ctx, uc.cfg.ServiceName, "SaveResponse")
     if err := uc.repo.Save(ctx, response); err != nil {
@@ -235,7 +236,7 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
         return nil, err
     }
     saveSpan.End()
-    
+
     observability.SetSpanStatus(ctx, codes.Ok, "completed")
     return response, nil
 }
@@ -266,18 +267,20 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
 ## Best Practices
 
 1. **Always defer span.End()**
+
    ```go
    ctx, span := observability.StartSpan(ctx, serviceName, "operation")
    defer span.End()  // Ensures span is closed even if panic occurs
    ```
 
 2. **Use meaningful span names**
+
    ```go
    // Good
    "ChatCompletion.Execute"
    "UserRepository.FindByID"
    "LLMProvider.GenerateResponse"
-   
+
    // Bad
    "process"
    "doStuff"
@@ -285,6 +288,7 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
    ```
 
 3. **Add relevant attributes**
+
    ```go
    observability.AddSpanAttributes(ctx,
        attribute.String("user.id", userID),
@@ -295,6 +299,7 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
    ```
 
 4. **Record errors properly**
+
    ```go
    if err != nil {
        observability.RecordError(ctx, err)
@@ -303,6 +308,7 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
    ```
 
 5. **Use events for significant milestones**
+
    ```go
    observability.AddSpanEvent(ctx, "validation_completed")
    observability.AddSpanEvent(ctx, "cache_miss")
@@ -318,11 +324,13 @@ func (uc *ChatCompletionUseCase) Execute(ctx context.Context, req domain.ChatReq
 ### No traces appearing in Jaeger
 
 1. Check OTEL_EXPORTER_OTLP_ENDPOINT is set:
+
    ```bash
    docker logs jan-server-llm-api-1 | grep -i otel
    ```
 
 2. Verify OTel Collector is receiving data:
+
    ```bash
    docker logs jan-server-otel-collector-1
    ```

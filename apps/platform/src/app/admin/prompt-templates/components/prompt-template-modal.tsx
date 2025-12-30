@@ -1,8 +1,5 @@
 'use client';
 
-import { createAdminAPIClient } from '@/lib/admin/api';
-import type { PromptTemplate, CreatePromptTemplateRequest, UpdatePromptTemplateRequest } from '@/lib/admin/api';
-import { getSharedAuthService } from '@/lib/auth/service';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type {
+  CreatePromptTemplateRequest,
+  PromptTemplate,
+  UpdatePromptTemplateRequest,
+} from '@/lib/admin/api';
+import { createAdminAPIClient } from '@/lib/admin/api';
+import { getSharedAuthService } from '@/lib/auth/service';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -165,9 +169,7 @@ export function PromptTemplateModal({ open, onClose, template }: PromptTemplateM
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {template ? 'Edit Prompt Template' : 'Create Prompt Template'}
-          </DialogTitle>
+          <DialogTitle>{template ? 'Edit Prompt Template' : 'Create Prompt Template'}</DialogTitle>
           <DialogDescription>
             {template
               ? 'Update the prompt template configuration'
@@ -300,7 +302,8 @@ export function PromptTemplateModal({ open, onClose, template }: PromptTemplateM
                 className="w-full px-3 py-2 text-sm border rounded-md font-mono focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <p className="text-xs text-muted-foreground">
-                Use <code className="bg-muted px-1 py-0.5 rounded">{'{{variable}}'}</code> syntax for variables
+                Use <code className="bg-muted px-1 py-0.5 rounded">{'{{variable}}'}</code> syntax
+                for variables
               </p>
             </div>
           </div>
@@ -334,9 +337,7 @@ export function PromptTemplateModal({ open, onClose, template }: PromptTemplateM
                 rows={6}
                 className="w-full px-3 py-2 text-sm border rounded-md font-mono focus:outline-none focus:ring-2 focus:ring-primary"
               />
-              <p className="text-xs text-muted-foreground">
-                Additional metadata in JSON format
-              </p>
+              <p className="text-xs text-muted-foreground">Additional metadata in JSON format</p>
             </div>
           </div>
         )}

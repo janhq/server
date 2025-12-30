@@ -32,6 +32,7 @@ No installation needed! Just use the wrapper scripts from the project root:
 - **`jan-cli.ps1`** - For Windows PowerShell
 
 The scripts will automatically:
+
 1. Check if jan-cli binary exists
 2. Build it if missing or outdated
 3. Run your command
@@ -64,6 +65,7 @@ make cli-install
 ```
 
 This will:
+
 - Build the `jan-cli` binary
 - Install it to `~/bin` (Linux/macOS) or `%USERPROFILE%\bin` (Windows)
 - Display instructions for adding to PATH if needed
@@ -207,16 +209,19 @@ jan-cli monitor export           # Export configuration files
 Validate configuration files for syntax errors and required fields.
 
 **Usage:**
+
 ```bash
 jan-cli config validate [flags]
 ```
 
 **Flags:**
+
 - `-f, --file string` - Config file to validate (default: `config/defaults.yaml`)
 - `--schema string` - Schema file to validate against
 - `-e, --env string` - Environment to validate (development, production, etc.)
 
 **Examples:**
+
 ```bash
 # Validate default configuration
 jan-cli config validate
@@ -233,17 +238,20 @@ jan-cli config validate --file custom-config.yaml --schema config-schema.json
 Export configuration in various formats.
 
 **Usage:**
+
 ```bash
 jan-cli config export [flags]
 ```
 
 **Flags:**
+
 - `-f, --file string` - Config file to export (default: `config/defaults.yaml`)
 - `--format string` - Output format: `env`, `docker-env`, `json`, `yaml` (default: `env`)
 - `--prefix string` - Add prefix to exported variables
 - `-o, --output string` - Output file (default: stdout)
 
 **Examples:**
+
 ```bash
 # Export as shell environment variables
 eval $(jan-cli config export)
@@ -263,16 +271,19 @@ jan-cli config export --prefix MYAPP --format env
 Display configuration values.
 
 **Usage:**
+
 ```bash
 jan-cli config show [service] [flags]
 ```
 
 **Flags:**
+
 - `-f, --file string` - Config file to read (default: `config/defaults.yaml`)
 - `--path string` - Config path to show (e.g., `services.llm-api`)
 - `--format string` - Output format: `yaml`, `json`, `value` (default: `yaml`)
 
 **Examples:**
+
 ```bash
 # Show entire configuration
 jan-cli config show
@@ -295,16 +306,19 @@ jan-cli config show --path services.llm-api.http.port --format value
 Generate Kubernetes Helm values file from configuration.
 
 **Usage:**
+
 ```bash
 jan-cli config k8s-values [flags]
 ```
 
 **Flags:**
+
 - `-e, --env string` - Environment (development, production, etc.) (default: `development`)
 - `-o, --output string` - Output file (default: stdout)
 - `--set stringSlice` - Override values (key=value)
 
 **Examples:**
+
 ```bash
 # Generate development values
 jan-cli config k8s-values --env development > k8s/values-dev.yaml
@@ -326,11 +340,13 @@ jan-cli config k8s-values --env production \
 List all available Jan Server services.
 
 **Usage:**
+
 ```bash
 jan-cli service list
 ```
 
 **Example Output:**
+
 ```
 Available services:
   llm-api         :8080  LLM API - OpenAI-compatible chat completions
@@ -344,15 +360,18 @@ Available services:
 Show logs for a specific service.
 
 **Usage:**
+
 ```bash
 jan-cli service logs [service] [flags]
 ```
 
 **Flags:**
+
 - `-n, --tail int` - Number of lines to show (default: 100)
 - `-f, --follow` - Follow log output
 
 **Examples:**
+
 ```bash
 # Show last 100 lines
 jan-cli service logs llm-api
@@ -369,11 +388,13 @@ jan-cli service logs llm-api --follow
 Show service status and health information.
 
 **Usage:**
+
 ```bash
 jan-cli service status [service]
 ```
 
 **Examples:**
+
 ```bash
 # Show status for all services
 jan-cli service status
@@ -389,11 +410,13 @@ jan-cli service status llm-api
 Initialize development environment.
 
 **Usage:**
+
 ```bash
 jan-cli dev setup
 ```
 
 This command will:
+
 - Check for required dependencies (Docker, Go)
 - Create `.env` file from template
 - Pull required Docker images
@@ -404,15 +427,18 @@ This command will:
 Generate a new service from template.
 
 **Usage:**
+
 ```bash
 jan-cli dev scaffold [service-name] [flags]
 ```
 
 **Flags:**
+
 - `-t, --template string` - Service template: `api`, `worker` (default: `api`)
 - `-p, --port string` - Service port
 
 **Examples:**
+
 ```bash
 # Scaffold API service
 jan-cli dev scaffold my-service
@@ -431,17 +457,20 @@ jan-cli dev scaffold my-worker --template worker
 Install monitoring dependencies (OpenTelemetry, etc.). This is a cross-platform command that works on Windows, Linux, and macOS.
 
 **Usage:**
+
 ```bash
 jan-cli monitor setup
 ```
 
 **What it does:**
+
 - Installs OpenTelemetry Go dependencies
 - Runs sanitizer tests
 - Verifies all monitoring files are present
 - Checks Docker and Docker Compose installation
 
 **Example:**
+
 ```bash
 jan-cli monitor setup
 ```
@@ -451,16 +480,19 @@ jan-cli monitor setup
 Start the monitoring stack.
 
 **Usage:**
+
 ```bash
 jan-cli monitor up      # Standard start
 jan-cli monitor dev     # Development mode with full sampling
 ```
 
 **Features:**
+
 - `monitor up`: Basic monitoring with normal sampling
 - `monitor dev`: Full sampling (AlwaysSample) for development/debugging
 
 **Example:**
+
 ```bash
 jan-cli monitor dev
 # Monitoring stack ready:
@@ -475,17 +507,20 @@ jan-cli monitor dev
 Validate that all monitoring services are healthy.
 
 **Usage:**
+
 ```bash
 jan-cli monitor test
 ```
 
 **Checks:**
+
 - Prometheus health endpoint
 - Grafana health endpoint
 - OTEL Collector health endpoint
 - Jaeger UI availability
 
 **Example:**
+
 ```bash
 jan-cli monitor test
 # Testing Prometheus...
@@ -500,16 +535,19 @@ jan-cli monitor test
 Show monitoring stack status and resource usage.
 
 **Usage:**
+
 ```bash
 jan-cli monitor status
 ```
 
 **Shows:**
+
 - Container status (running/stopped)
 - CPU usage per container
 - Memory usage per container
 
 **Example:**
+
 ```bash
 jan-cli monitor status
 ```
@@ -519,16 +557,19 @@ jan-cli monitor status
 Interactive queries for traces, metrics, and alert rules.
 
 **Usage:**
+
 ```bash
 jan-cli monitor query
 ```
 
 **Query Types:**
+
 1. Recent traces for a service (Jaeger)
 2. Current metric value (Prometheus)
 3. Alert rules status (Prometheus)
 
 **Example:**
+
 ```bash
 jan-cli monitor query
 # Select query:
@@ -544,15 +585,17 @@ jan-cli monitor query
 Stop the monitoring stack.
 
 **Usage:**
+
 ```bash
 jan-cli monitor down
 ```
 
 **Example:**
+
 ```bash
 jan-cli monitor down
 # [OK] Monitoring stack stopped
-# 
+#
 # To fully disable tracing, set ENABLE_TRACING=false in .env
 ```
 
@@ -561,6 +604,7 @@ jan-cli monitor down
 Delete all monitoring data (destructive operation).
 
 **Usage:**
+
 ```bash
 jan-cli monitor reset
 ```
@@ -568,6 +612,7 @@ jan-cli monitor reset
 **Warning:** This permanently deletes all Prometheus metrics and Jaeger traces.
 
 **Example:**
+
 ```bash
 jan-cli monitor reset
 # ⚠️  Delete all Prometheus/Jaeger data? [y/N]: y
@@ -579,11 +624,13 @@ jan-cli monitor reset
 Export monitoring configuration files.
 
 **Usage:**
+
 ```bash
 jan-cli monitor export
 ```
 
 **Exports:**
+
 - Docker Compose configuration
 - Prometheus configuration
 - OTEL Collector configuration
@@ -592,6 +639,7 @@ jan-cli monitor export
 **Output:** `exports/monitoring/`
 
 **Example:**
+
 ```bash
 jan-cli monitor export
 # [OK] Configs exported to exports/monitoring/

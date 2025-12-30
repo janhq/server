@@ -1,44 +1,44 @@
-import { Moon, Sun } from 'lucide-react'
-import { useRef } from 'react'
+import { Moon, Sun } from "lucide-react";
+import { useRef } from "react";
 
-import { Button } from '@/components/ui/button'
+import { Button } from "@janhq/interfaces/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useTheme } from '@/components/themes/theme-provider'
-import { THEME } from '@/constants'
+} from "@janhq/interfaces/dropdown-menu";
+import { useTheme } from "@/components/themes/theme-provider";
+import { THEME } from "@/constants";
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme()
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  const { setTheme } = useTheme();
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
     if (!buttonRef.current || !document.startViewTransition) {
-      setTheme(newTheme)
-      return
+      setTheme(newTheme);
+      return;
     }
 
     const { top, left, width, height } =
-      buttonRef.current.getBoundingClientRect()
-    const x = left + width / 2
-    const y = top + height / 2
+      buttonRef.current.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    )
+      Math.max(y, window.innerHeight - y),
+    );
 
     const transition = document.startViewTransition(() => {
-      setTheme(newTheme)
-    })
+      setTheme(newTheme);
+    });
 
     transition.ready.then(() => {
       const clipPath = [
         `circle(0px at ${x}px ${y}px)`,
         `circle(${endRadius}px at ${x}px ${y}px)`,
-      ]
+      ];
 
       document.documentElement.animate(
         {
@@ -46,12 +46,12 @@ export function ThemeToggle() {
         },
         {
           duration: 500,
-          easing: 'ease-in-out',
-          pseudoElement: '::view-transition-new(root)',
-        }
-      )
-    })
-  }
+          easing: "ease-in-out",
+          pseudoElement: "::view-transition-new(root)",
+        },
+      );
+    });
+  };
 
   return (
     <DropdownMenu>
@@ -79,5 +79,5 @@ export function ThemeToggle() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

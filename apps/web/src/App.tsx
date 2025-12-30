@@ -1,20 +1,34 @@
-import { AppSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { NavHeader } from '@/components/sidebar/nav-header'
+/* eslint-disable react-hooks/purity */
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/sidebar/sidebar";
+import { NavHeader } from "@/components/sidebar/nav-header";
+import { Confetti, ConfettiCanvas } from "@/components/animations/confetti";
+import ChatInput from "@/components/chat-input";
+import { usePrivateChat } from "./stores/private-chat-store";
+import { HatGlassesIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { useMemo } from "react";
 
-import ChatInput from '@/components/chat-input'
-import { usePrivateChat } from './stores/private-chat-store'
-import { HatGlassesIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
-import { SnowAnimation } from '@/components/snow-animation'
+const newYearPhrases = [
+  "New year, new chat?",
+  "What should 2026 be good for?",
+  "Hello 2026, what are we doing today?",
+  "New year, new project?",
+  "What should we try first in 2026?",
+  "2026 is here. Let us not panic",
+];
 
 function AppPageContent() {
-  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat)
+  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
+
+  const randomPhrase = useMemo(
+    () => newYearPhrases[Math.floor(Math.random() * newYearPhrases.length)],
+    [],
+  );
 
   return (
-    <>
-      <SnowAnimation />
+    <ConfettiCanvas>
       <AppSidebar />
       <SidebarInset>
         <NavHeader />
@@ -80,7 +94,7 @@ function AppPageContent() {
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'easeInOut',
+                            ease: "easeInOut",
                             delay: 0,
                           }}
                           className="size-3 bg-background/80 rounded-full"
@@ -90,7 +104,7 @@ function AppPageContent() {
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'easeInOut',
+                            ease: "easeInOut",
                             delay: 0.15,
                           }}
                           className="size-3 bg-background/80 rounded-full"
@@ -100,7 +114,7 @@ function AppPageContent() {
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'easeInOut',
+                            ease: "easeInOut",
                             delay: 0.3,
                           }}
                           className="size-3 bg-background/80 rounded-full"
@@ -120,14 +134,14 @@ function AppPageContent() {
                   </motion.p>
                 </>
               ) : (
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center gap-2">
                   <motion.h2
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
                     className="text-2xl font-medium mb-6 font-studio"
                   >
-                    How can I help you today?
+                    {randomPhrase}
                   </motion.h2>
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -135,11 +149,7 @@ function AppPageContent() {
                     transition={{ duration: 0.5, delay: 0.2 }}
                     className="mb-6"
                   >
-                    <img
-                      src="/tree.png"
-                      alt="Christmas tree"
-                      className="size-10 object-contain"
-                    />
+                    <Confetti />
                   </motion.div>
                 </div>
               )}
@@ -148,21 +158,21 @@ function AppPageContent() {
           </div>
         </div>
       </SidebarInset>
-    </>
-  )
+    </ConfettiCanvas>
+  );
 }
 
 export default function AppPage() {
-  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat)
+  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
 
   return (
     <SidebarProvider
       className={cn(
         isPrivateChat &&
-          '**:data-[slot="sidebar"]:opacity-0 **:data-[slot="sidebar"]:-translate-x-full **:data-[slot="sidebar-gap"]:w-0 **:data-[slot="sidebar"]:transition-all **:data-[slot="sidebar-gap"]:transition-all **:data-[slot="sidebar"]:duration-300 **:data-[slot="sidebar-gap"]:duration-300'
+          '**:data-[slot="sidebar"]:opacity-0 **:data-[slot="sidebar"]:-translate-x-full **:data-[slot="sidebar-gap"]:w-0 **:data-[slot="sidebar"]:transition-all **:data-[slot="sidebar-gap"]:transition-all **:data-[slot="sidebar"]:duration-300 **:data-[slot="sidebar-gap"]:duration-300',
       )}
     >
       <AppPageContent />
     </SidebarProvider>
-  )
+  );
 }

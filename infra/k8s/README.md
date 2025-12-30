@@ -26,7 +26,7 @@ This directory contains Helm charts for deploying the entire Jan Server stack:
                    +--------------+
                    |  PostgreSQL  |
                    +--------------+
-                           
+
 +--------------+   +--------------+   +--------------+
 |   Keycloak   |   |    Redis     |   |   SearXNG    |
 +--------------+   +--------------+   +--------------+
@@ -36,7 +36,7 @@ This directory contains Helm charts for deploying the entire Jan Server stack:
 +--------------+   +--------------+
 ```
 
-##  Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -135,24 +135,24 @@ open http://localhost:8085
 
 ### Core Services
 
-| Service | Port | Description | Status |
-|---------|------|-------------|--------|
-| LLM API | 8080 | Core LLM orchestration service | OK Working |
-| Media API | 8285 | Media upload and management | OK Working |
-| Response API | 8280 | Response generation service | OK Working |
-| MCP Tools | 8091 | Model Context Protocol tools | OK Working |
-| Keycloak | 8085 | Authentication server | OK Working |
-| Kong | 8000 | Unified API Gateway | WARNING Optional |
+| Service      | Port | Description                    | Status           |
+| ------------ | ---- | ------------------------------ | ---------------- |
+| LLM API      | 8080 | Core LLM orchestration service | OK Working       |
+| Media API    | 8285 | Media upload and management    | OK Working       |
+| Response API | 8280 | Response generation service    | OK Working       |
+| MCP Tools    | 8091 | Model Context Protocol tools   | OK Working       |
+| Keycloak     | 8085 | Authentication server          | OK Working       |
+| Kong         | 8000 | Unified API Gateway            | WARNING Optional |
 
 ### Supporting Services
 
-| Service | Port | Description | Status |
-|---------|------|-------------|--------|
-| PostgreSQL | 5432 | Primary database (3 databases) | OK Working |
-| Redis | 6379 | Caching and sessions | OK Working |
-| SearXNG | 8080 | Meta search engine | OK Working |
-| SandboxFusion | 8080 | Code interpreter | OK Working |
-| Vector Store | 3015 | File search database | Offline Disabled by default |
+| Service       | Port | Description                    | Status                      |
+| ------------- | ---- | ------------------------------ | --------------------------- |
+| PostgreSQL    | 5432 | Primary database (3 databases) | OK Working                  |
+| Redis         | 6379 | Caching and sessions           | OK Working                  |
+| SearXNG       | 8080 | Meta search engine             | OK Working                  |
+| SandboxFusion | 8080 | Code interpreter               | OK Working                  |
+| Vector Store  | 3015 | File search database           | Offline Disabled by default |
 
 ## Tools Configuration
 
@@ -167,39 +167,42 @@ open http://localhost:8085
 #### 1. Image Pull Policy (Important for Minikube)
 
 For minikube with locally built images:
+
 ```yaml
 llmApi:
   image:
-    pullPolicy: Never  # Use local images only
+    pullPolicy: Never # Use local images only
 
 postgresql:
   image:
     tag: "latest"
-    pullPolicy: Never  # Use local Bitnami images
+    pullPolicy: Never # Use local Bitnami images
 
 redis:
   image:
     tag: "latest"
-    pullPolicy: Never  # Use local Bitnami images
+    pullPolicy: Never # Use local Bitnami images
 ```
 
 For production with image registries:
+
 ```yaml
 llmApi:
   image:
-    pullPolicy: IfNotPresent  # Pull if not present
+    pullPolicy: IfNotPresent # Pull if not present
 ```
 
 #### 2. Database Configuration
 
 PostgreSQL creates the primary database automatically. Additional databases are created manually:
+
 ```yaml
 postgresql:
   auth:
     username: jan_user
-    password: jan_password  # Change in production!
+    password: jan_password # Change in production!
     database: jan_llm_api
-    postgresPassword: postgres  # Change in production!
+    postgresPassword: postgres # Change in production!
 ```
 
 **Note:** Media API and Keycloak databases must be created manually after deployment (see SETUP.md).
@@ -207,6 +210,7 @@ postgresql:
 #### 3. Environment Variables
 
 **LLM API** key settings:
+
 ```yaml
 llmApi:
   env:
@@ -216,13 +220,14 @@ llmApi:
     REMOTE_LLM_PROVIDER_URL: ""
     REMOTE_API_KEY: ""
     JAN_PROVIDER_CONFIGS: "true"
-    DB_POSTGRESQL_WRITE_DSN: "postgres://..."   # Auto-configured via secret
-    KEYCLOAK_BASE_URL: "http://..."  # Auto-configured
+    DB_POSTGRESQL_WRITE_DSN: "postgres://..." # Auto-configured via secret
+    KEYCLOAK_BASE_URL: "http://..." # Auto-configured
     BACKEND_CLIENT_ID: "llm-api"
     CLIENT: "jan-client"
 ```
 
 **Response API** key settings:
+
 ```yaml
 responseApi:
   env:
@@ -236,11 +241,12 @@ responseApi:
 ```
 
 **Media API** key settings:
+
 ```yaml
 mediaApi:
   env:
     MEDIA_API_PORT: "8285"
-    MEDIA_MAX_BYTES: "20971520"  # 20MB
+    MEDIA_MAX_BYTES: "20971520" # 20MB
     MEDIA_PROXY_DOWNLOAD: "true"
     MEDIA_RETENTION_DAYS: "30"
 ```
@@ -248,15 +254,16 @@ mediaApi:
 #### 4. S3 Storage (Media API)
 
 **Required** for media-api to function:
+
 ```yaml
 mediaApi:
   secrets:
-    serviceKey: "changeme-media-key"  # Required!
-    apiKey: "changeme-media-key"      # Required!
+    serviceKey: "changeme-media-key" # Required!
+    apiKey: "changeme-media-key" # Required!
     s3Endpoint: "https://s3.amazonaws.com"
-    s3Bucket: "your-bucket"  # Required!
-    s3AccessKey: "YOUR_KEY"   # Required!
-    s3SecretKey: "YOUR_SECRET"  # Required!
+    s3Bucket: "your-bucket" # Required!
+    s3AccessKey: "YOUR_KEY" # Required!
+    s3SecretKey: "YOUR_SECRET" # Required!
 ```
 
 #### 5. Keycloak Admin
@@ -265,19 +272,20 @@ mediaApi:
 keycloak:
   admin:
     username: admin
-    password: "changeme"  # Change in production!
+    password: "changeme" # Change in production!
   database:
-    password: keycloak  # Change in production!
+    password: keycloak # Change in production!
 ```
 
 #### 6. Resource Limits
 
 Adjust based on your environment:
+
 ```yaml
 llmApi:
   resources:
     requests:
-      memory: 256Mi  # Minimum for minikube
+      memory: 256Mi # Minimum for minikube
       cpu: 250m
     limits:
       memory: 512Mi
@@ -292,7 +300,7 @@ llmApi:
 ```yaml
 llmApi:
   autoscaling:
-    enabled: false  # Enable for production
+    enabled: false # Enable for production
     minReplicas: 2
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
@@ -318,7 +326,7 @@ llmApi:
 
 ## Global Deployment Scenarios
 
-### Development (Minikube) - Verified Working 
+### Development (Minikube) - Verified Working
 
 ```bash
 # Start minikube with enough resources
@@ -605,6 +613,7 @@ kubectl run -n jan-server curl-test --rm -it \
 ## Partner Support
 
 For issues and questions:
+
 - GitHub Issues: https://github.com/janhq/jan-server/issues
 - Documentation: https://docs.jan.ai
 - Community: https://discord.gg/jan

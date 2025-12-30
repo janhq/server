@@ -1,47 +1,47 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from "@janhq/interfaces/avatar";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
-import { useAuth } from '@/stores/auth-store'
-import { getInitialsAvatar } from '@/lib/utils'
-import { useTheme } from '@/components/themes/theme-provider'
-import { ChevronsUpDown, CircleCheck, Monitor, Moon, Sun } from 'lucide-react'
-import { Button } from '../ui/button'
-import { useRef } from 'react'
-import { THEME } from '@/constants'
+} from "@janhq/interfaces/dropdrawer";
+import { useAuth } from "@/stores/auth-store";
+import { getInitialsAvatar } from "@/lib/utils";
+import { useTheme } from "@/components/themes/theme-provider";
+import { ChevronsUpDown, CircleCheck, Monitor, Moon, Sun } from "lucide-react";
+import { Button } from "@janhq/interfaces/button";
+import { useRef } from "react";
+import { THEME } from "@/constants";
 
 export function GeneralSettings() {
-  const user = useAuth((state) => state.user)
-  const { theme, setTheme } = useTheme()
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  const user = useAuth((state) => state.user);
+  const { theme, setTheme } = useTheme();
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
     if (!buttonRef.current || !document.startViewTransition) {
-      setTheme(newTheme)
-      return
+      setTheme(newTheme);
+      return;
     }
 
     const { top, left, width, height } =
-      buttonRef.current.getBoundingClientRect()
-    const x = left + width / 2
-    const y = top + height / 2
+      buttonRef.current.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    )
+      Math.max(y, window.innerHeight - y),
+    );
 
     const transition = document.startViewTransition(() => {
-      setTheme(newTheme)
-    })
+      setTheme(newTheme);
+    });
 
     transition.ready.then(() => {
       const clipPath = [
         `circle(0px at ${x}px ${y}px)`,
         `circle(${endRadius}px at ${x}px ${y}px)`,
-      ]
+      ];
 
       document.documentElement.animate(
         {
@@ -49,38 +49,38 @@ export function GeneralSettings() {
         },
         {
           duration: 500,
-          easing: 'ease-in-out',
-          pseudoElement: '::view-transition-new(root)',
-        }
-      )
-    })
-  }
+          easing: "ease-in-out",
+          pseudoElement: "::view-transition-new(root)",
+        },
+      );
+    });
+  };
 
   const getThemeDisplay = () => {
     switch (theme) {
       case THEME.LIGHT:
-        return 'Light'
+        return "Light";
       case THEME.DARK:
-        return 'Dark'
+        return "Dark";
       case THEME.SYSTEM:
-        return 'System'
+        return "System";
       default:
-        return 'System'
+        return "System";
     }
-  }
+  };
 
   const getThemeIcon = () => {
     switch (theme) {
       case THEME.LIGHT:
-        return <Sun className="size-4 text-muted-foreground" />
+        return <Sun className="size-4 text-muted-foreground" />;
       case THEME.DARK:
-        return <Moon className="size-4 text-muted-foreground" />
+        return <Moon className="size-4 text-muted-foreground" />;
       case THEME.SYSTEM:
-        return <Monitor className="size-4 text-muted-foreground" />
+        return <Monitor className="size-4 text-muted-foreground" />;
       default:
-        return <Monitor className="size-4 text-muted-foreground" />
+        return <Monitor className="size-4 text-muted-foreground" />;
     }
-  }
+  };
 
   return (
     <div>
@@ -90,7 +90,7 @@ export function GeneralSettings() {
         <Avatar className="size-12">
           <AvatarImage src={user?.avatar} alt={user?.name} />
           <AvatarFallback className="bg-primary text-background text-xl font-semibold">
-            {getInitialsAvatar(user?.name || '')}
+            {getInitialsAvatar(user?.name || "")}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 ">
@@ -165,5 +165,5 @@ export function GeneralSettings() {
         </DropDrawer>
       </div>
     </div>
-  )
+  );
 }

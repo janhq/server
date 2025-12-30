@@ -1,6 +1,6 @@
-import { fetchJsonWithAuth } from '@/lib/api-client'
+import { fetchJsonWithAuth } from "@/lib/api-client";
 
-declare const JAN_API_BASE_URL: string
+declare const JAN_API_BASE_URL: string;
 
 export const shareService = {
   /**
@@ -8,15 +8,15 @@ export const shareService = {
    */
   createShare: async (
     conversationId: string,
-    request: CreateShareRequest
+    request: CreateShareRequest,
   ): Promise<ShareResponse> => {
     return fetchJsonWithAuth<ShareResponse>(
       `${JAN_API_BASE_URL}v1/conversations/${conversationId}/share?branch=MAIN`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(request),
-      }
-    )
+      },
+    );
   },
 
   /**
@@ -24,15 +24,17 @@ export const shareService = {
    */
   listShares: async (conversationId: string): Promise<ListSharesResponse> => {
     return fetchJsonWithAuth<ListSharesResponse>(
-      `${JAN_API_BASE_URL}v1/conversations/${conversationId}/shares`
-    )
+      `${JAN_API_BASE_URL}v1/conversations/${conversationId}/shares`,
+    );
   },
 
   /**
    * List all shares across all conversations
    */
   listAllShares: async (): Promise<ListSharesResponse> => {
-    return fetchJsonWithAuth<ListSharesResponse>(`${JAN_API_BASE_URL}v1/shares`)
+    return fetchJsonWithAuth<ListSharesResponse>(
+      `${JAN_API_BASE_URL}v1/shares`,
+    );
   },
 
   /**
@@ -40,14 +42,14 @@ export const shareService = {
    */
   revokeShare: async (
     conversationId: string,
-    shareId: string
+    shareId: string,
   ): Promise<DeleteShareResponse> => {
     return fetchJsonWithAuth<DeleteShareResponse>(
       `${JAN_API_BASE_URL}v1/conversations/${conversationId}/shares/${shareId}`,
       {
-        method: 'DELETE',
-      }
-    )
+        method: "DELETE",
+      },
+    );
   },
 
   /**
@@ -57,9 +59,9 @@ export const shareService = {
     return fetchJsonWithAuth<DeleteShareResponse>(
       `${JAN_API_BASE_URL}v1/shares/${shareId}`,
       {
-        method: 'DELETE',
-      }
-    )
+        method: "DELETE",
+      },
+    );
   },
 
   /**
@@ -69,17 +71,17 @@ export const shareService = {
     const response = await fetch(
       `${JAN_API_BASE_URL}v1/public/shares/${slug}`,
       {
-        cache: 'no-store', // Prevent browser caching
-      }
-    )
+        cache: "no-store", // Prevent browser caching
+      },
+    );
 
     if (!response.ok) {
       if (response.status === 410) {
-        throw new Error('This share has been revoked')
+        throw new Error("This share has been revoked");
       }
-      throw new Error('Failed to fetch share')
+      throw new Error("Failed to fetch share");
     }
 
-    return response.json()
+    return response.json();
   },
-}
+};

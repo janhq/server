@@ -1,9 +1,14 @@
 'use client';
 
-import { createAdminAPIClient } from '@/lib/admin/api';
-import type { MCPTool } from '@/lib/admin/api';
-import { getSharedAuthService } from '@/lib/auth/service';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -20,14 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import type { MCPTool } from '@/lib/admin/api';
+import { createAdminAPIClient } from '@/lib/admin/api';
+import { getSharedAuthService } from '@/lib/auth/service';
 import { Edit, Loader2, MoreHorizontal, Search, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MCPToolModal } from './components/mcp-tool-modal';
@@ -82,7 +82,7 @@ export default function MCPToolsPage() {
       if (!token) throw new Error('No authentication token');
 
       const client = createAdminAPIClient(token);
-      
+
       if (tool.is_active) {
         await client.mcpTools.deactivateTool(tool.public_id);
       } else {
@@ -114,7 +114,7 @@ export default function MCPToolsPage() {
     searchTerm
       ? tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tool.tool_key.toLowerCase().includes(searchTerm.toLowerCase())
-      : true
+      : true,
   );
 
   return (
@@ -147,7 +147,7 @@ export default function MCPToolsPage() {
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
-                {cat.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {cat.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
               </SelectItem>
             ))}
           </SelectContent>
@@ -197,29 +197,19 @@ export default function MCPToolsPage() {
                   <TableRow key={tool.public_id}>
                     <TableCell className="font-medium">{tool.name}</TableCell>
                     <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {tool.tool_key}
-                      </code>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{tool.tool_key}</code>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {tool.category}
-                      </Badge>
+                      <Badge variant="outline">{tool.category}</Badge>
                     </TableCell>
-                    <TableCell className="max-w-[300px] truncate">
-                      {tool.description}
-                    </TableCell>
+                    <TableCell className="max-w-[300px] truncate">{tool.description}</TableCell>
                     <TableCell>
                       <Badge variant={tool.is_active ? 'default' : 'secondary'}>
                         {tool.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {tool.disallowed_keywords?.length || 0}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(tool.updated_at).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell>{tool.disallowed_keywords?.length || 0}</TableCell>
+                    <TableCell>{new Date(tool.updated_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -248,11 +238,7 @@ export default function MCPToolsPage() {
       )}
 
       {/* Modal */}
-      <MCPToolModal
-        open={isModalOpen}
-        onClose={handleModalClose}
-        tool={selectedTool}
-      />
+      <MCPToolModal open={isModalOpen} onClose={handleModalClose} tool={selectedTool} />
     </div>
   );
 }

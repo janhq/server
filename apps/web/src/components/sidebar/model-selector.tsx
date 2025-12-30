@@ -1,80 +1,80 @@
-import { useEffect, useState } from 'react'
-import { Check, ChevronsUpDown, Box } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { Check, ChevronsUpDown, Box } from "lucide-react";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
-import { Button } from '@/components/ui/button'
-import { Jan } from '@/components/ui/svgs/jan'
-import { useModels } from '@/stores/models-store'
-import { useProfile } from '@/stores/profile-store'
-import { useAnimationStore } from '@/stores/animation-store'
-import { cn } from '@/lib/utils'
+} from "@janhq/interfaces/dropdrawer";
+import { Button } from "@janhq/interfaces/button";
+import { Jan } from "@janhq/interfaces/svgs/jan";
+import { useModels } from "@/stores/models-store";
+import { useProfile } from "@/stores/profile-store";
+import { useAnimationStore } from "@/stores/animation-store";
+import { cn } from "@/lib/utils";
 
 export function ModelSelector() {
-  const [open, setOpen] = useState(false)
-  const [isReady, setIsReady] = useState(false)
-  const models = useModels((state) => state.models)
-  const fetchPreferences = useProfile((state) => state.fetchPreferences)
-  const updatePreferences = useProfile((state) => state.updatePreferences)
-  const getModels = useModels((state) => state.getModels)
-  const selectedModel = useModels((state) => state.selectedModel)
-  const setSelectedModel = useModels((state) => state.setSelectedModel)
-  const loading = useModels((state) => state.loading)
+  const [open, setOpen] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const models = useModels((state) => state.models);
+  const fetchPreferences = useProfile((state) => state.fetchPreferences);
+  const updatePreferences = useProfile((state) => state.updatePreferences);
+  const getModels = useModels((state) => state.getModels);
+  const selectedModel = useModels((state) => state.selectedModel);
+  const setSelectedModel = useModels((state) => state.setSelectedModel);
+  const loading = useModels((state) => state.loading);
 
   const modelSelectorAnimated = useAnimationStore(
-    (state) => state.modelSelectorAnimated
-  )
+    (state) => state.modelSelectorAnimated,
+  );
   const setModelSelectorAnimated = useAnimationStore(
-    (state) => state.setModelSelectorAnimated
-  )
-  const [shouldAnimate] = useState(() => !modelSelectorAnimated)
+    (state) => state.setModelSelectorAnimated,
+  );
+  const [shouldAnimate] = useState(() => !modelSelectorAnimated);
 
   useEffect(() => {
     const initialize = async () => {
-      await getModels()
+      await getModels();
       try {
-        const preferences = await fetchPreferences()
-        const selectedModelId = preferences?.preferences.selected_model
+        const preferences = await fetchPreferences();
+        const selectedModelId = preferences?.preferences.selected_model;
         if (selectedModelId) {
           // Get fresh models from store (not stale closure value)
-          const freshModels = useModels.getState().models
-          const model = freshModels.find((m) => m.id === selectedModelId)
+          const freshModels = useModels.getState().models;
+          const model = freshModels.find((m) => m.id === selectedModelId);
           if (model) {
-            setSelectedModel(model)
+            setSelectedModel(model);
           }
         }
       } catch (error) {
-        console.error('Failed to fetch preferences:', error)
+        console.error("Failed to fetch preferences:", error);
       }
-      setIsReady(true)
+      setIsReady(true);
       if (!modelSelectorAnimated) {
-        setModelSelectorAnimated()
+        setModelSelectorAnimated();
       }
-    }
-    initialize()
+    };
+    initialize();
   }, [
     fetchPreferences,
     getModels,
     setSelectedModel,
     modelSelectorAnimated,
     setModelSelectorAnimated,
-  ])
+  ]);
 
   const handleSelectModel = (model: Model) => {
-    setSelectedModel(model)
+    setSelectedModel(model);
     updatePreferences({
       preferences: {
         selected_model: model.id,
       },
-    })
-    setOpen(false)
-  }
+    });
+    setOpen(false);
+  };
 
   // Don't render until initialization is complete to prevent flashing
-  if (!isReady) return null
+  if (!isReady) return null;
 
   return (
     <DropDrawer open={open} onOpenChange={setOpen}>
@@ -83,27 +83,22 @@ export function ModelSelector() {
           <Button
             variant="outline"
             className={cn(
-              'justify-between rounded-full',
-              shouldAnimate && 'animate-in fade-in duration-200'
+              "justify-between rounded-full",
+              shouldAnimate && "animate-in fade-in duration-200",
             )}
           >
             <Jan className="size-4 shrink-0" />
             <span
               className={
                 selectedModel?.model_display_name
-                  ? 'truncate'
-                  : 'truncate text-muted-foreground'
+                  ? "truncate"
+                  : "truncate text-muted-foreground"
               }
             >
-              {selectedModel?.model_display_name || 'Select a model'}
+              {selectedModel?.model_display_name || "Select a model"}
             </span>
             <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
           </Button>
-          <img
-            src="/hat.png"
-            alt="Christmas tree"
-            className="size-9 object-contain absolute -top-3.5 -right-3 pointer-events-none select-none"
-          />
         </div>
       </DropDrawerTrigger>
       <DropDrawerContent align="start" className="p-2 md:w-70">
@@ -146,5 +141,5 @@ export function ModelSelector() {
         )}
       </DropDrawerContent>
     </DropDrawer>
-  )
+  );
 }
