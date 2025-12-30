@@ -1,48 +1,48 @@
 // @ts-nocheck -- skip type checking
 import { _runtime } from 'fumadocs-mdx/runtime/next';
 import * as docs_83 from '../content/docs/api-reference/admin-model-api/models/catalogs/bulk-toggle/post.mdx?collection=docs';
-import * as docs_74 from '../content/docs/api-reference/admin-model-api/models/catalogs/get.mdx?collection=docs';
-import * as docs_75 from '../content/docs/api-reference/admin-model-api/models/catalogs/patch.mdx?collection=docs';
-import * as docs_84 from '../content/docs/api-reference/admin-model-api/models/provider-models/bulk-toggle/post.mdx?collection=docs';
-import * as docs_76 from '../content/docs/api-reference/admin-model-api/models/provider-models/get.mdx?collection=docs';
-import * as docs_77 from '../content/docs/api-reference/admin-model-api/models/provider-models/patch.mdx?collection=docs';
-import * as docs_46 from '../content/docs/api-reference/admin-provider-api/providers/get.mdx?collection=docs';
-import * as docs_47 from '../content/docs/api-reference/admin-provider-api/providers/patch.mdx?collection=docs';
-import * as docs_48 from '../content/docs/api-reference/admin-provider-api/providers/post.mdx?collection=docs';
-import * as docs_49 from '../content/docs/api-reference/authentication-api/api-keys/delete.mdx?collection=docs';
-import * as docs_50 from '../content/docs/api-reference/authentication-api/api-keys/get.mdx?collection=docs';
-import * as docs_51 from '../content/docs/api-reference/authentication-api/api-keys/post.mdx?collection=docs';
-import * as docs_52 from '../content/docs/api-reference/authentication-api/callback/get.mdx?collection=docs';
-import * as docs_54 from '../content/docs/api-reference/authentication-api/guest-login/post.mdx?collection=docs';
-import * as docs_53 from '../content/docs/api-reference/authentication-api/login/get.mdx?collection=docs';
-import * as docs_55 from '../content/docs/api-reference/authentication-api/logout/get.mdx?collection=docs';
-import * as docs_56 from '../content/docs/api-reference/authentication-api/me/get.mdx?collection=docs';
-import * as docs_57 from '../content/docs/api-reference/authentication-api/refresh-token/post.mdx?collection=docs';
-import * as docs_58 from '../content/docs/api-reference/authentication-api/revoke/post.mdx?collection=docs';
-import * as docs_59 from '../content/docs/api-reference/authentication-api/upgrade/post.mdx?collection=docs';
-import * as docs_61 from '../content/docs/api-reference/authentication-api/validate-api-key/post.mdx?collection=docs';
-import * as docs_60 from '../content/docs/api-reference/authentication-api/validate/post.mdx?collection=docs';
+import * as docs_75 from '../content/docs/api-reference/admin-model-api/models/catalogs/get.mdx?collection=docs';
+import * as docs_76 from '../content/docs/api-reference/admin-model-api/models/catalogs/patch.mdx?collection=docs';
+import * as docs_82 from '../content/docs/api-reference/admin-model-api/models/provider-models/bulk-toggle/post.mdx?collection=docs';
+import * as docs_73 from '../content/docs/api-reference/admin-model-api/models/provider-models/get.mdx?collection=docs';
+import * as docs_74 from '../content/docs/api-reference/admin-model-api/models/provider-models/patch.mdx?collection=docs';
+import * as docs_49 from '../content/docs/api-reference/admin-provider-api/providers/get.mdx?collection=docs';
+import * as docs_50 from '../content/docs/api-reference/admin-provider-api/providers/patch.mdx?collection=docs';
+import * as docs_51 from '../content/docs/api-reference/admin-provider-api/providers/post.mdx?collection=docs';
+import * as docs_46 from '../content/docs/api-reference/authentication-api/api-keys/delete.mdx?collection=docs';
+import * as docs_47 from '../content/docs/api-reference/authentication-api/api-keys/get.mdx?collection=docs';
+import * as docs_48 from '../content/docs/api-reference/authentication-api/api-keys/post.mdx?collection=docs';
+import * as docs_84 from '../content/docs/api-reference/authentication-api/callback/get.mdx?collection=docs';
+import * as docs_52 from '../content/docs/api-reference/authentication-api/guest-login/post.mdx?collection=docs';
+import * as docs_54 from '../content/docs/api-reference/authentication-api/login/get.mdx?collection=docs';
+import * as docs_53 from '../content/docs/api-reference/authentication-api/logout/get.mdx?collection=docs';
+import * as docs_55 from '../content/docs/api-reference/authentication-api/me/get.mdx?collection=docs';
+import * as docs_56 from '../content/docs/api-reference/authentication-api/refresh-token/post.mdx?collection=docs';
+import * as docs_57 from '../content/docs/api-reference/authentication-api/revoke/post.mdx?collection=docs';
+import * as docs_58 from '../content/docs/api-reference/authentication-api/upgrade/post.mdx?collection=docs';
+import * as docs_60 from '../content/docs/api-reference/authentication-api/validate-api-key/post.mdx?collection=docs';
+import * as docs_59 from '../content/docs/api-reference/authentication-api/validate/post.mdx?collection=docs';
 import * as docs_3 from '../content/docs/api-reference/backward-compatibility.mdx?collection=docs';
 import * as docs_4 from '../content/docs/api-reference/chat-completions-api.mdx?collection=docs';
-import * as docs_69 from '../content/docs/api-reference/chat-completions-api/completions/post.mdx?collection=docs';
-import * as docs_70 from '../content/docs/api-reference/chat-completions-api/models/get.mdx?collection=docs';
-import * as docs_78 from '../content/docs/api-reference/conversations-api/conv-public-id/items/delete.mdx?collection=docs';
-import * as docs_79 from '../content/docs/api-reference/conversations-api/conv-public-id/items/get.mdx?collection=docs';
-import * as docs_80 from '../content/docs/api-reference/conversations-api/conv-public-id/items/post.mdx?collection=docs';
-import * as docs_62 from '../content/docs/api-reference/conversations-api/conversations/delete.mdx?collection=docs';
-import * as docs_63 from '../content/docs/api-reference/conversations-api/conversations/get.mdx?collection=docs';
-import * as docs_64 from '../content/docs/api-reference/conversations-api/conversations/post.mdx?collection=docs';
+import * as docs_61 from '../content/docs/api-reference/chat-completions-api/completions/post.mdx?collection=docs';
+import * as docs_62 from '../content/docs/api-reference/chat-completions-api/models/get.mdx?collection=docs';
+import * as docs_79 from '../content/docs/api-reference/conversations-api/conv-public-id/items/delete.mdx?collection=docs';
+import * as docs_80 from '../content/docs/api-reference/conversations-api/conv-public-id/items/get.mdx?collection=docs';
+import * as docs_81 from '../content/docs/api-reference/conversations-api/conv-public-id/items/post.mdx?collection=docs';
+import * as docs_67 from '../content/docs/api-reference/conversations-api/conversations/delete.mdx?collection=docs';
+import * as docs_68 from '../content/docs/api-reference/conversations-api/conversations/get.mdx?collection=docs';
+import * as docs_69 from '../content/docs/api-reference/conversations-api/conversations/post.mdx?collection=docs';
 import * as docs_5 from '../content/docs/api-reference/debugging-requests.mdx?collection=docs';
 import * as docs_6 from '../content/docs/api-reference/introduction.mdx?collection=docs';
-import * as docs_81 from '../content/docs/api-reference/model-api/models/catalogs/get.mdx?collection=docs';
-import * as docs_82 from '../content/docs/api-reference/model-api/models/providers/get.mdx?collection=docs';
-import * as docs_65 from '../content/docs/api-reference/projects-api/projects/delete.mdx?collection=docs';
-import * as docs_66 from '../content/docs/api-reference/projects-api/projects/get.mdx?collection=docs';
-import * as docs_67 from '../content/docs/api-reference/projects-api/projects/patch.mdx?collection=docs';
-import * as docs_68 from '../content/docs/api-reference/projects-api/projects/post.mdx?collection=docs';
-import * as docs_71 from '../content/docs/api-reference/server-api/healthz/get.mdx?collection=docs';
-import * as docs_72 from '../content/docs/api-reference/server-api/readyz/get.mdx?collection=docs';
-import * as docs_73 from '../content/docs/api-reference/server-api/version/get.mdx?collection=docs';
+import * as docs_77 from '../content/docs/api-reference/model-api/models/catalogs/get.mdx?collection=docs';
+import * as docs_78 from '../content/docs/api-reference/model-api/models/providers/get.mdx?collection=docs';
+import * as docs_63 from '../content/docs/api-reference/projects-api/projects/delete.mdx?collection=docs';
+import * as docs_64 from '../content/docs/api-reference/projects-api/projects/get.mdx?collection=docs';
+import * as docs_65 from '../content/docs/api-reference/projects-api/projects/patch.mdx?collection=docs';
+import * as docs_66 from '../content/docs/api-reference/projects-api/projects/post.mdx?collection=docs';
+import * as docs_70 from '../content/docs/api-reference/server-api/healthz/get.mdx?collection=docs';
+import * as docs_71 from '../content/docs/api-reference/server-api/readyz/get.mdx?collection=docs';
+import * as docs_72 from '../content/docs/api-reference/server-api/version/get.mdx?collection=docs';
 import * as docs_7 from '../content/docs/architecture/data-flow.mdx?collection=docs';
 import * as docs_8 from '../content/docs/architecture/index.mdx?collection=docs';
 import * as docs_9 from '../content/docs/architecture/observability.mdx?collection=docs';
@@ -352,260 +352,261 @@ export const docs = _runtime.docs<typeof _source.docs>(
     },
     {
       info: {
-        path: 'api-reference/admin-provider-api/providers/get.mdx',
-        fullPath: 'content/docs/api-reference/admin-provider-api/providers/get.mdx',
-      },
-      data: docs_46,
-    },
-    {
-      info: {
-        path: 'api-reference/admin-provider-api/providers/patch.mdx',
-        fullPath: 'content/docs/api-reference/admin-provider-api/providers/patch.mdx',
-      },
-      data: docs_47,
-    },
-    {
-      info: {
-        path: 'api-reference/admin-provider-api/providers/post.mdx',
-        fullPath: 'content/docs/api-reference/admin-provider-api/providers/post.mdx',
-      },
-      data: docs_48,
-    },
-    {
-      info: {
         path: 'api-reference/authentication-api/api-keys/delete.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/api-keys/delete.mdx',
       },
-      data: docs_49,
+      data: docs_46,
     },
     {
       info: {
         path: 'api-reference/authentication-api/api-keys/get.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/api-keys/get.mdx',
       },
-      data: docs_50,
+      data: docs_47,
     },
     {
       info: {
         path: 'api-reference/authentication-api/api-keys/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/api-keys/post.mdx',
       },
+      data: docs_48,
+    },
+    {
+      info: {
+        path: 'api-reference/admin-provider-api/providers/get.mdx',
+        fullPath: 'content/docs/api-reference/admin-provider-api/providers/get.mdx',
+      },
+      data: docs_49,
+    },
+    {
+      info: {
+        path: 'api-reference/admin-provider-api/providers/patch.mdx',
+        fullPath: 'content/docs/api-reference/admin-provider-api/providers/patch.mdx',
+      },
+      data: docs_50,
+    },
+    {
+      info: {
+        path: 'api-reference/admin-provider-api/providers/post.mdx',
+        fullPath: 'content/docs/api-reference/admin-provider-api/providers/post.mdx',
+      },
       data: docs_51,
-    },
-    {
-      info: {
-        path: 'api-reference/authentication-api/callback/get.mdx',
-        fullPath: 'content/docs/api-reference/authentication-api/callback/get.mdx',
-      },
-      data: docs_52,
-    },
-    {
-      info: {
-        path: 'api-reference/authentication-api/login/get.mdx',
-        fullPath: 'content/docs/api-reference/authentication-api/login/get.mdx',
-      },
-      data: docs_53,
     },
     {
       info: {
         path: 'api-reference/authentication-api/guest-login/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/guest-login/post.mdx',
       },
-      data: docs_54,
+      data: docs_52,
     },
     {
       info: {
         path: 'api-reference/authentication-api/logout/get.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/logout/get.mdx',
       },
-      data: docs_55,
+      data: docs_53,
+    },
+    {
+      info: {
+        path: 'api-reference/authentication-api/login/get.mdx',
+        fullPath: 'content/docs/api-reference/authentication-api/login/get.mdx',
+      },
+      data: docs_54,
     },
     {
       info: {
         path: 'api-reference/authentication-api/me/get.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/me/get.mdx',
       },
-      data: docs_56,
+      data: docs_55,
     },
     {
       info: {
         path: 'api-reference/authentication-api/refresh-token/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/refresh-token/post.mdx',
       },
-      data: docs_57,
+      data: docs_56,
     },
     {
       info: {
         path: 'api-reference/authentication-api/revoke/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/revoke/post.mdx',
       },
-      data: docs_58,
+      data: docs_57,
     },
     {
       info: {
         path: 'api-reference/authentication-api/upgrade/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/upgrade/post.mdx',
       },
-      data: docs_59,
+      data: docs_58,
     },
     {
       info: {
         path: 'api-reference/authentication-api/validate/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/validate/post.mdx',
       },
-      data: docs_60,
+      data: docs_59,
     },
     {
       info: {
         path: 'api-reference/authentication-api/validate-api-key/post.mdx',
         fullPath: 'content/docs/api-reference/authentication-api/validate-api-key/post.mdx',
       },
-      data: docs_61,
-    },
-    {
-      info: {
-        path: 'api-reference/conversations-api/conversations/delete.mdx',
-        fullPath: 'content/docs/api-reference/conversations-api/conversations/delete.mdx',
-      },
-      data: docs_62,
-    },
-    {
-      info: {
-        path: 'api-reference/conversations-api/conversations/get.mdx',
-        fullPath: 'content/docs/api-reference/conversations-api/conversations/get.mdx',
-      },
-      data: docs_63,
-    },
-    {
-      info: {
-        path: 'api-reference/conversations-api/conversations/post.mdx',
-        fullPath: 'content/docs/api-reference/conversations-api/conversations/post.mdx',
-      },
-      data: docs_64,
-    },
-    {
-      info: {
-        path: 'api-reference/projects-api/projects/delete.mdx',
-        fullPath: 'content/docs/api-reference/projects-api/projects/delete.mdx',
-      },
-      data: docs_65,
-    },
-    {
-      info: {
-        path: 'api-reference/projects-api/projects/get.mdx',
-        fullPath: 'content/docs/api-reference/projects-api/projects/get.mdx',
-      },
-      data: docs_66,
-    },
-    {
-      info: {
-        path: 'api-reference/projects-api/projects/patch.mdx',
-        fullPath: 'content/docs/api-reference/projects-api/projects/patch.mdx',
-      },
-      data: docs_67,
-    },
-    {
-      info: {
-        path: 'api-reference/projects-api/projects/post.mdx',
-        fullPath: 'content/docs/api-reference/projects-api/projects/post.mdx',
-      },
-      data: docs_68,
+      data: docs_60,
     },
     {
       info: {
         path: 'api-reference/chat-completions-api/completions/post.mdx',
         fullPath: 'content/docs/api-reference/chat-completions-api/completions/post.mdx',
       },
-      data: docs_69,
+      data: docs_61,
     },
     {
       info: {
         path: 'api-reference/chat-completions-api/models/get.mdx',
         fullPath: 'content/docs/api-reference/chat-completions-api/models/get.mdx',
       },
-      data: docs_70,
+      data: docs_62,
+    },
+    {
+      info: {
+        path: 'api-reference/projects-api/projects/delete.mdx',
+        fullPath: 'content/docs/api-reference/projects-api/projects/delete.mdx',
+      },
+      data: docs_63,
+    },
+    {
+      info: {
+        path: 'api-reference/projects-api/projects/get.mdx',
+        fullPath: 'content/docs/api-reference/projects-api/projects/get.mdx',
+      },
+      data: docs_64,
+    },
+    {
+      info: {
+        path: 'api-reference/projects-api/projects/patch.mdx',
+        fullPath: 'content/docs/api-reference/projects-api/projects/patch.mdx',
+      },
+      data: docs_65,
+    },
+    {
+      info: {
+        path: 'api-reference/projects-api/projects/post.mdx',
+        fullPath: 'content/docs/api-reference/projects-api/projects/post.mdx',
+      },
+      data: docs_66,
+    },
+    {
+      info: {
+        path: 'api-reference/conversations-api/conversations/delete.mdx',
+        fullPath: 'content/docs/api-reference/conversations-api/conversations/delete.mdx',
+      },
+      data: docs_67,
+    },
+    {
+      info: {
+        path: 'api-reference/conversations-api/conversations/get.mdx',
+        fullPath: 'content/docs/api-reference/conversations-api/conversations/get.mdx',
+      },
+      data: docs_68,
+    },
+    {
+      info: {
+        path: 'api-reference/conversations-api/conversations/post.mdx',
+        fullPath: 'content/docs/api-reference/conversations-api/conversations/post.mdx',
+      },
+      data: docs_69,
     },
     {
       info: {
         path: 'api-reference/server-api/healthz/get.mdx',
         fullPath: 'content/docs/api-reference/server-api/healthz/get.mdx',
       },
-      data: docs_71,
+      data: docs_70,
     },
     {
       info: {
         path: 'api-reference/server-api/readyz/get.mdx',
         fullPath: 'content/docs/api-reference/server-api/readyz/get.mdx',
       },
-      data: docs_72,
+      data: docs_71,
     },
     {
       info: {
         path: 'api-reference/server-api/version/get.mdx',
         fullPath: 'content/docs/api-reference/server-api/version/get.mdx',
       },
-      data: docs_73,
-    },
-    {
-      info: {
-        path: 'api-reference/admin-model-api/models/catalogs/get.mdx',
-        fullPath: 'content/docs/api-reference/admin-model-api/models/catalogs/get.mdx',
-      },
-      data: docs_74,
-    },
-    {
-      info: {
-        path: 'api-reference/admin-model-api/models/catalogs/patch.mdx',
-        fullPath: 'content/docs/api-reference/admin-model-api/models/catalogs/patch.mdx',
-      },
-      data: docs_75,
+      data: docs_72,
     },
     {
       info: {
         path: 'api-reference/admin-model-api/models/provider-models/get.mdx',
         fullPath: 'content/docs/api-reference/admin-model-api/models/provider-models/get.mdx',
       },
-      data: docs_76,
+      data: docs_73,
     },
     {
       info: {
         path: 'api-reference/admin-model-api/models/provider-models/patch.mdx',
         fullPath: 'content/docs/api-reference/admin-model-api/models/provider-models/patch.mdx',
       },
-      data: docs_77,
+      data: docs_74,
     },
     {
       info: {
-        path: 'api-reference/conversations-api/conv-public-id/items/delete.mdx',
-        fullPath: 'content/docs/api-reference/conversations-api/conv-public-id/items/delete.mdx',
+        path: 'api-reference/admin-model-api/models/catalogs/get.mdx',
+        fullPath: 'content/docs/api-reference/admin-model-api/models/catalogs/get.mdx',
       },
-      data: docs_78,
+      data: docs_75,
     },
     {
       info: {
-        path: 'api-reference/conversations-api/conv-public-id/items/get.mdx',
-        fullPath: 'content/docs/api-reference/conversations-api/conv-public-id/items/get.mdx',
+        path: 'api-reference/admin-model-api/models/catalogs/patch.mdx',
+        fullPath: 'content/docs/api-reference/admin-model-api/models/catalogs/patch.mdx',
       },
-      data: docs_79,
-    },
-    {
-      info: {
-        path: 'api-reference/conversations-api/conv-public-id/items/post.mdx',
-        fullPath: 'content/docs/api-reference/conversations-api/conv-public-id/items/post.mdx',
-      },
-      data: docs_80,
+      data: docs_76,
     },
     {
       info: {
         path: 'api-reference/model-api/models/catalogs/get.mdx',
         fullPath: 'content/docs/api-reference/model-api/models/catalogs/get.mdx',
       },
-      data: docs_81,
+      data: docs_77,
     },
     {
       info: {
         path: 'api-reference/model-api/models/providers/get.mdx',
         fullPath: 'content/docs/api-reference/model-api/models/providers/get.mdx',
+      },
+      data: docs_78,
+    },
+    {
+      info: {
+        path: 'api-reference/conversations-api/conv-public-id/items/delete.mdx',
+        fullPath: 'content/docs/api-reference/conversations-api/conv-public-id/items/delete.mdx',
+      },
+      data: docs_79,
+    },
+    {
+      info: {
+        path: 'api-reference/conversations-api/conv-public-id/items/get.mdx',
+        fullPath: 'content/docs/api-reference/conversations-api/conv-public-id/items/get.mdx',
+      },
+      data: docs_80,
+    },
+    {
+      info: {
+        path: 'api-reference/conversations-api/conv-public-id/items/post.mdx',
+        fullPath: 'content/docs/api-reference/conversations-api/conv-public-id/items/post.mdx',
+      },
+      data: docs_81,
+    },
+    {
+      info: {
+        path: 'api-reference/admin-model-api/models/provider-models/bulk-toggle/post.mdx',
+        fullPath:
+          'content/docs/api-reference/admin-model-api/models/provider-models/bulk-toggle/post.mdx',
       },
       data: docs_82,
     },
@@ -618,9 +619,8 @@ export const docs = _runtime.docs<typeof _source.docs>(
     },
     {
       info: {
-        path: 'api-reference/admin-model-api/models/provider-models/bulk-toggle/post.mdx',
-        fullPath:
-          'content/docs/api-reference/admin-model-api/models/provider-models/bulk-toggle/post.mdx',
+        path: 'api-reference/authentication-api/callback/get.mdx',
+        fullPath: 'content/docs/api-reference/authentication-api/callback/get.mdx',
       },
       data: docs_84,
     },
@@ -641,6 +641,20 @@ export const docs = _runtime.docs<typeof _source.docs>(
         ],
         description: 'Jan Platform Documentation',
         root: true,
+      },
+    },
+    {
+      info: { path: 'configuration/meta.json', fullPath: 'content/docs/configuration/meta.json' },
+      data: {
+        title: 'Configuration',
+        pages: [
+          'index',
+          'docker-compose',
+          'kubernetes',
+          'env-var-mapping',
+          'precedence',
+          'service-migration',
+        ],
       },
     },
     {
@@ -681,24 +695,31 @@ export const docs = _runtime.docs<typeof _source.docs>(
       },
     },
     {
-      info: { path: 'configuration/meta.json', fullPath: 'content/docs/configuration/meta.json' },
-      data: {
-        title: 'Configuration',
-        pages: [
-          'index',
-          'docker-compose',
-          'kubernetes',
-          'env-var-mapping',
-          'precedence',
-          'service-migration',
-        ],
-      },
-    },
-    {
       info: { path: 'conventions/meta.json', fullPath: 'content/docs/conventions/meta.json' },
       data: {
         title: 'Conventions',
         pages: ['index', 'conventions', 'architecture-patterns', 'design-patterns', 'workflow'],
+      },
+    },
+    {
+      info: { path: 'runbooks/meta.json', fullPath: 'content/docs/runbooks/meta.json' },
+      data: { title: 'Runbooks', pages: ['index', 'monitoring'] },
+    },
+    {
+      info: {
+        path: 'api-reference/admin-model-api/meta.json',
+        fullPath: 'content/docs/api-reference/admin-model-api/meta.json',
+      },
+      data: {
+        title: 'Admin Model API',
+        pages: [
+          'models/catalogs/get',
+          'models/provider-models/get',
+          'models/catalogs/bulk-toggle/post',
+          'models/provider-models/bulk-toggle/post',
+          'models/catalogs/patch',
+          'models/provider-models/patch',
+        ],
       },
     },
     {
@@ -729,27 +750,6 @@ export const docs = _runtime.docs<typeof _source.docs>(
       },
     },
     {
-      info: { path: 'runbooks/meta.json', fullPath: 'content/docs/runbooks/meta.json' },
-      data: { title: 'Runbooks', pages: ['index', 'monitoring'] },
-    },
-    {
-      info: {
-        path: 'api-reference/admin-model-api/meta.json',
-        fullPath: 'content/docs/api-reference/admin-model-api/meta.json',
-      },
-      data: {
-        title: 'Admin Model API',
-        pages: [
-          'models/catalogs/get',
-          'models/provider-models/get',
-          'models/catalogs/bulk-toggle/post',
-          'models/provider-models/bulk-toggle/post',
-          'models/catalogs/patch',
-          'models/provider-models/patch',
-        ],
-      },
-    },
-    {
       info: {
         path: 'api-reference/admin-provider-api/meta.json',
         fullPath: 'content/docs/api-reference/admin-provider-api/meta.json',
@@ -761,10 +761,27 @@ export const docs = _runtime.docs<typeof _source.docs>(
     },
     {
       info: {
-        path: 'api-reference/chat-completions-api/meta.json',
-        fullPath: 'content/docs/api-reference/chat-completions-api/meta.json',
+        path: 'api-reference/model-api/meta.json',
+        fullPath: 'content/docs/api-reference/model-api/meta.json',
       },
-      data: { title: 'Chat Completions API', pages: ['models/get', 'completions/post'] },
+      data: { title: 'Model API', pages: ['models/catalogs/get', 'models/providers/get'] },
+    },
+    {
+      info: {
+        path: 'api-reference/projects-api/meta.json',
+        fullPath: 'content/docs/api-reference/projects-api/meta.json',
+      },
+      data: {
+        title: 'Projects API',
+        pages: ['projects/get', 'projects/post', 'projects/patch', 'projects/delete'],
+      },
+    },
+    {
+      info: {
+        path: 'api-reference/server-api/meta.json',
+        fullPath: 'content/docs/api-reference/server-api/meta.json',
+      },
+      data: { title: 'Server API', pages: ['healthz/get', 'readyz/get', 'version/get'] },
     },
     {
       info: {
@@ -792,6 +809,13 @@ export const docs = _runtime.docs<typeof _source.docs>(
     },
     {
       info: {
+        path: 'api-reference/chat-completions-api/meta.json',
+        fullPath: 'content/docs/api-reference/chat-completions-api/meta.json',
+      },
+      data: { title: 'Chat Completions API', pages: ['models/get', 'completions/post'] },
+    },
+    {
+      info: {
         path: 'api-reference/conversations-api/meta.json',
         fullPath: 'content/docs/api-reference/conversations-api/meta.json',
       },
@@ -806,30 +830,6 @@ export const docs = _runtime.docs<typeof _source.docs>(
           'conversations/delete',
         ],
       },
-    },
-    {
-      info: {
-        path: 'api-reference/model-api/meta.json',
-        fullPath: 'content/docs/api-reference/model-api/meta.json',
-      },
-      data: { title: 'Model API', pages: ['models/catalogs/get', 'models/providers/get'] },
-    },
-    {
-      info: {
-        path: 'api-reference/projects-api/meta.json',
-        fullPath: 'content/docs/api-reference/projects-api/meta.json',
-      },
-      data: {
-        title: 'Projects API',
-        pages: ['projects/get', 'projects/post', 'projects/patch', 'projects/delete'],
-      },
-    },
-    {
-      info: {
-        path: 'api-reference/server-api/meta.json',
-        fullPath: 'content/docs/api-reference/server-api/meta.json',
-      },
-      data: { title: 'Server API', pages: ['healthz/get', 'readyz/get', 'version/get'] },
     },
   ],
 );
