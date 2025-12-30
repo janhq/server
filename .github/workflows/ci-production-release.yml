@@ -127,6 +127,7 @@ jobs:
       VITE_OAUTH_REDIRECT_URI: "https://chat.jan.ai/auth/callback"
       CLOUDFLARE_PROJECT_NAME: "jan-server-web"
       ENVIRONMENT: "prod"
+      VITE_REPORT_ISSUE_URL: "https://forms.gle/LoxNVacHqUT261sa9"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
