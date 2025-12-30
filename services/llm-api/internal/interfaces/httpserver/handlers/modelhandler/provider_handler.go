@@ -46,6 +46,14 @@ func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requ
 	if addProviderRequest.Active != nil {
 		active = *addProviderRequest.Active
 	}
+	defaultImageGenerate := false
+	if addProviderRequest.DefaultProviderImageGenerate != nil {
+		defaultImageGenerate = *addProviderRequest.DefaultProviderImageGenerate
+	}
+	defaultImageEdit := false
+	if addProviderRequest.DefaultProviderImageEdit != nil {
+		defaultImageEdit = *addProviderRequest.DefaultProviderImageEdit
+	}
 
 	result, err := providerHandler.providerService.RegisterProvider(ctx, domainmodel.RegisterProviderInput{
 		Name:      addProviderRequest.Name,
@@ -56,6 +64,8 @@ func (providerHandler *ProviderHandler) RegisterProvider(addProviderRequest requ
 		Metadata:  addProviderRequest.Metadata,
 		Active:    active,
 		Category:  domainmodel.ProviderCategory(addProviderRequest.Category),
+		DefaultImageGenerate: defaultImageGenerate,
+		DefaultImageEdit:     defaultImageEdit,
 	})
 	if err != nil {
 		return nil, platformerrors.AsError(ctx, platformerrors.LayerHandler, err, "register provider failed")
@@ -348,6 +358,8 @@ func (h *ProviderHandler) UpdateProvider(
 		APIKey:   req.APIKey,
 		Metadata: req.Metadata,
 		Active:   req.Active,
+		DefaultImageGenerate: req.DefaultProviderImageGenerate,
+		DefaultImageEdit:     req.DefaultProviderImageEdit,
 	}
 
 	updatedProvider, err := h.providerService.UpdateProvider(ctx, provider, updateInput)

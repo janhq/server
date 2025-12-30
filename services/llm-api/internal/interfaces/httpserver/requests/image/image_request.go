@@ -35,6 +35,9 @@ type ImageGenerationRequest struct {
 
 	// Jan-specific extensions:
 
+	// ProviderID optionally overrides the default image provider selection.
+	ProviderID string `json:"provider_id,omitempty" example:"prov_abc123"`
+
 	// ConversationID optionally links this generation to a conversation.
 	ConversationID string `json:"conversation_id,omitempty" example:"conv_abc123"`
 

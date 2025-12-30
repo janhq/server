@@ -169,6 +169,8 @@ export default function ProvidersManagementPage() {
     api_key?: string;
     metadata?: Record<string, string>;
     active?: boolean;
+    default_provider_image_generate?: boolean;
+    default_provider_image_edit?: boolean;
   }) {
     try {
       setIsSubmitting(true);
@@ -199,6 +201,8 @@ export default function ProvidersManagementPage() {
     url?: string;
     endpoints?: Endpoint[];
     active?: boolean;
+    default_provider_image_generate?: boolean;
+    default_provider_image_edit?: boolean;
   }) {
     if (!selectedProvider) return;
 
@@ -545,6 +549,9 @@ export default function ProvidersManagementPage() {
                   endpoints: endpoints.length ? endpoints : undefined,
                   api_key: (formData.get('api_key') as string) || undefined,
                   active: formData.get('active') === 'on',
+                  default_provider_image_generate:
+                    formData.get('default_provider_image_generate') === 'on',
+                  default_provider_image_edit: formData.get('default_provider_image_edit') === 'on',
                   metadata,
                 });
               }}
@@ -645,6 +652,30 @@ export default function ProvidersManagementPage() {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
+                    name="default_provider_image_generate"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Generate</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/generations
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_edit"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Edit</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/edits
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
                     name="metadata_auto_enable"
                     defaultChecked
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
@@ -720,6 +751,9 @@ export default function ProvidersManagementPage() {
                   base_url: baseUrl || undefined,
                   endpoints,
                   active: formData.get('active') === 'on',
+                  default_provider_image_generate:
+                    formData.get('default_provider_image_generate') === 'on',
+                  default_provider_image_edit: formData.get('default_provider_image_edit') === 'on',
                 });
               }}
               className="space-y-4"
@@ -786,6 +820,32 @@ export default function ProvidersManagementPage() {
                   />
                   <span className="text-sm font-medium">Active</span>
                   <span className="text-xs text-muted-foreground ml-auto">Enable this provider</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_generate"
+                    defaultChecked={!!selectedProvider.default_provider_image_generate}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Generate</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/generations
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_edit"
+                    defaultChecked={!!selectedProvider.default_provider_image_edit}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Edit</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/edits
+                  </span>
                 </label>
               </div>
 

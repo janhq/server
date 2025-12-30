@@ -94,7 +94,6 @@ curl -X POST http://localhost:8000/v1/images/generations \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A serene mountain landscape at sunset with vibrant orange and purple sky, photorealistic",
-    "model": "flux-schnell",
     "n": 1,
     "size": "1024x1024",
     "response_format": "url",
@@ -124,7 +123,6 @@ curl -X POST http://localhost:8000/v1/images/generations \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A cute robot holding a coffee cup, digital art style",
-    "model": "flux-schnell",
     "n": 1,
     "size": "512x512",
     "response_format": "url"
@@ -154,10 +152,12 @@ curl -X DELETE http://localhost:8000/v1/conversations/{{conversation_id}} \
 
 ## Image Generation Parameters
 
+Note: `model` is optional for image flows (both generate and edit).
+
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `prompt` | string | ✅ Yes | - | Text description of the image |
-| `model` | string | No | `flux-schnell` | Model: `flux-schnell`, `flux-dev` |
+| `model` | string | No | - | Optional model override (applies to generate and edit) |
 | `n` | integer | No | `1` | Number of images (1-10) |
 | `size` | string | No | `1024x1024` | Size: `512x512`, `1024x1024`, `1792x1024`, `1024x1792` |
 | `response_format` | string | No | `url` | Format: `url` or `b64_json` |

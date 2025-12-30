@@ -3,6 +3,7 @@ package imagehandler
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -95,7 +96,7 @@ func (h *ImageHandler) GenerateImage(
 	}
 
 	// Get active image provider
-	provider, err := h.providerService.FindActiveImageProvider(ctx)
+	provider, err := h.selectImageProvider(ctx, &request)
 	if err != nil {
 		log.Warn().Err(err).Msg("[ImageHandler] No active image provider found")
 		return nil, err
@@ -147,6 +148,37 @@ func (h *ImageHandler) GenerateImage(
 	return &ImageGenerationResult{
 		Response: response,
 	}, nil
+}
+
+func (h *ImageHandler) selectImageProvider(
+	ctx context.Context,
+	request *imagerequest.ImageGenerationRequest,
+) (*domainmodel.Provider, error) {
+	if request == nil {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeValidation,
+			"image generation request is required", nil, "image-request-missing")
+	}
+
+	if strings.TrimSpace(request.ProviderID) != "" {
+		provider, err := h.providerService.FindByPublicID(ctx, strings.TrimSpace(request.ProviderID))
+		if err != nil {
+			return nil, err
+		}
+		if provider == nil {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+				platformerrors.ErrorTypeNotFound,
+				"image provider not found", nil, "image-provider-not-found")
+		}
+		if !provider.Active || provider.Category != domainmodel.ProviderCategoryImage {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+				platformerrors.ErrorTypeValidation,
+				"image provider is not active or not an image provider", nil, "image-provider-invalid")
+		}
+		return provider, nil
+	}
+
+	return h.providerService.FindDefaultImageGenerateProvider(ctx)
 }
 
 // buildServiceRequest converts the HTTP request to a service request.

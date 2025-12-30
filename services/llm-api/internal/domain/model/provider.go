@@ -53,6 +53,8 @@ type Provider struct {
 	APIKeyHint      *string           `json:"api_key_hint,omitempty"` // last4 or source name, not the secret
 	IsModerated     bool              `json:"is_moderated"`           // whether provider enforces moderation upstream
 	Active          bool              `json:"active"`
+	DefaultImageGenerate bool         `json:"default_provider_image_generate"`
+	DefaultImageEdit     bool         `json:"default_provider_image_edit"`
 	Metadata        map[string]string `json:"metadata,omitempty"` // supports: image_input, file_attachment, description, etc.
 	LastSyncedAt    *time.Time        `json:"last_synced_at,omitempty"`
 	CreatedAt       time.Time         `json:"created_at"`
