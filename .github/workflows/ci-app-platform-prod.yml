@@ -2,15 +2,8 @@ name: CI - Platform App (Prod)
 
 on:
   push:
-    branches:
-      - release
-    paths:
-      - "apps/platform/**"
-      - "packages/shared-ui/**"
-      - "packages/shared-types/**"
-      - "packages/shared-utils/**"
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-app-platform"
 
 jobs:
   build-docker-x64:
@@ -21,7 +14,7 @@ jobs:
       docker-file: apps/platform/Dockerfile
       context: apps/platform
       registry-url: registry.menlo.ai
-      tags: registry.menlo.ai/server/platform:prod-${{ github.ref_name }}
+      tags: registry.menlo.ai/menlo-platform/platform:prod-${{ github.ref_name }}
       build-args: |
         NEXT_PUBLIC_JAN_BASE_URL=https://api.jan.ai
       is_push: ${{ github.event_name == 'push' }}
