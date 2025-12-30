@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
+      dedupe: ["react", "react-dom"],
     },
     define: {
       JAN_API_BASE_URL: JSON.stringify(env.JAN_API_BASE_URL),
