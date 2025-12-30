@@ -16,6 +16,7 @@ import { useModels } from '@/stores/models-store'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConversations } from '@/stores/conversation-store'
 import { mcpService } from '@/services/mcp-service'
+import { imageGenerationService } from '@/services/image-generation-service'
 import { useCapabilities } from '@/stores/capabilities-store'
 import { lastAssistantMessageIsCompleteWithToolCalls } from 'ai'
 import type { UIDataTypes, UIMessage, UITools } from 'ai'
@@ -25,6 +26,7 @@ import {
   findPrecedingAssistantMessageIndex,
   buildIdMapping,
   resolveMessageId,
+  buildMessageContent,
 } from '@/lib/message-utils'
 import { convertToUIMessages } from '@/lib/utils'
 import { useChatSessions } from '@/stores/chat-session-store'
@@ -40,6 +42,9 @@ import {
   SESSION_STORAGE_PREFIX,
   MESSAGE_ROLE,
 } from '@/constants'
+import { ApiError } from '@/lib/api-client'
+import { useNavigate } from '@tanstack/react-router'
+import { toast } from '@/components/ui/sonner'
 
 interface ThreadPageContentProps {
   conversationId?: string
@@ -54,20 +59,40 @@ export function ThreadPageContent({
   const models = useModels((state) => state.models)
   const setSelectedModel = useModels((state) => state.setSelectedModel)
   const getConversation = useConversations((state) => state.getConversation)
+  const [generatingImage, setGeneratingImage] = useState<boolean>(false)
   const initialMessageSentRef = useRef(false)
   const reasoningContainerRef = useRef<HTMLDivElement>(null)
   const deepResearchEnabled = useCapabilities(
     (state) => state.deepResearchEnabled
   )
   const enableThinking = useCapabilities((state) => state.reasoningEnabled)
+  const imageGenerationEnabled = useCapabilities(
+    (state) => state.imageGenerationEnabled
+  )
   const [conversationTitle, setConversationTitle] = useState<string>('')
+  const navigate = useNavigate()
+  const hasRedirectedRef = useRef(false)
+
+  const handleConversationNotFound = useCallback(() => {
+    if (hasRedirectedRef.current) return
+    hasRedirectedRef.current = true
+    toast.error('Conversation not found.')
+    navigate({ to: '/' })
+  }, [navigate])
 
   const provider = useMemo(
-    () => janProvider(conversationId, deepResearchEnabled, isPrivateChat, enableThinking),
+    () =>
+      janProvider(
+        conversationId,
+        deepResearchEnabled,
+        isPrivateChat,
+        enableThinking
+      ),
     [conversationId, deepResearchEnabled, isPrivateChat, enableThinking]
   )
 
   const getUIMessages = useConversations((state) => state.getUIMessages)
+  const createItems = useConversations((state) => state.createItems)
   const fetchingMessagesRef = useRef(false)
   const moveConversationToTop = useConversations(
     (state) => state.moveConversationToTop
@@ -91,6 +116,58 @@ export function ThreadPageContent({
       session?.chat.messages ?? state.getSessionData(chatSessionId).messages
     )
   }, [chatSessionId])
+
+  // Persist user message to server and map temp ID to backend ID
+  const createUserMessageItem = useCallback(
+    async (message: PromptInputMessage): Promise<string | null> => {
+      if (!conversationId || isPrivateChat) return null
+
+      const content = buildMessageContent(message)
+      if (content.length === 0) return null
+
+      // Capture index before async operation - message will be added here after sendMessage
+      const messageIndex = getCurrentMessages().length
+
+      // Skip if message at this index already has a backend ID or mapping
+      const existingMsg = getCurrentMessages()[messageIndex]
+      if (existingMsg) {
+        if (
+          existingMsg.id.startsWith('msg_') ||
+          sessionData.idMap.has(existingMsg.id)
+        ) {
+          return sessionData.idMap.get(existingMsg.id) ?? existingMsg.id
+        }
+      }
+
+      try {
+        const response = await createItems(conversationId, [
+          {
+            role: MESSAGE_ROLE.USER,
+            type: 'message',
+            content,
+          },
+        ])
+        const backendId = response.data?.[0]?.id ?? null
+
+        // Map temp ID to backend ID after sendMessage adds the message
+        if (backendId) {
+          setTimeout(() => {
+            const msg = getCurrentMessages()[messageIndex]
+            if (msg) {
+              sessionData.idMap.set(msg.id, backendId)
+            }
+          }, 0)
+        }
+
+        return backendId
+      } catch (error) {
+        console.error('Failed to create user message item:', error)
+        return null
+      }
+    },
+    [conversationId, isPrivateChat, createItems, getCurrentMessages, sessionData]
+  )
+
 
   // Check if we should follow up with tool calls (respects abort signal)
   const followUpMessage = ({
@@ -134,7 +211,9 @@ export function ThreadPageContent({
         !hadToolCalls &&
         !isAbort &&
         message?.parts.some((e) => e.type === CONTENT_TYPE.REASONING) &&
-        !message?.parts.some((e) => e.type === CONTENT_TYPE.TEXT && e.text.length > 0)
+        !message?.parts.some(
+          (e) => e.type === CONTENT_TYPE.TEXT && e.text.length > 0
+        )
       // After finishing a message, check if we need to resubmit for tool calls
       Promise.all(
         sessionData.tools.map(async (toolCall: any) => {
@@ -234,7 +313,15 @@ export function ThreadPageContent({
           .catch(console.error)
       }
     },
-    [conversationId, regenerateMessage, getCurrentMessages, setMessages, regenerate, getUIMessages, sessionData.idMap]
+    [
+      conversationId,
+      regenerateMessage,
+      getCurrentMessages,
+      setMessages,
+      regenerate,
+      getUIMessages,
+      sessionData.idMap,
+    ]
   )
 
   const handleRegenerateUserMessage = useCallback(
@@ -256,14 +343,19 @@ export function ThreadPageContent({
       }
 
       // Case 3: Temp ID with no mapping - try previous assistant message
-      const assistantIndex = findPrecedingAssistantMessageIndex(currentMessages, messageIndex)
+      const assistantIndex = findPrecedingAssistantMessageIndex(
+        currentMessages,
+        messageIndex
+      )
       if (assistantIndex !== -1) {
         const assistantId = currentMessages[assistantIndex].id
         const assistantRealId = resolveMessageId(assistantId, sessionData.idMap)
-        const assistantHasBackendId = assistantRealId !== assistantId || assistantId.startsWith('msg_')
+        const assistantHasBackendId =
+          assistantRealId !== assistantId || assistantId.startsWith('msg_')
 
         if (assistantHasBackendId) {
-          const assistantBackendId = assistantRealId !== assistantId ? assistantRealId : assistantId
+          const assistantBackendId =
+            assistantRealId !== assistantId ? assistantRealId : assistantId
           await executeRegenerate(assistantBackendId, messageIndex)
           return
         }
@@ -280,22 +372,52 @@ export function ThreadPageContent({
 
       // Case 5: Not first message but no backend IDs - abort (user might need to reload)
     },
-    [getCurrentMessages, sessionData.idMap, executeRegenerate, setMessages, regenerate]
+    [
+      getCurrentMessages,
+      sessionData.idMap,
+      executeRegenerate,
+      setMessages,
+      regenerate,
+    ]
   )
 
   const handleRegenerateAssistantMessage = useCallback(
     async (messageId: string, messageIndex: number) => {
       const currentMessages = getCurrentMessages()
       const realId = resolveMessageId(messageId, sessionData.idMap)
-      const userIndex = findPrecedingUserMessageIndex(currentMessages, messageIndex)
+      const userIndex = findPrecedingUserMessageIndex(
+        currentMessages,
+        messageIndex
+      )
 
       if (userIndex === -1) {
         // No user message found -> cant regenerate -> abort
         return
       }
 
-      // Use the resolved ID directly (either mapped or original backend ID from reload)
-      await executeRegenerate(realId, userIndex)
+      // Check if assistant message has a valid backend ID
+      const hasBackendId = realId !== messageId || messageId.startsWith('msg_')
+
+      if (hasBackendId) {
+        // Use assistant's backend ID
+        await executeRegenerate(realId, userIndex)
+        return
+      }
+
+      // No backend ID for assistant (e.g., stopped mid-stream)
+      // Try using the preceding user message's backend ID
+      const userMessage = currentMessages[userIndex]
+      const userRealId = resolveMessageId(userMessage.id, sessionData.idMap)
+      const userHasBackendId =
+        userRealId !== userMessage.id || userMessage.id.startsWith('msg_')
+
+      if (userHasBackendId) {
+        const userBackendId =
+          userRealId !== userMessage.id ? userRealId : userMessage.id
+        await executeRegenerate(userBackendId, userIndex)
+      }
+
+      // No backend IDs - abort (cannot regenerate without server state)
     },
     [getCurrentMessages, sessionData.idMap, executeRegenerate]
   )
@@ -305,7 +427,9 @@ export function ThreadPageContent({
       if (!conversationId) return
       try {
         const currentMessages = getCurrentMessages()
-        const messageIndex = currentMessages.findIndex((m) => m.id === messageId)
+        const messageIndex = currentMessages.findIndex(
+          (m) => m.id === messageId
+        )
         if (messageIndex === -1) return
 
         const message = currentMessages[messageIndex]
@@ -319,17 +443,94 @@ export function ThreadPageContent({
         console.error('Failed to regenerate:', error)
       }
     },
-    [conversationId, getCurrentMessages, handleRegenerateUserMessage, handleRegenerateAssistantMessage]
+    [
+      conversationId,
+      getCurrentMessages,
+      handleRegenerateUserMessage,
+      handleRegenerateAssistantMessage,
+    ]
   )
 
+  const generateImage = async (message: PromptInputMessage) => {
+    setGeneratingImage(true)
+    const prompt = message.text || ''
+
+    // Add user message to UI immediately
+    const tempUserId = `temp-user-${Date.now()}`
+    const userMessage: UIMessage = {
+      id: tempUserId,
+      role: MESSAGE_ROLE.USER,
+      parts: [{ type: CONTENT_TYPE.TEXT, text: prompt }],
+    }
+    setMessages([...getCurrentMessages(), userMessage])
+
+    try {
+      // Create user item in conversation
+
+      // Generate image
+      const imageResponse = await imageGenerationService.generateImage({
+        prompt,
+        n: 1,
+        size: '1024x1024',
+        response_format: 'url',
+        conversation_id: conversationId,
+        store: true,
+      })
+
+      // Create assistant message with image
+      const imageUrl = imageResponse.data[0]?.url
+      if (imageUrl) {
+        const tempAssistantId = `temp-assistant-${Date.now()}`
+        const assistantMessage: UIMessage = {
+          id: tempAssistantId,
+          role: MESSAGE_ROLE.ASSISTANT,
+          parts: [
+            {
+              type: CONTENT_TYPE.FILE,
+              url: imageUrl,
+              mediaType: 'image/png',
+            },
+          ],
+        }
+        setMessages([...getCurrentMessages(), assistantMessage])
+
+        // Move conversation to top
+        if (!isPrivateChat && conversationId) {
+          moveConversationToTop(conversationId)
+        }
+      }
+    } catch (error) {
+      console.error('Image generation failed:', error)
+      // TODO: Show error message to user
+    } finally {
+      setGeneratingImage(false)
+    }
+  }
+
   const handleSubmit = useCallback(
-    (message?: PromptInputMessage) => {
+    async (message?: PromptInputMessage) => {
       // Get the current session to check its status directly
       const currentSession = useChatSessions.getState().sessions[chatSessionId]
       const currentStatus = currentSession?.status ?? status
 
-      if (message && currentStatus !== CHAT_STATUS.STREAMING && currentStatus !== CHAT_STATUS.SUBMITTED) {
+      if (
+        message &&
+        currentStatus !== CHAT_STATUS.STREAMING &&
+        currentStatus !== CHAT_STATUS.SUBMITTED
+      ) {
         sessionData.tools = []
+
+        // Handle image generation mode
+        if (imageGenerationEnabled && conversationId) {
+          await generateImage(message)
+          return
+        }
+
+        // Normal message flow
+
+        // Persist to server (fire-and-forget, ID mapping handled in onFinish)
+        createUserMessageItem(message)
+
         sendMessage({
           text: message.text || 'Sent with attachments',
           files: message.files,
@@ -338,7 +539,10 @@ export function ThreadPageContent({
         if (conversationId && !isPrivateChat) {
           moveConversationToTop(conversationId)
         }
-      } else if (currentStatus === CHAT_STATUS.STREAMING || currentStatus === CHAT_STATUS.SUBMITTED) {
+      } else if (
+        currentStatus === CHAT_STATUS.STREAMING ||
+        currentStatus === CHAT_STATUS.SUBMITTED
+      ) {
         stop()
       } else {
         // Stop pending tool calls when user clicks stop (not streaming but tools are running)
@@ -349,7 +553,19 @@ export function ThreadPageContent({
         }
       }
     },
-    [chatSessionId, sendMessage, sessionData, status, stop, conversationId, isPrivateChat, moveConversationToTop]
+    [
+      chatSessionId,
+      sendMessage,
+      sessionData,
+      status,
+      stop,
+      conversationId,
+      isPrivateChat,
+      moveConversationToTop,
+      imageGenerationEnabled,
+      setMessages,
+      createUserMessageItem,
+    ]
   )
 
   // Load conversation metadata (only for persistent conversations)
@@ -370,6 +586,10 @@ export function ThreadPageContent({
           }
         })
         .catch((error) => {
+          if (error instanceof ApiError && error.status === 404) {
+            handleConversationNotFound()
+            return
+          }
           console.error('Failed to load conversation:', error)
         })
     }
@@ -406,7 +626,17 @@ export function ThreadPageContent({
           sessionStorage.removeItem(initialItemsKey)
         }
 
-        // Send the message
+        if(imageGenerationEnabled && conversationId) {
+          // Handle image generation mode
+          generateImage(message)
+          return
+        }
+
+        
+
+        // Persist to server (fire-and-forget, ID mapping handled in onFinish)
+        createUserMessageItem(message)
+
         sendMessage({
           text: message.text,
           files: message.files,
@@ -419,7 +649,15 @@ export function ThreadPageContent({
         console.error('Failed to parse initial message:', error)
       }
     }
-  }, [conversationId, isPrivateChat, sendMessage, sessionData, setMessages, moveConversationToTop])
+  }, [
+    conversationId,
+    isPrivateChat,
+    sendMessage,
+    sessionData,
+    setMessages,
+    moveConversationToTop,
+    createUserMessageItem,
+  ])
 
   // Fetch messages for old conversations (only for persistent conversations)
   useEffect(() => {
@@ -453,6 +691,10 @@ export function ThreadPageContent({
           if (!initialMessageSentRef.current) setMessages(uiMessages)
         })
         .catch((error) => {
+          if (error instanceof ApiError && error.status === 404) {
+            handleConversationNotFound()
+            return
+          }
           console.error('Failed to load conversation items:', error)
         })
         .finally(() => {
@@ -494,12 +736,16 @@ export function ThreadPageContent({
                     message={message}
                     isFirstMessage={messageIndex === 0}
                     isLastMessage={messageIndex === messages.length - 1}
-                    status={status}
+                    status={generatingImage ? CHAT_STATUS.STREAMING : status}
                     reasoningContainerRef={reasoningContainerRef}
                     onRegenerate={conversationId ? handleRegenerate : undefined}
                   />
                 ))}
-                {status === CHAT_STATUS.SUBMITTED && <Loader />}
+                {(generatingImage
+                  ? CHAT_STATUS.STREAMING
+                  : status === CHAT_STATUS.SUBMITTED) && (
+                  <Loader className="animate-spin" />
+                )}
               </ConversationContent>
               <ConversationScrollButton />
             </Conversation>
@@ -509,7 +755,13 @@ export function ThreadPageContent({
           <div className="px-4 py-4 max-w-3xl mx-auto w-full">
             <ChatInput
               submit={handleSubmit}
-              status={sessionData.tools.length > 0 ? CHAT_STATUS.STREAMING : status}
+              status={
+                sessionData.tools.length > 0
+                  ? CHAT_STATUS.STREAMING
+                  : generatingImage
+                    ? CHAT_STATUS.STREAMING
+                    : status
+              }
               conversationId={conversationId}
             />
           </div>
