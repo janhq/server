@@ -3,21 +3,16 @@ name: CI - Platform App (Dev)
 on:
   push:
     branches:
-      - dev
-      - dev-test
       - main
     paths:
       - "apps/platform/**"
-      - "packages/shared-ui/**"
-      - "packages/shared-types/**"
-      - "packages/shared-utils/**"
+      - ".github/workflows/ci-app-platform-dev.yml"
   pull_request:
     branches:
-      - dev
-      - dev-test
       - main
     paths:
       - "apps/platform/**"
+      - ".github/workflows/ci-app-platform-dev.yml"
 
 jobs:
   build-docker-x64:
