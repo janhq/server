@@ -1,0 +1,161 @@
+name: CI - Production Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+
+  build-llm-api:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/llm-api/Dockerfile
+      context: services/llm-api
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/llm-api:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-mcp-tools:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/mcp-tools/Dockerfile
+      context: services/mcp-tools
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/mcp-tools:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-media-api:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/media-api/Dockerfile
+      context: services/media-api
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/media-api:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-response-api:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/response-api/Dockerfile
+      context: services/response-api
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/response-api:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-memory-tools:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/memory-tools/Dockerfile
+      context: services/memory-tools
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/memory-tools:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-vector-store:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/mcp-tools/tools/vector-store-service/Dockerfile
+      context: services/mcp-tools/tools/vector-store-service
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/vector-store-service:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-realtime-api:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: services/realtime-api/Dockerfile
+      context: services/realtime-api
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/jan-server/realtime-api:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        VERSION_TAG=${{ github.ref_name }}
+
+  build-platform:
+    uses: ./.github/workflows/_reusable-docker.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-24-04-docker
+      docker-file: apps/platform/Dockerfile
+      context: apps/platform
+      registry-url: registry.menlo.ai
+      tags: registry.menlo.ai/server/platform:prod-${{ github.ref_name }}
+      is_push: true
+      build-args: |
+        NEXT_PUBLIC_JAN_BASE_URL=https://api.jan.ai
+
+  build-web:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      deployments: write
+      pull-requests: write
+    env:
+      JAN_BASE_URL: "https://api.jan.ai/v1"
+      JAN_API_BASE_URL: "https://api.jan.ai/"
+      VITE_GA_ID: "G-BWGTGCT2MC"
+      VITE_AUTH_URL: "https://auth.jan.ai"
+      VITE_AUTH_REALM: "jan"
+      VITE_AUTH_CLIENT_ID: "jan-client"
+      VITE_OAUTH_REDIRECT_URI: "https://chat.jan.ai/auth/callback"
+      CLOUDFLARE_PROJECT_NAME: "jan-server-web"
+      ENVIRONMENT: "prod"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Install jq
+        uses: dcarbone/install-jq-action@v2.0.1
+      - name: Install dependencies and build
+        run: |
+          cd packages/interfaces/ && npm install --workspaces=false && cd ../../
+          cd apps/web/ && npm install --workspaces=false && npx vite build
+        env:
+          JAN_BASE_URL: ${{ env.JAN_BASE_URL }}
+          JAN_API_BASE_URL: ${{ env.JAN_API_BASE_URL }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          VITE_AUTH_URL: ${{ env.VITE_AUTH_URL }}
+          VITE_AUTH_REALM: ${{ env.VITE_AUTH_REALM }}
+          VITE_AUTH_CLIENT_ID: ${{ env.VITE_AUTH_CLIENT_ID }}
+          VITE_OAUTH_REDIRECT_URI: ${{ env.VITE_OAUTH_REDIRECT_URI }}
+          VITE_GA_ID: ${{ env.VITE_GA_ID }}
+
+      - name: Add headers
+        run: cp apps/web/_headers apps/web/dist/_headers
+      - name: Publish to Cloudflare Pages Production
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ env.CLOUDFLARE_PROJECT_NAME }}
+          directory: ./apps/web/dist
+          branch: main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

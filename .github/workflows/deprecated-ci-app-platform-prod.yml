@@ -1,4 +1,4 @@
-name: CI - Platform App (Prod)
+name: Deprecated/CI - Platform App (Prod)
 
 on:
   push:
