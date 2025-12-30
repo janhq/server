@@ -288,6 +288,21 @@ func (s *ConversationService) GetConversationItems(ctx context.Context, conv *Co
 	return convertItemPtrsToItems(items), nil
 }
 
+// CountConversationItems returns the number of items in a conversation branch.
+func (s *ConversationService) CountConversationItems(ctx context.Context, conv *Conversation, branchName string) (int, error) {
+	if conv == nil {
+		return 0, nil
+	}
+	if branchName == "" {
+		branchName = BranchMain
+	}
+	count, err := s.repo.CountItems(ctx, conv.ID, branchName)
+	if err != nil {
+		return 0, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, "failed to count conversation items")
+	}
+	return count, nil
+}
+
 // GetConversationItem retrieves a single item from a conversation
 func (s *ConversationService) GetConversationItem(ctx context.Context, conv *Conversation, itemPublicID string) (*Item, error) {
 	// Get the item directly by public ID from repository

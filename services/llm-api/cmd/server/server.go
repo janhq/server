@@ -22,11 +22,21 @@ type Application struct {
 }
 
 func init() {
-	logger.GetLogger()
-	_, err := config.Load()
+	_, err := logger.New("info", "console")
+	if err != nil {
+		log := logger.GetLogger()
+		log.Fatal().Err(err).Msg("failed to initialize default logger")
+	}
+
+	cfg, err := config.Load()
 	if err != nil {
 		log := logger.GetLogger()
 		log.Fatal().Err(err).Msg("failed to load config")
+	}
+
+	if _, err := logger.New(cfg.LogLevel, cfg.LogFormat); err != nil {
+		log := logger.GetLogger()
+		log.Fatal().Err(err).Msg("failed to initialize logger")
 	}
 }
 

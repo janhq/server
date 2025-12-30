@@ -43,6 +43,9 @@ func (repo *ProviderModelGormRepository) applyFilter(query *gormgen.Query, sql g
 	if filter.ModelPublicIDs != nil && len(*filter.ModelPublicIDs) > 0 {
 		sql = sql.Where(query.ProviderModel.ModelPublicID.In((*filter.ModelPublicIDs)...))
 	}
+	if filter.ProviderOriginalModelID != nil {
+		sql = sql.Where(query.ProviderModel.ProviderOriginalModelID.Eq(*filter.ProviderOriginalModelID))
+	}
 	if filter.Active != nil {
 		sql = sql.Where(query.ProviderModel.Active.Is(*filter.Active))
 	}

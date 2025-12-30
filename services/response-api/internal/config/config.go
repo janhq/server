@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -56,6 +57,12 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("parse env config: %w", err)
+	}
+
+	if strings.TrimSpace(os.Getenv("RESPONSE_LOG_LEVEL")) == "" {
+		if global := strings.TrimSpace(os.Getenv("LOG_LEVEL")); global != "" {
+			cfg.LogLevel = global
+		}
 	}
 
 	if cfg.AuthEnabled {
