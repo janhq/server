@@ -1,6 +1,8 @@
 import { ChevronsUpDown, LogOut, SettingsIcon, FlagIcon } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@janhq/interfaces/avatar";
+
+declare const VITE_REPORT_ISSUE_URL: string;
 import {
   DropDrawer,
   DropDrawerContent,
@@ -97,7 +99,7 @@ export function NavUser() {
               </DropDrawerItem> */}
             <DropDrawerItem asChild>
               <a
-                href="https://forms.gle/LoxNVacHqUT261sa9"
+                href={VITE_REPORT_ISSUE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex gap-2 items-center w-full"

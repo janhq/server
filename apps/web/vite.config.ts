@@ -29,6 +29,9 @@ export default defineConfig(({ mode }) => {
       VITE_OAUTH_REDIRECT_URI: JSON.stringify(
         env.VITE_OAUTH_REDIRECT_URI || "http://localhost:3001/auth/callback",
       ),
+      VITE_REPORT_ISSUE_URL: JSON.stringify(
+        env.VITE_REPORT_ISSUE_URL || "https://forms.gle/LoxNVacHqUT261sa9",
+      ),
       BROWSER_SERVER_NAME: JSON.stringify("Jan Browser Extension"),
       EXTENSION_ID: JSON.stringify(
         env.EXTENSION_ID || "mkciifcjehgnpaigoiaakdgabbpfppal",
