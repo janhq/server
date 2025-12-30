@@ -1,40 +1,44 @@
 interface MCPTool {
-  name: string
-  description: string
-  inputSchema: Record<string, unknown>
-  server: string
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  server: string;
 }
 
 interface MCPToolCallResult {
-  error: string
+  error: string;
   content: Array<{
-    type?: string
-    text?: string
+    type?: string;
+    text?: string;
     data?: string;
     mimeType?: string;
-  }>
+  }>;
 }
 
 interface GetToolsResponse {
-  object: string
-  data: MCPTool[]
+  object: string;
+  data: MCPTool[];
 }
 
 interface CallToolPayload {
-  toolName: string
-  serverName?: string
-  arguments: Record<string, unknown>
-  conversationId?: string
-  toolCallId?: string
+  toolName: string;
+  serverName?: string;
+  arguments: Record<string, unknown>;
+  conversationId?: string;
+  toolCallId?: string;
 }
 
 interface ToolCallClient {
-  async getTools(): Promise<MCPTool[]>
-  async callTool(
+  getTools(): Promise<MCPTool[]>;
+  callTool(
     payload: CallToolPayload,
-    metadata?: { conversationId?: string; toolCallId?: string; signal?: AbortSignal }
-  ): Promise<MCPToolCallResult>
-  async disconnect(): Promise<void>
-  async refreshTools(): Promise<void>
-  async isHealthy(): Promise<boolean>
+    metadata?: {
+      conversationId?: string;
+      toolCallId?: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<MCPToolCallResult>;
+  disconnect(): Promise<void>;
+  refreshTools(): Promise<void>;
+  isHealthy(): Promise<boolean>;
 }

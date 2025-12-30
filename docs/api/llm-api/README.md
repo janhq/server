@@ -7,6 +7,7 @@ The LLM API lets you send messages to AI models and get responses. It works like
 Examples: [API examples index](../examples/README.md) covers cURL/SDK snippets for every endpoint.
 
 ### URLs
+
 - **Direct access**: http://localhost:8080
 - **Through gateway** (recommended): http://localhost:8000
 - **Inside Docker**: http://llm-api:8080
@@ -29,6 +30,7 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 **Key points:**
+
 - Use Kong gateway (port 8000) for all client requests
 - Bearer tokens from `/llm/auth/guest-login` work for development
 - API keys (`X-API-Key: sk_*`) available via Kong for production
@@ -39,18 +41,18 @@ curl -H "Authorization: Bearer <token>" \
 - **Chat with AI** - Send messages and get responses (like ChatGPT)
 - **Stream responses** - Get word-by-word output in real-time
 - **Save conversations** - Keep chat history for later
-- **Add images** - Reference images using jan_* IDs
+- **Add images** - Reference images using jan\_\* IDs
 - **Multiple models** - Works with vLLM, OpenAI, Anthropic, and others
 - **Track everything** - Built-in logging and monitoring
 - **(Future) Prompt Orchestration** - Dynamic prompt composition with memory, templates, and conditional modules (see `docs/todo/prompt-orchestration-todo.md`)
 
 ## Service Ports & Configuration
 
-| Component | Port | Environment Variable |
-|-----------|------|---------------------|
-| **HTTP Server** | 8080 | `HTTP_PORT` |
-| **Database** | 5432 | `DB_POSTGRESQL_WRITE_DSN` |
-| **Keycloak** | 8085 | `KEYCLOAK_BASE_URL` |
+| Component       | Port | Environment Variable      |
+| --------------- | ---- | ------------------------- |
+| **HTTP Server** | 8080 | `HTTP_PORT`               |
+| **Database**    | 5432 | `DB_POSTGRESQL_WRITE_DSN` |
+| **Keycloak**    | 8085 | `KEYCLOAK_BASE_URL`       |
 
 ### Required Environment Variables
 
@@ -113,10 +115,11 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```
 
 **Request Parameters:**
+
 - `model` (required) - Model identifier (e.g., "jan-v1-4b")
 - `messages` (required) - Array of message objects
- - `role` - "system", "user", or "assistant"
- - `content` - Text content (string) or content array (for media)
+- `role` - "system", "user", or "assistant"
+- `content` - Text content (string) or content array (for media)
 - `stream` (optional) - Enable streaming responses (default: false)
 - `temperature` (optional) - 0.0-2.0, controls randomness (default: 0.7)
 - `top_p` (optional) - 0.0-1.0, nucleus sampling (default: 1.0)
@@ -124,27 +127,28 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 - `stop` (optional) - Stop sequences
 
 **Response:**
+
 ```json
 {
- "id": "chatcmpl-...",
- "object": "chat.completion",
- "created": 1699999999,
- "model": "jan-v1-4b",
- "choices": [
- {
- "index": 0,
- "message": {
- "role": "assistant",
- "content": "Hello! How can I help you today?"
- },
- "finish_reason": "stop"
- }
- ],
- "usage": {
- "prompt_tokens": 10,
- "completion_tokens": 12,
- "total_tokens": 22
- }
+  "id": "chatcmpl-...",
+  "object": "chat.completion",
+  "created": 1699999999,
+  "model": "jan-v1-4b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello! How can I help you today?"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 12,
+    "total_tokens": 22
+  }
 }
 ```
 
@@ -160,6 +164,7 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 **Query Parameters:**
+
 - `limit` (optional) - Number of conversations to return (default: 20)
 - `after` (optional) - Cursor for pagination
 - `order` (optional) - Sort order: "asc" or "desc" (default: "desc")
@@ -285,6 +290,7 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 **Query Parameters:**
+
 - `limit` (optional) - Number of projects to return
 - `after` (optional) - Cursor for pagination
 - `order` (optional) - Sort order: "asc" or "desc"
@@ -389,6 +395,7 @@ curl -H "Authorization: Bearer <token>" \
 ```
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -443,14 +450,15 @@ curl -X PATCH http://localhost:8000/v1/users/me/settings \
 
 **Settings Groups:**
 
-| Group | Fields | Purpose |
-|-------|--------|---------|
-| `memory_config` | `enabled`, `observe_enabled`, `inject_*`, `max_*`, `min_similarity` | Memory and retrieval controls |
-| `profile_settings` | `base_style`, `custom_instructions`, `nick_name`, `occupation`, `more_about_you` | User profile and preferences |
-| `advanced_settings` | `web_search`, `code_enabled` | Advanced feature toggles |
-| Top-level | `enable_trace`, `enable_tools`, `preferences` | System features |
+| Group               | Fields                                                                           | Purpose                       |
+| ------------------- | -------------------------------------------------------------------------------- | ----------------------------- |
+| `memory_config`     | `enabled`, `observe_enabled`, `inject_*`, `max_*`, `min_similarity`              | Memory and retrieval controls |
+| `profile_settings`  | `base_style`, `custom_instructions`, `nick_name`, `occupation`, `more_about_you` | User profile and preferences  |
+| `advanced_settings` | `web_search`, `code_enabled`                                                     | Advanced feature toggles      |
+| Top-level           | `enable_trace`, `enable_tools`, `preferences`                                    | System features               |
 
 **Memory Configuration:**
+
 - `enabled` - Master toggle for all memory features
 - `observe_enabled` - Automatically learn from conversations
 - `inject_user_core` - Include user core facts in prompts
@@ -462,6 +470,7 @@ curl -X PATCH http://localhost:8000/v1/users/me/settings \
 - `min_similarity` (0.0-1.0) - Minimum relevance score for memory retrieval
 
 **Profile Settings:**
+
 - `base_style` - Conversation style: `"Concise"`, `"Friendly"`, or `"Professional"`
 - `custom_instructions` - Additional behavior and tone preferences
 - `nick_name` - What should Jan call you? (alias: `nickname` accepted on input)
@@ -469,6 +478,7 @@ curl -X PATCH http://localhost:8000/v1/users/me/settings \
 - `more_about_you` - Additional information about yourself
 
 **Advanced Settings:**
+
 - `web_search` - Enable automatic web search (privacy consideration)
 - `code_enabled` - Enable code execution features (security consideration)
 
@@ -512,30 +522,32 @@ Use any vision-capable model you have configured (for local-only setups, point `
 
 Common HTTP status codes:
 
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 400 | Invalid request parameters |
-| 401 | Unauthorized (invalid/expired token) |
-| 403 | Forbidden (insufficient permissions) |
-| 404 | Resource not found |
-| 429 | Rate limited |
-| 500 | Server error |
+| Code | Meaning                              |
+| ---- | ------------------------------------ |
+| 200  | Success                              |
+| 400  | Invalid request parameters           |
+| 401  | Unauthorized (invalid/expired token) |
+| 403  | Forbidden (insufficient permissions) |
+| 404  | Resource not found                   |
+| 429  | Rate limited                         |
+| 500  | Server error                         |
 
 Example error response:
+
 ```json
 {
- "error": {
- "message": "Invalid model specified",
- "type": "invalid_request_error",
- "code": "invalid_model"
- }
+  "error": {
+    "message": "Invalid model specified",
+    "type": "invalid_request_error",
+    "code": "invalid_model"
+  }
 }
 ```
 
 ## Rate Limiting
 
 Requests routed through Kong inherit its rate-limiting plugin:
+
 - Default (development): 100 requests per minute **per client IP** (`kong/kong-dev-full.yml`)
 - Headers: `X-RateLimit-Limit-minute`, `X-RateLimit-Remaining-minute`
 - Exceeding the limit returns HTTP 429

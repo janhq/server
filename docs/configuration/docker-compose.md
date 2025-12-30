@@ -23,14 +23,14 @@ Each service in docker-compose references the standardized environment variables
 
 ```yaml
 services:
- llm-api:
- environment:
- # Database - constructed DSN from config defaults
- DB_POSTGRESQL_WRITE_DSN: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@api-db:5432/${POSTGRES_DB}?sslmode=disable"
- 
- # All other variables reference config/defaults.yaml structure
- HTTP_PORT: ${HTTP_PORT:-8080}
- LOG_LEVEL: ${LOG_LEVEL:-info}
+  llm-api:
+  environment:
+  # Database - constructed DSN from config defaults
+  DB_POSTGRESQL_WRITE_DSN: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@api-db:5432/${POSTGRES_DB}?sslmode=disable"
+
+  # All other variables reference config/defaults.yaml structure
+  HTTP_PORT: ${HTTP_PORT:-8080}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
 ```
 
 ## Why Direct Maintenance?
@@ -44,6 +44,7 @@ services:
 ## Future: Optional Generation
 
 If needed, a generator can be built using `pkg/config/compose/generator.go` that:
+
 - Reads `config/defaults.yaml`
 - Applies environment overrides
 - Generates docker-compose YAML files
@@ -68,6 +69,7 @@ docker compose --profile dev-full config
 ```
 
 Typical networks and volumes:
+
 - Networks: `jan-server_default` (core), `jan-server_mcp-network` (MCP helpers)
 - Volumes: `api-db-data`, `keycloak-db-data`, `vector-store-data`, `grafana-data`
 
@@ -76,7 +78,7 @@ All of the above are declared in the compose snippets so they can be inspected w
 ## Sprint 4 Status
 
 OK **COMPLETE** - Docker compose files are consistent with config system
-OK **COMPLETE** - All services use standardized environment variables 
+OK **COMPLETE** - All services use standardized environment variables
 OK **COMPLETE** - Validation process documented
 
 **Rationale:** Direct maintenance is simpler and more maintainable than generation for this use case. The generator infrastructure exists in `pkg/config/compose/` if needed in the future.

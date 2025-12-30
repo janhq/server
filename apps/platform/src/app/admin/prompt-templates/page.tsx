@@ -1,9 +1,14 @@
 'use client';
 
-import { createAdminAPIClient } from '@/lib/admin/api';
-import type { PromptTemplate } from '@/lib/admin/api';
-import { getSharedAuthService } from '@/lib/auth/service';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -20,18 +25,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import type { PromptTemplate } from '@/lib/admin/api';
+import { createAdminAPIClient } from '@/lib/admin/api';
+import { getSharedAuthService } from '@/lib/auth/service';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Copy, Edit, Eye, Loader2, MoreHorizontal, Plus, Search, Trash, FileText } from 'lucide-react';
+  Copy,
+  Edit,
+  Eye,
+  FileText,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Trash,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { PromptTemplateModal } from './components/prompt-template-modal';
 import { PreviewModal } from './components/preview-modal';
+import { PromptTemplateModal } from './components/prompt-template-modal';
 
 export default function PromptTemplatesPage() {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
@@ -82,7 +92,9 @@ export default function PromptTemplatesPage() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${template.name}"? This action cannot be undone.`)) {
+    if (
+      !confirm(`Are you sure you want to delete "${template.name}"? This action cannot be undone.`)
+    ) {
       return;
     }
 
@@ -133,7 +145,7 @@ export default function PromptTemplatesPage() {
       if (!token) throw new Error('No authentication token');
 
       const client = createAdminAPIClient(token);
-      
+
       if (template.is_active) {
         await client.promptTemplates.deactivateTemplate(template.public_id);
       } else {
@@ -175,7 +187,7 @@ export default function PromptTemplatesPage() {
     searchTerm
       ? template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         template.template_key.toLowerCase().includes(searchTerm.toLowerCase())
-      : true
+      : true,
   );
 
   return (
@@ -267,9 +279,7 @@ export default function PromptTemplatesPage() {
                       </code>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {template.category}
-                      </Badge>
+                      <Badge variant="outline">{template.category}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={template.is_active ? 'default' : 'secondary'}>
@@ -284,9 +294,7 @@ export default function PromptTemplatesPage() {
                       )}
                     </TableCell>
                     <TableCell>v{template.version}</TableCell>
-                    <TableCell>
-                      {new Date(template.updated_at).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell>{new Date(template.updated_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -941,22 +941,14 @@ export class PromptTemplateManagementAPI {
    * Get prompt template by public ID
    */
   async getPromptTemplate(publicId: string): Promise<PromptTemplate> {
-    return fetchWithAuth(
-      `${JAN_BASE_URL}/v1/admin/prompt-templates/${publicId}`,
-      {},
-      this.token,
-    );
+    return fetchWithAuth(`${JAN_BASE_URL}/v1/admin/prompt-templates/${publicId}`, {}, this.token);
   }
 
   /**
    * Get prompt template by key (public endpoint)
    */
   async getPromptTemplateByKey(templateKey: string): Promise<PromptTemplate> {
-    return fetchWithAuth(
-      `${JAN_BASE_URL}/v1/prompt-templates/${templateKey}`,
-      {},
-      this.token,
-    );
+    return fetchWithAuth(`${JAN_BASE_URL}/v1/prompt-templates/${templateKey}`, {}, this.token);
   }
 
   /**
@@ -1060,20 +1052,13 @@ export class MCPToolManagementAPI {
    * Get MCP tool by public ID
    */
   async getMCPTool(publicId: string): Promise<MCPTool> {
-    return fetchWithAuth(
-      `${JAN_BASE_URL}/v1/admin/mcp-tools/${publicId}`,
-      {},
-      this.token,
-    );
+    return fetchWithAuth(`${JAN_BASE_URL}/v1/admin/mcp-tools/${publicId}`, {}, this.token);
   }
 
   /**
    * Update MCP tool (Note: name is read-only)
    */
-  async updateMCPTool(
-    publicId: string,
-    data: UpdateMCPToolRequest,
-  ): Promise<MCPTool> {
+  async updateMCPTool(publicId: string, data: UpdateMCPToolRequest): Promise<MCPTool> {
     return fetchWithAuth(
       `${JAN_BASE_URL}/v1/admin/mcp-tools/${publicId}`,
       {

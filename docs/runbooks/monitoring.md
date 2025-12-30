@@ -2,14 +2,14 @@
 
 ## Quick Reference
 
-| Alert | Severity | MTTR Target | On-Call Action |
-|-------|----------|-------------|----------------|
-| HighLLMLatency | Warning | 15min | [§1](#1-high-llm-latency) |
-| QueueBacklog | Critical | 5min | [§2](#2-queue-backlog) |
-| CollectorDown | Critical | 2min | [§3](#3-collector-outage) |
-| StorageFailure | Critical | 10min | [§4](#4-media-api-storage-failure) |
-| TraceExportFailure | Warning | 30min | [§5](#5-trace-export-failure) |
-| ClassifierErrors | Warning | 20min | [§6](#6-conversation-classifier-errors) |
+| Alert              | Severity | MTTR Target | On-Call Action                          |
+| ------------------ | -------- | ----------- | --------------------------------------- |
+| HighLLMLatency     | Warning  | 15min       | [§1](#1-high-llm-latency)               |
+| QueueBacklog       | Critical | 5min        | [§2](#2-queue-backlog)                  |
+| CollectorDown      | Critical | 2min        | [§3](#3-collector-outage)               |
+| StorageFailure     | Critical | 10min       | [§4](#4-media-api-storage-failure)      |
+| TraceExportFailure | Warning  | 30min       | [§5](#5-trace-export-failure)           |
+| ClassifierErrors   | Warning  | 20min       | [§6](#6-conversation-classifier-errors) |
 
 ---
 
@@ -22,10 +22,12 @@
 ### Investigation Steps
 
 1. **Check LLM Provider Dashboard**
+
    ```bash
    # Open Grafana
    open https://grafana/d/llm-overview
    ```
+
    - Review latency by model (GPT-4 vs GPT-3.5)
    - Check error rates per provider
 
@@ -35,12 +37,14 @@
    - Azure: https://status.azure.com
 
 3. **Check Recent Deployments**
+
    ```bash
    git log --since="1 hour ago" --oneline
    kubectl rollout history deployment/llm-api
    ```
 
 4. **Inspect Token Queue Depth**
+
    ```bash
    curl localhost:8080/metrics | grep queue_depth
    ```
@@ -52,6 +56,7 @@
 ### Remediation
 
 **If Provider Issue:**
+
 ```bash
 # Enable fallback provider
 jan-cli config set llm.fallback_enabled=true
@@ -59,6 +64,7 @@ jan-cli config set llm.fallback_provider=anthropic
 ```
 
 **If Jan Server Issue:**
+
 ```bash
 # Scale replicas
 kubectl scale deployment/llm-api --replicas=5
@@ -69,6 +75,7 @@ kubectl set resources deployment/llm-api --limits=memory=2Gi
 ```
 
 **If Database Bottleneck:**
+
 ```sql
 -- Check connection pool
 psql jan_server -c "SELECT COUNT(*), state FROM pg_stat_activity GROUP BY state;"
@@ -118,12 +125,14 @@ psql jan_server -c "SELECT id, status, error_message, created_at FROM background
 ### Remediation
 
 1. **Increase Worker Pool**
+
    ```bash
    kubectl set env deployment/response-api WORKER_POOL_SIZE=20
    kubectl rollout status deployment/response-api
    ```
 
 2. **Purge Old Jobs**
+
    ```bash
    jan-cli jobs purge --older-than=1h --status=failed
    jan-cli jobs retry --status=failed --max-retries=3
@@ -169,25 +178,28 @@ kubectl run -it --rm debug --image=curlimages/curl --restart=Never \
 ### Remediation
 
 1. **Restart Collector**
+
    ```bash
    kubectl rollout restart deployment/otel-collector
    kubectl rollout status deployment/otel-collector
    ```
 
 2. **If Resource Exhaustion**
+
    ```bash
    # Increase memory
    kubectl set resources deployment/otel-collector --limits=memory=1Gi
-   
+
    # Check Jaeger backend
    curl http://jaeger-query:16686/api/services
    ```
 
 3. **If Configuration Error**
+
    ```bash
    # Validate config
    kubectl get configmap otel-collector-config -o yaml | yq '.data'
-   
+
    # Revert to last known good config
    kubectl rollout undo deployment/otel-collector
    ```
@@ -223,11 +235,13 @@ kubectl get secret media-api-s3-credentials -o yaml
 ### Remediation
 
 1. **Verify S3 bucket exists and is accessible**
+
    ```bash
    aws s3 ls s3://jan-media-bucket/
    ```
 
 2. **Check IAM permissions**
+
    ```bash
    aws iam simulate-principal-policy \
      --policy-source-arn arn:aws:iam::ACCOUNT:role/media-api-role \
@@ -263,12 +277,14 @@ kubectl logs -l app=otel-collector | grep -i error
 ### Remediation
 
 1. **Verify Jaeger collector is running**
+
    ```bash
    kubectl get pods -l app=jaeger
    kubectl logs -l app=jaeger --tail=50
    ```
 
 2. **Check network connectivity**
+
    ```bash
    kubectl run -it --rm debug --image=curlimages/curl --restart=Never \
      -- curl -v http://jaeger-collector:14268/api/traces
@@ -307,12 +323,14 @@ kubectl logs -l app=response-api | grep classifier
 ### Remediation
 
 1. **Check for malformed prompt data**
+
    ```bash
    # Review recent requests
    kubectl logs -l app=response-api --tail=100 | grep -A5 "classifier error"
    ```
 
 2. **Review recent classifier configuration changes**
+
    ```bash
    git log --since="1 day ago" --grep="classifier" --oneline
    kubectl describe configmap response-api-config
@@ -383,12 +401,12 @@ curl 'http://localhost:16686/api/traces?service=SERVICE&minDuration=2s'
 
 ## Appendix B: Escalation Contacts
 
-| Severity | Contact | Response Time | Channel |
-|----------|---------|---------------|---------|
-| P0 (Critical) | SRE On-Call | &lt;5min | PagerDuty |
-| P1 (High) | Team Lead | &lt;15min | Slack #incidents |
-| P2 (Medium) | Dev Team | &lt;1h | Slack #engineering |
-| P3 (Low) | Ticket Queue | Next business day | Jira |
+| Severity      | Contact      | Response Time     | Channel            |
+| ------------- | ------------ | ----------------- | ------------------ |
+| P0 (Critical) | SRE On-Call  | &lt;5min          | PagerDuty          |
+| P1 (High)     | Team Lead    | &lt;15min         | Slack #incidents   |
+| P2 (Medium)   | Dev Team     | &lt;1h            | Slack #engineering |
+| P3 (Low)      | Ticket Queue | Next business day | Jira               |
 
 ---
 

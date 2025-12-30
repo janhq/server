@@ -23,35 +23,41 @@ make env-switch ENV=testing       # Integration testing
 ## Environment Files
 
 ### `.env.template` (Root)
+
 - **Purpose**: Comprehensive template with documentation
 - **Usage**: Copy to `.env` to get started
 - **Includes**: All variables with explanations and defaults
 - **This is the ONLY template** - use this instead of old .env.example
 
 ### `config/defaults.env`
+
 - **Purpose**: Base defaults inherited by all environments
 - **DO NOT** modify unless changing defaults globally
 - **Includes**: Non-sensitive defaults, ports, flags
 
 ### `config/development.env`
+
 - **Purpose**: Full Docker development (all services containerized)
 - **Use when**: Running everything in Docker
 - **URLs**: Use Docker internal DNS (e.g., `keycloak:8085`)
 - **Command**: `make env-switch ENV=development` or `make up-full`
 
 ### `config/testing.env`
+
 - **Purpose**: Integration testing with jan-cli api-test
 - **Use when**: Running `make test-all`
 - **URLs**: Use localhost for test access
 - **Command**: Used automatically by test targets
 
 ### `config/production.env.example`
+
 - **Purpose**: Production deployment template
 - **Use when**: Deploying to production
 - **Security**: Copy to `config/production.env` and customize
 - **WARNING**: NEVER commit actual production.env
 
 ### `config/secrets.env.example`
+
 - **Purpose**: List of all required secrets
 - **Use when**: Setting up new environment
 - **Security**: Reference for secret management setup
@@ -60,12 +66,12 @@ make env-switch ENV=testing       # Integration testing
 
 ### URL Patterns by Environment
 
-| Environment | Database | Keycloak | MCP Tools | Media API |
-|-------------|----------|----------|-----------|-----------|
-| **Development** | `api-db:5432` | `keycloak:8085` | `searxng:8080` | Docker internal |
-| **Hybrid** | `localhost:5432` | `localhost:8085` | `localhost:8086` | `localhost:8285` |
-| **Testing** | `localhost:5432` | `localhost:8085` | `localhost:8086` | `localhost:8285` |
-| **Production** | External DB URL | External Keycloak | External URLs | External URL |
+| Environment     | Database         | Keycloak          | MCP Tools        | Media API        |
+| --------------- | ---------------- | ----------------- | ---------------- | ---------------- |
+| **Development** | `api-db:5432`    | `keycloak:8085`   | `searxng:8080`   | Docker internal  |
+| **Hybrid**      | `localhost:5432` | `localhost:8085`  | `localhost:8086` | `localhost:8285` |
+| **Testing**     | `localhost:5432` | `localhost:8085`  | `localhost:8086` | `localhost:8285` |
+| **Production**  | External DB URL  | External Keycloak | External URLs    | External URL     |
 
 ### Required Secrets
 
@@ -113,11 +119,13 @@ make check-deps
 ## Best Practices
 
 ### 1. Never Commit Secrets
+
 - `.env` is gitignored
 - Only commit `.env.template` and `config/*.env.example`
 - Use secret management in production
 
 ### 2. Use Environment Switcher
+
 ```bash
 
 # Avoid
@@ -125,13 +133,15 @@ vi .env  # Manual editing error-prone
 ```
 
 ### 3. Document Custom Variables
+
 ```bash
 # Add to .env.template with comments
 # MY_CUSTOM_VAR=default_value  # Description of what this does
 ```
 
 ### 4. Separate Secrets from Config
-- Configuration: In version control (config/*.env)
+
+- Configuration: In version control (config/\*.env)
 - Secrets: In .env (not in version control)
 - Production: Use secret management (Vault, AWS Secrets Manager, etc.)
 
@@ -142,6 +152,7 @@ vi .env  # Manual editing error-prone
 **Symptom**: `401 Unauthorized`
 
 **Solution**: Check JWKS_URL matches your environment
+
 - Development: `http://keycloak:8085/...`
 - Hybrid: `http://localhost:8085/...`
 
@@ -156,6 +167,7 @@ grep KEYCLOAK_BASE_URL .env
 **Symptom**: MCP tools timeout or not found
 
 **Solution**: Check MCP provider URLs match your environment
+
 ```bash
 # Development
 SEARXNG_URL=http://searxng:8080
@@ -169,6 +181,7 @@ SEARXNG_URL=http://localhost:8086
 **Symptom**: Changes not reflected after `make env-switch`
 
 **Solution**:
+
 ```bash
 # Restart services to pick up new .env
 make restart
@@ -182,6 +195,7 @@ make down && make up-full
 **Symptom**: Services fail to start, missing API keys
 
 **Solution**:
+
 ```bash
 # Check what secrets are needed
 cat config/secrets.env.example
@@ -193,6 +207,7 @@ vi .env  # Add HF_TOKEN, SERPER_API_KEY, etc.
 ## Example Workflows
 
 ### Docker Development
+
 ```bash
 make setup
 make env-switch ENV=development
@@ -201,6 +216,7 @@ make up-full
 ```
 
 ### Hybrid Development
+
 ```bash
 make setup
 make env-switch ENV=hybrid
@@ -210,6 +226,7 @@ air                       # Run API natively with hot reload
 ```
 
 ### Integration Testing
+
 ```bash
 make setup
 make env-switch ENV=testing
@@ -218,6 +235,7 @@ make test-all
 ```
 
 ### Production Deployment
+
 ```bash
 # 1. Copy production template
 cp config/production.env.example config/production.env
@@ -239,12 +257,12 @@ cp config/production.env .env
 
 The following files were removed in the restructure:
 
-| Old File | Replacement |
-|----------|-------------|
-| `.env.example` | Use `.env.template` |
-| `.env.docker` | Use `config/development.env` |
-| `.env.local` | Use `config/hybrid.env` |
-| `.env.mcp.example` | Merged into `.env.template` |
+| Old File           | Replacement                  |
+| ------------------ | ---------------------------- |
+| `.env.example`     | Use `.env.template`          |
+| `.env.docker`      | Use `config/development.env` |
+| `.env.local`       | Use `config/hybrid.env`      |
+| `.env.mcp.example` | Merged into `.env.template`  |
 
 ### Migration Steps
 
@@ -303,6 +321,7 @@ Environment variables (e.g., `${VLLM_INTERNAL_KEY}`) are expanded at load time, 
 ### Adding a New Environment
 
 1. Create `config/myenv.env`:
+
 ```bash
 # My Custom Environment
 DB_POSTGRESQL_WRITE_DSN=postgres://user:pass@custom-db:5432/dbname
@@ -311,6 +330,7 @@ KEYCLOAK_BASE_URL=http://custom-keycloak:8085
 ```
 
 2. Switch to it:
+
 ```bash
 make env-switch ENV=myenv
 ```
@@ -349,6 +369,7 @@ ENV_FILE=config/testing.env docker-compose -p test up
 ### All Environment Variables
 
 For complete list of variables, see:
+
 - `.env.template` - Full template with documentation
 - `config/secrets.env.example` - Required secrets list
 - `config/defaults.env` - Default values

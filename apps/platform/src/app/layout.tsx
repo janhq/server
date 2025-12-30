@@ -1,7 +1,7 @@
 import '@/app/global.css';
-import { RootProvider } from 'fumadocs-ui/provider/next';
 import { AuthProvider } from '@/components/auth-provider';
 import { SiteHeader } from '@/components/site-header';
+import { RootProvider } from 'fumadocs-ui/provider/next';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 

@@ -161,25 +161,26 @@ sanitizedMetadata := provider.Sanitizer.SanitizeMetadata(metadata)
 
 All services should use these standard attributes for correlation:
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `conversation_id` | string | Unique conversation identifier |
-| `tenant_id` | string | Tenant identifier |
-| `user_id` | string | Sanitized user identifier |
-| `request_id` | string | Unique request identifier |
-| `llm.model` | string | LLM model name |
-| `llm.tokens.prompt` | int64 | Prompt token count |
-| `llm.tokens.completion` | int64 | Completion token count |
-| `mcp.tool.name` | string | MCP tool name |
-| `prompt.category` | string | Prompt category |
-| `prompt.persona` | string | Prompt persona |
-| `prompt.language` | string | Prompt language |
+| Attribute               | Type   | Description                    |
+| ----------------------- | ------ | ------------------------------ |
+| `conversation_id`       | string | Unique conversation identifier |
+| `tenant_id`             | string | Tenant identifier              |
+| `user_id`               | string | Sanitized user identifier      |
+| `request_id`            | string | Unique request identifier      |
+| `llm.model`             | string | LLM model name                 |
+| `llm.tokens.prompt`     | int64  | Prompt token count             |
+| `llm.tokens.completion` | int64  | Completion token count         |
+| `mcp.tool.name`         | string | MCP tool name                  |
+| `prompt.category`       | string | Prompt category                |
+| `prompt.persona`        | string | Prompt persona                 |
+| `prompt.language`       | string | Prompt language                |
 
 ## Metrics Naming Convention
 
 Follow the pattern: `jan_<service>_<metric>_<unit>`
 
 Examples:
+
 - `jan_llm_api_request_duration_seconds`
 - `jan_response_api_queue_depth`
 - `jan_media_api_s3_errors_total`
@@ -187,10 +188,12 @@ Examples:
 ## Privacy Levels
 
 ### None (`PIILevel = "none"`)
+
 - All user content redacted as `[REDACTED]`
 - Maximum privacy, minimal debugging utility
 
 ### Hashed (`PIILevel = "hashed"`) - Default
+
 - PII detected and replaced with tenant-specific hashes
 - Emails: `[EMAIL:a1b2c3d4]`
 - Phones: `[PHONE:e5f6g7h8]`
@@ -199,6 +202,7 @@ Examples:
 - Balances privacy and debugging
 
 ### Full (`PIILevel = "full"`)
+
 - No sanitization
 - Use only in development/testing
 - Never use in production

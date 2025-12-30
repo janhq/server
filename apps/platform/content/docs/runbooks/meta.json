@@ -1,7 +1,4 @@
 {
   "title": "Runbooks",
-  "pages": [
-    "index",
-    "monitoring"
-  ]
+  "pages": ["index", "monitoring"]
 }

@@ -1,14 +1,14 @@
-import { SidebarGroupLabel } from '@/components/ui/sidebar'
-import { useStaggeredFadeIn } from '@/hooks/useStaggeredFadeIn'
+import { SidebarGroupLabel } from "@/components/sidebar/sidebar";
+import { useStaggeredFadeIn } from "@/hooks/useStaggeredFadeIn";
 
 export function AnimatedGroupLabel({
   children,
   index,
 }: {
-  children: React.ReactNode
-  index: number
+  children: React.ReactNode;
+  index: number;
 }) {
-  const animation = useStaggeredFadeIn(index)
+  const animation = useStaggeredFadeIn(index);
   return (
     <SidebarGroupLabel
       className={`text-muted-foreground flex w-full items-center justify-between pr-0 ${animation.className}`}
@@ -16,5 +16,5 @@ export function AnimatedGroupLabel({
     >
       {children}
     </SidebarGroupLabel>
-  )
+  );
 }

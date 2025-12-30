@@ -3,28 +3,28 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from '@/components/ui/dropdrawer'
-import { cn } from '@/lib/utils'
-import { useProjects } from '@/stores/projects-store'
-import { CircleCheck, FolderEdit, FolderIcon, LayoutGrid } from 'lucide-react'
-import { useEffect } from 'react'
+} from "@janhq/interfaces/dropdrawer";
+import { cn } from "@/lib/utils";
+import { useProjects } from "@/stores/projects-store";
+import { CircleCheck, FolderEdit, FolderIcon, LayoutGrid } from "lucide-react";
+import { useEffect } from "react";
 
 interface ProjectsChatInputProps {
-  currentProjectId?: string
-  onProjectSelect?: (projectId: string) => void
-  title?: string
+  currentProjectId?: string;
+  onProjectSelect?: (projectId: string) => void;
+  title?: string;
 }
 
 export const ProjectsChatInput = ({
   currentProjectId,
   onProjectSelect,
-  title = 'Use a Project',
+  title = "Use a Project",
 }: ProjectsChatInputProps) => {
-  const { projects, getProjects, loading } = useProjects()
+  const { projects, getProjects, loading } = useProjects();
 
   useEffect(() => {
-    getProjects()
-  }, [getProjects])
+    getProjects();
+  }, [getProjects]);
 
   return (
     <DropDrawerSub id="projects-submenu">
@@ -36,8 +36,8 @@ export const ProjectsChatInput = ({
       </DropDrawerSubTrigger>
       <DropDrawerSubContent
         className={cn(
-          'w-64 max-h-80 overflow-auto',
-          projects.length === 0 && 'w-80'
+          "w-64 max-h-80 overflow-auto",
+          projects.length === 0 && "w-80",
         )}
       >
         {loading ? (
@@ -63,7 +63,7 @@ export const ProjectsChatInput = ({
               <DropDrawerItem
                 key={project.id}
                 onSelect={() => {
-                  onProjectSelect?.(project.id)
+                  onProjectSelect?.(project.id);
                 }}
               >
                 <div className="flex gap-2 items-center justify-between w-full">
@@ -80,5 +80,5 @@ export const ProjectsChatInput = ({
         )}
       </DropDrawerSubContent>
     </DropDrawerSub>
-  )
-}
+  );
+};

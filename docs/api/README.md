@@ -5,18 +5,21 @@ Complete API documentation for Jan Server services.
 ## Available APIs
 
 ### 1. LLM API (Port 8080)
+
 OpenAI-compatible API for chat completions, conversations, and models.
 
 **What it does:**
+
 - Generate AI responses to user messages
 - Manage conversations and chat history
 - Organize conversations in projects
 - List available AI models
 - Handle user authentication
-- Support images via jan_* IDs
+- Support images via jan\_\* IDs
 - Generate images from text prompts
 
 **Documentation:**
+
 - **[Complete Documentation](llm-api/)** - Full API reference, endpoints, examples
 - **[Authentication](llm-api/#authentication)** - Auth methods, API keys, and token management
 - **[Chat Completions](llm-api/#chat-completions)** - Main completion endpoint
@@ -28,31 +31,37 @@ OpenAI-compatible API for chat completions, conversations, and models.
 - **[Examples](llm-api/comprehensive-examples.md)** - cURL, Python, and JavaScript snippets
 
 ### 2. Response API (Port 8082)
+
 Executes tools and generates AI responses for complex tasks.
 
 **What it does:**
+
 - Run multiple tools in sequence (up to 8 steps)
 - Chain tool outputs together
 - Generate final answers using LLM
 - Track execution time and status
 
 **Documentation:**
+
 - **[Complete Documentation](response-api/)** - Full API reference, configuration, examples
 - **[Create Response](response-api/#create-response-multi-step-orchestration)** - Main orchestration endpoint
 - **[Tool Execution Flow](response-api/#tool-execution-flow)** - How tools are executed
 - **[Configuration](response-api/#tool-execution-parameters)** - Depth and timeout settings
 
 ### 3. Media API (Port 8285)
+
 Handles image uploads and storage.
 
 **What it does:**
+
 - Upload images from URLs or base64 data
 - Store images in S3 cloud storage
-- Generate jan_* IDs for images
+- Generate jan\_\* IDs for images
 - Create temporary download links
 - Prevent duplicate uploads
 
 **Documentation:**
+
 - **[Complete Documentation](media-api/)** - Full API reference, storage flow, examples
 - **[Upload Media](media-api/#upload-media)** - Upload from remote URL or data URL
 - **[Presigned URL](media-api/#prepare-upload-presigned-url)** - Client-side S3 upload
@@ -60,15 +69,18 @@ Handles image uploads and storage.
 - **[Resolution](media-api/#resolve-media-ids)** - Convert IDs to presigned URLs
 
 ### 4. MCP Tools API (Port 8091)
+
 Provides Model Context Protocol tools for search, scraping, lightweight vector search, and sandboxed execution.
 
 **Available Tools:**
+
 - **google_search** - Serper/SearXNG-backed web search with filters and location hints
 - **scrape** - Fetch and parse a web page (optional Markdown output)
 - **file_search_index / file_search_query** - Index custom text into the bundled vector store and run similarity queries
 - **python_exec** - Run trusted code via SandboxFusion, returning stdout/stderr/artifacts
 
 **Documentation:**
+
 - **[Complete Documentation](mcp-tools/)** - Full API reference, tool descriptions, examples
 - **[JSON-RPC Protocol](mcp-tools/#json-rpc-20-protocol)** - Standard protocol format
 - **[Call Tool](mcp-tools/#call-tool)** - Execute any tool
@@ -92,10 +104,10 @@ Provides Model Context Protocol tools for search, scraping, lightweight vector s
 
 ### Base URLs
 
-| Environment | LLM API | Response API | Media API | MCP Tools | Gateway |
-|-------------|---------|--------------|-----------|-----------|---------|
-| **Local** | http://localhost:8080 | http://localhost:8082 | http://localhost:8285 | http://localhost:8091 | http://localhost:8000 |
-| **Docker** | http://llm-api:8080 | http://response-api:8082 | http://media-api:8285 | http://mcp-tools:8091 | http://kong:8000 |
+| Environment | LLM API               | Response API             | Media API             | MCP Tools             | Gateway               |
+| ----------- | --------------------- | ------------------------ | --------------------- | --------------------- | --------------------- |
+| **Local**   | http://localhost:8080 | http://localhost:8082    | http://localhost:8285 | http://localhost:8091 | http://localhost:8000 |
+| **Docker**  | http://llm-api:8080   | http://response-api:8082 | http://media-api:8285 | http://mcp-tools:8091 | http://kong:8000      |
 
 **Recommended**: Point all public clients at the Kong gateway (port 8000) so authentication, rate limiting, and routing stay consistent. Direct service ports remain available for internal tests but still require JWT/API key headers.
 
@@ -138,6 +150,7 @@ curl -H "X-API-Key: sk_your_api_key_here" \
 #### Token Management
 
 **Refresh Tokens:**
+
 ```bash
 curl -X POST http://localhost:8000/llm/auth/refresh \
  -H "Content-Type: application/json" \
@@ -145,6 +158,7 @@ curl -X POST http://localhost:8000/llm/auth/refresh \
 ```
 
 **Revoke Tokens:**
+
 ```bash
 curl -X POST http://localhost:8000/llm/auth/revoke \
  -H "Authorization: Bearer <token>" \
@@ -155,11 +169,13 @@ curl -X POST http://localhost:8000/llm/auth/revoke \
 #### Direct Service Access
 
 When calling services directly (ports 8080/8082/8285/8091) instead of through Kong:
+
 - You still need a valid Keycloak JWT
 - Use the same `Authorization: Bearer <token>` header
 - API key authentication is NOT available (Kong-only feature)
 
 **Example direct call:**
+
 ```bash
 # Still requires JWT token from Keycloak
 curl -H "Authorization: Bearer <token>" \
@@ -236,36 +252,38 @@ All errors follow this structure:
 
 ```json
 {
- "error": {
- "type": "invalid_request_error",
- "code": "invalid_parameter",
- "message": "Parameter 'model' is required",
- "param": "model",
- "request_id": "req_123xyz"
- }
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_parameter",
+    "message": "Parameter 'model' is required",
+    "param": "model",
+    "request_id": "req_123xyz"
+  }
 }
 ```
 
 ### Error Types
 
-| Type | Description | HTTP Status |
-|------|-------------|-------------|
-| `invalid_request_error` | Invalid request parameters | 400 |
-| `auth_error` | Authentication failed | 401 |
-| `permission_error` | Insufficient permissions | 403 |
-| `not_found_error` | Resource not found | 404 |
-| `rate_limit_error` | Too many requests | 429 |
-| `internal_error` | Server error | 500 |
+| Type                    | Description                | HTTP Status |
+| ----------------------- | -------------------------- | ----------- |
+| `invalid_request_error` | Invalid request parameters | 400         |
+| `auth_error`            | Authentication failed      | 401         |
+| `permission_error`      | Insufficient permissions   | 403         |
+| `not_found_error`       | Resource not found         | 404         |
+| `rate_limit_error`      | Too many requests          | 429         |
+| `internal_error`        | Server error               | 500         |
 
 ### Headers
 
 **Request Headers**:
+
 - `Authorization: Bearer <token>` - Required for authenticated endpoints
 - `Content-Type: application/json` - For POST/PUT requests
 - `Idempotency-Key: <uuid>` - Optional, for idempotent POST requests
 - `X-Request-Id: <uuid>` - Optional, for request tracing
 
 **Response Headers**:
+
 - `X-Request-Id` - Request identifier for tracing
 - `X-Auth-Method` - Authentication method used (jwt or api_key)
 - `Content-Type: application/json` - JSON response
@@ -280,6 +298,7 @@ curl "http://localhost:8000/v1/conversations?limit=10&after=conv_123"
 ```
 
 Response:
+
 ```json
 {
  "data": [...],
@@ -298,6 +317,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 ```
 
 Response:
+
 ```
 data: {"id":"chat-123","choices":[{"delta":{"content":"Hello"}}]}
 
@@ -327,18 +347,16 @@ Contributions welcome! Jan Server is OpenAI-compatible, so most OpenAI client li
 #### JavaScript Example (OpenAI SDK)
 
 ```javascript
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const client = new OpenAI({
- baseURL: 'http://localhost:8000/v1',
- apiKey: 'your_guest_token_here',
+  baseURL: "http://localhost:8000/v1",
+  apiKey: "your_guest_token_here",
 });
 
 const response = await client.chat.completions.create({
- model: 'jan-v1-4b',
- messages: [
- { role: 'user', content: 'Hello!' }
- ],
+  model: "jan-v1-4b",
+  messages: [{ role: "user", content: "Hello!" }],
 });
 
 console.log(response.choices[0].message.content);
@@ -346,7 +364,7 @@ console.log(response.choices[0].message.content);
 
 ## Rate Limits
 
-Currently, Jan Server does not enforce rate limits in development mode. 
+Currently, Jan Server does not enforce rate limits in development mode.
 
 Production deployments should configure rate limiting via Kong Gateway.
 

@@ -22,9 +22,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             className: 'relative',
           }}
         >
-          <div className="relative">
-            {children}
-          </div>
+          <div className="relative">{children}</div>
         </DocsLayout>
       </div>
     </>

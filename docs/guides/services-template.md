@@ -10,6 +10,7 @@ The `services/template-api` directory contains a production-ready skeleton for n
 - Use `jan-cli dev scaffold <service-name>` to copy the template with placeholders replaced.
 
 ## Getting Started
+
 1. Run `jan-cli dev scaffold my-service` (or copy `services/template-api` manually).
 2. Update `go.mod`, the service section inside `.env.template`, and `cmd/server/server.go` with your service-specific names and dependencies.
 3. Configure the database DSN (`DB_POSTGRESQL_WRITE_DSN`) and run `go run ./cmd/server` once so migrations seed the database.

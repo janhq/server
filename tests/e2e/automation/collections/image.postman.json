@@ -1284,30 +1284,30 @@
       "key": "model_id",
       "value": ""
     },
-      {
-        "key": "image_conversation_id",
-        "value": ""
-      },
-      {
-        "key": "mcp_conversation_id",
-        "value": ""
-      },
-      {
-        "key": "mcp_tool_call_id",
-        "value": ""
-      },
-      {
-        "key": "mcp_image_url_is_http",
-        "value": "false"
-      },
-      {
-        "key": "first_chat_message_id",
-        "value": ""
-      },
-      {
-        "key": "image_request_chat_message_id",
-        "value": ""
-      },
+    {
+      "key": "image_conversation_id",
+      "value": ""
+    },
+    {
+      "key": "mcp_conversation_id",
+      "value": ""
+    },
+    {
+      "key": "mcp_tool_call_id",
+      "value": ""
+    },
+    {
+      "key": "mcp_image_url_is_http",
+      "value": "false"
+    },
+    {
+      "key": "first_chat_message_id",
+      "value": ""
+    },
+    {
+      "key": "image_request_chat_message_id",
+      "value": ""
+    },
     {
       "key": "second_chat_message_id",
       "value": ""

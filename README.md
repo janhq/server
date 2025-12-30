@@ -28,6 +28,7 @@ make quickstart
 ```
 
 The `quickstart` target wraps `jan-cli` and guides you through:
+
 - Selecting the LLM provider (local vLLM vs remote OpenAI-compatible endpoint)
 - Choosing the MCP search provider (Serper, SearXNG, or disabled)
 - Enabling or disabling the Media API
@@ -45,6 +46,7 @@ make up-full # Starts every service defined in docker-compose.yml
 **More detail**: [Quickstart Documentation](docs/quickstart.md)
 
 **Services running after `make up-full`:**
+
 - **API Gateway**: http://localhost:8000 (Kong)
 - **LLM API**: http://localhost:8080 (OpenAI-compatible)
 - **Response API**: http://localhost:8082 (Multi-step orchestration)
@@ -58,6 +60,7 @@ make up-full # Starts every service defined in docker-compose.yml
 ## What is Jan Server?
 
 Jan Server is an enterprise-grade LLM API platform that provides:
+
 - **OpenAI-compatible API** for chat completions and conversations
 - **Multi-step tool orchestration** with Response API for complex workflows
 - **Media management** with S3 integration and `jan_*` ID resolution
@@ -70,7 +73,7 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 
 - **OpenAI-compatible chat completions API** with streaming support
 - **Response API** for multi-step tool orchestration (max depth: 8, timeout: 45s)
-- **Media API** with S3 storage, jan_* ID system, and presigned URLs
+- **Media API** with S3 storage, jan\_\* ID system, and presigned URLs
 - **MCP tools** (google_search, web scraping, code execution via SandboxFusion)
 - **Conversation and message management** with PostgreSQL persistence
 - **Guest and user authentication** via Keycloak OIDC enforced by Kong gateway (JWT + custom API key plugin)
@@ -84,6 +87,7 @@ Jan Server is an enterprise-grade LLM API platform that provides:
 ## Documentation
 
 Primary entry points:
+
 - [docs/README.md](docs/README.md) - Documentation hub overview and navigation map grouped by audience
 - [docs/architecture/services.md](docs/architecture/services.md) - Service responsibilities and ports
 - [docs/api/README.md](docs/api/README.md) - API reference hub
@@ -91,6 +95,7 @@ Primary entry points:
 - [docs/quickstart.md](docs/quickstart.md) - Interactive setup walkthrough and commands
 
 Governance and quality:
+
 - [CHANGELOG.md](CHANGELOG.md) - Release history and notable changes
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow expectations
 - [docs/architecture/security.md](docs/architecture/security.md) - Security posture and hardening guidance
@@ -118,6 +123,7 @@ jan-server/
 ```
 
 Key directories:
+
 - `services/` - source for each microservice plus local docs.
 - `docs/` - user, operator, and developer documentation (see [docs/README.md](docs/README.md)).
 - `infra/docker/` - compose files included via `docker-compose.yml`.
@@ -129,13 +135,13 @@ Key directories:
 
 ### Microservices Overview
 
-| Service | Purpose | Port(s) | Source | Docs |
-|---------|---------|---------|--------|------|
-| LLM API | OpenAI-compatible chat, conversations, models | 8080 (direct), 8000 via Kong | `services/llm-api` | `docs/api/llm-api/README.md` |
-| Response API | Multi-step orchestration using MCP tools | 8082 | `services/response-api` | `docs/api/response-api/README.md` |
-| Media API | jan_* IDs, S3 ingest, media resolution | 8285 | `services/media-api` | `docs/api/media-api/README.md` |
-| MCP Tools | Model Context Protocol tools (search, scrape, file search, python) | 8091 | `services/mcp-tools` | `docs/api/mcp-tools/README.md` |
-| Realtime API | LiveKit-based real-time audio/video sessions (optional) | 8186 | `services/realtime-api` | `services/realtime-api/README.md` |
+| Service      | Purpose                                                            | Port(s)                      | Source                  | Docs                              |
+| ------------ | ------------------------------------------------------------------ | ---------------------------- | ----------------------- | --------------------------------- |
+| LLM API      | OpenAI-compatible chat, conversations, models                      | 8080 (direct), 8000 via Kong | `services/llm-api`      | `docs/api/llm-api/README.md`      |
+| Response API | Multi-step orchestration using MCP tools                           | 8082                         | `services/response-api` | `docs/api/response-api/README.md` |
+| Media API    | jan\_\* IDs, S3 ingest, media resolution                           | 8285                         | `services/media-api`    | `docs/api/media-api/README.md`    |
+| MCP Tools    | Model Context Protocol tools (search, scrape, file search, python) | 8091                         | `services/mcp-tools`    | `docs/api/mcp-tools/README.md`    |
+| Realtime API | LiveKit-based real-time audio/video sessions (optional)            | 8186                         | `services/realtime-api` | `services/realtime-api/README.md` |
 
 See [docs/architecture/services.md](docs/architecture/services.md) for dependency graphs and integration notes.
 
@@ -159,6 +165,7 @@ Create new microservices quickly with the template system:
 ```
 
 **Documentation:**
+
 - Template guide: [docs/guides/services-template.md](docs/guides/services-template.md)
 
 ## Development
@@ -267,6 +274,7 @@ The wrapper scripts automatically build the CLI if needed.
 ### Available Commands
 
 **Configuration Management:**
+
 ```bash
 jan-cli config validate              # Validate configuration
 jan-cli config export --format env   # Export as environment variables
@@ -275,6 +283,7 @@ jan-cli config k8s-values --env prod # Generate Kubernetes values
 ```
 
 **Service Operations:**
+
 ```bash
 jan-cli service list                 # List all services
 jan-cli service logs llm-api         # Show service logs
@@ -282,12 +291,14 @@ jan-cli service status               # Check service health
 ```
 
 **Development Tools:**
+
 ```bash
 jan-cli dev setup                    # Setup development environment
 jan-cli dev scaffold my-service      # Create new service from template
 ```
 
-**Documentation:** 
+**Documentation:**
+
 - Complete guide: [docs/guides/jan-cli.md](docs/guides/jan-cli.md)
 - Command reference: [tools/jan-cli/README.md](tools/jan-cli/README.md)
 
@@ -446,6 +457,7 @@ cp config/secrets.env.example config/secrets.env
 ```
 
 **Required secrets:**
+
 - `HF_TOKEN` - HuggingFace token (get from https://huggingface.co/settings/tokens)
 - `SERPER_API_KEY` - Serper API key (get from https://serper.dev)
 
@@ -470,6 +482,7 @@ make test-e2e             # Gateway end-to-end tests
 ```
 
 **Test Collections:**
+
 - `tests/automation/auth-postman-scripts.json` - Auth flows
 - `tests/automation/conversations-postman-scripts.json` - Conversations
 - `tests/automation/responses-postman-scripts.json` - Response API
@@ -491,25 +504,26 @@ See [Monitoring Guide](docs/guides/monitoring.md) for configuration.
 
 ## Technology Stack
 
-| Layer | Technology | Version |
-|-------|------------|---------|
-| **API Gateway** | Kong | 3.5 |
-| **Services** | Go (Gin framework) | 1.21+ |
-| **Database** | PostgreSQL | 18 |
-| **Cache** | Redis | Latest |
-| **Auth** | Keycloak (OIDC) | Latest |
-| **Inference** | vLLM | Latest |
-| **Search** | SearXNG | Latest |
-| **Code Execution** | SandboxFusion | Latest |
-| **Observability** | OpenTelemetry | Latest |
-| **Metrics** | Prometheus | Latest |
-| **Tracing** | Jaeger | Latest |
-| **Dashboards** | Grafana | Latest |
-| **MCP Protocol** | mark3labs/mcp-go | Latest |
-| **Container** | Docker Compose | 2.0+ |
-| **Orchestration** | Kubernetes + Helm | 1.28+ |
+| Layer              | Technology         | Version |
+| ------------------ | ------------------ | ------- |
+| **API Gateway**    | Kong               | 3.5     |
+| **Services**       | Go (Gin framework) | 1.21+   |
+| **Database**       | PostgreSQL         | 18      |
+| **Cache**          | Redis              | Latest  |
+| **Auth**           | Keycloak (OIDC)    | Latest  |
+| **Inference**      | vLLM               | Latest  |
+| **Search**         | SearXNG            | Latest  |
+| **Code Execution** | SandboxFusion      | Latest  |
+| **Observability**  | OpenTelemetry      | Latest  |
+| **Metrics**        | Prometheus         | Latest  |
+| **Tracing**        | Jaeger             | Latest  |
+| **Dashboards**     | Grafana            | Latest  |
+| **MCP Protocol**   | mark3labs/mcp-go   | Latest  |
+| **Container**      | Docker Compose     | 2.0+    |
+| **Orchestration**  | Kubernetes + Helm  | 1.28+   |
 
 **Microservices:**
+
 - LLM API: Go 1.21+ with Gin, GORM, Wire DI
 - Response API: Go 1.21+ with Gin, GORM, Wire DI
 - Media API: Go 1.21+ with Gin, GORM, S3 SDK
@@ -533,4 +547,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 ---
 
 **Quick Start**: `make setup && make up-full` | **Documentation**: [docs/](docs/) | **API Docs**: http://localhost:8000/api/swagger/index.html
-

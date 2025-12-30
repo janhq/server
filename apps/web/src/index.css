@@ -1,7 +1,8 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 @source '../node_modules/streamdown/dist/index.js';
-@import './fonts.css';
+@source '../../../packages/interfaces/src/**/*.{ts,tsx}';
+@import "./fonts.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -42,8 +43,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --animate-hue-rotate: hue-rotate 4s infinite;
-  --font-studio: 'StudioFeixenSans';
-  --font-sans: 'Inter', sans-serif;
+  --font-studio: "StudioFeixenSans";
+  --font-sans: "Inter", sans-serif;
 }
 
 :root {
@@ -131,7 +132,7 @@
     stroke-width: 1.5;
   }
 
-  [data-streamdown='code-block-header'] {
+  [data-streamdown="code-block-header"] {
     padding: 8px 16px !important;
   }
 

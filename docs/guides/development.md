@@ -67,20 +67,20 @@ docker compose ps  # status
 
 ## Access Points
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| Kong Gateway | http://localhost:8000 | Single entry point for all APIs |
-| LLM API | http://localhost:8080 | OpenAI-compatible API, `/healthz` for checks |
-| Response API | http://localhost:8082 | Multi-step orchestration |
-| Media API | http://localhost:8285 | File upload/management service |
-| MCP Tools | http://localhost:8091 | Native MCP tool bridge |
-| Memory Tools | http://localhost:8090 | Semantic memory service |
-| Realtime API | http://localhost:8186 | WebRTC session management |
-| Keycloak | http://localhost:8085 | Admin/Admin in development |
-| PostgreSQL | localhost:5432 | Database user `jan_user` / password from `.env` |
-| Grafana | http://localhost:3331 | Start with `make monitor-up` |
-| Prometheus | http://localhost:9090 | Monitoring profile |
-| Jaeger | http://localhost:16686 | Tracing profile |
+| Service      | URL                    | Notes                                           |
+| ------------ | ---------------------- | ----------------------------------------------- |
+| Kong Gateway | http://localhost:8000  | Single entry point for all APIs                 |
+| LLM API      | http://localhost:8080  | OpenAI-compatible API, `/healthz` for checks    |
+| Response API | http://localhost:8082  | Multi-step orchestration                        |
+| Media API    | http://localhost:8285  | File upload/management service                  |
+| MCP Tools    | http://localhost:8091  | Native MCP tool bridge                          |
+| Memory Tools | http://localhost:8090  | Semantic memory service                         |
+| Realtime API | http://localhost:8186  | WebRTC session management                       |
+| Keycloak     | http://localhost:8085  | Admin/Admin in development                      |
+| PostgreSQL   | localhost:5432         | Database user `jan_user` / password from `.env` |
+| Grafana      | http://localhost:3331  | Start with `make monitor-up`                    |
+| Prometheus   | http://localhost:9090  | Monitoring profile                              |
+| Jaeger       | http://localhost:16686 | Tracing profile                                 |
 
 ## Project Layout
 
@@ -101,6 +101,7 @@ jan-server/
 ## Development Workflows
 
 Jan Server supports three development modes:
+
 1. **Full Docker Stack** - All services in containers (parity with CI/production)
 2. **Dev-Full Mode** - Hybrid approach with infrastructure in Docker and optional native service execution
 3. **Native Execution** - Run services directly on host without dev-full scaffolding
@@ -147,12 +148,14 @@ After the stack is up you can replace a service:
 #### How It Works
 
 `make dev-full`:
+
 - Loads `.env` and copies it to `infra/docker/.env` via `ensure-docker-env`
 - Runs `docker compose -f docker-compose.yml -f docker-compose.dev-full.yml --profile full up -d`
 - Prints URLs for PostgreSQL, Keycloak, Kong, and every API/MCP service
 - Keeps the `jan-network`/`jan-monitoring` networks around for fast restarts
 
 Kong's dual-target upstreams (from `kong/kong-dev-full.yml`):
+
 ```yaml
 upstreams:
   - name: llm-api-upstream
@@ -168,16 +171,17 @@ When you stop the Docker container, Kong automatically fails over to the host ta
 
 #### Running Services Natively in Dev-Full Mode
 
-| Service | Port | Command |
-|---------|------|---------|
-| LLM API | 8080 | `jan-cli dev run llm-api` |
-| Media API | 8285 | `jan-cli dev run media-api` |
+| Service      | Port | Command                        |
+| ------------ | ---- | ------------------------------ |
+| LLM API      | 8080 | `jan-cli dev run llm-api`      |
+| Media API    | 8285 | `jan-cli dev run media-api`    |
 | Response API | 8082 | `jan-cli dev run response-api` |
-| MCP Tools | 8091 | `jan-cli dev run mcp-tools` |
+| MCP Tools    | 8091 | `jan-cli dev run mcp-tools`    |
 | Memory Tools | 8090 | `jan-cli dev run memory-tools` |
 | Realtime API | 8186 | `jan-cli dev run realtime-api` |
 
 **Options:**
+
 - Use `--build` to compile before running (`jan-cli dev run llm-api --build`)
 - Pass `--env config/hybrid.env` if you keep a dedicated env file for host processes
 - To hand control back to Docker, stop the host process and run `docker compose start <service>`
@@ -185,11 +189,13 @@ When you stop the Docker container, Kong automatically fails over to the host ta
 #### Workflow
 
 1. **Start dev-full mode**
+
    ```bash
    make dev-full
    ```
 
 2. **Replace a service with native execution**
+
    ```bash
    ./jan-cli.sh dev run llm-api        # macOS/Linux
    .\jan-cli.ps1 dev run llm-api       # Windows PowerShell
@@ -212,14 +218,14 @@ When you stop the Docker container, Kong automatically fails over to the host ta
 
 #### Environment Variables for Hybrid Mode
 
-| Variable | Purpose |
-|----------|---------|
-| `DB_POSTGRESQL_WRITE_DSN` | PostgreSQL connection string. Use `localhost` when running on host |
-| `KEYCLOAK_BASE_URL` / `ISSUER` / `JWKS_URL` | Auth endpoints (use `http://localhost:8085`) |
-| `HTTP_PORT` | Local service port (8080, 8082, 8285, 8091, etc.) |
-| `LOG_LEVEL` / `LOG_FORMAT` | Logging controls |
-| `MCP_*` / `SEARXNG_URL` / `VECTOR_STORE_URL` | Tool integrations for mcp-tools |
-| `OTEL_*` | Telemetry export (set `OTEL_ENABLED=true` to emit traces) |
+| Variable                                     | Purpose                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| `DB_POSTGRESQL_WRITE_DSN`                    | PostgreSQL connection string. Use `localhost` when running on host |
+| `KEYCLOAK_BASE_URL` / `ISSUER` / `JWKS_URL`  | Auth endpoints (use `http://localhost:8085`)                       |
+| `HTTP_PORT`                                  | Local service port (8080, 8082, 8285, 8091, etc.)                  |
+| `LOG_LEVEL` / `LOG_FORMAT`                   | Logging controls                                                   |
+| `MCP_*` / `SEARXNG_URL` / `VECTOR_STORE_URL` | Tool integrations for mcp-tools                                    |
+| `OTEL_*`                                     | Telemetry export (set `OTEL_ENABLED=true` to emit traces)          |
 
 Need a dedicated hybrid env file? Create `config/hybrid.env`, copy values from `.env`, then run `jan-cli dev run llm-api --env config/hybrid.env`.
 
@@ -297,6 +303,7 @@ See [Testing Guide](testing.md) for platform details, CI coverage, and troublesh
 - Hot reload tools (`air`, `reflex`, etc.) live inside `services/<name>`
 
 Example `.vscode/launch.json` for debugging llm-api:
+
 ```json
 {
   "version": "0.2.0",
@@ -318,13 +325,13 @@ Example `.vscode/launch.json` for debugging llm-api:
 
 ### Common Issues
 
-| Symptom | Fix |
-|---------|-----|
-| Kong keeps hitting the Docker container | Ensure the host service listens on the same port and returns 200 on `/healthz` |
-| Service cannot reach PostgreSQL | Update `DB_POSTGRESQL_WRITE_DSN` to use `localhost` instead of `api-db` when running on host |
-| Environment variables missing | Pass `--env .env` (default) or a custom env file to `jan-cli dev run` |
-| Port already in use | Stop the other listener or change `HTTP_PORT` before running the host service |
-| Want to debug multiple services | Run `jan-cli dev run ...` in multiple terminals; each command stops its corresponding container first |
+| Symptom                                 | Fix                                                                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Kong keeps hitting the Docker container | Ensure the host service listens on the same port and returns 200 on `/healthz`                        |
+| Service cannot reach PostgreSQL         | Update `DB_POSTGRESQL_WRITE_DSN` to use `localhost` instead of `api-db` when running on host          |
+| Environment variables missing           | Pass `--env .env` (default) or a custom env file to `jan-cli dev run`                                 |
+| Port already in use                     | Stop the other listener or change `HTTP_PORT` before running the host service                         |
+| Want to debug multiple services         | Run `jan-cli dev run ...` in multiple terminals; each command stops its corresponding container first |
 
 ### Health Checks and Monitoring
 
@@ -343,6 +350,3 @@ make down-clean      # remove volumes and networks for pristine state
 ```
 
 Need more help? Review [Testing](testing.md), [Troubleshooting](troubleshooting.md), [Monitoring](monitoring.md), and the configuration docs under `docs/configuration/`.
-
-
-

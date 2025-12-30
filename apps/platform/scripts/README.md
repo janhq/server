@@ -9,16 +9,19 @@ This directory contains utility scripts for the Jan Platform.
 Interactive scripts to help you quickly set up your `.env.local` file.
 
 **Usage (Linux/Mac):**
+
 ```bash
 ./scripts/setup-env.sh
 ```
 
 **Usage (Windows):**
+
 ```cmd
 scripts\setup-env.bat
 ```
 
 These scripts will:
+
 1. Copy `.env.example` to `.env.local`
 2. Prompt you for API URL configuration
 3. Backup existing `.env.local` if it exists
@@ -30,6 +33,7 @@ These scripts will:
 A simple test file to verify fumadocs-openapi import is working correctly.
 
 **Usage:**
+
 ```bash
 npx tsx scripts/test-import.ts
 ```

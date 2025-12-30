@@ -35,12 +35,11 @@ const getInitialState = (): Pick<ProjectState, 'projects' | 'currentProject'> =>
         projects: parsed.projects || [
           { id: '1', name: 'Default project', createdAt: new Date().toISOString() },
         ],
-        currentProject:
-          parsed.currentProject || {
-            id: '1',
-            name: 'Default project',
-            createdAt: new Date().toISOString(),
-          },
+        currentProject: parsed.currentProject || {
+          id: '1',
+          name: 'Default project',
+          createdAt: new Date().toISOString(),
+        },
       };
     } catch {
       return {
@@ -80,8 +79,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     const currentProject = get().currentProject;
 
     // If deleting current project, switch to first available
-    const newCurrentProject =
-      currentProject?.id === id ? (projects[0] || null) : currentProject;
+    const newCurrentProject = currentProject?.id === id ? projects[0] || null : currentProject;
 
     const newState = {
       projects,

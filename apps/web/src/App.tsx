@@ -1,16 +1,16 @@
-import { AppSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { NavHeader } from '@/components/sidebar/nav-header'
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/sidebar/sidebar";
+import { NavHeader } from "@/components/sidebar/nav-header";
 
-import ChatInput from '@/components/chat-input'
-import { usePrivateChat } from './stores/private-chat-store'
-import { HatGlassesIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
-import { SnowAnimation } from '@/components/snow-animation'
+import ChatInput from "@/components/chat-input";
+import { usePrivateChat } from "./stores/private-chat-store";
+import { HatGlassesIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { SnowAnimation } from "@/components/animations/snow-animation";
 
 function AppPageContent() {
-  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat)
+  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
 
   return (
     <>
@@ -80,7 +80,7 @@ function AppPageContent() {
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'easeInOut',
+                            ease: "easeInOut",
                             delay: 0,
                           }}
                           className="size-3 bg-background/80 rounded-full"
@@ -90,7 +90,7 @@ function AppPageContent() {
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'easeInOut',
+                            ease: "easeInOut",
                             delay: 0.15,
                           }}
                           className="size-3 bg-background/80 rounded-full"
@@ -100,7 +100,7 @@ function AppPageContent() {
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'easeInOut',
+                            ease: "easeInOut",
                             delay: 0.3,
                           }}
                           className="size-3 bg-background/80 rounded-full"
@@ -149,20 +149,20 @@ function AppPageContent() {
         </div>
       </SidebarInset>
     </>
-  )
+  );
 }
 
 export default function AppPage() {
-  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat)
+  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
 
   return (
     <SidebarProvider
       className={cn(
         isPrivateChat &&
-          '**:data-[slot="sidebar"]:opacity-0 **:data-[slot="sidebar"]:-translate-x-full **:data-[slot="sidebar-gap"]:w-0 **:data-[slot="sidebar"]:transition-all **:data-[slot="sidebar-gap"]:transition-all **:data-[slot="sidebar"]:duration-300 **:data-[slot="sidebar-gap"]:duration-300'
+          '**:data-[slot="sidebar"]:opacity-0 **:data-[slot="sidebar"]:-translate-x-full **:data-[slot="sidebar-gap"]:w-0 **:data-[slot="sidebar"]:transition-all **:data-[slot="sidebar-gap"]:transition-all **:data-[slot="sidebar"]:duration-300 **:data-[slot="sidebar-gap"]:duration-300',
       )}
     >
       <AppPageContent />
     </SidebarProvider>
-  )
+  );
 }

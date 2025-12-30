@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react'
-import { useRouter } from '@tanstack/react-router'
+import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "@tanstack/react-router";
 import {
   CommandDialog,
   CommandEmpty,
@@ -7,126 +7,129 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
+} from "@janhq/interfaces/command";
 import {
   MessageCircleMore,
   History,
   MessageCirclePlus,
   TextSearch,
-} from 'lucide-react'
-import { useConversations } from '@/stores/conversation-store'
-import { useProjects } from '@/stores/projects-store'
-import { LOCAL_STORAGE_KEY, QUERY_LIMIT, URL_PARAM } from '@/constants'
+} from "lucide-react";
+import { useConversations } from "@/stores/conversation-store";
+import { useProjects } from "@/stores/projects-store";
+import { LOCAL_STORAGE_KEY, QUERY_LIMIT, URL_PARAM } from "@/constants";
 
 interface SearchDialogProps {
-  open: boolean
+  open: boolean;
 }
 
 export function SearchDialog({ open }: SearchDialogProps) {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
-  const conversations = useConversations((state) => state.conversations)
-  const getConversations = useConversations((state) => state.getConversations)
-  const projects = useProjects((state) => state.projects)
-  const getProjects = useProjects((state) => state.getProjects)
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const conversations = useConversations((state) => state.conversations);
+  const getConversations = useConversations((state) => state.getConversations);
+  const projects = useProjects((state) => state.projects);
+  const getProjects = useProjects((state) => state.getProjects);
 
   // Load conversations and projects when dialog opens
   useEffect(() => {
     if (open) {
-      getConversations()
-      getProjects()
+      getConversations();
+      getProjects();
     }
-  }, [open, getConversations, getProjects])
+  }, [open, getConversations, getProjects]);
 
   // Load recent searches from localStorage
   const recentSearches = useMemo(() => {
-    if (!open) return []
+    if (!open) return [];
 
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY.RECENT_SEARCHES)
-    if (!stored) return []
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY.RECENT_SEARCHES);
+    if (!stored) return [];
 
     try {
-      const conversationIds = JSON.parse(stored) as string[]
+      const conversationIds = JSON.parse(stored) as string[];
       return conversationIds
         .map((id) => conversations.find((conv) => conv.id === id))
-        .filter((conv): conv is Conversation => conv !== undefined)
+        .filter((conv): conv is Conversation => conv !== undefined);
     } catch {
-      return []
+      return [];
     }
-  }, [open, conversations])
+  }, [open, conversations]);
 
   const handleClose = () => {
-    setSearchQuery('') // Reset search query when dialog closes
-    const url = new URL(window.location.href)
-    url.searchParams.delete(URL_PARAM.SEARCH)
-    router.navigate({ to: url.pathname + url.search })
-  }
+    setSearchQuery(""); // Reset search query when dialog closes
+    const url = new URL(window.location.href);
+    url.searchParams.delete(URL_PARAM.SEARCH);
+    router.navigate({ to: url.pathname + url.search });
+  };
 
   const handleSelectConversation = (conversationId: string) => {
     // Save to recent searches
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY.RECENT_SEARCHES)
-    let conversationIds: string[] = []
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY.RECENT_SEARCHES);
+    let conversationIds: string[] = [];
 
     if (stored) {
       try {
-        conversationIds = JSON.parse(stored) as string[]
+        conversationIds = JSON.parse(stored) as string[];
       } catch {
-        conversationIds = []
+        conversationIds = [];
       }
     }
 
     // Remove if already exists and add to front
-    conversationIds = conversationIds.filter((id) => id !== conversationId)
-    conversationIds.unshift(conversationId)
+    conversationIds = conversationIds.filter((id) => id !== conversationId);
+    conversationIds.unshift(conversationId);
 
     // Keep only QUERY_LIMIT.MAX_RECENT_SEARCHES
-    conversationIds = conversationIds.slice(0, QUERY_LIMIT.MAX_RECENT_SEARCHES)
+    conversationIds = conversationIds.slice(0, QUERY_LIMIT.MAX_RECENT_SEARCHES);
 
-    localStorage.setItem(LOCAL_STORAGE_KEY.RECENT_SEARCHES, JSON.stringify(conversationIds))
+    localStorage.setItem(
+      LOCAL_STORAGE_KEY.RECENT_SEARCHES,
+      JSON.stringify(conversationIds),
+    );
 
-    handleClose()
-    router.navigate({ to: `/threads/${conversationId}` })
-  }
+    handleClose();
+    router.navigate({ to: `/threads/${conversationId}` });
+  };
 
   // Filter and group conversations based on search query
   const searchResults = useMemo(() => {
-    if (!searchQuery) return { withProject: [], withoutProject: [] }
+    if (!searchQuery) return { withProject: [], withoutProject: [] };
 
-    const query = searchQuery.toLowerCase()
+    const query = searchQuery.toLowerCase();
     const withProject: Array<{
-      conversation: Conversation
-      projectName: string
-    }> = []
-    const withoutProject: Conversation[] = []
+      conversation: Conversation;
+      projectName: string;
+    }> = [];
+    const withoutProject: Conversation[] = [];
 
     conversations.forEach((conversation) => {
-      const titleMatch = conversation.title.toLowerCase().includes(query)
+      const titleMatch = conversation.title.toLowerCase().includes(query);
 
       // Get project name
       const projectName = conversation.project_id
         ? projects.find((p) => p.id === conversation.project_id)?.name
-        : null
+        : null;
 
-      const projectMatch = projectName?.toLowerCase().includes(query)
+      const projectMatch = projectName?.toLowerCase().includes(query);
 
       if (titleMatch || projectMatch) {
         if (projectName) {
-          withProject.push({ conversation, projectName })
+          withProject.push({ conversation, projectName });
         } else {
-          withoutProject.push(conversation)
+          withoutProject.push(conversation);
         }
       }
-    })
+    });
 
-    return { withProject, withoutProject }
-  }, [searchQuery, conversations, projects])
+    return { withProject, withoutProject };
+  }, [searchQuery, conversations, projects]);
 
-  const showStartNewChat = !searchQuery
+  const showStartNewChat = !searchQuery;
 
   const handleStartNewChat = () => {
-    handleClose()
-    router.navigate({ to: '/' })
-  }
+    handleClose();
+    router.navigate({ to: "/" });
+  };
 
   return (
     <CommandDialog
@@ -225,5 +228,5 @@ export function SearchDialog({ open }: SearchDialogProps) {
         )}
       </CommandList>
     </CommandDialog>
-  )
+  );
 }

@@ -1,21 +1,21 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { extractUserFromTokens } from '@/lib/oauth'
-import { fetchJsonWithAuth } from '@/lib/api-client'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { extractUserFromTokens } from "@/lib/oauth";
+import { fetchJsonWithAuth } from "@/lib/api-client";
 
-declare const JAN_API_BASE_URL: string
+declare const JAN_API_BASE_URL: string;
 
 interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  isGuest: boolean
-  accessToken: string | null
-  refreshToken: string | null
-  login: (user: User) => void
-  loginWithOAuth: (tokens: OAuthTokenResponse) => void
-  logout: () => Promise<void>
-  guestLogin: () => Promise<void>
-  refreshAccessToken: () => Promise<void>
+  user: User | null;
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  accessToken: string | null;
+  refreshToken: string | null;
+  login: (user: User) => void;
+  loginWithOAuth: (tokens: OAuthTokenResponse) => void;
+  logout: () => Promise<void>;
+  guestLogin: () => Promise<void>;
+  refreshAccessToken: () => Promise<void>;
 }
 
 export const useAuth = create<AuthState>()(
@@ -28,7 +28,7 @@ export const useAuth = create<AuthState>()(
       refreshToken: null,
       login: (user) => set({ user, isAuthenticated: true, isGuest: false }),
       loginWithOAuth: (tokens) => {
-        const userData = extractUserFromTokens(tokens)
+        const userData = extractUserFromTokens(tokens);
         set({
           user: {
             id: userData.id,
@@ -41,58 +41,57 @@ export const useAuth = create<AuthState>()(
           isGuest: false,
           accessToken: userData.accessToken,
           refreshToken: userData.refreshToken,
-        })
+        });
       },
       logout: async () => {
         try {
-          const refreshToken = useAuth.getState().refreshToken
+          const refreshToken = useAuth.getState().refreshToken;
           await fetchJsonWithAuth<{ status: string }>(
             `${JAN_API_BASE_URL}auth/logout`,
             {
-              method: 'POST',
+              method: "POST",
               body: JSON.stringify({ refresh_token: refreshToken }),
-            }
-          )
+            },
+          );
 
           // Clear all stores
-          const { useProjects } = await import('@/stores/projects-store')
-          const { useConversations } = await import(
-            '@/stores/conversation-store'
-          )
-          useProjects.getState().clearProjects()
-          useConversations.getState().clearConversations()
+          const { useProjects } = await import("@/stores/projects-store");
+          const { useConversations } =
+            await import("@/stores/conversation-store");
+          useProjects.getState().clearProjects();
+          useConversations.getState().clearConversations();
           set({
             user: null,
             isAuthenticated: false,
             isGuest: false,
             accessToken: null,
             refreshToken: null,
-          })
+          });
         } catch (error) {
-          console.error('Logout error:', error)
+          console.error("Logout error:", error);
         }
       },
       guestLogin: async () => {
         try {
           const response = await fetch(`${JAN_API_BASE_URL}/auth/guest-login`, {
-            method: 'POST',
-            credentials: 'include',
+            method: "POST",
+            credentials: "include",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
-          })
+          });
 
           if (!response.ok) {
             throw new Error(
-              `Guest login failed: ${response.status} ${response.statusText}`
-            )
+              `Guest login failed: ${response.status} ${response.statusText}`,
+            );
           }
-          const data: GuestLoginResponse = await response.json()
+          const data: GuestLoginResponse = await response.json();
           const guestUser: User = {
             id: data.user_id,
             name: data.username,
-            email: '',
-          }
+            email: "",
+          };
 
           set({
             user: guestUser,
@@ -100,10 +99,10 @@ export const useAuth = create<AuthState>()(
             isGuest: true,
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
-          })
+          });
         } catch (error) {
-          console.error('Guest login error:', error)
-          throw error
+          console.error("Guest login error:", error);
+          throw error;
         }
       },
       refreshAccessToken: async () => {
@@ -111,44 +110,44 @@ export const useAuth = create<AuthState>()(
           const response = await fetch(
             `${JAN_API_BASE_URL}auth/refresh-token`,
             {
-              method: 'POST',
-              credentials: 'include',
+              method: "POST",
+              credentials: "include",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
               body: JSON.stringify({
                 refresh_token: useAuth.getState().refreshToken,
               }),
-            }
-          )
+            },
+          );
 
           if (!response.ok) {
             throw new Error(
-              `Token refresh failed: ${response.status} ${response.statusText}`
-            )
+              `Token refresh failed: ${response.status} ${response.statusText}`,
+            );
           }
 
-          const data: RefreshTokenResponse = await response.json()
+          const data: RefreshTokenResponse = await response.json();
 
           set({
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
-          })
+          });
         } catch (error) {
-          console.error('Token refresh error:', error)
+          console.error("Token refresh error:", error);
           set({
             user: null,
             isAuthenticated: false,
             isGuest: false,
             accessToken: null,
             refreshToken: null,
-          })
-          throw error
+          });
+          throw error;
         }
       },
     }),
     {
-      name: 'auth-storage',
-    }
-  )
-)
+      name: "auth-storage",
+    },
+  ),
+);

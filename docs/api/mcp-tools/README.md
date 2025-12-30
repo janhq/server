@@ -7,6 +7,7 @@ The MCP Tools API provides AI tools for web search, web scraping, and code execu
 Examples: [API examples index](../examples/README.md) includes discovery and call samples.
 
 ### URLs
+
 - **Direct access**: http://localhost:8091
 - **Through gateway**: http://localhost:8000/v1/mcp (Kong also exposes `/mcp/*` and forwards to `/v1/...`)
 - **Inside Docker**: http://mcp-tools:8091
@@ -18,6 +19,7 @@ All endpoints require authentication through the Kong gateway.
 **For complete authentication documentation, see [Authentication Guide](../README.md#authentication)**
 
 **Quick example:**
+
 ```bash
 # Get guest token
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
@@ -30,6 +32,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 ## Available Tools
+
 - **google_search** - Serper/SearXNG-backed web search with optional filters and location hints
 - **scrape** - Fetch and parse a web page, optionally returning Markdown
 - **file_search_index** / **file_search_query** - Lightweight vector store to index custom text and run similarity queries
@@ -44,12 +47,12 @@ All tools use JSON-RPC 2.0 protocol. You send a request with tool name and param
 
 ## Service Ports & Configuration
 
-| Component | Port | Key Environment Variables |
-|-----------|------|--------------------------|
-| **HTTP Server** | 8091 | `MCP_TOOLS_HTTP_PORT` |
-| **Search Providers** | 443 | `SERPER_API_KEY`, `MCP_SEARCH_ENGINE`, `SEARXNG_URL` |
-| **Vector Store** | 3015 | `VECTOR_STORE_URL` |
-| **SandboxFusion** | 8080 | `SANDBOXFUSION_URL`, `MCP_SANDBOX_REQUIRE_APPROVAL` |
+| Component            | Port | Key Environment Variables                            |
+| -------------------- | ---- | ---------------------------------------------------- |
+| **HTTP Server**      | 8091 | `MCP_TOOLS_HTTP_PORT`                                |
+| **Search Providers** | 443  | `SERPER_API_KEY`, `MCP_SEARCH_ENGINE`, `SEARXNG_URL` |
+| **Vector Store**     | 3015 | `VECTOR_STORE_URL`                                   |
+| **SandboxFusion**    | 8080 | `SANDBOXFUSION_URL`, `MCP_SANDBOX_REQUIRE_APPROVAL`  |
 
 ### Required Environment Variables
 
@@ -89,16 +92,16 @@ All tool calls use JSON-RPC 2.0 format.
 
 ```json
 {
- "jsonrpc": "2.0",
- "id": 1,
- "method": "tools/call",
- "params": {
- "name": "tool_name",
- "arguments": {
- "arg1": "value1",
- "arg2": "value2"
- }
- }
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "tool_name",
+    "arguments": {
+      "arg1": "value1",
+      "arg2": "value2"
+    }
+  }
 }
 ```
 
@@ -106,12 +109,12 @@ All tool calls use JSON-RPC 2.0 format.
 
 ```json
 {
- "jsonrpc": "2.0",
- "id": 1,
- "result": {
- "content": "Tool output",
- "is_error": false
- }
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": "Tool output",
+    "is_error": false
+  }
 }
 ```
 
@@ -119,13 +122,13 @@ All tool calls use JSON-RPC 2.0 format.
 
 ```json
 {
- "jsonrpc": "2.0",
- "id": 1,
- "error": {
- "code": -32603,
- "message": "Internal error",
- "data": "Tool execution failed"
- }
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32603,
+    "message": "Internal error",
+    "data": "Tool execution failed"
+  }
 }
 ```
 
@@ -147,45 +150,54 @@ curl -N http://localhost:8000/v1/mcp \
 Because the service uses `mcp-go`'s streaming HTTP server, responses are sent as Server-Sent Events (SSE). For simple calls you can omit `-N`, but streaming keeps the connection open for multi-part results (tool deltas, long-running sandbox jobs, etc.).
 
 **Response:**
+
 ```json
 {
- "tools": [
- {
- "name": "google_search",
- "description": "Search Google for query results",
- "inputSchema": {
- "type": "object",
- "properties": {
- "q": {"type": "string", "description": "Search query"},
- "num": {"type": "integer", "description": "Number of results", "default": 10}
- },
- "required": ["q"]
- }
- },
- {
- "name": "scrape",
- "description": "Extract content from a URL",
- "inputSchema": {
- "type": "object",
- "properties": {
- "url": {"type": "string", "description": "URL to scrape"}
- },
- "required": ["url"]
- }
- },
- {
- "name": "python_exec",
- "description": "Execute code in a sandboxed environment",
- "inputSchema": {
- "type": "object",
- "properties": {
- "code": {"type": "string", "description": "Code to execute"},
- "language": {"type": "string", "enum": ["python", "javascript"], "default": "python"}
- },
- "required": ["code"]
- }
- }
- ]
+  "tools": [
+    {
+      "name": "google_search",
+      "description": "Search Google for query results",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "q": { "type": "string", "description": "Search query" },
+          "num": {
+            "type": "integer",
+            "description": "Number of results",
+            "default": 10
+          }
+        },
+        "required": ["q"]
+      }
+    },
+    {
+      "name": "scrape",
+      "description": "Extract content from a URL",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "description": "URL to scrape" }
+        },
+        "required": ["url"]
+      }
+    },
+    {
+      "name": "python_exec",
+      "description": "Execute code in a sandboxed environment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "description": "Code to execute" },
+          "language": {
+            "type": "string",
+            "enum": ["python", "javascript"],
+            "default": "python"
+          }
+        },
+        "required": ["code"]
+      }
+    }
+  ]
 }
 ```
 
@@ -227,7 +239,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
 The Response API enables tool chaining:
 
 ```
-google_search 
+google_search
  v
 scrape (on each result)
  v
@@ -241,14 +253,14 @@ LLM API (final generation)
 
 ## Error Codes
 
-| Code | Message | Meaning |
-|------|---------|---------|
-| -32700 | Parse error | Invalid JSON |
-| -32600 | Invalid Request | Missing method/params |
-| -32601 | Method not found | Unknown tool |
-| -32602 | Invalid params | Invalid parameters |
-| -32603 | Internal error | Tool execution failed |
-| -32000 | Timeout | Tool execution timeout |
+| Code   | Message          | Meaning                |
+| ------ | ---------------- | ---------------------- |
+| -32700 | Parse error      | Invalid JSON           |
+| -32600 | Invalid Request  | Missing method/params  |
+| -32601 | Method not found | Unknown tool           |
+| -32602 | Invalid params   | Invalid parameters     |
+| -32603 | Internal error   | Tool execution failed  |
+| -32000 | Timeout          | Tool execution timeout |
 
 ## Related Services
 
@@ -268,6 +280,7 @@ LLM API (final generation)
 - [LLM API Documentation](../llm-api/)
 - [Architecture Overview](../../architecture/)
 - [Provider Configuration](../../services/mcp-tools/mcp-providers.md)
+
 ### Example: List Available Tools
 
 ```bash

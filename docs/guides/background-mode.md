@@ -38,6 +38,7 @@ Send Webhook Notification (async, non-blocking)
 ### Creating a Background Response
 
 **Request:**
+
 ```http
 POST /responses
 Content-Type: application/json
@@ -55,6 +56,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -73,12 +75,14 @@ Authorization: Bearer <token>
 ### Polling for Status
 
 **Request:**
+
 ```http
 GET /responses/resp_abc123
 Authorization: Bearer <token>
 ```
 
 **Response (In Progress):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -89,6 +93,7 @@ Authorization: Bearer <token>
 ```
 
 **Response (Completed):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -108,12 +113,14 @@ Authorization: Bearer <token>
 ### Cancelling a Background Task
 
 **Request:**
+
 ```http
 POST /responses/resp_abc123/cancel
 Authorization: Bearer <token>
 ```
 
 **Response:**
+
 ```json
 {
   "id": "resp_abc123",
@@ -124,6 +131,7 @@ Authorization: Bearer <token>
 ```
 
 **Cancellation Behavior:**
+
 - If status is `queued`: Immediately marks cancelled, prevents worker pickup
 - If status is `in_progress`: Marks cancelled, but task may complete normally (cooperative cancellation)
 - If status is `completed` or `failed`: No-op, returns current state
@@ -189,10 +197,12 @@ WEBHOOK_RETRY_DELAY=2s               # Delay between retries
 ### Recommended Settings
 
 **Development:**
+
 - `BACKGROUND_WORKER_COUNT=2`
 - `BACKGROUND_TASK_TIMEOUT=300s`
 
 **Production:**
+
 - `BACKGROUND_WORKER_COUNT=8`
 - `BACKGROUND_TASK_TIMEOUT=600s`
 - Monitor queue depth and adjust worker count as needed
@@ -250,11 +260,13 @@ FOR UPDATE SKIP LOCKED;
 ### Key Metrics
 
 1. **Queue Depth**: Count of tasks with `status='queued'`
+
    ```sql
    SELECT COUNT(*) FROM responses WHERE status = 'queued' AND background = TRUE;
    ```
 
-2. **Average Processing Time**: 
+2. **Average Processing Time**:
+
    ```sql
    SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at)))
    FROM responses
@@ -264,13 +276,14 @@ FOR UPDATE SKIP LOCKED;
    ```
 
 3. **Worker Utilization**:
+
    ```sql
    SELECT COUNT(*) FROM responses WHERE status = 'in_progress' AND background = TRUE;
    ```
 
 4. **Failure Rate**:
    ```sql
-   SELECT 
+   SELECT
      COUNT(CASE WHEN status = 'failed' THEN 1 END) * 100.0 / COUNT(*) as failure_rate
    FROM responses
    WHERE background = TRUE AND status IN ('completed', 'failed');
@@ -296,12 +309,12 @@ Workers log structured events:
 
 ### Common Errors
 
-| Error | HTTP Status | Description |
-|-------|-------------|-------------|
-| Missing Store | 400 | `background=true` without `store=true` |
-| Task Timeout | 500 | Task exceeded `BACKGROUND_TASK_TIMEOUT` |
-| LLM Provider Error | 500 | Upstream LLM API failure |
-| Tool Execution Error | 500 | MCP tool call failed |
+| Error                | HTTP Status | Description                             |
+| -------------------- | ----------- | --------------------------------------- |
+| Missing Store        | 400         | `background=true` without `store=true`  |
+| Task Timeout         | 500         | Task exceeded `BACKGROUND_TASK_TIMEOUT` |
+| LLM Provider Error   | 500         | Upstream LLM API failure                |
+| Tool Execution Error | 500         | MCP tool call failed                    |
 
 ### Recovery
 
@@ -325,6 +338,7 @@ jan-cli api-test run tests/postman/responses-background-webhook.json \
 ### Manual Testing
 
 1. **Create Background Task**:
+
    ```bash
    curl -X POST http://localhost:8082/responses \
      -H "Content-Type: application/json" \
@@ -338,6 +352,7 @@ jan-cli api-test run tests/postman/responses-background-webhook.json \
    ```
 
 2. **Poll Status**:
+
    ```bash
    curl http://localhost:8082/responses/resp_abc123
    ```
@@ -369,11 +384,13 @@ jan-cli api-test run tests/postman/responses-background-webhook.json \
 **Symptom**: Tasks remain in `queued` status
 
 **Check**:
+
 1. Are workers running? Check logs for "worker started"
 2. Database connection healthy?
 3. Any database locks? Check `pg_locks`
 
 **Fix**:
+
 ```bash
 # Restart workers
 docker restart response-api
@@ -384,11 +401,13 @@ docker restart response-api
 **Symptom**: No webhook received despite completed task
 
 **Check**:
+
 1. Is `webhook_url` in metadata?
 2. Is webhook endpoint reachable?
 3. Check logs for "webhook notification failed"
 
 **Fix**:
+
 - Verify webhook URL is correct and accessible
 - Check firewall/network rules
 - Webhook failures don't affect task completion, manual retry needed
@@ -398,11 +417,13 @@ docker restart response-api
 **Symptom**: Growing number of queued tasks
 
 **Check**:
+
 1. Worker utilization (should be near `BACKGROUND_WORKER_COUNT`)
 2. Average processing time increasing?
 3. LLM provider throttling?
 
 **Fix**:
+
 ```bash
 # Increase workers
 export BACKGROUND_WORKER_COUNT=8

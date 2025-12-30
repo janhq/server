@@ -2,7 +2,7 @@
 
 > **Status:** v0.0.14 | **Last Updated:** December 23, 2025
 
-Complete working examples for Media API uploads, jan_* ID management, and presigned URLs with Python, JavaScript, and cURL.
+Complete working examples for Media API uploads, jan\_\* ID management, and presigned URLs with Python, JavaScript, and cURL.
 
 ## Table of Contents
 
@@ -23,16 +23,18 @@ Complete working examples for Media API uploads, jan_* ID management, and presig
 All Media API calls require authentication via Kong Gateway.
 
 **JavaScript:**
+
 ```javascript
 // Get guest token
 const authResponse = await fetch("http://localhost:8000/llm/auth/guest-login", {
-  method: "POST"
+  method: "POST",
 });
 const { access_token: token } = await authResponse.json();
-const headers = { "Authorization": `Bearer ${token}` };
+const headers = { Authorization: `Bearer ${token}` };
 ```
 
 **cURL:**
+
 ```bash
 # Get and export token
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
@@ -46,20 +48,21 @@ export TOKEN
 Upload an image from a remote URL. The Media API fetches and stores it in S3.
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/media/v1/media", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     source: {
       type: "remote_url",
-      url: "https://example.com/images/photo.jpg"
+      url: "https://example.com/images/photo.jpg",
     },
-    user_id: "user_123"
-  })
+    user_id: "user_123",
+  }),
 });
 
 const result = await response.json();
@@ -70,6 +73,7 @@ console.log(`Presigned URL: ${result.presigned_url}`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/media/v1/media \
   -H "Authorization: Bearer $TOKEN" \
@@ -84,6 +88,7 @@ curl -X POST http://localhost:8000/media/v1/media \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
@@ -102,29 +107,30 @@ curl -X POST http://localhost:8000/media/v1/media \
 Upload an image from a base64-encoded data URL (useful for canvas captures or base64 images).
 
 **JavaScript:**
+
 ```javascript
 // From file input
-const file = document.getElementById('fileInput').files[0];
+const file = document.getElementById("fileInput").files[0];
 const reader = new FileReader();
 
 reader.onload = async (e) => {
   const dataUrl = e.target.result;
-  
+
   const response = await fetch("http://localhost:8000/media/v1/media", {
     method: "POST",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       source: {
         type: "data_url",
-        data_url: dataUrl
+        data_url: dataUrl,
       },
-      user_id: "user_456"
-    })
+      user_id: "user_456",
+    }),
   });
-  
+
   const result = await response.json();
   console.log(`Jan ID: ${result.id}`);
 };
@@ -133,6 +139,7 @@ reader.readAsDataURL(file);
 ```
 
 **cURL:**
+
 ```bash
 # Generate data URL from image
 IMAGE_B64=$(base64 -w 0 image.png)
@@ -159,18 +166,22 @@ For large files, use presigned URLs to upload directly to S3 (bypassing the Medi
 ### Step 1: Request Presigned URL
 
 **JavaScript:**
+
 ```javascript
-const response = await fetch("http://localhost:8000/media/v1/media/prepare-upload", {
-  method: "POST",
-  headers: {
-    ...headers,
-    "Content-Type": "application/json"
+const response = await fetch(
+  "http://localhost:8000/media/v1/media/prepare-upload",
+  {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      content_type: "image/jpeg",
+      user_id: "user_789",
+    }),
   },
-  body: JSON.stringify({
-    content_type: "image/jpeg",
-    user_id: "user_789"
-  })
-});
+);
 
 const { jan_id, presigned_post } = await response.json();
 console.log(`Jan ID: ${jan_id}`);
@@ -178,6 +189,7 @@ console.log(`Upload to: ${presigned_post.url}`);
 ```
 
 **cURL:**
+
 ```bash
 PRESIGN_RESP=$(curl -s -X POST http://localhost:8000/media/v1/media/prepare-upload \
   -H "Authorization: Bearer $TOKEN" \
@@ -194,6 +206,7 @@ echo "Upload URL: $UPLOAD_URL"
 ```
 
 **Response:**
+
 ```json
 {
   "jan_id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n1",
@@ -215,9 +228,10 @@ echo "Upload URL: $UPLOAD_URL"
 ### Step 2: Upload Directly to S3
 
 **JavaScript:**
+
 ```javascript
 // Upload file directly to S3
-const file = document.getElementById('fileInput').files[0];
+const file = document.getElementById("fileInput").files[0];
 const formData = new FormData();
 
 // Add all presigned POST fields
@@ -226,11 +240,11 @@ Object.entries(presigned_post.fields).forEach(([key, value]) => {
 });
 
 // Add file last
-formData.append('file', file);
+formData.append("file", file);
 
 const uploadResponse = await fetch(presigned_post.url, {
   method: "POST",
-  body: formData
+  body: formData,
 });
 
 if (uploadResponse.ok) {
@@ -240,6 +254,7 @@ if (uploadResponse.ok) {
 ```
 
 **cURL:**
+
 ```bash
 # Extract presigned fields
 KEY=$(echo $PRESIGN_RESP | jq -r '.presigned_post.fields.key')
@@ -266,10 +281,11 @@ echo "Jan ID: $JAN_ID"
 After uploading to S3, get a presigned download URL:
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/media/v1/media/${jan_id}/presign`,
-  { headers }
+  { headers },
 );
 
 const { url, expires_in } = await response.json();
@@ -278,6 +294,7 @@ console.log(`Expires in: ${expires_in} seconds`);
 ```
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/media/v1/media/$JAN_ID/presign | jq
@@ -287,32 +304,31 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Resolve Media IDs
 
-Resolve multiple jan_* IDs to presigned URLs in a single request.
+Resolve multiple jan\_\* IDs to presigned URLs in a single request.
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/media/v1/media/resolve", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    ids: [
-      "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
-      "jan_01hqr8v9k2x3f4g5h6j7k8m9n1"
-    ]
-  })
+    ids: ["jan_01hqr8v9k2x3f4g5h6j7k8m9n0", "jan_01hqr8v9k2x3f4g5h6j7k8m9n1"],
+  }),
 });
 
 const { media } = await response.json();
-media.forEach(item => {
+media.forEach((item) => {
   console.log(`ID: ${item.id}`);
   console.log(`URL: ${item.presigned_url}`);
 });
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/media/v1/media/resolve \
   -H "Authorization: Bearer $TOKEN" \
@@ -326,6 +342,7 @@ curl -X POST http://localhost:8000/media/v1/media/resolve \
 ```
 
 **Response:**
+
 ```json
 {
   "media": [
@@ -350,13 +367,13 @@ curl -X POST http://localhost:8000/media/v1/media/resolve \
 Get metadata and presigned URL for a single media item.
 
 **JavaScript:**
+
 ```javascript
 const janId = "jan_01hqr8v9k2x3f4g5h6j7k8m9n0";
 
-const response = await fetch(
-  `http://localhost:8000/media/v1/media/${janId}`,
-  { headers }
-);
+const response = await fetch(`http://localhost:8000/media/v1/media/${janId}`, {
+  headers,
+});
 
 const result = await response.json();
 console.log(`ID: ${result.id}`);
@@ -366,12 +383,14 @@ console.log(`URL: ${result.presigned_url}`);
 ```
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/media/v1/media/jan_01hqr8v9k2x3f4g5h6j7k8m9n0 | jq
 ```
 
 **Response:**
+
 ```json
 {
   "id": "jan_01hqr8v9k2x3f4g5h6j7k8m9n0",
@@ -390,12 +409,13 @@ curl -H "Authorization: Bearer $TOKEN" \
 Get a fresh presigned download URL (useful when URLs expire).
 
 **JavaScript:**
+
 ```javascript
 const janId = "jan_01hqr8v9k2x3f4g5h6j7k8m9n0";
 
 const response = await fetch(
   `http://localhost:8000/media/v1/media/${janId}/presign`,
-  { headers }
+  { headers },
 );
 
 const { url, expires_in } = await response.json();
@@ -407,13 +427,14 @@ const blob = await fileResponse.blob();
 const downloadUrl = URL.createObjectURL(blob);
 
 // Trigger download
-const a = document.createElement('a');
+const a = document.createElement("a");
 a.href = downloadUrl;
-a.download = 'image.jpg';
+a.download = "image.jpg";
 a.click();
 ```
 
 **cURL:**
+
 ```bash
 # Get presigned URL
 DOWNLOAD_URL=$(curl -s -H "Authorization: Bearer $TOKEN" \
@@ -427,26 +448,27 @@ curl -o downloaded_image.jpg "$DOWNLOAD_URL"
 
 ## Integration with LLM API
 
-Use jan_* IDs in chat completions for vision models.
+Use jan\_\* IDs in chat completions for vision models.
 
 ### Complete Flow: Upload → Chat
 
 **JavaScript:**
+
 ```javascript
 // Step 1: Upload image
 const uploadResponse = await fetch("http://localhost:8000/media/v1/media", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     source: {
       type: "remote_url",
-      url: "https://example.com/chart.png"
+      url: "https://example.com/chart.png",
     },
-    user_id: "user_123"
-  })
+    user_id: "user_123",
+  }),
 });
 
 const { id: janId } = await uploadResponse.json();
@@ -457,18 +479,20 @@ const chatResponse = await fetch("http://localhost:8000/v1/chat/completions", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
-    messages: [{
-      role: "user",
-      content: [
-        { type: "text", text: "What do you see in this image?" },
-        { type: "image_url", image_url: { url: janId } }
-      ]
-    }]
-  })
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "What do you see in this image?" },
+          { type: "image_url", image_url: { url: janId } },
+        ],
+      },
+    ],
+  }),
 });
 
 const chatResult = await chatResponse.json();
@@ -476,6 +500,7 @@ console.log(chatResult.choices[0].message.content);
 ```
 
 **cURL:**
+
 ```bash
 # Step 1: Upload
 JAN_ID=$(curl -s -X POST http://localhost:8000/media/v1/media \
@@ -517,6 +542,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 **Invalid URL (400):**
 **File Too Large (413):**
+
 ```json
 {
   "error": {
@@ -529,6 +555,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 **Media Not Found (404):**
 **Network/Fetch Error:**
+
 ### Error Response Format
 
 ```json
@@ -552,22 +579,22 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 ```javascript
 // Capture canvas and upload
-const canvas = document.getElementById('myCanvas');
-const dataUrl = canvas.toDataURL('image/png');
+const canvas = document.getElementById("myCanvas");
+const dataUrl = canvas.toDataURL("image/png");
 
 const response = await fetch("http://localhost:8000/media/v1/media", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     source: {
       type: "data_url",
-      data_url: dataUrl
+      data_url: dataUrl,
     },
-    user_id: "canvas_user"
-  })
+    user_id: "canvas_user",
+  }),
 });
 
 const { id: janId } = await response.json();
@@ -584,14 +611,14 @@ console.log(`Screenshot saved: ${janId}`);
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MEDIA_S3_PRESIGN_TTL` | 168h | Presigned URL expiration time |
-| `MEDIA_MAX_BYTES` | 20971520 | Max file size (20MB) |
-| `MEDIA_RETENTION_DAYS` | 30 | Media retention period |
-| `MEDIA_REMOTE_FETCH_TIMEOUT` | 15s | Timeout for fetching remote URLs |
-| `MEDIA_STORAGE_BACKEND` | s3 | Storage backend (`s3` or `local`) |
-| `MEDIA_PROXY_DOWNLOAD` | true | Stream through API vs redirect |
+| Variable                     | Default  | Description                       |
+| ---------------------------- | -------- | --------------------------------- |
+| `MEDIA_S3_PRESIGN_TTL`       | 168h     | Presigned URL expiration time     |
+| `MEDIA_MAX_BYTES`            | 20971520 | Max file size (20MB)              |
+| `MEDIA_RETENTION_DAYS`       | 30       | Media retention period            |
+| `MEDIA_REMOTE_FETCH_TIMEOUT` | 15s      | Timeout for fetching remote URLs  |
+| `MEDIA_STORAGE_BACKEND`      | s3       | Storage backend (`s3` or `local`) |
+| `MEDIA_PROXY_DOWNLOAD`       | true     | Stream through API vs redirect    |
 
 ### Jan ID Format
 
@@ -604,7 +631,8 @@ console.log(`Screenshot saved: ${janId}`);
 ### Deduplication
 
 Media is deduplicated by SHA-256 content hash:
-- Same content = same jan_* ID
+
+- Same content = same jan\_\* ID
 - Saves storage space
 - Response includes `"deduped": true` for duplicates
 - Works across all users (content-addressable storage)
@@ -614,7 +642,7 @@ Media is deduplicated by SHA-256 content hash:
 ## Related Documentation
 
 - [Media API Reference](README.md) - Full endpoint documentation
-- [LLM API](../llm-api/) - Using jan_* IDs in chat completions
+- [LLM API](../llm-api/) - Using jan\_\* IDs in chat completions
 - [Response API](../response-api/) - Tool-based media handling
 - [Examples Index](../examples/README.md) - Cross-service examples
 

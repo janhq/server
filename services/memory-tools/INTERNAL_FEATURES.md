@@ -13,6 +13,7 @@ The memory-tools service has several advanced features that are used internally 
 **Location**: `internal/domain/memory/summarization.go`
 
 **Description**: Provides automatic conversation summarization using an LLM to extract:
+
 - Dialogue summaries (2-3 sentences)
 - Open tasks and action items
 - Entities (people, systems, tools)
@@ -21,6 +22,7 @@ The memory-tools service has several advanced features that are used internally 
 **Usage**: Internal to `Observe` endpoint for future automatic summarization.
 
 **Key Components**:
+
 ```go
 type Summarizer struct {
     config SummarizerConfig
@@ -32,6 +34,7 @@ func (s *Summarizer) MergeSummaries(previous *ConversationSummary, new *Summariz
 ```
 
 **Configuration**:
+
 - `TriggerEveryN`: Summarize every N messages (default: 10)
 - `TriggerInterval`: Or every X duration (default: 5 minutes)
 - `MaxWindowSize`: Max messages per summary (default: 50)
@@ -47,6 +50,7 @@ func (s *Summarizer) MergeSummaries(previous *ConversationSummary, new *Summariz
 **Location**: `internal/domain/action/planner.go`
 
 **Description**: Uses LLM to analyze conversations and intelligently decide what to store in memory, with:
+
 - Automatic memory extraction from natural language
 - Conflict detection with existing memories
 - Importance level assignment
@@ -55,6 +59,7 @@ func (s *Summarizer) MergeSummaries(previous *ConversationSummary, new *Summariz
 **Usage**: Can be integrated into `Observe` endpoint to replace simple pattern matching.
 
 **Key Components**:
+
 ```go
 type Planner struct {
     scorer *Scorer
@@ -67,7 +72,8 @@ func (p *Planner) PlanActions(ctx context.Context, req memory.MemoryObserveReque
 
 **Fallback**: Includes heuristic-based planning if LLM is unavailable.
 
-**Why Internal**: 
+**Why Internal**:
+
 - Requires LLM API configuration
 - Currently uses simple pattern matching in production
 - Can be enabled via configuration when LLM service is available
@@ -79,6 +85,7 @@ func (p *Planner) PlanActions(ctx context.Context, req memory.MemoryObserveReque
 **Location**: `internal/domain/action/scorer.go`
 
 **Description**: Analyzes text content to automatically determine importance levels based on:
+
 - Keyword detection (must, required, critical, security, etc.)
 - Scope and context analysis
 - Confidence scoring for project facts
@@ -86,6 +93,7 @@ func (p *Planner) PlanActions(ctx context.Context, req memory.MemoryObserveReque
 **Usage**: Used internally by memory upsert operations.
 
 **Key Components**:
+
 ```go
 type Scorer struct{}
 
@@ -96,6 +104,7 @@ func (s *Scorer) ScoreProjectFact(fact *memory.ProjectFactInput) float32
 ```
 
 **Scoring Levels**:
+
 - Critical: 5 (security, API keys, passwords, must, required)
 - High: 4 (important, should, prefer, decision, requirement)
 - Medium: 3 (default)
@@ -115,6 +124,7 @@ func (s *Scorer) ScoreProjectFact(fact *memory.ProjectFactInput) float32
 **Usage**: Internal to embedding client, not currently used in search.
 
 **Key Components**:
+
 ```go
 type SparseEmbedding struct {
     Indices []int     `json:"indices"`
@@ -124,7 +134,8 @@ type SparseEmbedding struct {
 func (c *BGE_M3_Client) EmbedSparse(ctx context.Context, texts []string) ([]SparseEmbedding, error)
 ```
 
-**Why Internal**: 
+**Why Internal**:
+
 - Requires BGE-M3 service with sparse embedding support
 - Not currently integrated into search ranking
 - Reserved for future hybrid search implementation
@@ -140,6 +151,7 @@ func (c *BGE_M3_Client) EmbedSparse(ctx context.Context, texts []string) ([]Spar
 **Usage**: Framework exists for future implementation.
 
 **Key Components**:
+
 ```go
 type HybridRanker struct {
     denseWeight   float32
@@ -149,6 +161,7 @@ type HybridRanker struct {
 ```
 
 **Default Weights**:
+
 - Dense: 0.7
 - Sparse: 0.2
 - Colbert: 0.1
@@ -171,14 +184,14 @@ type HybridRanker struct {
 
 ## Integration Status
 
-| Feature | Status | Exposed via API | Notes |
-|---------|--------|-----------------|-------|
-| **Summarization** | ✅ Implemented | ❌ No | Requires LLM integration |
-| **LLM Planner** | ✅ Implemented | ❌ No | Optional, has heuristic fallback |
-| **Importance Scoring** | ✅ Active | ✅ Indirect | Auto-applied in upsert |
-| **Sparse Embeddings** | ✅ Implemented | ❌ No | Awaiting BGE-M3 service |
-| **Hybrid Ranking** | 🔄 Partial | ❌ No | Framework ready |
-| **Vector Search** | ✅ Active | ✅ Yes | Via `/v1/memory/load` |
+| Feature                | Status         | Exposed via API | Notes                            |
+| ---------------------- | -------------- | --------------- | -------------------------------- |
+| **Summarization**      | ✅ Implemented | ❌ No           | Requires LLM integration         |
+| **LLM Planner**        | ✅ Implemented | ❌ No           | Optional, has heuristic fallback |
+| **Importance Scoring** | ✅ Active      | ✅ Indirect     | Auto-applied in upsert           |
+| **Sparse Embeddings**  | ✅ Implemented | ❌ No           | Awaiting BGE-M3 service          |
+| **Hybrid Ranking**     | 🔄 Partial     | ❌ No           | Framework ready                  |
+| **Vector Search**      | ✅ Active      | ✅ Yes          | Via `/v1/memory/load`            |
 
 ## Testing Internal Features
 
@@ -189,6 +202,7 @@ These features can be tested through:
 3. **Direct Imports**: Import packages in Go test files
 
 ### Example: Testing Summarization
+
 ```go
 import "github.com/janhq/jan-server/services/memory-tools/internal/domain/memory"
 
@@ -200,6 +214,7 @@ func TestSummarization(t *testing.T) {
 ```
 
 ### Example: Testing via API
+
 ```bash
 # Observe endpoint uses internal memory extraction
 curl -X POST http://localhost:8090/v1/memory/observe \
@@ -255,11 +270,11 @@ memory_tools:
     endpoint: "http://llm-service:8080"
     model: "gpt-4"
     temperature: 0.3
-  
+
   embedding:
     enable_sparse: true
     enable_colbert: true
-  
+
   summarization:
     enabled: true
     trigger_every_n: 10

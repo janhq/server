@@ -1,9 +1,9 @@
 # Code Patterns & Best Practices
 
 > **When to read this:** Daily reference for AI agents and developers writing code.
-> 
-> **For structure:** See [architecture-patterns.md](architecture-patterns.md) 
-> **For workflow:** See [workflow.md](workflow.md) 
+>
+> **For structure:** See [architecture-patterns.md](architecture-patterns.md)
+> **For workflow:** See [workflow.md](workflow.md)
 > **Quick reference:** See [conventions.md](conventions.md)
 
 ---
@@ -70,14 +70,16 @@ func (u *User) EtoD() *user.User {
 ```
 
 **When to use pointers:**
+
 - Boolean fields that need to be `false` (e.g., `Enabled`, `Active`, `IsPrivate`)
 - Numeric fields that can be `0` or `0.0` (e.g., `Amount`, `Credits`)
 - Fields that are always non-zero (e.g., IDs, timestamps)
 - Counters that only increment (e.g., `ViewCount`)
 
-**Why this works:** `*bool` zero value is `nil`, so `&false` is NOT a zero value -> GORM updates it 
+**Why this works:** `*bool` zero value is `nil`, so `&false` is NOT a zero value -> GORM updates it
 
 **Common scenarios fixed:**
+
 - Disabling API keys (`Enabled = false`)
 - Deactivating users/providers (`Active = false`)
 - Recording $0.00 transactions (`Amount = 0.0`)
@@ -139,6 +141,7 @@ func NewSchemaOrganization(d *domain.Organization) *Organization {
 ```
 
 **Key points:**
+
 - `EtoD()` is a method (has receiver)
 - `NewSchema*()` is a function (no receiver)
 - Always nil-check to prevent panics
@@ -156,13 +159,13 @@ type OrganizationRepository struct {
 // Create returns the created entity with generated fields
 func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organization) (*domain.Organization, error) {
  dbOrg:= dbschema.NewSchemaOrganization(org)
- 
+
  if err:= r.db.GetQuery(ctx).Organization.WithContext(ctx).Create(dbOrg); err != nil {
  return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository,
- platformerrors.ErrorTypeDatabaseError, "failed to create organization", err, 
+ platformerrors.ErrorTypeDatabaseError, "failed to create organization", err,
  "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f") // Unique UUID
  }
- 
+
  return dbOrg.EtoD(), nil
 }
 
@@ -170,33 +173,33 @@ func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organiz
 func (r *OrganizationRepository) FindByID(ctx context.Context, id string) (*domain.Organization, error) {
  o:= r.db.GetQuery(ctx).Organization
  dbOrg, err:= o.WithContext(ctx).Where(o.PublicID.Eq(id)).First()
- 
+
  if err != nil {
  if errors.Is(err, gorm.ErrRecordNotFound) {
  return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository,
- platformerrors.ErrorTypeNotFound, "organization not found", err, 
+ platformerrors.ErrorTypeNotFound, "organization not found", err,
  "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a")
  }
  return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository,
- platformerrors.ErrorTypeDatabaseError, "failed to find organization", err, 
+ platformerrors.ErrorTypeDatabaseError, "failed to find organization", err,
  "e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1b")
  }
- 
+
  return dbOrg.EtoD(), nil
 }
 
 // Update uses.Save() - works correctly with pointer types
 func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organization) (*domain.Organization, error) {
  dbOrg:= dbschema.NewSchemaOrganization(org)
- 
+
  if err:= r.db.GetQuery(ctx).Organization.WithContext(ctx).
  Where(r.db.GetQuery(ctx).Organization.ID.Eq(org.ID)).
  Save(dbOrg); err != nil {
  return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository,
- platformerrors.ErrorTypeDatabaseError, "failed to update organization", err, 
+ platformerrors.ErrorTypeDatabaseError, "failed to update organization", err,
  "f0a1b2c3-d4e5-4f6a-7b8c-9d0e1f2a3b4c")
  }
- 
+
  return dbOrg.EtoD(), nil
 }
 
@@ -204,7 +207,7 @@ func (r *OrganizationRepository) Update(ctx context.Context, org *domain.Organiz
 func (r *OrganizationRepository) List(ctx context.Context, filter *OrganizationFilter) ([]*domain.Organization, int64, error) {
  o:= r.db.GetQuery(ctx).Organization
  query:= o.WithContext(ctx)
- 
+
  // Apply filters
  if filter.Active != nil {
  query = query.Where(o.Active.Is(*filter.Active))
@@ -212,14 +215,14 @@ func (r *OrganizationRepository) List(ctx context.Context, filter *OrganizationF
  if filter.Name != nil {
  query = query.Where(o.Name.Like("%" + *filter.Name + "%"))
  }
- 
+
  // Count total
  total, err:= query.Count()
  if err != nil {
  return nil, 0, platformerrors.NewError(ctx, platformerrors.LayerRepository,
  platformerrors.ErrorTypeDatabaseError, "failed to count", err, "uuid-here")
  }
- 
+
  // Apply pagination (cursor-based preferred)
  if filter.Pagination != nil && filter.Pagination.LastID != "" {
  query = query.Where(o.ID.Gt(filter.Pagination.LastID))
@@ -227,24 +230,25 @@ func (r *OrganizationRepository) List(ctx context.Context, filter *OrganizationF
  if filter.Pagination != nil && filter.Pagination.Limit > 0 {
  query = query.Limit(filter.Pagination.Limit)
  }
- 
+
  dbOrgs, err:= query.Find()
  if err != nil {
  return nil, 0, platformerrors.NewError(ctx, platformerrors.LayerRepository,
  platformerrors.ErrorTypeDatabaseError, "failed to list", err, "uuid-here")
  }
- 
+
  // Convert to domain
  orgs:= make([]*domain.Organization, len(dbOrgs))
  for i, dbOrg:= range dbOrgs {
  orgs[i] = dbOrg.EtoD()
  }
- 
+
  return orgs, total, nil
 }
 ```
 
 **Filter signature:**
+
 ```go
 type OrganizationFilter struct {
  ID *uint
@@ -273,6 +277,7 @@ make gormgen
 **Generated queries** live in `services/llm-api/internal/infrastructure/database/gormgen/`
 
 **Type-safe queries:**
+
 ```go
 // Good: Compile-time safe
 o:= query.Use(db).Organization
@@ -299,11 +304,11 @@ err:= r.db.Transaction(func(tx *gorm.DB) error {
  if err:= tx.Create(&org).Error; err != nil {
  return err // Rolls back
  }
- 
+
  if err:= tx.Create(&user).Error; err != nil {
  return err // Rolls back
  }
- 
+
  return nil // Commits
 })
 ```
@@ -315,6 +320,7 @@ err:= r.db.Transaction(func(tx *gorm.DB) error {
 ### Error Handling Philosophy
 
 **3-Layer Pattern:**
+
 1. **Repository (trigger point):** Use `NewError()` with unique UUID
 2. **Domain (business layer):** Use `AsError()` to add context OR pass through
 3. **Route (HTTP layer):** Use `HandleError()` or `HandleNewError()`
@@ -325,7 +331,7 @@ err:= r.db.Transaction(func(tx *gorm.DB) error {
 func (r *UserRepository) FindByID(ctx context.Context, id string) (*domain.User, error) {
  u:= query.Use(r.db.GetDB()).User
  dbUser, err:= u.WithContext(ctx).Where(u.PublicID.Eq(id)).First()
- 
+
  if err != nil {
  if errors.Is(err, gorm.ErrRecordNotFound) {
  // NewError at trigger point with unique UUID
@@ -339,7 +345,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*domain.User,
  )
  }
  return nil, platformerrors.NewError(ctx, platformerrors.LayerRepository,
- platformerrors.ErrorTypeDatabaseError, "database query failed", err, 
+ platformerrors.ErrorTypeDatabaseError, "database query failed", err,
  "7f29ac41-8d5e-4a73-b3c1-9e8f2d6a5c4b") // Different UUID per error
  }
  return dbUser.EtoD(), nil
@@ -347,6 +353,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*domain.User,
 ```
 
 **UUID Generation:**
+
 ```bash
 # VS Code: Install "UUID Generator" by netcorext
 # Command: Ctrl+Shift+P -> "Insert UUID"
@@ -361,7 +368,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*domain.User,
 func (s *UserService) GetUser(ctx context.Context, id string) (*User, error) {
  user, err:= s.repo.FindByID(ctx, id)
  if err != nil {
- return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err, 
+ return nil, platformerrors.AsError(ctx, platformerrors.LayerDomain, err,
  "failed to retrieve user")
  }
  return user, nil
@@ -379,7 +386,7 @@ func (s *UserService) GetUserSimple(ctx context.Context, id string) (*User, erro
 // Use HandleError for errors from services
 func (r *UserRoute) GetUser(c *gin.Context) {
  id:= c.Param("id")
- 
+
  user, err:= r.service.GetUser(c.Request.Context(), id)
  if err != nil {
  responses.HandleError(c, err) // Converts PlatformError to HTTP response
@@ -396,7 +403,7 @@ func (r *UserRoute) CreateUser(c *gin.Context) {
  platformerrors.ErrorTypeValidation, "invalid request", err)
  return
  }
- 
+
  user, err:= r.service.CreateUser(c.Request.Context(), req.ToDomain())
  if err != nil {
  responses.HandleError(c, err)
@@ -452,12 +459,12 @@ func (s *OrganizationService) Create(ctx context.Context, org *Organization) (*O
  return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
  platformerrors.ErrorTypeValidation, "invalid organization", err, "uuid-here")
  }
- 
+
  created, err:= s.repo.Create(ctx, org)
  if err != nil {
  return nil, err // Already wrapped at repository
  }
- 
+
  return created, nil
 }
 ```
@@ -485,13 +492,13 @@ func (r *OrganizationRoute) Create(c *gin.Context) {
  platformerrors.ErrorTypeValidation, "invalid request", err)
  return
  }
- 
+
  org, err:= r.service.Create(c.Request.Context(), req.ToDomain())
  if err != nil {
  responses.HandleError(c, err)
  return
  }
- 
+
  responses.Success(c, BuildOrganizationResponse(org))
 }
 ```
@@ -544,16 +551,16 @@ func (s *OrganizationService) GetByID(ctx context.Context, id string) (*Organiza
  if cached, err:= s.cache.Get(ctx, cacheKey); err == nil {
  return cached, nil
  }
- 
+
  // Cache miss: fetch from DB
  org, err:= s.repo.FindByID(ctx, id)
  if err != nil {
  return nil, err
  }
- 
+
  // Store in cache (fire and forget, don't block on cache errors)
  go s.cache.Set(context.Background(), cacheKey, org, 5*time.Minute)
- 
+
  return org, nil
 }
 
@@ -563,11 +570,11 @@ func (s *OrganizationService) Update(ctx context.Context, org *Organization) (*O
  if err != nil {
  return nil, err
  }
- 
+
  // Invalidate cache
  cacheKey:= fmt.Sprintf("org:%s", org.PublicID)
  go s.cache.Delete(context.Background(), cacheKey)
- 
+
  return updated, nil
 }
 ```
@@ -637,6 +644,7 @@ func BuildOrganizationResponse(org *organization.Organization) *OrganizationResp
 ---
 
 **See also:**
+
 - [architecture-patterns.md](architecture-patterns.md) - Structure & layers
 - [workflow.md](workflow.md) - Git, testing, deployment
 - [conventions.md](conventions.md) - Quick TL;DR reference

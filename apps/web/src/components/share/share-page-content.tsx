@@ -1,50 +1,54 @@
-import { useEffect, useState } from 'react'
-import { shareService } from '@/services/share-service'
+import { useEffect, useState } from "react";
+import { shareService } from "@/services/share-service";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from '@/components/ai-elements/conversation'
-import { AlertCircleIcon, LockIcon } from 'lucide-react'
-import { MessageItem } from '@/components/threads/message-item'
-import { AppSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset } from '@/components/ui/sidebar'
-import { NavHeader } from '@/components/sidebar/nav-header'
-import ChatInput from '@/components/chat-input'
-import type { UIMessage } from 'ai'
-import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
-import { convertToUIMessages } from '@/lib/utils'
-import { useModels } from '@/stores/models-store'
-import { useNavigate } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import { useConversations } from '@/stores/conversation-store'
-import { CHAT_STATUS, SCROLL_ANIMATION, SESSION_STORAGE_PREFIX } from '@/constants'
+} from "@janhq/interfaces/ai-elements/conversation";
+import { AlertCircleIcon, LockIcon } from "lucide-react";
+import { MessageItem } from "@/components/threads/message-item";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { SidebarInset } from "@/components/sidebar/sidebar";
+import { NavHeader } from "@/components/sidebar/nav-header";
+import ChatInput from "@/components/chat-input";
+import type { UIMessage } from "ai";
+import type { PromptInputMessage } from "@janhq/interfaces/ai-elements/prompt-input";
+import { convertToUIMessages } from "@/lib/utils";
+import { useModels } from "@/stores/models-store";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { useConversations } from "@/stores/conversation-store";
+import {
+  CHAT_STATUS,
+  SCROLL_ANIMATION,
+  SESSION_STORAGE_PREFIX,
+} from "@/constants";
 
 interface SharePageContentProps {
-  slug: string
+  slug: string;
 }
 
 export function SharePageContent({ slug }: SharePageContentProps) {
-  const [shareData, setShareData] = useState<PublicShareResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [messages, setMessages] = useState<UIMessage[]>([])
-  const [isForking, setIsForking] = useState(false)
+  const [shareData, setShareData] = useState<PublicShareResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<UIMessage[]>([]);
+  const [isForking, setIsForking] = useState(false);
 
   const createConversation = useConversations(
-    (state) => state.createConversation
-  )
+    (state) => state.createConversation,
+  );
 
-  const selectedModel = useModels((state) => state.selectedModel)
-  const navigate = useNavigate()
+  const selectedModel = useModels((state) => state.selectedModel);
+  const navigate = useNavigate();
 
   const handleSubmit = async (message?: PromptInputMessage) => {
-    if (!shareData || !selectedModel || !message) return
+    if (!shareData || !selectedModel || !message) return;
 
-    setIsForking(true)
+    setIsForking(true);
     try {
       // Fork the shared conversation to create a new conversation
       const conversation = await createConversation({
-        title: shareData.title || 'Forked Conversation',
+        title: shareData.title || "Forked Conversation",
         items: shareData.snapshot.items.map((item) => ({
           content: item.content,
           role: item.role,
@@ -53,75 +57,77 @@ export function SharePageContent({ slug }: SharePageContentProps) {
         metadata: {
           model_id: selectedModel.id,
           model_provider: selectedModel.owned_by,
-          is_favorite: 'false',
+          is_favorite: "false",
         },
-      })
+      });
 
       // Store the initial message in sessionStorage for the new conversation
       sessionStorage.setItem(
         `${SESSION_STORAGE_PREFIX.INITIAL_MESSAGE}${conversation.id}`,
-        JSON.stringify(message)
-      )
+        JSON.stringify(message),
+      );
       // Store the cached messages for preview
       sessionStorage.setItem(
         `${SESSION_STORAGE_PREFIX.INITIAL_ITEMS}${conversation.id}`,
-        JSON.stringify(shareData.snapshot.items)
-      )
+        JSON.stringify(shareData.snapshot.items),
+      );
 
       // Redirect to the conversation detail page
       navigate({
-        to: '/threads/$conversationId',
+        to: "/threads/$conversationId",
         params: { conversationId: conversation.id },
-      })
+      });
     } catch (error) {
-      console.error('Failed to fork conversation:', error)
-      toast.error('Failed to continue conversation. Please try again.')
-      setIsForking(false)
+      console.error("Failed to fork conversation:", error);
+      toast.error("Failed to continue conversation. Please try again.");
+      setIsForking(false);
     }
-  }
+  };
 
   useEffect(() => {
     const fetchShare = async () => {
-      setError(null)
+      setError(null);
 
       try {
-        const data = await shareService.getPublicShare(slug)
-        setShareData(data)
+        const data = await shareService.getPublicShare(slug);
+        setShareData(data);
 
         // Convert snapshot items to UIMessage format
-        const uiMessages = convertToUIMessages(data.snapshot.items)
-        setMessages(uiMessages)
+        const uiMessages = convertToUIMessages(data.snapshot.items);
+        setMessages(uiMessages);
       } catch (err) {
-        console.error('Failed to fetch share:', err)
+        console.error("Failed to fetch share:", err);
         if (err instanceof Error) {
-          if (err.message.includes('revoked')) {
-            setError('This share has been revoked and is no longer accessible.')
+          if (err.message.includes("revoked")) {
+            setError(
+              "This share has been revoked and is no longer accessible.",
+            );
           } else {
             setError(
-              'Failed to load shared conversation. Please check the link and try again.'
-            )
+              "Failed to load shared conversation. Please check the link and try again.",
+            );
           }
         } else {
-          setError('An unexpected error occurred.')
+          setError("An unexpected error occurred.");
         }
       }
-    }
+    };
 
-    fetchShare()
-  }, [slug])
+    fetchShare();
+  }, [slug]);
 
   return (
     <>
       <AppSidebar />
       <SidebarInset>
         <NavHeader
-          conversationTitle={shareData?.title || 'Shared Conversation'}
+          conversationTitle={shareData?.title || "Shared Conversation"}
         />
         {error || !shareData ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-4 max-w-md text-center px-4">
               <div className="size-12 rounded-full bg-muted flex items-center justify-center">
-                {error?.includes('revoked') ? (
+                {error?.includes("revoked") ? (
                   <LockIcon className="size-8 text-muted-foreground" />
                 ) : (
                   <AlertCircleIcon className="size-8 text-muted-foreground" />
@@ -129,12 +135,12 @@ export function SharePageContent({ slug }: SharePageContentProps) {
               </div>
               <div className="space-y-2">
                 <h2 className="text-lg font-semibold">
-                  {error?.includes('revoked')
-                    ? 'Share Revoked'
-                    : 'Unable to Load Share'}
+                  {error?.includes("revoked")
+                    ? "Share Revoked"
+                    : "Unable to Load Share"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {error || 'This shared conversation could not be found.'}
+                  {error || "This shared conversation could not be found."}
                 </p>
               </div>
             </div>
@@ -156,12 +162,12 @@ export function SharePageContent({ slug }: SharePageContentProps) {
                       <p className="text-sm font-medium text-muted-foreground min-w-0 flex items-center gap-1">
                         <span className="shrink-0">
                           Viewing shared conversation:
-                        </span>{' '}
+                        </span>{" "}
                         <span
                           className="text-foreground truncate"
-                          title={shareData.title || 'Untitled'}
+                          title={shareData.title || "Untitled"}
                         >
-                          {shareData.title || 'Untitled'}
+                          {shareData.title || "Untitled"}
                         </span>
                       </p>
                     </div>
@@ -194,5 +200,5 @@ export function SharePageContent({ slug }: SharePageContentProps) {
         )}
       </SidebarInset>
     </>
-  )
+  );
 }

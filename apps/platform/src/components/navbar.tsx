@@ -15,7 +15,7 @@ import { organizations, projects } from '@/lib/dummy';
 import { useAuthStore } from '@/store/auth-store';
 
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Check, ChevronsUpDown, LogOut, Settings, User } from 'lucide-react';
+import { Check, ChevronsUpDown, LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -153,19 +153,21 @@ export function Navbar() {
           {/* Always visible navigation */}
           <Link
             href="/docs"
-            className={`text-sm font-medium transition-colors ${isActive('/docs')
+            className={`text-sm font-medium transition-colors ${
+              isActive('/docs')
                 ? 'text-black dark:text-white'
                 : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white'
-              }`}
+            }`}
           >
             Docs
           </Link>
           <Link
             href="/docs/api-reference"
-            className={`text-sm font-medium transition-colors ${isActive('/docs/api-reference')
+            className={`text-sm font-medium transition-colors ${
+              isActive('/docs/api-reference')
                 ? 'text-black dark:text-white'
                 : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white'
-              }`}
+            }`}
           >
             API Reference
           </Link>

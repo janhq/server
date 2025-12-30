@@ -1,6 +1,6 @@
-import { fetchJsonWithAuth } from '@/lib/api-client'
+import { fetchJsonWithAuth } from "@/lib/api-client";
 
-declare const JAN_API_BASE_URL: string
+declare const JAN_API_BASE_URL: string;
 
 export const profileService = {
   /**
@@ -8,23 +8,23 @@ export const profileService = {
    */
   getProfileSettings: async (): Promise<ProfileSettingsResponse> => {
     return fetchJsonWithAuth<ProfileSettingsResponse>(
-      `${JAN_API_BASE_URL}v1/users/me/settings`
-    )
+      `${JAN_API_BASE_URL}v1/users/me/settings`,
+    );
   },
 
   /**
    * Update user profile settings
    */
   updateProfileSettings: async (
-    data: UpdateProfileSettingsRequest
+    data: UpdateProfileSettingsRequest,
   ): Promise<ProfileSettingsResponse> => {
     return fetchJsonWithAuth<ProfileSettingsResponse>(
       `${JAN_API_BASE_URL}v1/users/me/settings`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(data),
-      }
-    )
+      },
+    );
   },
 
   /**
@@ -32,22 +32,22 @@ export const profileService = {
    */
   getPreferences: async (): Promise<ProfileSettingsResponse> => {
     return fetchJsonWithAuth<ProfileSettingsResponse>(
-      `${JAN_API_BASE_URL}v1//users/me/settings/preferences`
-    )
+      `${JAN_API_BASE_URL}v1//users/me/settings/preferences`,
+    );
   },
 
   /**
    * Update user preferences settings
    */
   updatePreferences: async (
-    data: UpdateProfileSettingsRequest
+    data: UpdateProfileSettingsRequest,
   ): Promise<ProfileSettingsResponse> => {
     return fetchJsonWithAuth<ProfileSettingsResponse>(
       `${JAN_API_BASE_URL}v1/users/me/settings/preferences`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(data),
-      }
-    )
+      },
+    );
   },
-}
+};

@@ -54,6 +54,7 @@ curl -X DELETE http://localhost:8000/v1/conversations/conv_123 \
 Create a new conversation for a fresh discussion topic.
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations \
   -H "Authorization: Bearer <token>" \
@@ -65,6 +66,7 @@ curl -X POST http://localhost:8000/v1/conversations \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "conv_123",
@@ -82,17 +84,20 @@ curl -X POST http://localhost:8000/v1/conversations \
 List all conversations (paginated).
 
 **Query Parameters:**
+
 - `limit` - Results per page (default: 20, max: 100)
 - `after` - Pagination cursor for next page
 - `project_id` - Filter by project (optional)
 
 **Request:**
+
 ```bash
 curl -H "Authorization: Bearer <token>" \
   "http://localhost:8000/v1/conversations?limit=10&project_id=proj_abc"
 ```
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -114,12 +119,14 @@ curl -H "Authorization: Bearer <token>" \
 Retrieve full conversation with all messages.
 
 **Request:**
+
 ```bash
 curl -H "Authorization: Bearer <token>" \
   http://localhost:8000/v1/conversations/conv_123
 ```
 
 **Response:**
+
 ```json
 {
   "id": "conv_123",
@@ -149,6 +156,7 @@ curl -H "Authorization: Bearer <token>" \
 Update conversation metadata.
 
 **Request:**
+
 ```bash
 curl -X PATCH http://localhost:8000/v1/conversations/conv_123 \
   -H "Authorization: Bearer <token>" \
@@ -167,6 +175,7 @@ curl -X PATCH http://localhost:8000/v1/conversations/conv_123 \
 Add a message to a conversation.
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations/conv_123/items \
   -H "Authorization: Bearer <token>" \
@@ -179,6 +188,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/items \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "item_5",
@@ -195,6 +205,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/items \
 Modify an existing message (useful for regenerating AI responses).
 
 **Request:**
+
 ```bash
 curl -X PUT http://localhost:8000/v1/conversations/conv_123/items/item_2/edit \
   -H "Authorization: Bearer <token>" \
@@ -211,6 +222,7 @@ curl -X PUT http://localhost:8000/v1/conversations/conv_123/items/item_2/edit \
 Ask the AI to regenerate a response (create a new version).
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations/conv_123/items/item_2/regenerate \
   -H "Authorization: Bearer <token>" \
@@ -227,6 +239,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/items/item_2/regene
 Remove a message from a conversation.
 
 **Request:**
+
 ```bash
 curl -X DELETE http://localhost:8000/v1/conversations/conv_123/items/item_2 \
   -H "Authorization: Bearer <token>"
@@ -241,6 +254,7 @@ curl -X DELETE http://localhost:8000/v1/conversations/conv_123/items/item_2 \
 Permanently delete a conversation and all its messages.
 
 **Request:**
+
 ```bash
 curl -X DELETE http://localhost:8000/v1/conversations/conv_123 \
   -H "Authorization: Bearer <token>"
@@ -255,6 +269,7 @@ curl -X DELETE http://localhost:8000/v1/conversations/conv_123 \
 Delete multiple conversations at once.
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations/bulk-delete \
   -H "Authorization: Bearer <token>" \
@@ -265,6 +280,7 @@ curl -X POST http://localhost:8000/v1/conversations/bulk-delete \
 ```
 
 **Response:**
+
 ```json
 {
   "deleted_count": 3,
@@ -282,6 +298,7 @@ curl -X POST http://localhost:8000/v1/conversations/bulk-delete \
 Create a shareable link to your conversation.
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations/conv_123/share \
   -H "Authorization: Bearer <token>" \
@@ -293,6 +310,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/share \
 ```
 
 **Response:**
+
 ```json
 {
   "share_id": "share_abc123",
@@ -309,6 +327,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/share \
 Create a shareable link to a specific message.
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/conversations/conv_123/items/item_5/share \
   -H "Authorization: Bearer <token>" \
@@ -320,6 +339,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/items/item_5/share 
 ```
 
 **Response:**
+
 ```json
 {
   "share_id": "msg_share_xyz789",
@@ -335,6 +355,7 @@ curl -X POST http://localhost:8000/v1/conversations/conv_123/items/item_5/share 
 Disable a previously shared link.
 
 **Request:**
+
 ```bash
 curl -X DELETE http://localhost:8000/v1/conversations/conv_123/share/share_abc123 \
   -H "Authorization: Bearer <token>"
@@ -351,6 +372,7 @@ Conversations are organized in projects for better management.
 Create a new project to organize related conversations.
 
 **Request:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/projects \
   -H "Authorization: Bearer <token>" \
@@ -362,6 +384,7 @@ curl -X POST http://localhost:8000/v1/projects \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "proj_abc123",
@@ -402,6 +425,7 @@ curl -X PATCH http://localhost:8000/v1/conversations/conv_123 \
 List all conversations in a project.
 
 **Request:**
+
 ```bash
 curl -H "Authorization: Bearer <token>" \
   http://localhost:8000/v1/projects/proj_abc123/conversations
@@ -414,24 +438,24 @@ curl -H "Authorization: Bearer <token>" \
 ### Share a Conversation
 
 ```javascript
-const token = 'your_token_here';
+const token = "your_token_here";
 const headers = {
-  'Authorization': `Bearer ${token}`,
-  'Content-Type': 'application/json'
+  Authorization: `Bearer ${token}`,
+  "Content-Type": "application/json",
 };
 
-const convId = 'conv_123';
+const convId = "conv_123";
 
 const response = await fetch(
   `http://localhost:8000/v1/conversations/${convId}/share`,
   {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify({
       expires_in: 86400,
-      read_only: true
-    })
-  }
+      read_only: true,
+    }),
+  },
 );
 
 const share = await response.json();

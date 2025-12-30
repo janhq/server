@@ -80,33 +80,43 @@ services/llm-api/internal/domain/prompt/
 The processor can automatically attach optional modules as part of the LLM API request pipeline:
 
 #### Deep Research
+
 Inject specialized research prompts for comprehensive analysis when `deep_research: true` is set.
 
 #### User Profile Personalization
+
 Inject user profile settings including:
+
 - Base style (concise, friendly, professional)
 - Custom instructions
 - Nickname, occupation, and personal context
 
 #### Memory
+
 If user enables memory, insert memory hints/preferences into prompt.
 
 #### Tool Usage
+
 Conditionally include instructions like:
+
 - "use the retrieval tool when needed"
 - "use the calculator tool if numbers appear"
 
 #### Templates / Prompt Patterns
+
 For example:
+
 - Chain-of-Thought structure
 - Code assistant guidance
 - Output format
 - "First think step-by-step, then answer"
 
 #### Project Instructions
+
 Inject project-specific instructions with highest priority.
 
 #### Timing Context
+
 Add current date and AI assistant introduction.
 
 ---
@@ -116,48 +126,56 @@ Add current date and AI assistant introduction.
 The processor includes several built-in modules that are automatically applied based on context:
 
 ### -20. Deep Research Module (Conditional)
+
 - **Purpose**: Injects comprehensive research prompts for deep analysis
 - **Activation**: Enabled when `deep_research: true` in preferences
 - **Adds**: Research methodology and comprehensive analysis instructions
 - **Priority**: -20 (runs before all other modules)
 
 ### -15. Timing Module (Always Active)
+
 - **Purpose**: Ensures a base system prompt with current date is present
 - **Activation**: Always registered when prompt orchestration is enabled
 - **Adds**: AI assistant intro and current date to the system prompt
 - **Priority**: -15
 
 ### -10. Project Instruction Module (Conditional)
+
 - **Purpose**: Injects project-specific instructions with highest priority
 - **Activation**: When conversation has a linked project with instructions
 - **Adds**: Project instructions as first system message with priority note
 - **Priority**: -10
 
 ### 5. User Profile Module (Conditional)
+
 - **Purpose**: Injects user profile personalization settings
 - **Activation**: When user has profile settings (base style, custom instructions, nickname, etc.)
 - **Adds**: Style preferences, custom instructions, and user context
 - **Priority**: 5
 
 ### 10. Memory Module (Optional)
+
 - **Purpose**: Injects user-specific memory/preferences into prompts
 - **Activation**: Enabled via `PROMPT_ORCHESTRATION_MEMORY=true` and memory items present
 - **Adds**: Memory hints stitched into the system prompt
 - **Priority**: 10
 
 ### 20. Tool Instructions Module (Optional)
+
 - **Purpose**: Adds instructions for tool usage
 - **Activation**: `PROMPT_ORCHESTRATION_TOOLS=true` and tools present in request
 - **Adds**: Tool selection and usage guidelines
 - **Priority**: 20
 
 ### 30. Code Assistant Module (Template-Gated)
+
 - **Purpose**: Enhances prompts for code-related questions
 - **Activation**: `PROMPT_ORCHESTRATION_TEMPLATES=true` and code keywords detected
 - **Adds**: Code formatting guidelines, best practices, error handling tips
 - **Priority**: 30
 
 ### 40. Chain-of-Thought Module (Template-Gated)
+
 - **Purpose**: Encourages step-by-step reasoning for complex questions
 - **Activation**: `PROMPT_ORCHESTRATION_TEMPLATES=true` and reasoning signals detected
 - **Adds**: Instructions to break down problems and think systematically
@@ -169,12 +187,12 @@ The processor includes several built-in modules that are automatically applied b
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROMPT_ORCHESTRATION_ENABLED` | `false` | Enable/disable the processor |
-| `PROMPT_ORCHESTRATION_MEMORY` | `false` | Enable memory injection |
+| Variable                         | Default | Description                                          |
+| -------------------------------- | ------- | ---------------------------------------------------- |
+| `PROMPT_ORCHESTRATION_ENABLED`   | `false` | Enable/disable the processor                         |
+| `PROMPT_ORCHESTRATION_MEMORY`    | `false` | Enable memory injection                              |
 | `PROMPT_ORCHESTRATION_TEMPLATES` | `false` | Enable template-based prompts (CoT + code assistant) |
-| `PROMPT_ORCHESTRATION_TOOLS` | `false` | Enable tool usage instructions |
+| `PROMPT_ORCHESTRATION_TOOLS`     | `false` | Enable tool usage instructions                       |
 
 ### YAML Configuration
 
@@ -255,6 +273,7 @@ type Context struct {
 ### Module Priority System
 
 Modules are executed in priority order to ensure correct composition:
+
 - **Priority -20**: Deep Research Module (comprehensive research prompts)
 - **Priority -15**: Timing Module (creates base system prompt with date)
 - **Priority -10**: Project Instruction Module (highest priority instructions)
@@ -347,31 +366,33 @@ if timingText == "" {
 
 ### Available Template Keys
 
-| Template Key | Module | Variables |
-|-------------|--------|-----------|
-| `timing` | TimingModule | `CurrentDate` |
-| `user_profile` | UserProfileModule | `BaseStyle`, `CustomInstructions`, `NickName`, `Occupation`, `MoreAboutYou` |
-| `memory` | MemoryModule | `MemoryItems` |
-| `tool_instructions` | ToolInstructionsModule | `ToolDescriptions` |
-| `code_assistant` | CodeAssistantModule | (none) |
-| `chain_of_thought` | ChainOfThoughtModule | (none) |
-| `deep_research` | DeepResearchModule | (none) |
+| Template Key        | Module                 | Variables                                                                   |
+| ------------------- | ---------------------- | --------------------------------------------------------------------------- |
+| `timing`            | TimingModule           | `CurrentDate`                                                               |
+| `user_profile`      | UserProfileModule      | `BaseStyle`, `CustomInstructions`, `NickName`, `Occupation`, `MoreAboutYou` |
+| `memory`            | MemoryModule           | `MemoryItems`                                                               |
+| `tool_instructions` | ToolInstructionsModule | `ToolDescriptions`                                                          |
+| `code_assistant`    | CodeAssistantModule    | (none)                                                                      |
+| `chain_of_thought`  | ChainOfThoughtModule   | (none)                                                                      |
+| `deep_research`     | DeepResearchModule     | (none)                                                                      |
 
 ---
 
 ## Example Transformations
 
 ### Before Processing
+
 ```json
 {
   "messages": [
-    {"role": "user", "content": "How do I implement binary search in Go?"}
+    { "role": "user", "content": "How do I implement binary search in Go?" }
   ]
 }
 ```
 
 ### After Processing
-*With Timing + User Profile + Code Assistant modules applied:*
+
+_With Timing + User Profile + Code Assistant modules applied:_
 
 ```json
 {
@@ -380,7 +401,7 @@ if timingText == "" {
       "role": "system",
       "content": "You are Jan, a helpful AI assistant. Jan is trained by Menlo Research (https://www.menlo.ai).\nToday is: December 16, 2025.\nAlways treat this as the current date.\n\nUser-level settings are preferences for style and context. If they ever conflict with explicit project or system instructions, always follow the project or system instructions.\n\nUse a friendly, warm, and encouraging tone while staying helpful.\n\nWhen providing code assistance:\n1. Provide clear, well-commented code.\n2. Explain your approach and reasoning.\n3. Include error handling where appropriate.\n4. Follow best practices and conventions.\n5. Suggest testing approaches when relevant.\n6. Respect project instructions and user constraints; never violate them to simplify code."
     },
-    {"role": "user", "content": "How do I implement binary search in Go?"}
+    { "role": "user", "content": "How do I implement binary search in Go?" }
   ]
 }
 ```
@@ -400,7 +421,10 @@ When a conversation is linked to a project with instructions:
       "role": "system",
       "content": "You are Jan, a helpful AI assistant...\n\nUse a friendly, warm, and encouraging tone..."
     },
-    {"role": "user", "content": "Create a function to validate email addresses"}
+    {
+      "role": "user",
+      "content": "Create a function to validate email addresses"
+    }
   ]
 }
 ```
@@ -420,11 +444,13 @@ promptCtx := &prompt.Context{
 ```
 
 Or via the helper function:
+
 ```go
 promptCtx = prompt.WithDisabledModules(promptCtx, []string{"memory"})
 ```
 
 Supported formats for `disable_modules`:
+
 - Comma-separated string: `"chain_of_thought,code_assistant"`
 - String slice: `[]string{"chain_of_thought", "code_assistant"}`
 - Interface slice: `[]interface{}{"chain_of_thought", "code_assistant"}`
@@ -434,11 +460,13 @@ Supported formats for `disable_modules`:
 ## Observability
 
 The processor emits:
+
 - **OTEL events**: `processing_prompts`, `prompts_processed`
 - **Logs**: Applied module list, processing errors, module priority order
 - **HTTP header**: `X-Applied-Prompt-Modules` (comma-separated) for debugging
 
 Example log output:
+
 ```json
 {
   "level": "debug",
@@ -461,6 +489,7 @@ go test ./internal/domain/prompt/... -v
 ```
 
 Tests cover:
+
 - Individual module behavior
 - Module conditional logic
 - Processor integration
@@ -500,6 +529,7 @@ Potential additions to the processor:
 ### Modules Not Applying
 
 **Check:**
+
 1. Is `PROMPT_ORCHESTRATION_ENABLED=true`?
 2. Are specific module flags enabled (`MEMORY`, `TEMPLATES`, `TOOLS`)?
 3. Does the module's `ShouldApply()` logic match your request?
@@ -513,6 +543,7 @@ Modules execute in priority order (-20, -15, -10, 5, 10, 20, 30, 40). Deep Resea
 ### Memory Not Loading
 
 **Check:**
+
 1. Is memory provided via `X-Prompt-Memory` header or conversation metadata?
 2. Is `promptCtx.Memory` populated with items?
 3. Is `PROMPT_ORCHESTRATION_MEMORY=true`?
@@ -521,6 +552,7 @@ Modules execute in priority order (-20, -15, -10, 5, 10, 20, 30, 40). Deep Resea
 ### User Profile Not Applying
 
 **Check:**
+
 1. Does the user have profile settings configured?
 2. Is at least one profile field non-empty (BaseStyle, CustomInstructions, NickName, etc.)?
 3. Is the `user_profile` module not in the disabled list?
@@ -528,6 +560,7 @@ Modules execute in priority order (-20, -15, -10, 5, 10, 20, 30, 40). Deep Resea
 ### Template Not Loading from Database
 
 **Check:**
+
 1. Is the template service properly initialized?
 2. Is the template active (`is_active: true`)?
 3. Check logs for template loading errors
@@ -536,6 +569,7 @@ Modules execute in priority order (-20, -15, -10, 5, 10, 20, 30, 40). Deep Resea
 ### Performance Concerns
 
 **Optimization:**
+
 - Modules are sorted once during processor initialization
 - Each module only applies if `ShouldApply()` returns true
 - Template service caches templates

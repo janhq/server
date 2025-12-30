@@ -1,13 +1,14 @@
-/* eslint-disable no-case-declarations */
-import { memo, useState } from 'react'
-import type { UIMessage, ChatStatus } from 'ai'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/rules-of-hooks */
+import { memo, useState } from "react";
+import type { UIMessage, ChatStatus } from "ai";
 import {
   TOOL_STATE,
   CHAT_STATUS,
   CONTENT_TYPE,
   MESSAGE_ROLE,
-} from '@/constants'
-import { useResolvedMediaUrl } from '@/hooks/use-resolved-media-url'
+} from "@/constants";
+import { useResolvedMediaUrl } from "@/hooks/use-resolved-media-url";
 import {
   Message,
   MessageContent,
@@ -16,39 +17,45 @@ import {
   MessageAction,
   MessageAttachments,
   MessageAttachment,
-} from '@/components/ai-elements/message'
+} from "@janhq/interfaces/ai-elements/message";
 import {
   Reasoning,
   ReasoningTrigger,
   ReasoningContent,
-} from '@/components/ai-elements/reasoning'
+} from "@janhq/interfaces/ai-elements/reasoning";
 import {
   Tool,
   ToolHeader,
   ToolContent,
   ToolInput,
   ToolOutput,
-} from '@/components/ai-elements/tool'
+} from "@janhq/interfaces/ai-elements/tool";
 import {
   Dialog,
   DialogTitle,
   DialogOverlay,
   DialogPortal,
   DialogClose,
-} from '@/components/ui/dialog'
-import { CopyIcon, CheckIcon, RefreshCcwIcon, DownloadIcon, XIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { twMerge } from 'tailwind-merge'
-import { cn } from '@/lib/utils'
+} from "@janhq/interfaces/dialog";
+import {
+  CopyIcon,
+  CheckIcon,
+  RefreshCcwIcon,
+  DownloadIcon,
+  XIcon,
+} from "lucide-react";
+import { Button } from "@janhq/interfaces/button";
+import { twMerge } from "tailwind-merge";
+import { cn } from "@/lib/utils";
 
 export type MessageItemProps = {
-  message: UIMessage
-  isFirstMessage: boolean
-  isLastMessage: boolean
-  status: ChatStatus
-  reasoningContainerRef?: React.RefObject<HTMLDivElement | null>
-  onRegenerate?: (messageId: string) => Promise<void>
-}
+  message: UIMessage;
+  isFirstMessage: boolean;
+  isLastMessage: boolean;
+  status: ChatStatus;
+  reasoningContainerRef?: React.RefObject<HTMLDivElement | null>;
+  onRegenerate?: (messageId: string) => Promise<void>;
+};
 
 export const MessageItem = memo(
   ({
@@ -59,57 +66,57 @@ export const MessageItem = memo(
     reasoningContainerRef,
     onRegenerate,
   }: MessageItemProps) => {
-    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
     const [previewImage, setPreviewImage] = useState<{
-      url: string
-      filename?: string
-    } | null>(null)
+      url: string;
+      filename?: string;
+    } | null>(null);
 
     const handleCopy = (text: string) => {
-      navigator.clipboard.writeText(text.trim())
-      setCopiedMessageId(message.id)
-      setTimeout(() => setCopiedMessageId(null), 2000)
-    }
+      navigator.clipboard.writeText(text.trim());
+      setCopiedMessageId(message.id);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    };
 
     const handleRegenerate = () => {
-      onRegenerate?.(message.id)
-    }
+      onRegenerate?.(message.id);
+    };
 
     const handleDownload = async (url: string, filename?: string) => {
       try {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        const blobUrl = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = blobUrl
-        a.download = filename || 'generated-image.png'
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(blobUrl)
-        document.body.removeChild(a)
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename || "generated-image.png";
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
       } catch (error) {
-        console.error('Failed to download image:', error)
+        console.error("Failed to download image:", error);
       }
-    }
+    };
 
-    const isStreaming = isLastMessage && status === CHAT_STATUS.STREAMING
+    const isStreaming = isLastMessage && status === CHAT_STATUS.STREAMING;
 
     const renderTextPart = (part: { text: string }, partIndex: number) => {
-      const isLastPart = partIndex === message.parts.length - 1
+      const isLastPart = partIndex === message.parts.length - 1;
 
       return (
         <Message
           key={`${message.id}-${partIndex}`}
           from={message.role}
           className={cn(
-            'group',
-            isFirstMessage && message.role === MESSAGE_ROLE.USER && 'mt-0!'
+            "group",
+            isFirstMessage && message.role === MESSAGE_ROLE.USER && "mt-0!",
           )}
         >
           <MessageContent
             className={cn(
-              'leading-relaxed',
-              message.role === MESSAGE_ROLE.USER && 'whitespace-pre-wrap'
+              "leading-relaxed",
+              message.role === MESSAGE_ROLE.USER && "whitespace-pre-wrap",
             )}
           >
             {message.role === MESSAGE_ROLE.USER ? (
@@ -122,10 +129,10 @@ export const MessageItem = memo(
           {message.role === MESSAGE_ROLE.USER && isLastPart && (
             <MessageActions
               className={cn(
-                'gap-0 justify-end transition-opacity',
+                "gap-0 justify-end transition-opacity",
                 status === CHAT_STATUS.STREAMING
-                  ? 'opacity-0 pointer-events-none'
-                  : 'opacity-0 group-hover:opacity-100'
+                  ? "opacity-0 pointer-events-none"
+                  : "opacity-0 group-hover:opacity-100",
               )}
             >
               {onRegenerate && (
@@ -146,9 +153,9 @@ export const MessageItem = memo(
           {message.role === MESSAGE_ROLE.ASSISTANT && isLastPart && (
             <MessageActions
               className={cn(
-                'mt-1 gap-0 transition-opacity',
+                "mt-1 gap-0 transition-opacity",
                 status === CHAT_STATUS.STREAMING &&
-                  'opacity-0 pointer-events-none'
+                  "opacity-0 pointer-events-none",
               )}
             >
               <MessageAction onClick={() => handleCopy(part.text)} label="Copy">
@@ -166,19 +173,19 @@ export const MessageItem = memo(
             </MessageActions>
           )}
         </Message>
-      )
-    }
+      );
+    };
 
     const renderFilePart = (
       part: { filename?: string; url?: string; mediaType?: string },
-      partIndex: number
+      partIndex: number,
     ) => {
-      const isAssistant = message.role === MESSAGE_ROLE.ASSISTANT
-      const isImage = part.mediaType?.startsWith('image/')
-      const isLastPart = partIndex === message.parts.length - 1
+      const isAssistant = message.role === MESSAGE_ROLE.ASSISTANT;
+      const isImage = part.mediaType?.startsWith("image/");
+      const isLastPart = partIndex === message.parts.length - 1;
 
       // Resolve Jan media URL to displayable URL using shared hook
-      const { displayUrl, isLoading } = useResolvedMediaUrl(part.url)
+      const { displayUrl, isLoading } = useResolvedMediaUrl(part.url);
 
       return (
         <Message
@@ -188,22 +195,22 @@ export const MessageItem = memo(
         >
           <MessageAttachments
             className={cn(
-              isAssistant && 'ml-0 mr-auto' // Left-align for assistant
+              isAssistant && "ml-0 mr-auto", // Left-align for assistant
             )}
           >
             <MessageAttachment
               data={part as any}
-              key={part.filename || 'image'}
+              key={part.filename || "image"}
               className={cn(
-                isAssistant && 'size-64', // Bigger for assistant (size-64 = 16rem = 256px vs size-24 = 6rem = 96px)
-                isImage && !isLoading && displayUrl && 'cursor-pointer'
+                isAssistant && "size-64", // Bigger for assistant (size-64 = 16rem = 256px vs size-24 = 6rem = 96px)
+                isImage && !isLoading && displayUrl && "cursor-pointer",
               )}
               onClick={() => {
                 if (isImage && displayUrl && !isLoading) {
                   setPreviewImage({
                     url: displayUrl,
                     filename: part.filename,
-                  })
+                  });
                 }
               }}
             />
@@ -216,9 +223,9 @@ export const MessageItem = memo(
             isLastPart && (
               <MessageActions
                 className={cn(
-                  'gap-0 transition-opacity',
+                  "gap-0 transition-opacity",
                   status === CHAT_STATUS.STREAMING &&
-                    'opacity-0 pointer-events-none'
+                    "opacity-0 pointer-events-none",
                 )}
               >
                 <MessageAction
@@ -230,15 +237,15 @@ export const MessageItem = memo(
               </MessageActions>
             )}
         </Message>
-      )
-    }
+      );
+    };
 
     const renderReasoningPart = (part: { text: string }, partIndex: number) => {
-      const isLastPart = partIndex === message.parts.length - 1
+      const isLastPart = partIndex === message.parts.length - 1;
 
       // Only open if this reasoning part is actively being streamed
       // (last part in message AND status is streaming AND this is the last message)
-      const shouldBeOpen = isStreaming && isLastPart
+      const shouldBeOpen = isStreaming && isLastPart;
 
       return (
         <Reasoning
@@ -255,30 +262,30 @@ export const MessageItem = memo(
             <div
               ref={isStreaming ? reasoningContainerRef : null}
               className={twMerge(
-                'w-full overflow-auto relative',
+                "w-full overflow-auto relative",
                 isStreaming
-                  ? 'max-h-32 opacity-70 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
-                  : 'h-auto opacity-100'
+                  ? "max-h-32 opacity-70 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                  : "h-auto opacity-100",
               )}
             >
               <ReasoningContent>{part.text}</ReasoningContent>
             </div>
           </div>
         </Reasoning>
-      )
-    }
+      );
+    };
 
     const renderToolPart = (part: any, partIndex: number) => {
-      if (!part.type.startsWith('tool-') || !('state' in part)) {
-        return null
+      if (!part.type.startsWith("tool-") || !("state" in part)) {
+        return null;
       }
 
-      const toolName = part.type.split('-').slice(1).join('-')
+      const toolName = part.type.split("-").slice(1).join("-");
 
       return (
         <Tool
           key={`${message.id}-${partIndex}`}
-          className={cn(partIndex < 2 && 'mt-4')}
+          className={cn(partIndex < 2 && "mt-4")}
         >
           <ToolHeader
             title={toolName}
@@ -287,22 +294,22 @@ export const MessageItem = memo(
           />
           <ToolContent>
             <ToolInput input={part.input} />
-            {part.state === TOOL_STATE.OUTPUT_AVAILABLE && 'output' in part && (
+            {part.state === TOOL_STATE.OUTPUT_AVAILABLE && "output" in part && (
               <ToolOutput
                 output={part.output}
-                errorText={'errorText' in part ? part.errorText : undefined}
+                errorText={"errorText" in part ? part.errorText : undefined}
               />
             )}
             {part.state === TOOL_STATE.OUTPUT_ERROR && (
               <ToolOutput
                 output={undefined}
-                errorText={'errorText' in part ? part.errorText : undefined}
+                errorText={"errorText" in part ? part.errorText : undefined}
               />
             )}
           </ToolContent>
         </Tool>
-      )
-    }
+      );
+    };
 
     return (
       <>
@@ -310,19 +317,22 @@ export const MessageItem = memo(
           {message.parts.map((part, i) => {
             switch (part.type) {
               case CONTENT_TYPE.TEXT:
-                return renderTextPart(part, i)
+                return renderTextPart(part, i);
               case CONTENT_TYPE.FILE:
-                return renderFilePart(part, i)
+                return renderFilePart(part, i);
               case CONTENT_TYPE.REASONING:
-                return renderReasoningPart(part, i)
+                return renderReasoningPart(part, i);
               default:
-                return renderToolPart(part, i)
+                return renderToolPart(part, i);
             }
           })}
         </div>
 
         {/* Image Preview Dialog */}
-        <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <Dialog
+          open={!!previewImage}
+          onOpenChange={() => setPreviewImage(null)}
+        >
           <DialogPortal>
             <DialogOverlay
               className="bg-black/90 backdrop-blur-md data-[state=open]:animate-none data-[state=closed]:animate-none"
@@ -330,7 +340,7 @@ export const MessageItem = memo(
             />
             <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
               <DialogTitle className="sr-only">
-                {previewImage?.filename || 'Image Preview'}
+                {previewImage?.filename || "Image Preview"}
               </DialogTitle>
 
               {/* Action buttons */}
@@ -341,7 +351,7 @@ export const MessageItem = memo(
                   className="rounded-full bg-background/80 backdrop-blur-sm hover:bg-background shadow-lg"
                   onClick={() => {
                     if (previewImage?.url) {
-                      handleDownload(previewImage.url, previewImage.filename)
+                      handleDownload(previewImage.url, previewImage.filename);
                     }
                   }}
                 >
@@ -364,7 +374,7 @@ export const MessageItem = memo(
               {previewImage && (
                 <img
                   src={previewImage.url}
-                  alt={previewImage.filename || 'Preview'}
+                  alt={previewImage.filename || "Preview"}
                   className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg pointer-events-auto"
                 />
               )}
@@ -372,11 +382,11 @@ export const MessageItem = memo(
           </DialogPortal>
         </Dialog>
       </>
-    )
+    );
   },
   (prevProps, nextProps) => {
     if (nextProps.isLastMessage && nextProps.status === CHAT_STATUS.STREAMING) {
-      return false
+      return false;
     }
 
     return (
@@ -384,8 +394,8 @@ export const MessageItem = memo(
       prevProps.isFirstMessage === nextProps.isFirstMessage &&
       prevProps.isLastMessage === nextProps.isLastMessage &&
       prevProps.status === nextProps.status
-    )
-  }
-)
+    );
+  },
+);
 
-MessageItem.displayName = 'MessageItem'
+MessageItem.displayName = "MessageItem";

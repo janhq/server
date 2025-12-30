@@ -24,7 +24,7 @@ import { load } from 'js-yaml';
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-type GenerateFiles = typeof import('fumadocs-openapi')['generateFiles'];
+type GenerateFiles = (typeof import('fumadocs-openapi'))['generateFiles'];
 
 const loadGenerateFiles = async () => {
   const { generateFiles } = await import('fumadocs-openapi');

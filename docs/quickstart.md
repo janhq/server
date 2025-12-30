@@ -3,6 +3,7 @@
 Welcome! This guide will help you get Jan Server up and running in minutes.
 
 > **Note:** This guide covers Docker Compose setup for local development. For Kubernetes deployment (production/staging), see:
+>
 > - [Kubernetes Setup Guide](../k8s/SETUP.md) - Complete step-by-step Kubernetes deployment
 > - [Deployment Guide](guides/deployment.md) - All deployment options (Kubernetes, Docker Compose, Hybrid)
 
@@ -17,7 +18,8 @@ Before you begin, ensure you have:
 - For GPU inference: NVIDIA GPU with CUDA support
 
 Optional (for development):
-- Go 1.21+ 
+
+- Go 1.21+
 - Go 1.23+ (for jan-cli api-test)
 
 ## Quick Setup
@@ -38,11 +40,13 @@ make quickstart
 `make quickstart` launches the `jan-cli` wizard. It prompts for your LLM provider (local vLLM vs remote API), MCP search provider, and Media API preference, then writes `.env` plus `config/secrets.env`. When configuration finishes it automatically starts Docker Compose. Re-run the command anytime to update settings (answer **Y** when asked to overwrite `.env`).
 
 #### Wizard options at a glance
+
 - **LLM provider**: Local vLLM (GPU, downloads models) or remote OpenAI-compatible endpoint (no GPU required).
 - **MCP search**: Serper (API key), SearXNG (local, no key), or None (MCP Tools still run without search).
-- **Media API**: Enable for uploads and jan_* IDs, or disable if not needed.
+- **Media API**: Enable for uploads and jan\_\* IDs, or disable if not needed.
 
 #### Example configurations
+
 - **Full local (GPU)**: Local vLLM + SearXNG + Media enabled → everything runs locally.
 - **Cloud LLM + Serper**: Remote API endpoint + Serper key + Media enabled → light local footprint, best search.
 - **Minimal**: Remote API endpoint + no search + Media disabled → smallest local runtime.
@@ -65,6 +69,7 @@ make setup
 `make setup` uses `jan-cli` in non-interactive mode to check dependencies, ensure directories exist, and pull base images.
 
 **Configuration details:**
+
 - Canonical defaults live in `config/defaults.yaml` (generated from Go structs)
 - Secrets belong in `config/secrets.env` (copied from `config/secrets.env.example`)
 - Environment templates (Docker/Kubernetes) are documented in [Configuration System](configuration/README.md)
@@ -80,11 +85,13 @@ make monitor-up
 ```
 
 Wait for all services to start (30-60 seconds). You can monitor progress with:
+
 ```bash
 make logs
 ```
 
 ### What the wizard does
+
 1. Prompts for LLM/search/media choices.
 2. Writes `.env` and `config/secrets.env`.
 3. Checks Docker availability and networks.
@@ -102,22 +109,23 @@ You should see all services reporting as healthy.
 
 Once running, you can access:
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| **API Gateway** | http://localhost:8000 | - |
-| **API Documentation** | http://localhost:8000/api/swagger/index.html | - |
-| **LLM API** | http://localhost:8080 | `Authorization: Bearer <token>` |
-| **Response API** | http://localhost:8082 | `Authorization: Bearer <token>` |
-| **Media API** | http://localhost:8285 | `Authorization: Bearer <token>` |
-| **MCP Tools** | http://localhost:8091 | `Authorization: Bearer <token>` |
-| **Memory Tools** | http://localhost:8090 | `Authorization: Bearer <token>` |
-| **Realtime API** | http://localhost:8186 | `Authorization: Bearer <token>` |
-| **Keycloak Console** | http://localhost:8085 | admin/admin |
-| **Grafana Dashboards** | http://localhost:3331 | admin/admin (after `make monitor-up`) |
-| **Prometheus** | http://localhost:9090 | - (after `make monitor-up`) |
-| **Jaeger Tracing** | http://localhost:16686 | - (after `make monitor-up`) |
+| Service                | URL                                          | Credentials                           |
+| ---------------------- | -------------------------------------------- | ------------------------------------- |
+| **API Gateway**        | http://localhost:8000                        | -                                     |
+| **API Documentation**  | http://localhost:8000/api/swagger/index.html | -                                     |
+| **LLM API**            | http://localhost:8080                        | `Authorization: Bearer <token>`       |
+| **Response API**       | http://localhost:8082                        | `Authorization: Bearer <token>`       |
+| **Media API**          | http://localhost:8285                        | `Authorization: Bearer <token>`       |
+| **MCP Tools**          | http://localhost:8091                        | `Authorization: Bearer <token>`       |
+| **Memory Tools**       | http://localhost:8090                        | `Authorization: Bearer <token>`       |
+| **Realtime API**       | http://localhost:8186                        | `Authorization: Bearer <token>`       |
+| **Keycloak Console**   | http://localhost:8085                        | admin/admin                           |
+| **Grafana Dashboards** | http://localhost:3331                        | admin/admin (after `make monitor-up`) |
+| **Prometheus**         | http://localhost:9090                        | - (after `make monitor-up`)           |
+| **Jaeger Tracing**     | http://localhost:16686                       | - (after `make monitor-up`)           |
 
 **Service activation**:
+
 - vLLM starts only if you choose the local provider (GPU). Use the remote provider option for a lighter stack.
 - MCP Tools and Vector Store always run; the search choice only affects which search provider is used.
 - Media API is optional based on the wizard choice.
@@ -133,11 +141,12 @@ curl -X POST http://localhost:8000/llm/auth/guest-login
 All traffic to `http://localhost:8000` flows through the Kong gateway, which validates Keycloak-issued JWTs or API keys (use `Authorization: Bearer <token>` or `X-API-Key: sk_*` headers).
 
 Response:
+
 ```json
 {
- "access_token": "eyJhbGci...",
- "refresh_token": "eyJhbGci...",
- "expires_in": 300
+  "access_token": "eyJhbGci...",
+  "refresh_token": "eyJhbGci...",
+  "expires_in": 300
 }
 ```
 
@@ -208,6 +217,7 @@ make monitor-up
 ```
 
 Access:
+
 - **Grafana**: http://localhost:3331 (admin/admin)
 - **Prometheus**: http://localhost:9090
 - **Jaeger**: http://localhost:16686
@@ -282,6 +292,7 @@ docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
 ```
 
 If no GPU is detected:
+
 - Rerun `make quickstart` and choose the remote API option (skips local vLLM)
 - Or run `make up-vllm-cpu` to start the CPU-only vLLM profile when testing locally
 
@@ -317,23 +328,27 @@ The wizard safely reuses existing values and updates your choices without manual
 Now that you have Jan Server running:
 
 1. **Explore the API**:
- - [API Reference](api/README.md)
- - [API Examples](api/examples/README.md)
- - [Swagger UI](http://localhost:8000/api/swagger/index.html)
+
+- [API Reference](api/README.md)
+- [API Examples](api/examples/README.md)
+- [Swagger UI](http://localhost:8000/api/swagger/index.html)
 
 2. **Learn Development**:
- - [Development Guide](guides/development.md)
- - [Development Guide - Dev-Full Mode](guides/development.md#dev-full-mode-hybrid-debugging) (recommended for development)
- - [Testing Guide](guides/testing.md)
+
+- [Development Guide](guides/development.md)
+- [Development Guide - Dev-Full Mode](guides/development.md#dev-full-mode-hybrid-debugging) (recommended for development)
+- [Testing Guide](guides/testing.md)
 
 3. **Understand Architecture**:
- - [Architecture Overview](architecture/README.md)
- - [System Design](architecture/system-design.md)
- - [Security Model](architecture/security.md)
+
+- [Architecture Overview](architecture/README.md)
+- [System Design](architecture/system-design.md)
+- [Security Model](architecture/security.md)
 
 4. **Deploy to Production**:
- - [Deployment Guide](guides/deployment.md)
- - [Monitoring Guide](guides/monitoring.md)
+
+- [Deployment Guide](guides/deployment.md)
+- [Monitoring Guide](guides/monitoring.md)
 
 ## Need Help?
 

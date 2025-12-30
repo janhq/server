@@ -46,17 +46,18 @@ curl -X PATCH http://localhost:8000/v1/users/me/settings \
 
 Control how the AI perceives and responds to you.
 
-| Setting | Type | Options | Default | Description |
-|---------|------|---------|---------|-------------|
-| `base_style` | Enum | `Concise`, `Friendly`, `Professional` | `Friendly` | Tone and style of responses |
-| `nick_name` | String | Any (255 chars max) | Empty | Your preferred name/alias |
-| `occupation` | String | Any (255 chars max) | Empty | Your role or profession |
-| `custom_instructions` | String | Any | Empty | Instructions injected into every conversation |
-| `more_about_you` | String | Any | Empty | Additional context about yourself |
+| Setting               | Type   | Options                               | Default    | Description                                   |
+| --------------------- | ------ | ------------------------------------- | ---------- | --------------------------------------------- |
+| `base_style`          | Enum   | `Concise`, `Friendly`, `Professional` | `Friendly` | Tone and style of responses                   |
+| `nick_name`           | String | Any (255 chars max)                   | Empty      | Your preferred name/alias                     |
+| `occupation`          | String | Any (255 chars max)                   | Empty      | Your role or profession                       |
+| `custom_instructions` | String | Any                                   | Empty      | Instructions injected into every conversation |
+| `more_about_you`      | String | Any                                   | Empty      | Additional context about yourself             |
 
 #### Example Profile Configurations
 
 **Software Engineer:**
+
 ```json
 {
   "profile_settings": {
@@ -70,6 +71,7 @@ Control how the AI perceives and responds to you.
 ```
 
 **Student:**
+
 ```json
 {
   "profile_settings": {
@@ -83,6 +85,7 @@ Control how the AI perceives and responds to you.
 ```
 
 **Content Creator:**
+
 ```json
 {
   "profile_settings": {
@@ -99,26 +102,26 @@ Control how the AI perceives and responds to you.
 
 Control how the system remembers conversations and uses memory in future interactions.
 
-| Setting | Type | Default | Range | Description |
-|---------|------|---------|-------|-------------|
-| `enabled` | Boolean | `true` | N/A | Master toggle for memory system |
-| `observe_enabled` | Boolean | `true` | N/A | Observe and learn from conversations |
-| `inject_user_core` | Boolean | `true` | N/A | Inject user profile into responses |
-| `inject_semantic` | Boolean | `true` | N/A | Use semantic memory (topic-based) |
-| `inject_episodic` | Boolean | `false` | N/A | Use episodic memory (conversation history) |
-| `max_user_items` | Integer | 3 | 1-10 | Max user memory items to inject |
-| `max_project_items` | Integer | 5 | 1-20 | Max project memory items to inject |
-| `max_episodic_items` | Integer | 3 | 1-10 | Max conversation history items to inject |
-| `min_similarity` | Float | 0.75 | 0.0-1.0 | Similarity threshold for memory injection |
+| Setting              | Type    | Default | Range   | Description                                |
+| -------------------- | ------- | ------- | ------- | ------------------------------------------ |
+| `enabled`            | Boolean | `true`  | N/A     | Master toggle for memory system            |
+| `observe_enabled`    | Boolean | `true`  | N/A     | Observe and learn from conversations       |
+| `inject_user_core`   | Boolean | `true`  | N/A     | Inject user profile into responses         |
+| `inject_semantic`    | Boolean | `true`  | N/A     | Use semantic memory (topic-based)          |
+| `inject_episodic`    | Boolean | `false` | N/A     | Use episodic memory (conversation history) |
+| `max_user_items`     | Integer | 3       | 1-10    | Max user memory items to inject            |
+| `max_project_items`  | Integer | 5       | 1-20    | Max project memory items to inject         |
+| `max_episodic_items` | Integer | 3       | 1-10    | Max conversation history items to inject   |
+| `min_similarity`     | Float   | 0.75    | 0.0-1.0 | Similarity threshold for memory injection  |
 
 ### Advanced Settings
 
 Toggle advanced features and capabilities.
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `web_search` | Boolean | `false` | Allow agents to perform web searches |
-| `code_enabled` | Boolean | `false` | Allow agents to execute code |
+| Setting        | Type    | Default | Description                          |
+| -------------- | ------- | ------- | ------------------------------------ |
+| `web_search`   | Boolean | `false` | Allow agents to perform web searches |
+| `code_enabled` | Boolean | `false` | Allow agents to execute code         |
 
 ## API Reference
 
@@ -139,24 +142,24 @@ Update any combination of settings (partial update supported).
 ### JavaScript
 
 ```javascript
-const token = 'your_token_here';
+const token = "your_token_here";
 const headers = {
-  'Authorization': `Bearer ${token}`,
-  'Content-Type': 'application/json'
+  Authorization: `Bearer ${token}`,
+  "Content-Type": "application/json",
 };
 
-const getResponse = await fetch('http://localhost:8000/v1/users/me/settings', {
-  method: 'GET',
-  headers
+const getResponse = await fetch("http://localhost:8000/v1/users/me/settings", {
+  method: "GET",
+  headers,
 });
 
 const settings = await getResponse.json();
-settings.profile_settings.base_style = 'Professional';
+settings.profile_settings.base_style = "Professional";
 
-await fetch('http://localhost:8000/v1/users/me/settings', {
-  method: 'PATCH',
+await fetch("http://localhost:8000/v1/users/me/settings", {
+  method: "PATCH",
   headers,
-  body: JSON.stringify(settings)
+  body: JSON.stringify(settings),
 });
 ```
 

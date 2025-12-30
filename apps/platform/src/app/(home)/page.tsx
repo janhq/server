@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { ArrowRight, Code2, Box, Terminal } from 'lucide-react'
+import { ArrowRight, Box, Code2, Terminal } from 'lucide-react';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -34,7 +34,10 @@ export default function HomePage() {
 
         <section className="container space-y-6 py-8 md:py-12 lg:py-24">
           <div className="mx-auto grid justify-center gap-4 sm:grid-cols-2 md:grid-cols-3">
-            <Link href="/docs/quickstart" className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group">
+            <Link
+              href="/docs/quickstart"
+              className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group"
+            >
               <div className="flex h-[180px] flex-col justify-between rounded-md p-6">
                 <Code2 className="h-12 w-12" />
                 <div className="space-y-2">
@@ -48,7 +51,10 @@ export default function HomePage() {
                 </div>
               </div>
             </Link>
-            <Link href="/docs/architecture" className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group">
+            <Link
+              href="/docs/architecture"
+              className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group"
+            >
               <div className="flex h-[180px] flex-col justify-between rounded-md p-6">
                 <Box className="h-12 w-12" />
                 <div className="space-y-2">
@@ -62,7 +68,10 @@ export default function HomePage() {
                 </div>
               </div>
             </Link>
-            <Link href="/docs/api-reference" className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group">
+            <Link
+              href="/docs/api-reference"
+              className="relative overflow-hidden rounded-lg border bg-background p-2 transition-colors hover:bg-accent hover:text-accent-foreground group"
+            >
               <div className="flex h-[180px] flex-col justify-between rounded-md p-6">
                 <Terminal className="h-12 w-12" />
                 <div className="space-y-2">
@@ -80,5 +89,5 @@ export default function HomePage() {
         </section>
       </main>
     </div>
-  )
+  );
 }

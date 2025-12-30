@@ -17,37 +17,37 @@ Jan Server is built from multiple small services (microservices) that work toget
 
 ### Service Ports (Docker Compose defaults)
 
-| Service | Port | Access Notes |
-|---------|------|-------------|
-| **Kong Gateway** | 8000 | Entry point for `/llm/*`, `/responses/*`, `/media/*`, `/mcp` (routing + auth) |
-| **LLM API** | 8080 | Internal; exposed through Kong routes |
-| **Response API** | 8082 | Internal; streaming SSE via Kong `/responses` |
-| **Media API** | 8285 | Internal; proxied by Kong `/media` |
-| **MCP Tools** | 8091 | Internal; routed through Kong `/mcp` |
-| **Memory Tools** | 8090 | Internal; semantic memory service |
-| **Realtime API** | 8186 | Internal; WebRTC session management |
-| **Template API** | 8185 | Dev scaffold (not deployed by default) |
-| **Keycloak** | 8085 | Admin console (protect behind VPN/SSO in production) |
-| **vLLM** | 8101 | Inference backend (local GPU/CPU profile) |
-| **Prometheus** | 9090 | Dev-only monitoring UI (`make monitor-up`) |
-| **Jaeger** | 16686 | Trace UI |
-| **Grafana** | 3331 | Dashboards (admin/admin in dev) |
+| Service          | Port  | Access Notes                                                                  |
+| ---------------- | ----- | ----------------------------------------------------------------------------- |
+| **Kong Gateway** | 8000  | Entry point for `/llm/*`, `/responses/*`, `/media/*`, `/mcp` (routing + auth) |
+| **LLM API**      | 8080  | Internal; exposed through Kong routes                                         |
+| **Response API** | 8082  | Internal; streaming SSE via Kong `/responses`                                 |
+| **Media API**    | 8285  | Internal; proxied by Kong `/media`                                            |
+| **MCP Tools**    | 8091  | Internal; routed through Kong `/mcp`                                          |
+| **Memory Tools** | 8090  | Internal; semantic memory service                                             |
+| **Realtime API** | 8186  | Internal; WebRTC session management                                           |
+| **Template API** | 8185  | Dev scaffold (not deployed by default)                                        |
+| **Keycloak**     | 8085  | Admin console (protect behind VPN/SSO in production)                          |
+| **vLLM**         | 8101  | Inference backend (local GPU/CPU profile)                                     |
+| **Prometheus**   | 9090  | Dev-only monitoring UI (`make monitor-up`)                                    |
+| **Jaeger**       | 16686 | Trace UI                                                                      |
+| **Grafana**      | 3331  | Dashboards (admin/admin in dev)                                               |
 
 ### Technology Stack
 
-| Component | Technology |
-|-----------------|--------------------------------|
-| API Gateway | Kong 3.5 + `keycloak-apikey` plugin |
-| Services | Go 1.21+ (Gin framework, zerolog, wire DI) |
-| MCP Server | mark3labs/mcp-go v0.7.0 |
-| ORM | GORM + goose migrations |
-| Database | PostgreSQL 15/16 (Docker) / managed service |
-| Auth | Keycloak (OpenID Connect) |
-| Inference | vLLM (OpenAI-compatible) or remote providers |
-| Observability | OpenTelemetry Collector |
-| Metrics | Prometheus 2.48 |
-| Tracing | Jaeger 1.51 |
-| Dashboards | Grafana 10.2 |
+| Component     | Technology                                   |
+| ------------- | -------------------------------------------- |
+| API Gateway   | Kong 3.5 + `keycloak-apikey` plugin          |
+| Services      | Go 1.21+ (Gin framework, zerolog, wire DI)   |
+| MCP Server    | mark3labs/mcp-go v0.7.0                      |
+| ORM           | GORM + goose migrations                      |
+| Database      | PostgreSQL 15/16 (Docker) / managed service  |
+| Auth          | Keycloak (OpenID Connect)                    |
+| Inference     | vLLM (OpenAI-compatible) or remote providers |
+| Observability | OpenTelemetry Collector                      |
+| Metrics       | Prometheus 2.48                              |
+| Tracing       | Jaeger 1.51                                  |
+| Dashboards    | Grafana 10.2                                 |
 
 ## How to Run It
 
@@ -72,6 +72,7 @@ Use Kubernetes to run in the cloud or on servers:
 - **Hybrid**: Run inference locally while other services run in the cluster
 
 **Helpful references:**
+
 - [Kubernetes Setup Guide](../../k8s/SETUP.md) - minikube/bootstrap walkthrough
 - [Kubernetes README](../../k8s/README.md) - Helm values, ingress, TLS
 - [Deployment Guide](../guides/deployment.md) - Docker, hybrid, CI/CD instructions
@@ -86,7 +87,3 @@ Use Kubernetes to run in the cloud or on servers:
 - [Test Flows & Diagrams](test-flows.md)
 - [API Reference](../api/README.md)
 - [Development Guide](../guides/development.md)
-
-
-
-

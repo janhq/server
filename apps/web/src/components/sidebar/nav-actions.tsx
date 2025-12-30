@@ -1,44 +1,48 @@
-import { HatGlassesIcon, XIcon, Share2Icon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useAuth } from '@/stores/auth-store'
-import { useRouter } from '@tanstack/react-router'
-import { usePrivateChat } from '@/stores/private-chat-store'
-import { useChatSessions } from '@/stores/chat-session-store'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShareDialog } from '@/components/threads/share-dialog'
-import { useState } from 'react'
-import { PRIVATE_CHAT_SESSION_ID, URL_PARAM, URL_PARAM_VALUE } from '@/constants'
+import { HatGlassesIcon, XIcon, Share2Icon } from "lucide-react";
+import { Button } from "@janhq/interfaces/button";
+import { useAuth } from "@/stores/auth-store";
+import { useRouter } from "@tanstack/react-router";
+import { usePrivateChat } from "@/stores/private-chat-store";
+import { useChatSessions } from "@/stores/chat-session-store";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShareDialog } from "@/components/threads/share-dialog";
+import { useState } from "react";
+import {
+  PRIVATE_CHAT_SESSION_ID,
+  URL_PARAM,
+  URL_PARAM_VALUE,
+} from "@/constants";
 
 interface NavActionsProps {
-  conversationId?: string
-  conversationTitle?: string
+  conversationId?: string;
+  conversationTitle?: string;
 }
 
 export function NavActions({
   conversationId,
-  conversationTitle
+  conversationTitle,
 }: NavActionsProps = {}) {
-  const isAuthenticated = useAuth((state) => state.isAuthenticated)
-  const isGuest = useAuth((state) => state.isGuest)
-  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat)
-  const setIsPrivateChat = usePrivateChat((state) => state.setIsPrivateChat)
-  const removeSession = useChatSessions((state) => state.removeSession)
-  const router = useRouter()
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
+  const isGuest = useAuth((state) => state.isGuest);
+  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
+  const setIsPrivateChat = usePrivateChat((state) => state.setIsPrivateChat);
+  const removeSession = useChatSessions((state) => state.removeSession);
+  const router = useRouter();
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   const handleLogin = () => {
     // Add modal=login search param to current route
-    const url = new URL(window.location.href)
-    url.searchParams.set(URL_PARAM.MODAL, URL_PARAM_VALUE.LOGIN)
-    router.navigate({ to: url.pathname + url.search })
-  }
+    const url = new URL(window.location.href);
+    url.searchParams.set(URL_PARAM.MODAL, URL_PARAM_VALUE.LOGIN);
+    router.navigate({ to: url.pathname + url.search });
+  };
 
   if (!isAuthenticated || isGuest) {
     return (
       <Button size="sm" onClick={handleLogin}>
         Log in
       </Button>
-    )
+    );
   }
 
   return (
@@ -49,7 +53,7 @@ export function NavActions({
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
             className="
               hidden md:block fixed top-0 left-1/2 -translate-x-1/2 z-10
               h-12 bg-foreground
@@ -88,9 +92,9 @@ export function NavActions({
           variant="destructive"
           className="rounded-full size-8 md:size-auto"
           onClick={() => {
-            removeSession(PRIVATE_CHAT_SESSION_ID)
-            setIsPrivateChat(false)
-            router.navigate({ to: '/' })
+            removeSession(PRIVATE_CHAT_SESSION_ID);
+            setIsPrivateChat(false);
+            router.navigate({ to: "/" });
           }}
         >
           <span className="hidden md:flex">End Chat</span>
@@ -102,8 +106,8 @@ export function NavActions({
           size="icon"
           className="size-8"
           onClick={() => {
-            setIsPrivateChat(true)
-            router.navigate({ to: '/' })
+            setIsPrivateChat(true);
+            router.navigate({ to: "/" });
           }}
         >
           <HatGlassesIcon className="text-muted-foreground" />
@@ -120,5 +124,5 @@ export function NavActions({
         />
       )}
     </>
-  )
+  );
 }

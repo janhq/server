@@ -1,62 +1,62 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { shareService } from '@/services/share-service'
-import { toast } from 'sonner'
-import { CopyIcon, CheckIcon, TrashIcon, Share2Icon } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { Button } from "@janhq/interfaces/button";
+import { Skeleton } from "@janhq/interfaces/skeleton";
+import { shareService } from "@/services/share-service";
+import { toast } from "sonner";
+import { CopyIcon, CheckIcon, TrashIcon, Share2Icon } from "lucide-react";
 
 export function SharesSettings() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [shares, setShares] = useState<ShareResponse[]>([])
-  const [copiedShareId, setCopiedShareId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true);
+  const [shares, setShares] = useState<ShareResponse[]>([]);
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadShares()
-  }, [])
+    loadShares();
+  }, []);
 
   const loadShares = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const response = await shareService.listAllShares()
+      const response = await shareService.listAllShares();
       // Filter out revoked shares
-      setShares(response.data.filter((share) => !share.revoked_at))
+      setShares(response.data.filter((share) => !share.revoked_at));
     } catch (error) {
-      console.error('Failed to load shares:', error)
-      toast.error('Failed to load share links')
+      console.error("Failed to load shares:", error);
+      toast.error("Failed to load share links");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const getLocalShareUrl = (slug: string) => {
-    return `${window.location.origin}/share/${slug}`
-  }
+    return `${window.location.origin}/share/${slug}`;
+  };
 
   const handleCopyLink = async (slug: string, shareId: string) => {
     try {
-      const localShareUrl = getLocalShareUrl(slug)
-      await navigator.clipboard.writeText(localShareUrl)
-      setCopiedShareId(shareId)
-      toast.success('Link copied to clipboard')
+      const localShareUrl = getLocalShareUrl(slug);
+      await navigator.clipboard.writeText(localShareUrl);
+      setCopiedShareId(shareId);
+      toast.success("Link copied to clipboard");
 
       // Reset copied state after 2 seconds
-      setTimeout(() => setCopiedShareId(null), 2000)
+      setTimeout(() => setCopiedShareId(null), 2000);
     } catch (error) {
-      console.error('Failed to copy:', error)
-      toast.error('Failed to copy link')
+      console.error("Failed to copy:", error);
+      toast.error("Failed to copy link");
     }
-  }
+  };
 
   const handleRevokeShare = async (shareId: string) => {
     try {
-      await shareService.revokeShareById(shareId)
-      setShares(shares.filter((s) => s.id !== shareId))
-      toast.success('Share link revoked')
+      await shareService.revokeShareById(shareId);
+      setShares(shares.filter((s) => s.id !== shareId));
+      toast.success("Share link revoked");
     } catch (error) {
-      console.error('Failed to revoke share:', error)
-      toast.error('Failed to revoke share link')
+      console.error("Failed to revoke share:", error);
+      toast.error("Failed to revoke share link");
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +85,7 @@ export function SharesSettings() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -114,7 +114,7 @@ export function SharesSettings() {
             <div key={share.id} className="flex gap-2 rounded-lg border p-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium wrap-break-word line-clamp-1">
-                  {share.title || 'Untitled'}
+                  {share.title || "Untitled"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {share.view_count} views
@@ -152,5 +152,5 @@ export function SharesSettings() {
         </div>
       )}
     </div>
-  )
+  );
 }

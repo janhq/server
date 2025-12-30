@@ -7,11 +7,13 @@ Sprint 3 involves migrating services (llm-api, mcp-tools, media-api, response-ap
 ## Challenge: Module Dependencies
 
 The jan-server project uses a **workspace** structure where each service is a separate Go module:
+
 - `services/llm-api` has its own `go.mod`
 - `services/mcp-tools` has its own `go.mod`
 - `pkg/config` is at the root workspace level
 
 **Problem:** Services cannot directly import `github.com/janhq/jan-server/pkg/config` without either:
+
 1. Restructuring into a monorepo with shared pkg/
 2. Publishing pkg/config as a separate module
 3. Using Go workspace features to share the package
@@ -23,12 +25,14 @@ The jan-server project uses a **workspace** structure where each service is a se
 **Goal:** Ensure all services use the same environment variable names as defined in `pkg/config/types.go`
 
 **Tasks:**
+
 1. Audit each service's env tags against pkg/config/types.go
 2. Update service env tags to match centralized naming
 3. Update Docker Compose files to use new env var names
 4. Test each service independently
 
 **Example:**
+
 ```go
 // Before (llm-api):
 HTTPPort int `env:"HTTP_PORT"`
@@ -48,6 +52,7 @@ DBPostgresqlWriteDSN string `env:"DB_POSTGRESQL_WRITE_DSN,notEmpty"`
 **Goal:** Create bridge functions that convert centralized config to service-specific config
 
 **Implementation:**
+
 ```go
 // In services/llm-api/internal/config/bridge.go
 
@@ -64,6 +69,7 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 ```
 
 **Benefits:**
+
 - Gradual migration (can still use env vars)
 - Backward compatibility
 - Clear mapping between old and new config
@@ -73,6 +79,7 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 **Goal:** Services directly use pkg/config types
 
 **Requires:**
+
 1. Go workspace configuration or monorepo restructuring
 2. Update Wire providers to inject centralconfig.Config
 3. Remove service-specific Config structs
@@ -81,6 +88,7 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 ## Current Status
 
 ### Sprint 2 Complete OK
+
 - pkg/config foundation built
 - Precedence system (100-600) implemented
 - All tests passing
@@ -89,37 +97,43 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 ### Sprint 3 Next Steps
 
 **Option A: Environment Variable Alignment (Recommended for Sprint 3)**
+
 - OK Low risk, immediate value
 - OK No code restructuring needed
 - OK Can be done per-service incrementally
 - Tasks:
- 1. Create env var mapping document
- 2. Update docker compose.yml environment sections
- 3. Update service env tags
- 4. Test each service
+
+1.  Create env var mapping document
+2.  Update docker compose.yml environment sections
+3.  Update service env tags
+4.  Test each service
 
 **Option B: Module Restructuring (Deferred to Sprint 4-5)**
+
 - WARNING Requires Go workspace setup or monorepo migration
 - WARNING Higher risk, more invasive
 - WARNING Blocks other development during migration
 - Tasks:
- 1. Set up Go workspace in root
- 2. Update all go.mod files
- 3. Implement bridge pattern
- 4. Migrate services one by one
- 5. Comprehensive integration testing
+
+1.  Set up Go workspace in root
+2.  Update all go.mod files
+3.  Implement bridge pattern
+4.  Migrate services one by one
+5.  Comprehensive integration testing
 
 ## Decision: Sprint 3 Scope
 
 **RECOMMENDATION:** Focus on Option A for Sprint 3
 
 **Rationale:**
+
 1. **Immediate Value:** Standardizing env vars provides immediate operational benefits
 2. **Low Risk:** No code changes, only configuration alignment
 3. **Foundation for Phase 2:** Makes bridge pattern easier in Sprint 4
 4. **Testable:** Can validate each service independently
 
 **Deliverables for Sprint 3:**
+
 1. Environment variable mapping document
 2. Updated docker compose.yml with aligned env vars
 3. Service-by-service env var audit
@@ -130,6 +144,7 @@ func FromCentralConfig(central *centralconfig.Config) *Config {
 ### Task 3.1: Environment Variable Audit
 
 Create `docs/configuration/env-var-mapping.md` documenting:
+
 - All env vars from pkg/config/types.go
 - Current env vars in each service
 - Mapping/migration needed
@@ -138,12 +153,14 @@ Create `docs/configuration/env-var-mapping.md` documenting:
 ### Task 3.2: Docker Compose Updates
 
 Update `docker compose.yml` and `infra/docker/` files to use:
+
 - Standardized env var names
-- config/environments/*.yaml for environment-specific overrides
+- config/environments/\*.yaml for environment-specific overrides
 
 ### Task 3.3: Service Validation
 
 For each service (llm-api, mcp-tools, media-api, response-api):
+
 1. Update internal config env tags to match pkg/config
 2. Run unit tests
 3. Run integration tests
@@ -158,6 +175,7 @@ For each service (llm-api, mcp-tools, media-api, response-api):
 ## Sprint 4+ Preview
 
 Once Sprint 3 (env var alignment) is complete, Sprint 4 can tackle:
+
 - Go workspace setup
 - Bridge pattern implementation
 - Gradual service migration to use pkg/config directly

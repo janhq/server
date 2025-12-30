@@ -38,6 +38,7 @@ curl -H "Authorization: Bearer <admin-token>" \
 ```
 
 Response:
+
 ```json
 {
   "data": [
@@ -92,6 +93,7 @@ curl -H "Authorization: Bearer <admin-token>" \
 ```
 
 Response:
+
 ```json
 {
   "id": "tool_2",
@@ -100,12 +102,7 @@ Response:
   "description": "Execute Python code",
   "category": "code",
   "enabled": true,
-  "disallowed_keywords": [
-    "delete",
-    "drop",
-    "format",
-    "rm.*recursive"
-  ],
+  "disallowed_keywords": ["delete", "drop", "format", "rm.*recursive"],
   "created_at": "2025-12-20T10:00:00Z",
   "updated_at": "2025-12-23T11:00:00Z"
 }
@@ -155,14 +152,14 @@ curl -X PUT http://localhost:8000/v1/admin/mcp/tools/tool_2/filters \
 
 Disallowed keywords use **regex patterns** for flexible matching:
 
-| Pattern | Matches | Use Case |
-|---------|---------|----------|
-| `^delete\\s+` | "delete" at start of string | Block SQL DELETE commands |
-| `drop` | "drop" anywhere (case-insensitive) | Block DROP statements |
-| `os\\.remove` | "os.remove" in Python code | Block file deletion |
-| `__import__` | Python import statements | Restrict imports |
-| `eval\\(` | "eval(" function calls | Block dangerous eval |
-| `exec\\(` | "exec(" function calls | Block exec calls |
+| Pattern       | Matches                            | Use Case                  |
+| ------------- | ---------------------------------- | ------------------------- |
+| `^delete\\s+` | "delete" at start of string        | Block SQL DELETE commands |
+| `drop`        | "drop" anywhere (case-insensitive) | Block DROP statements     |
+| `os\\.remove` | "os.remove" in Python code         | Block file deletion       |
+| `__import__`  | Python import statements           | Restrict imports          |
+| `eval\\(`     | "eval(" function calls             | Block dangerous eval      |
+| `exec\\(`     | "exec(" function calls             | Block exec calls          |
 
 ### Common Filter Sets
 
@@ -226,26 +223,26 @@ Block adult/NSFW searches:
 ### Bulk Tool Status Update
 
 ```javascript
-const adminToken = 'your_admin_token';
+const adminToken = "your_admin_token";
 const headers = {
-  'Authorization': `Bearer ${adminToken}`,
-  'Content-Type': 'application/json'
+  Authorization: `Bearer ${adminToken}`,
+  "Content-Type": "application/json",
 };
 
 // Fetch all tools
-const listResponse = await fetch('http://localhost:8000/v1/admin/mcp/tools', {
-  headers
+const listResponse = await fetch("http://localhost:8000/v1/admin/mcp/tools", {
+  headers,
 });
 
 const tools = await listResponse.json();
 
 // Disable all code execution tools
 for (const tool of tools.data) {
-  if (tool.category === 'code') {
+  if (tool.category === "code") {
     await fetch(`http://localhost:8000/v1/admin/mcp/tools/${tool.id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers,
-      body: JSON.stringify({ enabled: false })
+      body: JSON.stringify({ enabled: false }),
     });
     console.log(`Disabled: ${tool.name}`);
   }
@@ -273,6 +270,7 @@ curl -X POST http://localhost:8000/v1/auth/login \
 ### Role-Based Access Control (RBAC)
 
 MCP Admin endpoints check for:
+
 - `admin` role OR
 - `mcp:admin` permission
 
@@ -290,6 +288,7 @@ Configure in your identity provider (Keycloak):
 **Problem**: Receiving 403 Forbidden when accessing admin endpoints
 
 **Solutions**:
+
 1. Verify token has admin permissions
 2. Check token hasn't expired: `jwt decode YOUR_TOKEN`
 3. Ensure user is in admin group/role in Keycloak
@@ -299,6 +298,7 @@ Configure in your identity provider (Keycloak):
 **Problem**: Content filter isn't blocking expected keywords
 
 **Solutions**:
+
 1. Verify regex syntax is correct
 2. Test regex pattern independently
 3. Remember regexes are case-sensitive (use `(?i)` for case-insensitive)
@@ -309,6 +309,7 @@ Configure in your identity provider (Keycloak):
 **Problem**: Tool exists but doesn't show in admin list
 
 **Solutions**:
+
 1. Verify MCP Tools service is running
 2. Check service has registered the tool
 3. Ensure tool registration completed (may need restart)
@@ -360,6 +361,7 @@ Review tool filters quarterly as new security threats emerge.
 ## Support
 
 For admin-related issues:
+
 - Check [Troubleshooting Guide](troubleshooting.md)
 - Review [MCP Tools Documentation](../api/mcp-tools/README.md)
 - Contact your Jan Server administrator

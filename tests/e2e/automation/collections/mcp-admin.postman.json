@@ -29,9 +29,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.expect(pm.response.code).to.be.oneOf([200, 401]);"
-                ]
+                "exec": ["pm.expect(pm.response.code).to.be.oneOf([200, 401]);"]
               }
             }
           ]
@@ -110,15 +108,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools"]
             }
           },
           "response": []
@@ -156,15 +147,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools?category=search",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools"],
               "query": [
                 {
                   "key": "category",
@@ -208,15 +192,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools?is_active=true",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools"],
               "query": [
                 {
                   "key": "is_active",
@@ -268,16 +245,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/{{mcp_tool_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "{{mcp_tool_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "{{mcp_tool_id}}"]
             }
           },
           "response": []
@@ -322,16 +291,8 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/{{mcp_tool_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "{{mcp_tool_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "{{mcp_tool_id}}"]
             }
           },
           "response": []
@@ -378,16 +339,8 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/{{mcp_tool_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "{{mcp_tool_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "{{mcp_tool_id}}"]
             }
           },
           "response": []
@@ -432,16 +385,8 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/{{mcp_tool_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "{{mcp_tool_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "{{mcp_tool_id}}"]
             }
           },
           "response": []
@@ -486,16 +431,8 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/{{mcp_tool_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "{{mcp_tool_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "{{mcp_tool_id}}"]
             }
           },
           "response": []
@@ -538,14 +475,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/llm/v1/mcp-tools",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "mcp-tools"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "mcp-tools"]
             }
           },
           "response": []
@@ -580,15 +511,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/llm/v1/mcp-tools/google_search",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "mcp-tools",
-                "google_search"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "mcp-tools", "google_search"]
             }
           },
           "response": []
@@ -613,15 +537,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/llm/v1/mcp-tools/nonexistent_tool",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "mcp-tools",
-                "nonexistent_tool"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "mcp-tools", "nonexistent_tool"]
             }
           },
           "response": []
@@ -657,16 +574,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/nonexistent_id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "nonexistent_id"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "nonexistent_id"]
             }
           },
           "response": []
@@ -706,16 +615,8 @@
             },
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools/invalid_id",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools",
-                "invalid_id"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools", "invalid_id"]
             }
           },
           "response": []
@@ -743,15 +644,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/llm/v1/admin/mcp-tools",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "llm",
-                "v1",
-                "admin",
-                "mcp-tools"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["llm", "v1", "admin", "mcp-tools"]
             }
           },
           "response": []

@@ -3,13 +3,16 @@
 On-call playbooks for operating Jan Server. Use these when responding to incidents or performing operational tasks that must be repeatable and low-risk.
 
 ## Available runbooks
+
 - [Monitoring](monitoring.md) - Health checks, dashboards, alerts, tracing, and log capture steps.
 
 ## When to use guides vs runbooks
+
 - **Runbooks**: Pager/on-call situations, incident response, repetitive operational procedures.
 - **Guides**: Learning, setup, and exploratory workflows (see `../guides/`).
 
 ## Contributing
+
 - Keep steps concise and command-first.
 - Include prerequisites (access, permissions, tools).
 - Add rollback/verification steps and expected outcomes.

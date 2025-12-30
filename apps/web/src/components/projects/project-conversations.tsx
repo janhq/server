@@ -1,6 +1,12 @@
-import { MoreHorizontal, Trash2, PencilLine, Loader2, FolderX } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
+import {
+  MoreHorizontal,
+  Trash2,
+  PencilLine,
+  Loader2,
+  FolderX,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 
 import {
   DropDrawer,
@@ -8,10 +14,10 @@ import {
   DropDrawerItem,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
-import { ProjectsChatInput } from '@/components/chat-input/projects-chat-input'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+} from "@janhq/interfaces/dropdrawer";
+import { ProjectsChatInput } from "@/components/chat-input/projects-chat-input";
+import { Button } from "@janhq/interfaces/button";
+import { Input } from "@janhq/interfaces/input";
 import {
   Dialog,
   DialogClose,
@@ -20,46 +26,46 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { useConversations } from '@/stores/conversation-store'
-import { useProjects } from '@/stores/projects-store'
-import { useChatSessions, isSessionBusy } from '@/stores/chat-session-store'
-import { CONTENT_TYPE } from '@/constants'
+} from "@janhq/interfaces/dialog";
+import { useConversations } from "@/stores/conversation-store";
+import { useProjects } from "@/stores/projects-store";
+import { useChatSessions, isSessionBusy } from "@/stores/chat-session-store";
+import { CONTENT_TYPE } from "@/constants";
 
 interface ProjectConversationsProps {
-  projectId: string
+  projectId: string;
 }
 
 interface ConversationWithLatestMessage extends Conversation {
-  latestMessage?: string
+  latestMessage?: string;
 }
 
 export function ProjectConversations({ projectId }: ProjectConversationsProps) {
-  const params = useParams({ strict: false }) as { conversationId?: string }
-  const allConversations = useConversations((state) => state.conversations)
-  const projects = useProjects((state) => state.projects)
-  const currentProject = projects.find((p) => p.id === projectId)
-  const getUIMessages = useConversations((state) => state.getUIMessages)
+  const params = useParams({ strict: false }) as { conversationId?: string };
+  const allConversations = useConversations((state) => state.conversations);
+  const projects = useProjects((state) => state.projects);
+  const currentProject = projects.find((p) => p.id === projectId);
+  const getUIMessages = useConversations((state) => state.getUIMessages);
   const deleteConversation = useConversations(
-    (state) => state.deleteConversation
-  )
+    (state) => state.deleteConversation,
+  );
   const updateConversation = useConversations(
-    (state) => state.updateConversation
-  )
-  const sessions = useChatSessions((state) => state.sessions)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<Conversation | null>(null)
-  const [itemToRename, setItemToRename] = useState<Conversation | null>(null)
-  const [newTitle, setNewTitle] = useState('')
+    (state) => state.updateConversation,
+  );
+  const sessions = useChatSessions((state) => state.sessions);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Conversation | null>(null);
+  const [itemToRename, setItemToRename] = useState<Conversation | null>(null);
+  const [newTitle, setNewTitle] = useState("");
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     ConversationWithLatestMessage[]
-  >([])
+  >([]);
 
   // Filter conversations for this specific project
   const projectConversations = allConversations.filter(
-    (conversation) => conversation.project_id === projectId
-  )
+    (conversation) => conversation.project_id === projectId,
+  );
 
   // Fetch latest message for each conversation
   useEffect(() => {
@@ -67,121 +73,121 @@ export function ProjectConversations({ projectId }: ProjectConversationsProps) {
       const conversationsWithLatest = await Promise.all(
         projectConversations.map(async (conversation) => {
           try {
-            const uiMessages = await getUIMessages(conversation.id)
-            const latestUserMessage = uiMessages.pop()
+            const uiMessages = await getUIMessages(conversation.id);
+            const latestUserMessage = uiMessages.pop();
 
-            let latestMessage = 'No messages yet'
+            let latestMessage = "No messages yet";
             if (latestUserMessage) {
               // Get text from the message parts
               const textPart = latestUserMessage.parts.find(
-                (part) => part.type === CONTENT_TYPE.TEXT
-              )
+                (part) => part.type === CONTENT_TYPE.TEXT,
+              );
               if (textPart && textPart.type === CONTENT_TYPE.TEXT) {
-                latestMessage = textPart.text
+                latestMessage = textPart.text;
               }
             }
             return {
               ...conversation,
               latestMessage,
-            }
+            };
           } catch (error) {
             console.error(
               `Failed to fetch messages for conversation ${conversation.id}:`,
-              error
-            )
+              error,
+            );
             return {
               ...conversation,
-              latestMessage: 'Failed to load message',
-            }
+              latestMessage: "Failed to load message",
+            };
           }
-        })
-      )
-      setConversationsWithMessages(conversationsWithLatest)
-    }
+        }),
+      );
+      setConversationsWithMessages(conversationsWithLatest);
+    };
 
     if (projectConversations.length > 0) {
-      fetchLatestMessages()
+      fetchLatestMessages();
     } else {
-      setConversationsWithMessages([])
+      setConversationsWithMessages([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectConversations.length, projectId, getUIMessages])
+  }, [projectConversations.length, projectId, getUIMessages]);
 
   const handleDeleteClick = (item: Conversation) => {
-    setItemToDelete(item)
-    setDeleteDialogOpen(true)
-  }
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return
+    if (!itemToDelete) return;
 
     try {
-      await deleteConversation(itemToDelete.id)
-      setDeleteDialogOpen(false)
-      setItemToDelete(null)
+      await deleteConversation(itemToDelete.id);
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
       // If we're currently viewing the deleted conversation, stay on project page
       if (params.conversationId === itemToDelete.id) {
         // You might want to navigate somewhere or just refresh
       }
     } catch (error) {
-      console.error('Failed to delete conversation:', error)
+      console.error("Failed to delete conversation:", error);
     }
-  }
+  };
 
   const handleMoveToProject = async (
     conversationId: string,
-    projectId: string
+    projectId: string,
   ) => {
     try {
-      await updateConversation(conversationId, { project_id: projectId })
+      await updateConversation(conversationId, { project_id: projectId });
     } catch (error) {
-      console.error('Failed to move conversation to project:', error)
+      console.error("Failed to move conversation to project:", error);
     }
-  }
+  };
 
   const handleRemoveFromProject = async (conversationId: string) => {
     try {
-      await updateConversation(conversationId, { project_id: '' })
+      await updateConversation(conversationId, { project_id: "" });
     } catch (error) {
-      console.error('Failed to remove conversation from project:', error)
+      console.error("Failed to remove conversation from project:", error);
     }
-  }
+  };
 
   const handleRenameClick = (item: Conversation) => {
-    setItemToRename(item)
-    setNewTitle(item.title)
-    setRenameDialogOpen(true)
-  }
+    setItemToRename(item);
+    setNewTitle(item.title);
+    setRenameDialogOpen(true);
+  };
 
   const handleConfirmRename = async () => {
-    if (!itemToRename || !newTitle.trim()) return
+    if (!itemToRename || !newTitle.trim()) return;
 
     try {
       const updatedConversation = await updateConversation(itemToRename.id, {
         title: newTitle.trim(),
-      })
+      });
 
       // Update the local state to reflect the rename immediately
       setConversationsWithMessages((prev) =>
         prev.map((conv) =>
           conv.id === updatedConversation.id
             ? { ...conv, title: updatedConversation.title }
-            : conv
-        )
-      )
+            : conv,
+        ),
+      );
 
-      setRenameDialogOpen(false)
-      setItemToRename(null)
-      setNewTitle('')
+      setRenameDialogOpen(false);
+      setItemToRename(null);
+      setNewTitle("");
     } catch (error) {
-      console.error('Failed to rename conversation:', error)
+      console.error("Failed to rename conversation:", error);
     }
-  }
+  };
 
   const displayConversations =
     conversationsWithMessages.length > 0
       ? conversationsWithMessages
-      : projectConversations
+      : projectConversations;
 
   return (
     <div className="w-full h-full overflow-y-auto">
@@ -217,7 +223,9 @@ export function ProjectConversations({ projectId }: ProjectConversationsProps) {
                   </Button>
                 </DropDrawerTrigger>
                 <DropDrawerContent className="md:w-56" align="end">
-                  <DropDrawerItem onClick={() => handleRenameClick(conversation)}>
+                  <DropDrawerItem
+                    onClick={() => handleRenameClick(conversation)}
+                  >
                     <div className="flex gap-2 items-center">
                       <PencilLine />
                       <span>Rename</span>
@@ -236,10 +244,10 @@ export function ProjectConversations({ projectId }: ProjectConversationsProps) {
                     <div className="flex gap-2 items-center">
                       <FolderX className="size-4 text-muted-foreground flex-shrink-0" />
                       <span className="truncate">
-                        Remove from{' '}
-                        {(currentProject?.name || 'Project').length > 8
-                          ? `${(currentProject?.name || 'Project').slice(0, 8)}...`
-                          : currentProject?.name || 'Project'}
+                        Remove from{" "}
+                        {(currentProject?.name || "Project").length > 8
+                          ? `${(currentProject?.name || "Project").slice(0, 8)}...`
+                          : currentProject?.name || "Project"}
                       </span>
                     </div>
                   </DropDrawerItem>
@@ -265,7 +273,7 @@ export function ProjectConversations({ projectId }: ProjectConversationsProps) {
           <DialogHeader>
             <DialogTitle>Delete Conversation</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
+              Are you sure you want to delete{" "}
               <span className="font-semibold">
                 &quot;{itemToDelete?.title}&quot;?
               </span>
@@ -302,8 +310,8 @@ export function ProjectConversations({ projectId }: ProjectConversationsProps) {
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Enter new title"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newTitle.trim()) {
-                    handleConfirmRename()
+                  if (e.key === "Enter" && newTitle.trim()) {
+                    handleConfirmRename();
                   }
                 }}
               />
@@ -326,5 +334,5 @@ export function ProjectConversations({ projectId }: ProjectConversationsProps) {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
