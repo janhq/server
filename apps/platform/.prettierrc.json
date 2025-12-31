@@ -4,10 +4,7 @@
   "singleQuote": true,
   "trailingComma": "all",
   "arrowParens": "always",
-  "plugins": [
-    "prettier-plugin-tailwindcss",
-    "prettier-plugin-organize-imports"
-  ],
+  "plugins": ["prettier-plugin-tailwindcss", "prettier-plugin-organize-imports"],
   "overrides": [
     {
       "files": ["*.mdx"],

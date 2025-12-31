@@ -1,18 +1,18 @@
-import { MoreHorizontal, Trash2 } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { MoreHorizontal, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
+} from "@janhq/interfaces/dropdrawer";
 import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { useStaggeredFadeIn } from '@/hooks/useStaggeredFadeIn'
+} from "@/components/sidebar/sidebar";
+import { useStaggeredFadeIn } from "@/hooks/useStaggeredFadeIn";
 
 export function AnimatedProjectItem({
   item,
@@ -21,13 +21,13 @@ export function AnimatedProjectItem({
   onDeleteClick,
   index,
 }: {
-  item: Project
-  isActive: boolean
-  isMobile: boolean
-  onDeleteClick: (item: Project) => void
-  index: number
+  item: Project;
+  isActive: boolean;
+  isMobile: boolean;
+  onDeleteClick: (item: Project) => void;
+  index: number;
 }) {
-  const animation = useStaggeredFadeIn(index)
+  const animation = useStaggeredFadeIn(index);
 
   return (
     <SidebarMenuItem className={animation.className} style={animation.style}>
@@ -48,8 +48,8 @@ export function AnimatedProjectItem({
           </SidebarMenuAction>
         </DropDrawerTrigger>
         <DropDrawerContent
-          side={isMobile ? 'bottom' : 'right'}
-          align={isMobile ? 'end' : 'start'}
+          side={isMobile ? "bottom" : "right"}
+          align={isMobile ? "end" : "start"}
         >
           <DropDrawerItem
             variant="destructive"
@@ -63,5 +63,5 @@ export function AnimatedProjectItem({
         </DropDrawerContent>
       </DropDrawer>
     </SidebarMenuItem>
-  )
+  );
 }

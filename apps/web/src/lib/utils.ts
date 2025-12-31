@@ -1,19 +1,19 @@
-import type { UIMessage } from 'ai'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-import { TOOL_STATE, CONTENT_TYPE, MESSAGE_ROLE } from '@/constants'
+import type { UIMessage } from "ai";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { TOOL_STATE, CONTENT_TYPE, MESSAGE_ROLE } from "@/constants";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 export const getInitialsAvatar = (name: string) => {
-  const words = name.trim().split(/\s+/)
+  const words = name.trim().split(/\s+/);
   if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase()
+    return (words[0][0] + words[1][0]).toUpperCase();
   }
-  return words[0][0].toUpperCase()
-}
+  return words[0][0].toUpperCase();
+};
 
 /**
  * Convert ConversationItems to UIMessage format
@@ -27,16 +27,19 @@ export const convertToUIMessages = (items: ConversationItem[]): UIMessage[] => {
       const parts = item.content
         .map((content) => {
           // Determine the content type
-          let contentType: 'text' | 'reasoning' | 'file' = CONTENT_TYPE.TEXT
+          let contentType: "text" | "reasoning" | "file" = CONTENT_TYPE.TEXT;
 
           if (content.type === CONTENT_TYPE.REASONING_TEXT) {
-            contentType = CONTENT_TYPE.REASONING
-          } else if (content.type === CONTENT_TYPE.INPUT_TEXT || content.type === CONTENT_TYPE.TEXT) {
-            contentType = CONTENT_TYPE.TEXT
-          } else if (content.type === 'image') {
-            contentType = CONTENT_TYPE.FILE
+            contentType = CONTENT_TYPE.REASONING;
+          } else if (
+            content.type === CONTENT_TYPE.INPUT_TEXT ||
+            content.type === CONTENT_TYPE.TEXT
+          ) {
+            contentType = CONTENT_TYPE.TEXT;
+          } else if (content.type === "image") {
+            contentType = CONTENT_TYPE.FILE;
           } else if (content.type === CONTENT_TYPE.TOOL_CALLS) {
-            contentType = CONTENT_TYPE.TEXT
+            contentType = CONTENT_TYPE.TEXT;
             return (
               content.tool_calls?.map((toolCall) => {
                 // Find the corresponding tool result by matching tool_call_id
@@ -44,43 +47,47 @@ export const convertToUIMessages = (items: ConversationItem[]): UIMessage[] => {
                   (item) =>
                     item.role === MESSAGE_ROLE.TOOL &&
                     (item.content.some(
-                      (c: any) => c.tool_call_id === toolCall.id
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      (c: any) => c.tool_call_id === toolCall.id,
                     ) ||
-                      // @ts-ignore fallback for older structure
-                      (item.call_id === toolCall.id && item.type === 'message'))
-                )
+                      // @ts-expect-error fallback for older structure
+                      (item.call_id === toolCall.id &&
+                        item.type === "message")),
+                );
                 const isError =
                   !toolResult?.content ||
                   toolResult?.content.some(
                     (e) =>
-                      (typeof e.mcp_call === 'string' &&
-                        e.mcp_call?.toLowerCase().includes('error:')) ||
-                      (typeof e.tool_result === 'string' &&
-                        e.tool_result?.toLowerCase().includes('error:'))
+                      (typeof e.mcp_call === "string" &&
+                        e.mcp_call?.toLowerCase().includes("error:")) ||
+                      (typeof e.tool_result === "string" &&
+                        e.tool_result?.toLowerCase().includes("error:")),
                   ) ||
-                  false
+                  false;
 
                 const error = isError
                   ? toolResult?.content.find((e) => e.tool_result || e.mcp_call)
-                  : undefined
+                  : undefined;
 
                 return {
                   type: `tool-${toolCall.function.name}`,
                   input:
-                    typeof toolCall.function.arguments === 'string'
+                    typeof toolCall.function.arguments === "string"
                       ? JSON.parse(toolCall.function.arguments)
                       : toolCall.function.arguments,
-                  output: toolResult?.content || '',
-                  state: isError ? TOOL_STATE.OUTPUT_ERROR : TOOL_STATE.OUTPUT_AVAILABLE,
+                  output: toolResult?.content || "",
+                  state: isError
+                    ? TOOL_STATE.OUTPUT_ERROR
+                    : TOOL_STATE.OUTPUT_AVAILABLE,
                   errorText: isError
                     ? error?.tool_result || error?.mcp_call
                     : undefined,
-                  toolCallId: toolCall.id || '',
-                }
+                  toolCallId: toolCall.id || "",
+                };
               }) || []
-            )
+            );
           } else {
-            contentType = content.type as 'text' | 'reasoning' | 'file'
+            contentType = content.type as "text" | "reasoning" | "file";
           }
 
           return [
@@ -91,25 +98,37 @@ export const convertToUIMessages = (items: ConversationItem[]): UIMessage[] => {
                 content.text ||
                 content.input_text ||
                 content.reasoning_text ||
-                '',
-              mediaType: contentType === CONTENT_TYPE.FILE ? 'image/jpeg' : undefined,
-              url: contentType === CONTENT_TYPE.FILE ? content.image?.url : undefined,
+                "",
+              mediaType:
+                contentType === CONTENT_TYPE.FILE ? "image/jpeg" : undefined,
+              url:
+                contentType === CONTENT_TYPE.FILE
+                  ? content.image?.url
+                  : undefined,
             },
-          ]
+          ];
         })
-        .flat()
+        .flat();
 
       // Sort parts: reasoning first, then other types
       const sortedParts = parts.sort((a, b) => {
-        if (a.type === CONTENT_TYPE.REASONING && b.type !== CONTENT_TYPE.REASONING) return -1
-        if (a.type !== CONTENT_TYPE.REASONING && b.type === CONTENT_TYPE.REASONING) return 1
-        return 0
-      })
+        if (
+          a.type === CONTENT_TYPE.REASONING &&
+          b.type !== CONTENT_TYPE.REASONING
+        )
+          return -1;
+        if (
+          a.type !== CONTENT_TYPE.REASONING &&
+          b.type === CONTENT_TYPE.REASONING
+        )
+          return 1;
+        return 0;
+      });
 
       return {
         id: item.id,
-        role: item.role as 'user' | 'assistant' | 'system',
+        role: item.role as "user" | "assistant" | "system",
         parts: sortedParts,
-      } as UIMessage
-    })
-}
+      } as UIMessage;
+    });
+};

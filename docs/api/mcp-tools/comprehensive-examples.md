@@ -22,16 +22,18 @@ Complete working examples for MCP Tools API using JSON-RPC 2.0 protocol with Pyt
 All MCP Tools API calls require authentication via Kong Gateway.
 
 **JavaScript:**
+
 ```javascript
 // Get guest token
 const authResponse = await fetch("http://localhost:8000/llm/auth/guest-login", {
-  method: "POST"
+  method: "POST",
 });
 const { access_token: token } = await authResponse.json();
-const headers = { "Authorization": `Bearer ${token}` };
+const headers = { Authorization: `Bearer ${token}` };
 ```
 
 **cURL:**
+
 ```bash
 # Get and export token
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
@@ -47,30 +49,32 @@ export TOKEN
 Discover all available tools using the `tools/list` method.
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/mcp", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     jsonrpc: "2.0",
     id: 1,
-    method: "tools/list"
-  })
+    method: "tools/list",
+  }),
 });
 
 const result = await response.json();
 const tools = result.result?.tools || [];
 
 console.log(`Available tools: ${tools.length}`);
-tools.forEach(tool => {
+tools.forEach((tool) => {
   console.log(`  - ${tool.name}: ${tool.description}`);
 });
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -83,6 +87,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -95,8 +100,12 @@ curl -X POST http://localhost:8000/v1/mcp \
         "inputSchema": {
           "type": "object",
           "properties": {
-            "q": {"type": "string", "description": "Search query"},
-            "num": {"type": "integer", "description": "Number of results", "default": 10}
+            "q": { "type": "string", "description": "Search query" },
+            "num": {
+              "type": "integer",
+              "description": "Number of results",
+              "default": 10
+            }
           },
           "required": ["q"]
         }
@@ -107,8 +116,12 @@ curl -X POST http://localhost:8000/v1/mcp \
         "inputSchema": {
           "type": "object",
           "properties": {
-            "url": {"type": "string", "description": "URL to scrape"},
-            "markdown": {"type": "boolean", "description": "Return as Markdown", "default": false}
+            "url": { "type": "string", "description": "URL to scrape" },
+            "markdown": {
+              "type": "boolean",
+              "description": "Return as Markdown",
+              "default": false
+            }
           },
           "required": ["url"]
         }
@@ -125,12 +138,13 @@ curl -X POST http://localhost:8000/v1/mcp \
 ### Basic Search
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/mcp", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     jsonrpc: "2.0",
@@ -140,10 +154,10 @@ const response = await fetch("http://localhost:8000/v1/mcp", {
       name: "google_search",
       arguments: {
         q: "latest AI news",
-        num: 5
-      }
-    }
-  })
+        num: 5,
+      },
+    },
+  }),
 });
 
 const result = await response.json();
@@ -154,6 +168,7 @@ if (result.result) {
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -177,6 +192,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 Use advanced search parameters for more specific results.
 
 **cURL with Time Filter:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -202,12 +218,13 @@ curl -X POST http://localhost:8000/v1/mcp \
 ### Basic Page Scraping
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/mcp", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     jsonrpc: "2.0",
@@ -217,10 +234,10 @@ const response = await fetch("http://localhost:8000/v1/mcp", {
       name: "scrape",
       arguments: {
         url: "https://example.com/blog",
-        markdown: false
-      }
-    }
-  })
+        markdown: false,
+      },
+    },
+  }),
 });
 
 const result = await response.json();
@@ -228,6 +245,7 @@ console.log("Scraped content:", result.result.content);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -249,12 +267,13 @@ curl -X POST http://localhost:8000/v1/mcp \
 ### Scrape to Markdown
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/mcp", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     jsonrpc: "2.0",
@@ -264,19 +283,19 @@ const response = await fetch("http://localhost:8000/v1/mcp", {
       name: "scrape",
       arguments: {
         url: "https://docs.example.com/guide",
-        markdown: true
-      }
-    }
-  })
+        markdown: true,
+      },
+    },
+  }),
 });
 
 const { result } = await response.json();
 // Download as file
-const blob = new Blob([result.content], { type: 'text/markdown' });
+const blob = new Blob([result.content], { type: "text/markdown" });
 const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
+const a = document.createElement("a");
 a.href = url;
-a.download = 'scraped_docs.md';
+a.download = "scraped_docs.md";
 a.click();
 ```
 
@@ -287,11 +306,12 @@ a.click();
 ### Index Documents
 
 **JavaScript:**
+
 ```javascript
 const documents = [
   "Jan Server is a self-hosted AI platform",
   "It supports multiple LLM providers",
-  "Response API handles tool orchestration"
+  "Response API handles tool orchestration",
 ];
 
 for (let i = 0; i < documents.length; i++) {
@@ -299,7 +319,7 @@ for (let i = 0; i < documents.length; i++) {
     method: "POST",
     headers: {
       ...headers,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -309,18 +329,19 @@ for (let i = 0; i < documents.length; i++) {
         name: "file_search_index",
         arguments: {
           text: documents[i],
-          metadata: { doc_id: i }
-        }
-      }
-    })
+          metadata: { doc_id: i },
+        },
+      },
+    }),
   });
-  
+
   const result = await response.json();
   console.log(`Indexed document ${i}`);
 }
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -342,12 +363,13 @@ curl -X POST http://localhost:8000/v1/mcp \
 ### Query Indexed Documents
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/v1/mcp", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     jsonrpc: "2.0",
@@ -357,10 +379,10 @@ const response = await fetch("http://localhost:8000/v1/mcp", {
       name: "file_search_query",
       arguments: {
         query: "What LLM providers are supported?",
-        top_k: 5
-      }
-    }
-  })
+        top_k: 5,
+      },
+    },
+  }),
 });
 
 const result = await response.json();
@@ -368,6 +390,7 @@ console.log("Search results:", result.result.content);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -393,6 +416,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 ### Execute Python Code
 
 **JavaScript:**
+
 ```javascript
 const pythonCode = `
 import math
@@ -409,7 +433,7 @@ const response = await fetch("http://localhost:8000/v1/mcp", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     jsonrpc: "2.0",
@@ -419,10 +443,10 @@ const response = await fetch("http://localhost:8000/v1/mcp", {
       name: "python_exec",
       arguments: {
         code: pythonCode,
-        approved: true
-      }
-    }
-  })
+        approved: true,
+      },
+    },
+  }),
 });
 
 const result = await response.json();
@@ -430,6 +454,7 @@ console.log("Output:", result.result.content);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/v1/mcp \
   -H "Authorization: Bearer $TOKEN" \
@@ -459,6 +484,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 ### Common Error Codes
 
 **Invalid Request (-32600):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -471,6 +497,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 ```
 
 **Method Not Found (-32601):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -483,6 +510,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 ```
 
 **Invalid Params (-32602):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -496,6 +524,7 @@ curl -X POST http://localhost:8000/v1/mcp \
 ```
 
 **Internal Error (-32603):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -521,19 +550,20 @@ Search, scrape, and analyze content:
 ### Example 3: Content Aggregation
 
 **JavaScript:**
+
 ```javascript
 async function aggregateNews(topic, sources) {
   const articles = [];
-  
+
   for (const source of sources) {
     // Search specific site
     const searchQuery = `${topic} site:${source}`;
-    
+
     const response = await fetch("http://localhost:8000/v1/mcp", {
       method: "POST",
       headers: {
         ...headers,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -543,19 +573,19 @@ async function aggregateNews(topic, sources) {
           name: "google_search",
           arguments: {
             q: searchQuery,
-            num: 2
-          }
-        }
-      })
+            num: 2,
+          },
+        },
+      }),
     });
-    
+
     const result = await response.json();
     articles.push({
       source: source,
-      results: result.result.content
+      results: result.result.content,
     });
   }
-  
+
   return articles;
 }
 
@@ -571,27 +601,27 @@ console.log("Aggregated news from", news.length, "sources");
 
 ### Tool-Specific Environment Variables
 
-| Tool | Variable | Description |
-|------|----------|-------------|
-| google_search | `SERPER_API_KEY` | Serper API key for search |
-| google_search | `MCP_SEARCH_ENGINE` | Search engine: serper, searxng, offline |
-| google_search | `SEARXNG_URL` | SearXNG instance URL |
-| scrape | N/A | No specific configuration |
-| file_search_* | `VECTOR_STORE_URL` | Vector store service URL |
-| python_exec | `SANDBOXFUSION_URL` | SandboxFusion service URL |
-| python_exec | `SANDBOXFUSION_TIMEOUT` | Execution timeout |
-| python_exec | `MCP_SANDBOX_REQUIRE_APPROVAL` | Require approval flag |
+| Tool           | Variable                       | Description                             |
+| -------------- | ------------------------------ | --------------------------------------- |
+| google_search  | `SERPER_API_KEY`               | Serper API key for search               |
+| google_search  | `MCP_SEARCH_ENGINE`            | Search engine: serper, searxng, offline |
+| google_search  | `SEARXNG_URL`                  | SearXNG instance URL                    |
+| scrape         | N/A                            | No specific configuration               |
+| file*search*\* | `VECTOR_STORE_URL`             | Vector store service URL                |
+| python_exec    | `SANDBOXFUSION_URL`            | SandboxFusion service URL               |
+| python_exec    | `SANDBOXFUSION_TIMEOUT`        | Execution timeout                       |
+| python_exec    | `MCP_SANDBOX_REQUIRE_APPROVAL` | Require approval flag                   |
 
 ### JSON-RPC Error Codes
 
-| Code | Meaning |
-|------|---------|
-| -32700 | Parse error (invalid JSON) |
-| -32600 | Invalid Request |
-| -32601 | Method not found |
-| -32602 | Invalid params |
-| -32603 | Internal error |
-| -32000 to -32099 | Server error (reserved) |
+| Code             | Meaning                    |
+| ---------------- | -------------------------- |
+| -32700           | Parse error (invalid JSON) |
+| -32600           | Invalid Request            |
+| -32601           | Method not found           |
+| -32602           | Invalid params             |
+| -32603           | Internal error             |
+| -32000 to -32099 | Server error (reserved)    |
 
 ---
 

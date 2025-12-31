@@ -19,9 +19,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.response.to.have.status(200);"
-                ]
+                "exec": ["pm.response.to.have.status(200);"]
               }
             }
           ]
@@ -1296,13 +1294,8 @@
             "header": [],
             "url": {
               "raw": "{{kong_url}}/auth/login?redirect_url=http://localhost:3000/auth/callback",
-              "host": [
-                "{{kong_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ],
+              "host": ["{{kong_url}}"],
+              "path": ["auth", "login"],
               "query": [
                 {
                   "key": "redirect_url",

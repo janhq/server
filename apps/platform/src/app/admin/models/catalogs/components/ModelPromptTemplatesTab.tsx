@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  AssignTemplateRequest,
   createAdminAPIClient,
   EffectiveTemplatesResponse,
   ModelPromptTemplate,
@@ -111,7 +110,11 @@ export default function ModelPromptTemplatesTab({ modelCatalogId }: ModelPromptT
   }
 
   async function handleUnassignTemplate(templateKey: string) {
-    if (!confirm(`Remove custom template for "${templateKey}"? The model will revert to the global default.`)) {
+    if (
+      !confirm(
+        `Remove custom template for "${templateKey}"? The model will revert to the global default.`,
+      )
+    ) {
       return;
     }
 
@@ -186,7 +189,8 @@ export default function ModelPromptTemplatesTab({ modelCatalogId }: ModelPromptT
         <div>
           <h3 className="text-lg font-medium">Prompt Template Overrides</h3>
           <p className="text-sm text-muted-foreground">
-            Customize prompt templates for this model. Overrides will take precedence over global defaults.
+            Customize prompt templates for this model. Overrides will take precedence over global
+            defaults.
           </p>
         </div>
         <button

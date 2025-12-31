@@ -1,54 +1,54 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { getSharedAuthService } from '@/lib/auth/service'
-import { createAdminAPIClient } from '@/lib/admin/api'
-import { Database, Box, Layers, Loader2, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import { createAdminAPIClient } from '@/lib/admin/api';
+import { getSharedAuthService } from '@/lib/auth/service';
+import { ArrowRight, Box, Database, Layers, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface ModelStats {
-  totalProviders: number
-  activeProviders: number
-  totalModels: number
-  activeModels: number
-  totalCatalogs: number
+  totalProviders: number;
+  activeProviders: number;
+  totalModels: number;
+  activeModels: number;
+  totalCatalogs: number;
 }
 
 export default function ModelsOverviewPage() {
-  const [stats, setStats] = useState<ModelStats | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState<ModelStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadStats() {
       try {
-        setIsLoading(true)
-        const authService = getSharedAuthService()
-        const token = await authService.getValidAccessToken()
+        setIsLoading(true);
+        const authService = getSharedAuthService();
+        const token = await authService.getValidAccessToken();
 
         if (!token) {
-          setError('No authentication token found')
-          return
+          setError('No authentication token found');
+          return;
         }
 
-        const adminClient = createAdminAPIClient(token)
+        const adminClient = createAdminAPIClient(token);
 
         // Fetch all stats in parallel
         const [providersResponse, modelsResponse, catalogsResponse] = await Promise.all([
           adminClient.providers.listProviders(),
           adminClient.providerModels.listProviderModels({ limit: 1 }),
           adminClient.modelCatalogs.listModelCatalogs({ limit: 1 }),
-        ])
+        ]);
 
         // Get active model count
-        const activeModelsResponse = await adminClient.providerModels.listProviderModels({ 
-          active: true, 
-          limit: 1 
-        })
+        const activeModelsResponse = await adminClient.providerModels.listProviderModels({
+          active: true,
+          limit: 1,
+        });
 
         // Count active providers from the full list (with safety check)
-        const providersList = providersResponse.data || []
-        const activeProviders = providersList.filter(p => p.active).length
+        const providersList = providersResponse.data || [];
+        const activeProviders = providersList.filter((p) => p.active).length;
 
         setStats({
           totalProviders: providersResponse.total || providersList.length || 0,
@@ -56,17 +56,17 @@ export default function ModelsOverviewPage() {
           totalModels: modelsResponse.total || 0,
           activeModels: activeModelsResponse.total || 0,
           totalCatalogs: catalogsResponse.total || 0,
-        })
+        });
       } catch (err) {
-        console.error('Failed to load model stats:', err)
-        setError('Failed to load model statistics')
+        console.error('Failed to load model stats:', err);
+        setError('Failed to load model statistics');
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    loadStats()
-  }, [])
+    loadStats();
+  }, []);
 
   if (isLoading) {
     return (
@@ -76,7 +76,7 @@ export default function ModelsOverviewPage() {
           <p className="text-sm text-muted-foreground">Loading model statistics...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -85,7 +85,7 @@ export default function ModelsOverviewPage() {
         <h3 className="text-lg font-semibold text-destructive mb-2">Error</h3>
         <p className="text-sm text-muted-foreground">{error}</p>
       </div>
-    )
+    );
   }
 
   const sections = [
@@ -118,13 +118,11 @@ export default function ModelsOverviewPage() {
       description: 'View and manage model catalog entries and capabilities',
       href: '/admin/models/catalogs',
       icon: Layers,
-      stats: [
-        { label: 'Total Catalogs', value: stats?.totalCatalogs || 0 },
-      ],
+      stats: [{ label: 'Total Catalogs', value: stats?.totalCatalogs || 0 }],
       color: 'text-blue-600',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
     },
-  ]
+  ];
 
   return (
     <div className="space-y-8">
@@ -148,9 +146,7 @@ export default function ModelsOverviewPage() {
               <p className="text-2xl font-bold">{stats?.totalProviders || 0}</p>
             </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {stats?.activeProviders || 0} active
-          </div>
+          <div className="text-sm text-muted-foreground">{stats?.activeProviders || 0} active</div>
         </div>
 
         <div className="bg-card rounded-lg border p-6">
@@ -163,9 +159,7 @@ export default function ModelsOverviewPage() {
               <p className="text-2xl font-bold">{stats?.totalModels || 0}</p>
             </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {stats?.activeModels || 0} active
-          </div>
+          <div className="text-sm text-muted-foreground">{stats?.activeModels || 0} active</div>
         </div>
 
         <div className="bg-card rounded-lg border p-6">
@@ -178,9 +172,7 @@ export default function ModelsOverviewPage() {
               <p className="text-2xl font-bold">{stats?.totalCatalogs || 0}</p>
             </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            Model catalog entries
-          </div>
+          <div className="text-sm text-muted-foreground">Model catalog entries</div>
         </div>
       </div>
 
@@ -189,13 +181,9 @@ export default function ModelsOverviewPage() {
         <h2 className="text-xl font-semibold mb-4">Management Sections</h2>
         <div className="space-y-4">
           {sections.map((section) => {
-            const Icon = section.icon
+            const Icon = section.icon;
             return (
-              <Link
-                key={section.href}
-                href={section.href}
-                className="block group"
-              >
+              <Link key={section.href} href={section.href} className="block group">
                 <div className="bg-card rounded-lg border p-6 hover:shadow-md hover:border-primary/50 transition-all">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -207,16 +195,12 @@ export default function ModelsOverviewPage() {
                           {section.title}
                         </h3>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {section.description}
-                      </p>
+                      <p className="text-sm text-muted-foreground mb-4">{section.description}</p>
                       <div className="flex gap-4">
                         {section.stats.map((stat) => (
                           <div key={stat.label} className="flex items-center gap-2">
                             <div className="text-2xl font-bold">{stat.value}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {stat.label}
-                            </div>
+                            <div className="text-xs text-muted-foreground">{stat.label}</div>
                           </div>
                         ))}
                       </div>
@@ -227,7 +211,7 @@ export default function ModelsOverviewPage() {
                   </div>
                 </div>
               </Link>
-            )
+            );
           })}
         </div>
       </div>
@@ -239,29 +223,33 @@ export default function ModelsOverviewPage() {
           <li className="flex items-start gap-2">
             <span className="text-primary mt-0.5">•</span>
             <span>
-              <strong className="text-foreground">Providers:</strong> Sync models from external providers to keep your catalog up to date
+              <strong className="text-foreground">Providers:</strong> Sync models from external
+              providers to keep your catalog up to date
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary mt-0.5">•</span>
             <span>
-              <strong className="text-foreground">Provider Models:</strong> Activate or deactivate individual models to control availability
+              <strong className="text-foreground">Provider Models:</strong> Activate or deactivate
+              individual models to control availability
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary mt-0.5">•</span>
             <span>
-              <strong className="text-foreground">Model Catalogs:</strong> View detailed capabilities and supported parameters for each model family
+              <strong className="text-foreground">Model Catalogs:</strong> View detailed
+              capabilities and supported parameters for each model family
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary mt-0.5">•</span>
             <span>
-              <strong className="text-foreground">Filtering:</strong> Use filters to find specific models by category, family, or capabilities
+              <strong className="text-foreground">Filtering:</strong> Use filters to find specific
+              models by category, family, or capabilities
             </span>
           </li>
         </ul>
       </div>
     </div>
-  )
+  );
 }

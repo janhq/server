@@ -1,8 +1,5 @@
 'use client';
 
-import { createAdminAPIClient } from '@/lib/admin/api';
-import type { MCPTool, UpdateMCPToolRequest } from '@/lib/admin/api';
-import { getSharedAuthService } from '@/lib/auth/service';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,7 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, AlertCircle } from 'lucide-react';
+import type { MCPTool, UpdateMCPToolRequest } from '@/lib/admin/api';
+import { createAdminAPIClient } from '@/lib/admin/api';
+import { getSharedAuthService } from '@/lib/auth/service';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import { useEffect, useState } from 'react';
 
@@ -70,8 +70,8 @@ export function MCPToolModal({ open, onClose, tool }: MCPToolModalProps) {
     // Parse disallowed keywords (one per line)
     const keywordsArray = disallowedKeywords
       .split('\n')
-      .map(k => k.trim())
-      .filter(k => k.length > 0);
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
 
     // Validate regex patterns
     // Note: Go regex supports inline flags like (?i) for case-insensitive matching
@@ -167,7 +167,7 @@ export function MCPToolModal({ open, onClose, tool }: MCPToolModalProps) {
                 <SelectContent>
                   {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
-                      {cat.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {cat.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -187,9 +187,7 @@ export function MCPToolModal({ open, onClose, tool }: MCPToolModalProps) {
                     className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`}
                   />
                 </button>
-                <span className="text-sm">
-                  {isActive ? 'Active' : 'Inactive'}
-                </span>
+                <span className="text-sm">{isActive ? 'Active' : 'Inactive'}</span>
               </div>
             </div>
           </div>
@@ -200,15 +198,17 @@ export function MCPToolModal({ open, onClose, tool }: MCPToolModalProps) {
               id="disallowedKeywords"
               placeholder="Enter regex patterns, one per line...&#10;Example: (?i)menlo&#10;Example: (?i)competitor\s*name"
               value={disallowedKeywords}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDisallowedKeywords(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                setDisallowedKeywords(e.target.value)
+              }
               rows={4}
               className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <p>
-                Search results matching these patterns will be filtered out.
-                Use regex patterns (e.g., <code className="bg-muted px-1">(?i)menlo</code> for case-insensitive match).
+                Search results matching these patterns will be filtered out. Use regex patterns
+                (e.g., <code className="bg-muted px-1">(?i)menlo</code> for case-insensitive match).
                 Invalid patterns will be ignored.
               </p>
             </div>

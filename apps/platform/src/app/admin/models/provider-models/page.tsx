@@ -582,20 +582,23 @@ export default function ProviderModelsManagementPage() {
                   <input
                     type="number"
                     name="category_order_number"
-                    defaultValue={selectedModelForEdit.category_order_number ?? selectedModelForEdit.category_order}
+                    defaultValue={
+                      selectedModelForEdit.category_order_number ??
+                      selectedModelForEdit.category_order
+                    }
                     className="w-full px-3 py-2 border rounded-md bg-background text-sm"
                     placeholder="e.g., 1"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sort order for the category
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Sort order for the category</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Model Order Number</label>
                   <input
                     type="number"
                     name="model_order_number"
-                    defaultValue={selectedModelForEdit.model_order_number ?? selectedModelForEdit.model_order}
+                    defaultValue={
+                      selectedModelForEdit.model_order_number ?? selectedModelForEdit.model_order
+                    }
                     className="w-full px-3 py-2 border rounded-md bg-background text-sm"
                     placeholder="e.g., 1"
                   />
@@ -714,7 +717,8 @@ export default function ProviderModelsManagementPage() {
                       .filter((m) => m.id !== selectedModelForEdit.id) // Show all models as potential backups
                       .map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.model_display_name} ({m.model_public_id}){!m.active ? ' [inactive]' : ''}
+                          {m.model_display_name} ({m.model_public_id})
+                          {!m.active ? ' [inactive]' : ''}
                         </option>
                       ))}
                   </select>

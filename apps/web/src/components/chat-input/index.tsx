@@ -17,17 +17,17 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputController,
-} from '@/components/ai-elements/prompt-input'
+} from "@janhq/interfaces/ai-elements/prompt-input";
 
-import React, { memo, useRef, useEffect, useState, useMemo } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { useModels } from '@/stores/models-store'
-import { useConversations } from '@/stores/conversation-store'
-import { useCapabilities } from '@/stores/capabilities-store'
-import { useProjects } from '@/stores/projects-store'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { useIsMobileDevice } from '@/hooks/use-is-mobile-device'
-import { toast } from '@/components/ui/sonner'
+import React, { memo, useRef, useEffect, useState, useMemo } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useModels } from "@/stores/models-store";
+import { useConversations } from "@/stores/conversation-store";
+import { useCapabilities } from "@/stores/capabilities-store";
+import { useProjects } from "@/stores/projects-store";
+import { useIsMobile } from "@janhq/interfaces/hooks/use-mobile";
+import { useIsMobileDevice } from "@janhq/interfaces/hooks/use-is-mobile-device";
+import { toast } from "@janhq/interfaces/sonner";
 import {
   FolderIcon,
   GlobeIcon,
@@ -36,58 +36,64 @@ import {
   TelescopeIcon,
   Settings2,
   X,
-} from 'lucide-react'
-import { isChromeBrowser } from '@janhq/mcp-web-client'
+} from "lucide-react";
+import { isChromeBrowser } from "@janhq/mcp-web-client";
 
-import { BorderAnimate } from '../ui/border-animate'
-import { cn } from '@/lib/utils'
-import type { ChatStatus } from 'ai'
-import { SettingChatInput } from './setting-chat-input'
-import { ProjectsChatInput } from './projects-chat-input'
-import { Button } from '@/components/ui/button'
-import { usePrivateChat } from '@/stores/private-chat-store'
+import { BorderAnimate } from "@janhq/interfaces/border-animate";
+import { cn } from "@/lib/utils";
+import type { ChatStatus } from "ai";
+import { SettingChatInput } from "./setting-chat-input";
+import { ProjectsChatInput } from "./projects-chat-input";
+import { Button } from "@janhq/interfaces/button";
+import { usePrivateChat } from "@/stores/private-chat-store";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { useBrowserConnection } from '@/stores/browser-connection-store'
-import { useProfile } from '@/stores/profile-store'
+} from "@janhq/interfaces/tooltip";
+import { useBrowserConnection } from "@/stores/browser-connection-store";
+import { useProfile } from "@/stores/profile-store";
 import {
   CHAT_STATUS,
   CONNECTION_STATE,
   SESSION_STORAGE_KEY,
   SESSION_STORAGE_PREFIX,
-} from '@/constants'
+} from "@/constants";
+import {
+  blobUrlToDataUrl,
+  uploadMedia,
+  createJanMediaUrl,
+} from "@/services/media-upload-service";
+import type { UploadServiceConfig } from "@janhq/interfaces/ai-elements/prompt-input";
 
 /**
  * Generates a meaningful title from message text.
  * Returns 'New Conversation' if the text contains only special characters, URLs, or is empty.
  */
 function generateThreadTitle(text: string): string {
-  const trimmed = text.trim()
+  const trimmed = text.trim();
 
   // Check if the text is only a URL (or multiple URLs)
   // This regex matches common URL patterns
   const urlPattern =
-    /^(https?:\/\/|www\.)[^\s]+$|^([^\s]+\.(com|org|net|io|co|edu|gov|app|dev|ai|me|info|biz|tv|cc|xyz|tech|online|site|store|blog|cloud|pro|link|page|space|live|world|zone|digital|agency|email|network|social|media|video|music|news|shop|design|studio|work|team|group|chat|help|support|docs|api|cdn|assets|static|img|images|files|data|db|admin|dashboard|portal|app|mobile|web|server|service|system|platform|solution|software|tool|tools|product|project|projects|code|dev|test|stage|prod|demo|beta|alpha|v1|v2|v3)[^\s]*)$/i
+    /^(https?:\/\/|www\.)[^\s]+$|^([^\s]+\.(com|org|net|io|co|edu|gov|app|dev|ai|me|info|biz|tv|cc|xyz|tech|online|site|store|blog|cloud|pro|link|page|space|live|world|zone|digital|agency|email|network|social|media|video|music|news|shop|design|studio|work|team|group|chat|help|support|docs|api|cdn|assets|static|img|images|files|data|db|admin|dashboard|portal|app|mobile|web|server|service|system|platform|solution|software|tool|tools|product|project|projects|code|dev|test|stage|prod|demo|beta|alpha|v1|v2|v3)[^\s]*)$/i;
 
-  const isOnlyUrl = urlPattern.test(trimmed)
+  const isOnlyUrl = urlPattern.test(trimmed);
 
   // Check if the text contains any word characters (letters or numbers, including Unicode)
-  const hasWordCharacters = /[\p{L}\p{N}]/u.test(trimmed)
+  const hasWordCharacters = /[\p{L}\p{N}]/u.test(trimmed);
 
   if (!hasWordCharacters || isOnlyUrl) {
-    return 'New Conversation'
+    return "New Conversation";
   }
 
   // Truncate long titles to keep them manageable
-  const maxLength = 100
+  const maxLength = 100;
   if (trimmed.length > maxLength) {
-    return trimmed.substring(0, maxLength).trim() + '...'
+    return trimmed.substring(0, maxLength).trim() + "...";
   }
 
-  return trimmed
+  return trimmed;
 }
 
 // Component to handle resetting input when conversation changes
@@ -97,25 +103,25 @@ const InputResetHandler = ({
   isMobile,
   conversationId,
 }: {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>
-  isMobile: boolean
-  conversationId?: string
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  isMobile: boolean;
+  conversationId?: string;
 }) => {
-  const controller = usePromptInputController()
+  const controller = usePromptInputController();
 
   useEffect(() => {
     // Reset input and attachments when conversationId changes
-    controller.textInput.clear()
-    controller.attachments.clear()
+    controller.textInput.clear();
+    controller.attachments.clear();
 
     // Restore focus after clearing (desktop only)
     if (textareaRef.current && !isMobile) {
-      textareaRef.current.focus()
+      textareaRef.current.focus();
     }
-  }, [conversationId])
+  }, [conversationId]);
 
-  return null
-}
+  return null;
+};
 
 const ChatInput = ({
   initialConversation = false,
@@ -124,119 +130,119 @@ const ChatInput = ({
   conversationId,
   submit,
 }: {
-  initialConversation?: boolean
-  projectId?: string
-  conversationId?: string
-  status?: ChatStatus
-  submit?: (message?: PromptInputMessage) => void
+  initialConversation?: boolean;
+  projectId?: string;
+  conversationId?: string;
+  status?: ChatStatus;
+  submit?: (message?: PromptInputMessage) => void;
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const navigate = useNavigate()
-  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat)
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
+  const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
 
   const browserConnectionState = useBrowserConnection(
-    (state) => state.connectionState
-  )
-  const isMobile = useIsMobile()
-  const isMobileDevice = useIsMobileDevice()
-  const isChromiumBrowser = useMemo(() => isChromeBrowser(), [])
+    (state) => state.connectionState,
+  );
+  const isMobile = useIsMobile();
+  const isMobileDevice = useIsMobileDevice();
+  const isChromiumBrowser = useMemo(() => isChromeBrowser(), []);
 
   // Auto-focus on chat input when component mounts (desktop only)
   useEffect(() => {
     if (textareaRef.current && !isMobile) {
-      textareaRef.current.focus()
+      textareaRef.current.focus();
     }
-  }, [isMobile])
+  }, [isMobile]);
 
   // Auto-focus when assistant finishes responding (desktop only)
   useEffect(() => {
     // Focus when status changes from 'streaming' to idle (assistant finished)
     if (status !== CHAT_STATUS.STREAMING && textareaRef.current && !isMobile) {
-      textareaRef.current.focus()
+      textareaRef.current.focus();
     }
-  }, [status, isMobile])
+  }, [status, isMobile]);
 
-  const selectedModel = useModels((state) => state.selectedModel)
-  const modelDetail = useModels((state) => state.modelDetail)
+  const selectedModel = useModels((state) => state.selectedModel);
+  const modelDetail = useModels((state) => state.modelDetail);
 
   const createConversation = useConversations(
-    (state) => state.createConversation
-  )
+    (state) => state.createConversation,
+  );
 
-  const { projects } = useProjects()
+  const { projects } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    null
-  )
+    null,
+  );
 
-  const searchEnabled = useCapabilities((state) => state.searchEnabled)
+  const searchEnabled = useCapabilities((state) => state.searchEnabled);
   const deepResearchEnabled = useCapabilities(
-    (state) => state.deepResearchEnabled
-  )
-  const browserEnabled = useCapabilities((state) => state.browserEnabled)
-  const reasoningEnabled = useCapabilities((state) => state.reasoningEnabled)
+    (state) => state.deepResearchEnabled,
+  );
+  const browserEnabled = useCapabilities((state) => state.browserEnabled);
+  const reasoningEnabled = useCapabilities((state) => state.reasoningEnabled);
   const imageGenerationEnabled = useCapabilities(
-    (state) => state.imageGenerationEnabled
-  )
-  const toggleSearch = useCapabilities((state) => state.toggleSearch)
+    (state) => state.imageGenerationEnabled,
+  );
+  const toggleSearch = useCapabilities((state) => state.toggleSearch);
   const toggleDeepResearch = useCapabilities(
-    (state) => state.toggleDeepResearch
-  )
-  const toggleBrowser = useCapabilities((state) => state.toggleBrowser)
-  const toggleInstruct = useCapabilities((state) => state.toggleReasoning)
+    (state) => state.toggleDeepResearch,
+  );
+  const toggleBrowser = useCapabilities((state) => state.toggleBrowser);
+  const toggleInstruct = useCapabilities((state) => state.toggleReasoning);
   const toggleImageGeneration = useCapabilities(
-    (state) => state.toggleImageGeneration
-  )
-  const hydrateCapabilities = useCapabilities((state) => state.hydrate)
+    (state) => state.toggleImageGeneration,
+  );
+  const hydrateCapabilities = useCapabilities((state) => state.hydrate);
 
-  const setSearchEnabled = useCapabilities((state) => state.setSearchEnabled)
+  const setSearchEnabled = useCapabilities((state) => state.setSearchEnabled);
   const setDeepResearchEnabled = useCapabilities(
-    (state) => state.setDeepResearchEnabled
-  )
-  const setBrowserEnabled = useCapabilities((state) => state.setBrowserEnabled)
+    (state) => state.setDeepResearchEnabled,
+  );
+  const setBrowserEnabled = useCapabilities((state) => state.setBrowserEnabled);
   const setReasoningEnabled = useCapabilities(
-    (state) => state.setReasoningEnabled
-  )
+    (state) => state.setReasoningEnabled,
+  );
   const setImageGenerationEnabled = useCapabilities(
-    (state) => state.setImageGenerationEnabled
-  )
+    (state) => state.setImageGenerationEnabled,
+  );
 
-  const fetchPreferences = useProfile((state) => state.fetchPreferences)
-  const fetchSettings = useProfile((state) => state.fetchSettings)
-  const pref = useProfile((state) => state.preferences)
-  const settings = useProfile((state) => state.settings)
+  const fetchPreferences = useProfile((state) => state.fetchPreferences);
+  const fetchSettings = useProfile((state) => state.fetchSettings);
+  const pref = useProfile((state) => state.preferences);
+  const settings = useProfile((state) => state.settings);
 
-  const isSupportTools = modelDetail.supports_tools
-  const isSupportReasoning = modelDetail.supports_reasoning
-  const isSupportDeepResearch = isSupportTools && isSupportReasoning
-  const isSupportInstruct = modelDetail.supports_instruct
-  const isBrowserSupported = isChromiumBrowser && modelDetail.supports_browser
-  const shouldShowBrowserUI = isBrowserSupported && !isMobileDevice
+  const isSupportTools = modelDetail.supports_tools;
+  const isSupportReasoning = modelDetail.supports_reasoning;
+  const isSupportDeepResearch = isSupportTools && isSupportReasoning;
+  const isSupportInstruct = modelDetail.supports_instruct;
+  const isBrowserSupported = isChromiumBrowser && modelDetail.supports_browser;
+  const shouldShowBrowserUI = isBrowserSupported && !isMobileDevice;
   const isSupportImageGeneration =
-    settings?.server_capabilities?.image_generation_enabled ?? false
+    settings?.server_capabilities?.image_generation_enabled ?? false;
 
   // Auto-disable capabilities when model doesn't support them
   useEffect(() => {
     // Only run if we have a valid model loaded
-    if (!modelDetail.id) return
+    if (!modelDetail.id) return;
 
     if (!isSupportTools && searchEnabled) {
-      setSearchEnabled(false)
+      setSearchEnabled(false);
     }
-  }, [isSupportTools, searchEnabled, setSearchEnabled, modelDetail.id])
+  }, [isSupportTools, searchEnabled, setSearchEnabled, modelDetail.id]);
 
   useEffect(() => {
     // Only run if we have a valid model loaded
-    if (!modelDetail.id) return
+    if (!modelDetail.id) return;
 
     if (!isSupportDeepResearch && deepResearchEnabled) {
-      setDeepResearchEnabled(false)
+      setDeepResearchEnabled(false);
     }
   }, [
     isSupportDeepResearch,
     deepResearchEnabled,
     setDeepResearchEnabled,
     modelDetail.id,
-  ])
+  ]);
 
   // Auto-disable browser capability when disconnected
   useEffect(() => {
@@ -244,77 +250,87 @@ const ChatInput = ({
       browserConnectionState === CONNECTION_STATE.DISCONNECTED &&
       browserEnabled
     ) {
-      setBrowserEnabled(false)
+      setBrowserEnabled(false);
     }
-  }, [browserConnectionState, browserEnabled, setBrowserEnabled])
+  }, [browserConnectionState, browserEnabled, setBrowserEnabled]);
 
   // Disable browser capability on unsupported environments
   useEffect(() => {
     if (!shouldShowBrowserUI && browserEnabled) {
-      setBrowserEnabled(false)
+      setBrowserEnabled(false);
     }
-  }, [shouldShowBrowserUI, browserEnabled, setBrowserEnabled])
+  }, [shouldShowBrowserUI, browserEnabled, setBrowserEnabled]);
 
   useEffect(() => {
-    fetchPreferences()
-    fetchSettings()
-  }, [])
+    fetchPreferences();
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     if (pref) {
-      hydrateCapabilities(pref.preferences)
+      hydrateCapabilities(pref.preferences);
     }
-  }, [pref, hydrateCapabilities])
+  }, [pref, hydrateCapabilities]);
 
   // Auto-disable image generation when server doesn't support it
   useEffect(() => {
     if (!isSupportImageGeneration && imageGenerationEnabled) {
-      setImageGenerationEnabled(false)
+      setImageGenerationEnabled(false);
     }
   }, [
     isSupportImageGeneration,
     imageGenerationEnabled,
     setImageGenerationEnabled,
-  ])
+  ]);
 
   const handleError = (err: {
-    code: 'max_files' | 'max_file_size' | 'accept' | 'max_images'
-    message: string
+    code: "max_files" | "max_file_size" | "accept" | "max_images";
+    message: string;
   }) => {
-    toast.error(err.message)
-  }
+    toast.error(err.message);
+  };
+
+  // Upload service configuration
+  const uploadService: UploadServiceConfig = useMemo(
+    () => ({
+      blobUrlToDataUrl,
+      uploadMedia,
+      createJanMediaUrl,
+    }),
+    [],
+  );
 
   const handleSubmit = (message: PromptInputMessage) => {
-    const trimmedText = message.text.trim()
-    const hasText = Boolean(trimmedText)
-    const hasAttachments = Boolean(message.files?.length)
+    const trimmedText = message.text.trim();
+    const hasText = Boolean(trimmedText);
+    const hasAttachments = Boolean(message.files?.length);
 
     if (!(hasText || hasAttachments)) {
-      submit?.()
-      return
+      submit?.();
+      return;
     }
 
     const normalizedMessage: PromptInputMessage = {
       ...message,
       text: trimmedText,
-    }
+    };
 
     if (!selectedModel) {
-      toast.warning('Please select a model to start chatting.')
-      return
+      toast.warning("Please select a model to start chatting.");
+      return;
     }
 
     if (initialConversation) {
       if (isPrivateChat) {
         sessionStorage.setItem(
           SESSION_STORAGE_KEY.INITIAL_MESSAGE_TEMPORARY,
-          JSON.stringify(normalizedMessage)
-        )
+          JSON.stringify(normalizedMessage),
+        );
         navigate({
-          to: '/threads/temporary',
-        })
+          to: "/threads/temporary",
+        });
 
-        return
+        return;
       }
 
       const conversationPayload: CreateConversationPayload = {
@@ -324,46 +340,46 @@ const ChatInput = ({
         metadata: {
           model_id: selectedModel.id,
           model_provider: selectedModel.owned_by,
-          is_favorite: 'false',
+          is_favorite: "false",
         },
-      }
+      };
 
       createConversation(conversationPayload)
         .then((conversation) => {
           // Store the initial message in sessionStorage for the new conversation
           sessionStorage.setItem(
             `${SESSION_STORAGE_PREFIX.INITIAL_MESSAGE}${conversation.id}`,
-            JSON.stringify(normalizedMessage)
-          )
+            JSON.stringify(normalizedMessage),
+          );
 
           // Clear selected project after creating conversation
-          setSelectedProjectId(null)
+          setSelectedProjectId(null);
 
           // Redirect to the conversation detail page
           navigate({
-            to: '/threads/$conversationId',
+            to: "/threads/$conversationId",
             params: { conversationId: conversation.id },
-          })
+          });
 
-          return
+          return;
         })
         .catch((error) => {
-          console.error('Failed to create initial conversation:', error)
-        })
+          console.error("Failed to create initial conversation:", error);
+        });
     } else {
-      submit?.(normalizedMessage)
+      submit?.(normalizedMessage);
     }
-  }
+  };
 
   return (
     <div>
       <div
         className={cn(
-          'w-full relative rounded-3xl p-[1.5px]',
+          "w-full relative rounded-3xl p-[1.5px]",
           !initialConversation &&
             (status === CHAT_STATUS.STREAMING ||
               status === CHAT_STATUS.SUBMITTED) &&
-            'overflow-hidden outline-0'
+            "overflow-hidden outline-0",
         )}
       >
         <PromptInputProvider
@@ -371,6 +387,8 @@ const ChatInput = ({
           maxFileSize={10 * 1024 * 1024} //10MB
           accept="image/jpeg,image/jpg,image/png"
           onError={handleError}
+          uploadService={uploadService}
+          userId={conversationId || projectId || "anonymous"}
         >
           <InputResetHandler
             textareaRef={textareaRef}
@@ -381,7 +399,7 @@ const ChatInput = ({
             accept="image/jpeg,image/jpg,image/png"
             globalDrop
             multiple
-            userId={conversationId || projectId || 'anonymous'}
+            userId={conversationId || projectId || "anonymous"}
             onError={handleError}
             onSubmit={handleSubmit}
             className="rounded-3xl relative z-40 bg-background"
@@ -411,7 +429,7 @@ const ChatInput = ({
                       <ProjectsChatInput
                         currentProjectId={selectedProjectId || undefined}
                         onProjectSelect={(projectId) => {
-                          setSelectedProjectId(projectId)
+                          setSelectedProjectId(projectId);
                         }}
                       />
                     )}
@@ -425,35 +443,35 @@ const ChatInput = ({
                   imageGenerationEnabled={imageGenerationEnabled}
                   disablePreferences={status === CHAT_STATUS.STREAMING}
                   toggleSearch={() => {
-                    toggleSearch()
-                    setBrowserEnabled(false)
-                    setImageGenerationEnabled(false)
+                    toggleSearch();
+                    setBrowserEnabled(false);
+                    setImageGenerationEnabled(false);
                   }}
                   toggleDeepResearch={() => {
-                    toggleDeepResearch()
-                    setBrowserEnabled(false)
-                    setImageGenerationEnabled(false)
+                    toggleDeepResearch();
+                    setBrowserEnabled(false);
+                    setImageGenerationEnabled(false);
                   }}
                   toggleBrowser={() => {
-                    toggleBrowser()
-                    setDeepResearchEnabled(false)
-                    setSearchEnabled(false)
-                    setImageGenerationEnabled(false)
+                    toggleBrowser();
+                    setDeepResearchEnabled(false);
+                    setSearchEnabled(false);
+                    setImageGenerationEnabled(false);
                   }}
                   toggleImageGeneration={() => {
-                    toggleImageGeneration()
+                    toggleImageGeneration();
                     // Disable all other capabilities when image generation is enabled
                     if (!imageGenerationEnabled) {
-                      setSearchEnabled(false)
-                      setDeepResearchEnabled(false)
-                      setBrowserEnabled(false)
-                      setReasoningEnabled(false)
+                      setSearchEnabled(false);
+                      setDeepResearchEnabled(false);
+                      setBrowserEnabled(false);
+                      setReasoningEnabled(false);
                     }
                   }}
                   isBrowserSupported={isBrowserSupported}
                   toggleInstruct={() => {
-                    toggleInstruct()
-                    setImageGenerationEnabled(false)
+                    toggleInstruct();
+                    setImageGenerationEnabled(false);
                   }}
                   isSupportTools={isSupportTools}
                   isSupportDeepResearch={isSupportDeepResearch}
@@ -477,8 +495,8 @@ const ChatInput = ({
                       className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
                       disabled={status === CHAT_STATUS.STREAMING}
                       onClick={() => {
-                        toggleInstruct()
-                        setImageGenerationEnabled(false)
+                        toggleInstruct();
+                        setImageGenerationEnabled(false);
                       }}
                     >
                       <LightbulbIcon className="text-primary size-4 group-hover:hidden" />
@@ -565,7 +583,7 @@ const ChatInput = ({
                       <X className="text-primary size-4 hidden group-hover:block" />
                       <span className="text-primary">
                         {projects.find((p) => p.id === selectedProjectId)
-                          ?.name || 'Project'}
+                          ?.name || "Project"}
                       </span>
                     </PromptInputButton>
                   )}
@@ -575,7 +593,7 @@ const ChatInput = ({
                     className="rounded-full group transition-all bg-primary/10 hover:bg-primary/10 border-0"
                     disabled={status === CHAT_STATUS.STREAMING}
                     onClick={() => {
-                      toggleImageGeneration()
+                      toggleImageGeneration();
                       // Re-enable other capabilities when image generation is toggled off
                     }}
                   >
@@ -594,8 +612,8 @@ const ChatInput = ({
                   variant={
                     status === CHAT_STATUS.STREAMING ||
                     status === CHAT_STATUS.SUBMITTED
-                      ? 'destructive'
-                      : 'default'
+                      ? "destructive"
+                      : "default"
                   }
                 />
               </div>
@@ -607,7 +625,7 @@ const ChatInput = ({
               <BorderAnimate rx="10%" ry="10%">
                 <div
                   className={cn(
-                    'h-100 w-100 bg-[radial-gradient(var(--primary),transparent_50%)]'
+                    "h-100 w-100 bg-[radial-gradient(var(--primary),transparent_50%)]",
                   )}
                 />
               </BorderAnimate>
@@ -626,7 +644,7 @@ const ChatInput = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default memo(ChatInput)
+export default memo(ChatInput);

@@ -16,34 +16,34 @@ A standalone **Model Context Protocol (MCP)** service that provides AI models wi
 
 `
 services/mcp-tools/
-+-- domain/            # Business logic (transport-agnostic)
-|   +-- search/        # Search service interfaces and types
-+-- infrastructure/    # External systems integration
-|   +-- config/        # Configuration management
-|   +-- logger/        # Logging setup
-|   +-- search/        # Serper, SearXNG, fallback clients
-+-- interfaces/        # Delivery mechanisms
-|   +-- httpserver/
-|       +-- middlewares/
-|       +-- routes/    # MCP route handlers
++-- domain/ # Business logic (transport-agnostic)
+| +-- search/ # Search service interfaces and types
++-- infrastructure/ # External systems integration
+| +-- config/ # Configuration management
+| +-- logger/ # Logging setup
+| +-- search/ # Serper, SearXNG, fallback clients
++-- interfaces/ # Delivery mechanisms
+| +-- httpserver/
+| +-- middlewares/
+| +-- routes/ # MCP route handlers
 +-- utils/
-    +-- mcp/          # MCP helper functions
++-- mcp/ # MCP helper functions
 ``
 services/mcp-tools/
-+-- domain/           # Business logic (transport-agnostic)
-|   +-- serper/       # Serper service interfaces and types
-+-- infrastructure/   # External systems integration
-|   +-- config/       # Configuration management
-|   +-- logger/       # Logging setup
-|   +-- serper/       # Serper API client implementation
-+-- interfaces/       # Delivery mechanisms
-|   +-- httpserver/   # HTTP/MCP server
-|       +-- middlewares/
-|       +-- routes/   # MCP route handlers
-+-- utils/            # Utilities
-    +-- mcp/          # MCP helper functions
++-- domain/ # Business logic (transport-agnostic)
+| +-- serper/ # Serper service interfaces and types
++-- infrastructure/ # External systems integration
+| +-- config/ # Configuration management
+| +-- logger/ # Logging setup
+| +-- serper/ # Serper API client implementation
++-- interfaces/ # Delivery mechanisms
+| +-- httpserver/ # HTTP/MCP server
+| +-- middlewares/
+| +-- routes/ # MCP route handlers
++-- utils/ # Utilities
++-- mcp/ # MCP helper functions
 
-```
+````
 
 ## Available Tools
 
@@ -149,7 +149,7 @@ Edit images with a prompt and input image via the LLM API.
 HTTP_PORT=8091                    # HTTP server port
 LOG_LEVEL=info                    # Log level (debug, info, warn, error)
 LOG_FORMAT=json                   # Log format (json, console)
-```
+````
 
 ### Search Configuration
 
@@ -297,6 +297,7 @@ This service implements the [Model Context Protocol](https://modelcontextprotoco
 3. **Stream Results** - Receive real-time responses
 
 Supported MCP methods:
+
 - `initialize` - Handshake
 - `tools/list` - List available tools
 - `tools/call` - Execute a tool
@@ -323,6 +324,7 @@ Supported MCP methods:
 ### Phase 1 & 2: Performance Improvements (Dec 2025)
 
 **✅ Removed DuckDuckGo Fallback**
+
 - Search now returns clear errors instead of falling back to low-quality cached results
 - Better visibility into actual API failures
 - Error messages include:
@@ -331,6 +333,7 @@ Supported MCP methods:
   - "searxng search failed: [error details]"
 
 **✅ HTTP Client Optimization**
+
 - Added connection pooling (50 concurrent connections to Serper)
 - HTTP/2 multiplexing enabled
 - Timeout reduced: 30s → 15s (faster failure detection)
@@ -338,12 +341,14 @@ Supported MCP methods:
 - Expected **50x throughput increase**
 
 **✅ Aggressive Retry Configuration**
+
 - Retry attempts: 3 → 5
 - Initial delay: 500ms → 250ms (faster recovery)
 - Max delay: 10s → 5s (fail faster on persistent errors)
 - Backoff factor: 2.0 → 1.5 (gentler backoff curve)
 
 **✅ Circuit Breaker Tuning**
+
 - Failure threshold: 5 → 15 (more tolerant of bursts)
 - Success threshold: 2 → 5 (require more proof of recovery)
 - Timeout: 30s → 45s (faster recovery attempts)
@@ -351,20 +356,21 @@ Supported MCP methods:
 - **99%+ uptime** with better tuning
 
 **✅ Configurable Circuit Breaker**
+
 - All circuit breaker settings now configurable via environment variables
 - Can tune per-environment (dev/staging/prod)
 - Better fault tolerance for different deployment scenarios
 
 ### Expected Performance Gains
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Max Concurrent Requests | 1 | 50 | **50x** |
-| Connection Overhead | ~100ms | ~0ms | **Eliminated** |
-| Retry Attempts | 3 | 5 | **+66%** |
-| Circuit Breaker False Positives | High | Low | **More stable** |
-| Timeout | 30s | 15s | **2x faster failure** |
-| Recovery Speed | 60s, 3 tests | 45s, 10 tests | **25% faster** |
+| Metric                          | Before       | After         | Improvement           |
+| ------------------------------- | ------------ | ------------- | --------------------- |
+| Max Concurrent Requests         | 1            | 50            | **50x**               |
+| Connection Overhead             | ~100ms       | ~0ms          | **Eliminated**        |
+| Retry Attempts                  | 3            | 5             | **+66%**              |
+| Circuit Breaker False Positives | High         | Low           | **More stable**       |
+| Timeout                         | 30s          | 15s           | **2x faster failure** |
+| Recovery Speed                  | 60s, 3 tests | 45s, 10 tests | **25% faster**        |
 
 ## MCP Protocol Integration Notes
 
@@ -373,6 +379,7 @@ This service implements the Model Context Protocol using `github.com/mark3labs/m
 ### Current Implementation
 
 The service uses a **hybrid approach**:
+
 - MCP protocol handler integrated with Gin HTTP server
 - SSE (Server-Sent Events) for streaming responses
 - Stateless design (no session management)
@@ -387,12 +394,14 @@ The service uses a **hybrid approach**:
 ### Tool Registration
 
 Tools are registered in `internal/interfaces/httpserver/routes/mcp/`:
+
 - `serper_mcp.go` - Search and scraping tools
 - `sandboxfusion_mcp.go` - Python execution tool
 - `memory_mcp.go` - Memory retrieval tool
 - `provider_mcp.go` - External MCP provider bridge
 
 Each tool implements the MCP tool interface with:
+
 - Schema definition (JSON Schema for arguments)
 - Handler function (receives arguments, returns result)
 - Error handling with structured responses
@@ -443,23 +452,29 @@ ab -n 100 -c 10 -T 'application/json' \
 ## Troubleshooting
 
 ### Circuit breaker opens frequently
+
 **Solution**: Increase `SERPER_CB_FAILURE_THRESHOLD` to 20 or check Serper API quota
 
 ### Slow search responses
-**Solution**: 
+
+**Solution**:
+
 - Check Serper API latency
 - Verify `SERPER_HTTP_TIMEOUT` is appropriate (default: 15s)
 - Increase `SERPER_MAX_CONNS_PER_HOST` for higher concurrency
 
 ### Connection pool exhaustion
+
 **Solution**: Increase `SERPER_MAX_IDLE_CONNS` and `SERPER_MAX_CONNS_PER_HOST`
 
 ### Serper API quota exceeded
+
 **Solution**: Monitor usage at https://serper.dev/dashboard or implement client-side rate limiting
 
 ## Monitoring
 
 Key metrics to monitor:
+
 - Circuit breaker state transitions
 - Search error rate (should be <1%)
 - P95 search latency (should be <2s)

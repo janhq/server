@@ -55,21 +55,24 @@ make config-drift-check
 ### Adding New Configuration
 
 1. **Edit Go structs** in `pkg/config/types.go`:
+
 ```go
 type MyNewConfig struct {
     // Port for the new service
-    Port int `yaml:"port" json:"port" env:"MY_SERVICE_PORT" envDefault:"8080" 
-             jsonschema:"required,minimum=1,maximum=65535" 
+    Port int `yaml:"port" json:"port" env:"MY_SERVICE_PORT" envDefault:"8080"
+             jsonschema:"required,minimum=1,maximum=65535"
              description:"My service HTTP port"`
 }
 ```
 
 2. **Regenerate artifacts**:
+
 ```bash
 make config-generate
 ```
 
 3. **Commit both** `types.go` and generated files:
+
 ```bash
 git add pkg/config/types.go config/schema/ config/defaults.yaml
 git commit -m "config: add MyNewConfig"
@@ -87,21 +90,24 @@ Each field should have these tags:
 - `description:"..."` - Human-readable description
 
 ### Example:
+
 ```go
 // Database port
-Port int `yaml:"port" json:"port" env:"POSTGRES_PORT" envDefault:"5432" 
-         jsonschema:"required,minimum=1,maximum=65535" 
+Port int `yaml:"port" json:"port" env:"POSTGRES_PORT" envDefault:"5432"
+         jsonschema:"required,minimum=1,maximum=65535"
          description:"PostgreSQL port"`
 ```
 
 ## Configuration Hierarchy
 
 ### Root `/config` - Infrastructure & Environment
+
 - Database connections, ports, auth settings
 - Environment-specific overrides
 - Managed through YAML + env vars
 
 ### Service `/config` or `/configs` - Pluggable Configs (CI/CD Managed)
+
 - `services/llm-api/configs/providers.yml` - Model providers
 - `services/mcp-tools/configs/mcp-providers.yml` - MCP tools
 - These files are **replaced by CI/CD**, not loaded from root config
@@ -117,12 +123,14 @@ Port int `yaml:"port" json:"port" env:"POSTGRES_PORT" envDefault:"5432"
 ## CI/CD Integration
 
 ### Pre-commit Hook
+
 ```bash
 # Regenerate and check for drift
 make config-drift-check
 ```
 
 ### CI Pipeline
+
 ```yaml
 - name: Check config drift
   run: |
@@ -133,17 +141,20 @@ make config-drift-check
 ## Roadmap
 
 ### Sprint 1 (Current)
+
 - [x] Define canonical Go structs
 - [x] JSON Schema generator
 - [x] YAML defaults generator
 - [ ] CI drift detection test
 
 ### Sprint 2 (Next)
+
 - [ ] Configuration loader with precedence
 - [ ] Environment override support
 - [ ] Secret provider integration
 
 ### Future
+
 - [ ] Documentation generator
 - [ ] CLI tool (`jan-config`)
 - [ ] Docker Compose generator

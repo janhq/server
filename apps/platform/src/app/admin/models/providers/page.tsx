@@ -409,7 +409,9 @@ export default function ProvidersManagementPage() {
                       <span className="text-xs text-muted-foreground">Active</span>
                     </div>
                     <p className="text-2xl font-bold text-green-600">
-                      {provider.model_active_count !== undefined ? provider.model_active_count : '-'}
+                      {provider.model_active_count !== undefined
+                        ? provider.model_active_count
+                        : '-'}
                     </p>
                   </div>
                 </div>
@@ -552,7 +554,7 @@ export default function ProvidersManagementPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
-                
+
                 // Construct metadata object
                 const metadata: Record<string, string> = {};
                 const description = formData.get('metadata_description') as string;
@@ -643,7 +645,9 @@ export default function ProvidersManagementPage() {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1">Endpoints (comma-separated or JSON array)</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Endpoints (comma-separated or JSON array)
+                  </label>
                   <textarea
                     name="endpoints"
                     rows={2}
@@ -711,7 +715,9 @@ export default function ProvidersManagementPage() {
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <span className="text-sm font-medium">Active</span>
-                  <span className="text-xs text-muted-foreground ml-auto">Enable this provider immediately</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Enable this provider immediately
+                  </span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -746,7 +752,9 @@ export default function ProvidersManagementPage() {
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <span className="text-sm font-medium">Auto-enable New Models</span>
-                  <span className="text-xs text-muted-foreground ml-auto">Automatically enable new models found during sync</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Automatically enable new models found during sync
+                  </span>
                 </label>
               </div>
 
@@ -876,7 +884,9 @@ export default function ProvidersManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Endpoints (comma-separated or JSON array)</label>
+                <label className="block text-sm font-medium mb-1">
+                  Endpoints (comma-separated or JSON array)
+                </label>
                 <textarea
                   name="endpoints"
                   defaultValue={
@@ -920,7 +930,9 @@ export default function ProvidersManagementPage() {
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <span className="text-sm font-medium">Active</span>
-                  <span className="text-xs text-muted-foreground ml-auto">Enable this provider</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Enable this provider
+                  </span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">

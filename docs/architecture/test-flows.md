@@ -9,6 +9,7 @@ This document provides visual representations of test flows, dependencies, and s
 ## Overview
 
 The jan-server test suite consists of Postman collections with 100+ individual test cases covering:
+
 - Authentication flows (guest, JWT, API keys)
 - Conversation and project management
 - Model catalog and prompt templates
@@ -614,46 +615,54 @@ Total: ~15-25 seconds (depends on service latency)
 
 ## Test Coverage Summary
 
-| Component | Tests | Coverage |
-|-----------|-------|----------|
-| Authentication | 8 | Guest, JWT, API Keys |
-| Conversations | 14 | CRUD, Pagination, Validation |
-| Projects | 8 | CRUD, State Management |
-| Chat Completion | 3 | Basic Usage, Conversation |
-| Models | 2 | Listing, Details |
-| Tool Calling | 8 | Search, Scrape, Index, Exec |
-| Media Upload | 3 | URL, DataURL, Dedup |
-| Media Download | 2 | Streaming, Error Cases |
-| Error Handling | 5 | Invalid Input, Missing Auth |
-| **TOTAL** | **100+** | **Comprehensive (see `test-all.postman.json`)** |
+| Component       | Tests    | Coverage                                        |
+| --------------- | -------- | ----------------------------------------------- |
+| Authentication  | 8        | Guest, JWT, API Keys                            |
+| Conversations   | 14       | CRUD, Pagination, Validation                    |
+| Projects        | 8        | CRUD, State Management                          |
+| Chat Completion | 3        | Basic Usage, Conversation                       |
+| Models          | 2        | Listing, Details                                |
+| Tool Calling    | 8        | Search, Scrape, Index, Exec                     |
+| Media Upload    | 3        | URL, DataURL, Dedup                             |
+| Media Download  | 2        | Streaming, Error Cases                          |
+| Error Handling  | 5        | Invalid Input, Missing Auth                     |
+| **TOTAL**       | **100+** | **Comprehensive (see `test-all.postman.json`)** |
 
 ---
 
 ## Integration Points
 
 ### With System Design
+
 See [System Design](system-design.md) for:
+
 - Architecture layers
 - Service responsibilities
 - Data flow patterns
 - Deployment strategies
 
 ### With Services
+
 See [Services](services.md) for:
+
 - LLM API details
 - Response API details
 - Media API details
 - MCP Tools details
 
 ### With Security
+
 See [Security](security.md) for:
+
 - Authentication mechanisms
 - Authorization patterns
 - API key management
 - Token validation
 
 ### With Data Flow
+
 See [Data Flow](data-flow.md) for:
+
 - Request/response patterns
 - Data transformation
 - Persistence strategies
@@ -666,10 +675,7 @@ See [Data Flow](data-flow.md) for:
 
 ---
 
-**Last Updated**: November 11, 2025 
-**Document Type**: Architecture Reference - Testing 
-**Target Audience**: QA Engineers, Developers, DevOps 
+**Last Updated**: November 11, 2025
+**Document Type**: Architecture Reference - Testing
+**Target Audience**: QA Engineers, Developers, DevOps
 **Maintainer**: Jan-Server Team
-
-
-

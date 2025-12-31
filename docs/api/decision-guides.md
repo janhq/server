@@ -7,6 +7,7 @@ Quick reference guides to help you choose the right API and approach for your us
 ### LLM API vs Response API
 
 **Use LLM API when:**
+
 - You need direct chat completions
 - Single-turn or simple multi-turn conversations
 - You want to manage conversation history yourself
@@ -15,6 +16,7 @@ Quick reference guides to help you choose the right API and approach for your us
 - Building a chat interface
 
 **Use Response API when:**
+
 - You need multi-step tool orchestration (search → scrape → analyze)
 - Automatic tool selection and chaining
 - Complex workflows with up to 8 tool calls
@@ -27,18 +29,21 @@ Quick reference guides to help you choose the right API and approach for your us
 ### Media Upload Methods
 
 **Use POST /v1/media (remote_url) when:**
+
 - Image is already hosted publicly
 - You want to avoid client-side uploads
 - Working with URLs from external sources
 - Content deduplication is important
 
 **Use POST /v1/media/prepare-upload (presigned URL) when:**
+
 - Large file uploads (>10MB)
 - Need client-side direct S3 upload
 - Want to minimize server load
 - Building mobile/web apps with file pickers
 
 **Use POST /v1/media (data_url) when:**
+
 - Small images (<5MB)
 - Image generated client-side (canvas, screenshots)
 - Base64 data already available
@@ -59,6 +64,7 @@ Do you have a public URL?
 ### Authentication Method Selection
 
 **Use Bearer Tokens when:**
+
 - Development and testing
 - Short-lived sessions (5-60 minutes)
 - User-facing applications with login flows
@@ -66,6 +72,7 @@ Do you have a public URL?
 - Guest access is acceptable
 
 **Use API Keys when:**
+
 - Production deployments
 - Server-to-server communication
 - Long-lived credentials (30-365 days)
@@ -74,6 +81,7 @@ Do you have a public URL?
 - Simplified authentication flow
 
 **Use Direct Service Ports (8080/8082/8285/8091) when:**
+
 - Internal service-to-service calls within Docker network
 - Health checks and monitoring
 - Debugging and development
@@ -85,6 +93,7 @@ Do you have a public URL?
 ### Synchronous vs Background Mode
 
 **Use Synchronous Mode when:**
+
 - Quick operations (<30 seconds expected)
 - Need immediate response
 - Client can wait for completion
@@ -92,6 +101,7 @@ Do you have a public URL?
 - Real-time user interfaces
 
 **Use Background Mode when:**
+
 - Long-running operations (>30 seconds)
 - Multiple tool chains (3+ tools)
 - Client can poll or use webhooks
@@ -128,6 +138,7 @@ Depth 4:
 ```
 
 **Choosing depth:**
+
 - `depth=1`: Single tool call, simple operations
 - `depth=2-3`: Standard workflows, most use cases (recommended)
 - `depth=4-6`: Complex research, multi-stage analysis
@@ -137,7 +148,8 @@ Depth 4:
 
 ### Jan ID System
 
-**What are jan_* IDs?**
+**What are jan\_\* IDs?**
+
 - Unique identifiers for uploaded media: `jan_01hqr8v9k2x3f4g5h6j7k8m9n0`
 - Content-addressed: Same image = same ID (deduplication)
 - Portable: Use across conversations and requests
@@ -146,6 +158,7 @@ Depth 4:
 **When to resolve IDs:**
 
 **Best practices:**
+
 1. Store `jan_*` IDs in your database, not presigned URLs (URLs expire)
 2. Resolve only when needed (presigned URLs valid 7 days)
 3. Use batch resolution for multiple images
@@ -181,6 +194,7 @@ Need to display image?
 1. **Exponential Backoff**
 2. **Check Headers**
 3. **Batch Operations**
+
 ## Error Handling Patterns
 
 ### Common Error Scenarios
@@ -189,6 +203,7 @@ Need to display image?
 **404 Not Found:**
 **429 Rate Limited:**
 **500 Server Error:**
+
 ## See Also
 
 - [API Patterns](patterns.md) - Streaming, pagination, batching

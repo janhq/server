@@ -6,45 +6,52 @@
 
 ## Documentation Map
 
-| File | Purpose |
-|------|---------|
-| `conventions.md` (this file) | TL;DR and quick links |
-| `architecture-patterns.md` | Repository and service layout patterns |
-| `design-patterns.md` | Code-level guidance (DB, errors, entities) |
-| `workflow.md` | Daily workflow: git, testing, deployments |
+| File                         | Purpose                                    |
+| ---------------------------- | ------------------------------------------ |
+| `conventions.md` (this file) | TL;DR and quick links                      |
+| `architecture-patterns.md`   | Repository and service layout patterns     |
+| `design-patterns.md`         | Code-level guidance (DB, errors, entities) |
+| `workflow.md`                | Daily workflow: git, testing, deployments  |
 
 ---
 
 ## TL;DR Rules
 
 ### Language & Tooling
+
 - **Go version:** `1.25.0` (matches the root `go.mod`). Run `go fmt ./...` and `go test ./...` before committing.
 - **Dependency hygiene:** `go mod tidy` inside the service you changed.
 
 ### Architecture
+
 - Each service lives under `services/<name>/` and follows the same structure (`cmd/`, `internal/`, `migrations/`, etc.).
 - Clean architecture still applies: Interfaces (HTTP) ? Domain ? Infrastructure. Domain packages never import database or HTTP packages.
 
 ### Database
+
 - GORM zero-value issue still exists. Use pointer fields (`*bool`, `*float64`, etc.) in schema structs and convert to plain types in domain models.
 - When schemas change, run `make gormgen` from the service directory (e.g., `cd services/llm-api && make gormgen`).
 
 ### Error Handling
+
 - Trigger point (repository) creates errors via `platformerrors.NewError()`.
 - Handlers call `responses.HandleError()` so every response includes `requestID`.
 - Never log secrets or the raw error from external providers.
 
 ### Naming
+
 - Exported symbols: `PascalCase`. Unexported: `camelCase`.
 - Database columns: `snake_case`.
 - Avoid stuttering (`provider.ID`, not `provider.ProviderID`).
 - Avoid single word naming, must meaningful, easy to read and understand
 
 ### Git & Commits
+
 - Conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, etc.
 - Branches: `type/short-description` (e.g., `feat/dev-full-refresh`).
 
 ### Security
+
 - Secrets only live in `.env`/environment variables. `.env` is created from `.env.template` via `make setup` and never committed.
 - Kong + Keycloak handle auth; do not bypass JWT/API-key validation in services.
 
@@ -92,6 +99,7 @@ make db-reset           # Drop + recreate llm-api database
 ---
 
 ## Need More Detail?
+
 - **Structure & file placement:** `architecture-patterns.md`
 - **Code patterns (DB, entities, errors):** `design-patterns.md`
 - **Daily workflow (git, CI/CD, deployment):** `workflow.md`

@@ -87,14 +87,15 @@ git push origin feat/new-flow
 
 ## Testing Strategy
 
-| Scope | Command |
-|-------|---------|
-| Unit tests (per service) | `go test ./services/<service>/...` |
-| Full jan-cli api-test suite | `make test-all` |
-| Focused integration suites | `make test-auth`, `make test-conversations`, `make test-media`, `make test-mcp-integration`, etc. |
-| Health checks | `make health-check` |
+| Scope                       | Command                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
+| Unit tests (per service)    | `go test ./services/<service>/...`                                                                |
+| Full jan-cli api-test suite | `make test-all`                                                                                   |
+| Focused integration suites  | `make test-auth`, `make test-conversations`, `make test-media`, `make test-mcp-integration`, etc. |
+| Health checks               | `make health-check`                                                                               |
 
 Guidelines:
+
 - Run the service-level Go tests before committing.
 - Run the relevant jan-cli api-test collection (or `make test-all`) when changing API routes, Kong config, or MCP tools.
 - For MCP-only work, `make test-mcp-integration` plus manual curl checks against `http://localhost:8000/mcp`.
@@ -103,11 +104,11 @@ Guidelines:
 
 ## Code Generation
 
-| Task | Command |
-|------|---------|
-| Swagger docs (all services) | `make swagger` |
-| GORM queries (llm-api) | `cd services/llm-api && make gormgen` |
-| Other services | Add service-local generators if needed (follow llm-api example) |
+| Task                        | Command                                                         |
+| --------------------------- | --------------------------------------------------------------- |
+| Swagger docs (all services) | `make swagger`                                                  |
+| GORM queries (llm-api)      | `cd services/llm-api && make gormgen`                           |
+| Other services              | Add service-local generators if needed (follow llm-api example) |
 
 Run generators whenever you change schema structs or API contracts, then commit the generated files.
 
@@ -134,31 +135,37 @@ Run generators whenever you change schema structs or API contracts, then commit 
 ## Code Review Checklist
 
 **Architecture**
+
 - Domain packages contain business rules only.
 - Infrastructure code is injected and has no HTTP imports.
 - Routes remain thin; DTOs convert to domain structs immediately.
 
 **Database**
+
 - Schema structs use pointers for zero-value fields.
 - `EtoD()` / `DtoE()` cover nil vs default conversion.
 - Repositories rely on GORM-gen query builders.
 
 **Errors & Logging**
+
 - Trigger points create `platformerrors.NewError()` instances with UUIDs.
 - Errors bubble through `AsError()` and are rendered with `responses.HandleError()`.
 - request IDs logged and returned.
 
 **Testing**
+
 - Unit tests cover new code paths.
 - Integration/jan-cli api-test suites updated if APIs change.
 - Feature flags or env toggles documented.
 
 **Security**
+
 - No credentials committed or logged.
 - Input validation present on HTTP DTOs.
 - Kong/Keycloak configs updated if auth flow changes.
 
 **Docs**
+
 - README/guides updated when commands or endpoints change.
 - Swagger re-generated for API changes.
 

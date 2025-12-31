@@ -74,38 +74,38 @@ metadata:
   name: jan-server-llm-api
 spec:
   containers:
-  - name: llm-api
-    image: jan-server:v0.0.14
-    ports:
-    - containerPort: 8080
-    
-    # Readiness probe - Accept traffic?
-    readinessProbe:
-      httpGet:
-        path: /health
-        port: 8080
-      initialDelaySeconds: 5
-      periodSeconds: 10
-      timeoutSeconds: 3
-      failureThreshold: 3
-    
-    # Liveness probe - Container alive?
-    livenessProbe:
-      httpGet:
-        path: /health
-        port: 8080
-      initialDelaySeconds: 30
-      periodSeconds: 30
-      timeoutSeconds: 5
-      failureThreshold: 3
-    
-    # Startup probe - App started?
-    startupProbe:
-      httpGet:
-        path: /health
-        port: 8080
-      failureThreshold: 30
-      periodSeconds: 10
+    - name: llm-api
+      image: jan-server:v0.0.14
+      ports:
+        - containerPort: 8080
+
+      # Readiness probe - Accept traffic?
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+
+      # Liveness probe - Container alive?
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+      # Startup probe - App started?
+      startupProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        failureThreshold: 30
+        periodSeconds: 10
 ```
 
 ### Custom Health Checks
@@ -158,40 +158,40 @@ global:
 
 alerting:
   alertmanagers:
-  - static_configs:
-    - targets: ['localhost:9093']
+    - static_configs:
+        - targets: ["localhost:9093"]
 
 rule_files:
-  - 'alert_rules.yml'
+  - "alert_rules.yml"
 
 scrape_configs:
-  - job_name: 'jan-llm-api'
-    metrics_path: '/metrics'
+  - job_name: "jan-llm-api"
+    metrics_path: "/metrics"
     static_configs:
-    - targets: ['localhost:8080']
-  
-  - job_name: 'jan-response-api'
-    metrics_path: '/metrics'
+      - targets: ["localhost:8080"]
+
+  - job_name: "jan-response-api"
+    metrics_path: "/metrics"
     static_configs:
-    - targets: ['localhost:8082']
-  
-  - job_name: 'jan-media-api'
-    metrics_path: '/metrics'
+      - targets: ["localhost:8082"]
+
+  - job_name: "jan-media-api"
+    metrics_path: "/metrics"
     static_configs:
-    - targets: ['localhost:8285']
-  
-  - job_name: 'jan-mcp-tools'
-    metrics_path: '/metrics'
+      - targets: ["localhost:8285"]
+
+  - job_name: "jan-mcp-tools"
+    metrics_path: "/metrics"
     static_configs:
-    - targets: ['localhost:8091']
-  
-  - job_name: 'postgres'
+      - targets: ["localhost:8091"]
+
+  - job_name: "postgres"
     static_configs:
-    - targets: ['localhost:9187']
-  
-  - job_name: 'redis'
+      - targets: ["localhost:9187"]
+
+  - job_name: "redis"
     static_configs:
-    - targets: ['localhost:9121']
+      - targets: ["localhost:9121"]
 ```
 
 ### Alert Rules
@@ -199,59 +199,58 @@ scrape_configs:
 ```yaml
 # alert_rules.yml
 groups:
-- name: jan_server_alerts
-  interval: 30s
-  rules:
-  
-  # Service down
-  - alert: ServiceDown
-    expr: up{job=~"jan-.*"} == 0
-    for: 2m
-    annotations:
-      summary: "{{ $labels.job }} is down"
-  
-  # High error rate
-  - alert: HighErrorRate
-    expr: |
-      rate(llm_api_errors_total[5m]) > 0.05
-    for: 5m
-    annotations:
-      summary: "High error rate in LLM API"
-      description: "Error rate is {{ $value }}"
-  
-  # High latency
-  - alert: HighLatency
-    expr: |
-      histogram_quantile(0.99, rate(llm_api_request_duration_seconds_bucket[5m])) > 5
-    for: 5m
-    annotations:
-      summary: "High request latency detected"
-      description: "P99 latency is {{ $value }}s"
-  
-  # Database connection pool exhausted
-  - alert: DatabasePoolExhausted
-    expr: |
-      pg_stat_activity_max_connections_remaining < 5
-    for: 1m
-    annotations:
-      summary: "Database connection pool nearly full"
-  
-  # Disk space low
-  - alert: DiskSpaceLow
-    expr: |
-      node_filesystem_avail_bytes{mountpoint="/"} / 
-      node_filesystem_size_bytes{mountpoint="/"} < 0.1
-    for: 5m
-    annotations:
-      summary: "Disk space low on {{ $labels.instance }}"
-  
-  # Queue backlog
-  - alert: QueueBacklog
-    expr: |
-      pg_partman_queue_depth > 1000
-    for: 5m
-    annotations:
-      summary: "Message queue backlog detected"
+  - name: jan_server_alerts
+    interval: 30s
+    rules:
+      # Service down
+      - alert: ServiceDown
+        expr: up{job=~"jan-.*"} == 0
+        for: 2m
+        annotations:
+          summary: "{{ $labels.job }} is down"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          rate(llm_api_errors_total[5m]) > 0.05
+        for: 5m
+        annotations:
+          summary: "High error rate in LLM API"
+          description: "Error rate is {{ $value }}"
+
+      # High latency
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, rate(llm_api_request_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        annotations:
+          summary: "High request latency detected"
+          description: "P99 latency is {{ $value }}s"
+
+      # Database connection pool exhausted
+      - alert: DatabasePoolExhausted
+        expr: |
+          pg_stat_activity_max_connections_remaining < 5
+        for: 1m
+        annotations:
+          summary: "Database connection pool nearly full"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/"} / 
+          node_filesystem_size_bytes{mountpoint="/"} < 0.1
+        for: 5m
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }}"
+
+      # Queue backlog
+      - alert: QueueBacklog
+        expr: |
+          pg_partman_queue_depth > 1000
+        for: 5m
+        annotations:
+          summary: "Message queue backlog detected"
 ```
 
 ### Grafana Dashboards
@@ -288,6 +287,7 @@ Dashboard: Jan Server Overview
 ### Issue 1: Database Connection Pool Exhausted
 
 **Symptoms:**
+
 ```
 Error: connection pool exhausted
 Active connections: 50/50
@@ -295,6 +295,7 @@ Queue depth: 100+
 ```
 
 **Root Causes:**
+
 - Queries taking too long (connections held)
 - Connection leak (not closing properly)
 - Sudden traffic spike
@@ -304,8 +305,8 @@ Queue depth: 100+
 
 ```sql
 -- Check active connections
-SELECT datname, usename, count(*) 
-FROM pg_stat_activity 
+SELECT datname, usename, count(*)
+FROM pg_stat_activity
 GROUP BY datname, usename;
 
 -- Check long-running queries
@@ -326,6 +327,7 @@ ORDER BY duration DESC;
 ### Issue 2: Out of Memory
 
 **Symptoms:**
+
 ```
 RSS Memory: 2.5GB (out of 3GB limit)
 Swap usage increasing
@@ -333,6 +335,7 @@ Process killed: OOMKiller
 ```
 
 **Root Causes:**
+
 - Memory leak in application
 - Large result set loading entirely in memory
 - Cache growing unbounded
@@ -345,6 +348,7 @@ Process killed: OOMKiller
 ### Issue 3: Message Queue Backlog
 
 **Symptoms:**
+
 ```
 Queue depth: 50000+ messages
 Processing lag: 30+ minutes
@@ -352,6 +356,7 @@ Consumer lag not catching up
 ```
 
 **Root Causes:**
+
 - Consumer slower than producer
 - Poison pill messages blocking queue
 - Consumer crash/hang
@@ -362,6 +367,7 @@ Consumer lag not catching up
 ### Issue 4: High API Latency
 
 **Symptoms:**
+
 ```
 P99 latency: 10+ seconds
 Some endpoints slow, others normal
@@ -369,6 +375,7 @@ Error rate increases under load
 ```
 
 **Root Causes:**
+
 - Slow database queries
 - Cache miss storm (thundering herd)
 - External API calls
@@ -381,6 +388,7 @@ Error rate increases under load
 ### Issue 5: Authentication Failures
 
 **Symptoms:**
+
 ```
 Keycloak connection errors
 401 Unauthorized responses
@@ -453,18 +461,22 @@ Very High (2000+)     >70%     >70%      1TB+        Horizontal + cache
 
 ### Runbook Example: Database Down
 
-```markdown
+````markdown
 ## Incident: Database Connection Lost
 
 ### Detection
+
 - Alert: `ServiceDown` for database
 - Symptom: All APIs returning 500 errors
 
 ### Immediate Actions (0-5 min)
+
 1. Check database status:
    ```bash
    pg_isready -h localhost -p 5432
    ```
+````
+
 2. Check database logs:
    ```bash
    docker logs jan-postgresql
@@ -475,12 +487,14 @@ Very High (2000+)     >70%     >70%      1TB+        Horizontal + cache
    ```
 
 ### Diagnosis (5-15 min)
+
 - [ ] Is database process running? `ps aux | grep postgres`
 - [ ] Is disk full? `df -h`
 - [ ] Check system logs: `journalctl -n 50`
 - [ ] Check network connectivity: `ping database-host`
 
 ### Recovery Steps
+
 1. **If disk full:**
    - Clean old logs: `rm -rf /var/log/postgresql/*.log*`
    - Check large tables: `SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) FROM pg_tables ORDER BY pg_total_relation_size DESC LIMIT 10`
@@ -496,13 +510,16 @@ Very High (2000+)     >70%     >70%      1TB+        Horizontal + cache
    - If severe, restore from backup
 
 ### Escalation
+
 - If not resolved in 15 min: Page on-call DBA
 - If customer impact: Update status page
 
 ### Post-Incident
+
 - [ ] Root cause analysis meeting
 - [ ] Add monitoring/alerting to prevent recurrence
 - [ ] Update runbook with findings
+
 ```
 
 ### Alert Severity Levels
@@ -523,3 +540,4 @@ Very High (2000+)     >70%     >70%      1TB+        Horizontal + cache
 - [ ] Quarterly capacity planning review
 
 See [MCP Custom Tools Guide](mcp-custom-tools.md) for tool-specific monitoring and [Webhooks Guide](webhooks.md) for webhook health checks.
+```

@@ -23,6 +23,7 @@ server/
 ```
 
 **Rules:**
+
 - Use descriptive, plural nouns where appropriate (`apps`, `services`, `packages`)
 - Single word preferred (`tools`, `docs`)
 - Hyphenate multi-word directories (`infra-scripts` if needed)
@@ -42,6 +43,7 @@ apps/
 ```
 
 **Rules:**
+
 - Lowercase only
 - Hyphenate multi-word apps (`chrome-extension`, `user-portal`)
 - Descriptive and concise
@@ -62,6 +64,7 @@ services/
 ```
 
 **Rules:**
+
 - Lowercase kebab-case
 - End with `-api` or `-tools` or `-service` for clarity
 - Match Docker image naming
@@ -81,6 +84,7 @@ packages/
 ```
 
 **Rules:**
+
 - Prefix with `shared-` for cross-app packages
 - Language-specific packages use language name (`go-common`, `py-utils`)
 - Descriptive suffix (`-ui`, `-types`, `-utils`)
@@ -101,6 +105,7 @@ turbo.json             # Turborepo config (if used)
 ```
 
 **Rules:**
+
 - Lowercase
 - Use standard config file names
 - Hyphenate multi-word configs (`docker-compose.yml`)
@@ -118,6 +123,7 @@ docs/
 ```
 
 **Rules:**
+
 - Lowercase kebab-case with `.md` extension
 - `README.md` (uppercase) for index files
 - Descriptive names (`authentication.md`, `deployment-guide.md`)
@@ -126,12 +132,14 @@ docs/
 ### 2.3 Source Code Files
 
 **TypeScript/JavaScript:**
+
 - Components: `PascalCase.tsx` (e.g., `UserProfile.tsx`)
 - Utilities: `camelCase.ts` (e.g., `formatDate.ts`)
 - Hooks: `camelCase.ts` with `use` prefix (e.g., `useAuth.ts`)
 - Types: `PascalCase.types.ts` (e.g., `User.types.ts`)
 
 **Go:**
+
 - Files: `snake_case.go` (e.g., `cmd_setup.go`, `utils.go`)
 - Packages: lowercase single word (e.g., `config`, `telemetry`)
 
@@ -154,6 +162,7 @@ infra/docker/
 **Pattern**: `{category}.yml` or `services-{type}.yml`
 
 **Rules:**
+
 - Lowercase kebab-case
 - Group by function/category
 - Prefix with `services-` for service definitions
@@ -164,10 +173,12 @@ infra/docker/
 **Format**: `registry.domain.com/server/{service}:{tag}`
 
 **Examples:**
+
 - `registry.menlo.ai/server/llm-api:dev-abc123`
 - `registry.menlo.ai/server/mcp-tools:prod-v1.2.3`
 
 **Rules:**
+
 - Use kebab-case for service names
 - Tag format: `{env}-{identifier}` (e.g., `dev-sha`, `prod-v1.0.0`)
 
@@ -184,6 +195,7 @@ infra/k8s/
 **Pattern**: `{resource-name}-{type}.yaml` or `{type}.yaml`
 
 **Rules:**
+
 - Lowercase kebab-case
 - Suffix with resource type (`-deployment`, `-service`, `-configmap`)
 - Standalone types use singular (`namespace.yaml`, `ingress.yaml`)
@@ -197,6 +209,7 @@ infra/k8s/
 **Format**: `{type}/{scope}-{description}` or `{type}/{description}` (for cross-cutting changes)
 
 **Types:**
+
 - `feat/` - New features
 - `fix/` - Bug fixes
 - `refactor/` - Code refactoring
@@ -205,6 +218,7 @@ infra/k8s/
 - `test/` - Test additions/fixes
 
 **Scopes** (optional but recommended for monorepo):
+
 - `web` - Web app changes
 - `admin` - Admin app changes
 - `platform` - Platform app changes
@@ -215,14 +229,16 @@ infra/k8s/
 
 **Examples:**
 
-*With scope (recommended for monorepo):*
+_With scope (recommended for monorepo):_
+
 - `feat/web-user-authentication` - New auth feature in web app
 - `fix/llm-api-memory-leak` - Bug fix in LLM API service
 - `feat/admin-dashboard-redesign` - Admin app feature
 - `refactor/shared-refactor-types` - Shared package refactoring
 - `chore/infra-update-k8s-configs` - Infrastructure update
 
-*Without scope (for cross-cutting changes):*
+_Without scope (for cross-cutting changes):_
+
 - `docs/update-api-guide` - Documentation affecting multiple services
 - `chore/upgrade-dependencies` - Dependency updates across monorepo
 - `refactor/monorepo-structure` - Structural changes
@@ -242,6 +258,7 @@ infra/k8s/
 **Format**: `@jan/{package-name}`
 
 **Examples:**
+
 - `@jan/shared-ui`
 - `@jan/shared-types`
 - `@jan/shared-utils`
@@ -251,6 +268,7 @@ infra/k8s/
 **Format**: `server/{service-name}:{tag}`
 
 **Examples:**
+
 - `server/llm-api:latest`
 - `server/mcp-tools:dev-abc123`
 
@@ -259,6 +277,7 @@ infra/k8s/
 **Format**: `github.com/janhq/server/{path}`
 
 **Examples:**
+
 - `github.com/janhq/server/tools/jan-cli`
 - `github.com/janhq/server/pkg/config`
 
@@ -290,22 +309,26 @@ All workflows live in `.github/workflows/` with the following organization:
 **Format**: `ci-{component}-{environment}.yml`
 
 **Components:**
+
 - `backend` - Backend microservices
 - `app-{name}` - Frontend applications (web, admin, platform)
 - `packages` - Shared packages/libraries
 - Component-specific names (e.g., `config-drift`)
 
 **Environments:**
+
 - `dev` - Development/staging (triggers on `main`, `dev-test` branches)
 - `prod` - Production (triggers on `release` branch)
 - No suffix - Environment-agnostic validation workflows
 
 **Special Prefixes:**
+
 - `_` (underscore) - Reusable workflow templates (e.g., `_reusable-docker.yml`)
 
 ### 6.3 Examples
 
 #### ✅ Correct:
+
 - `ci-backend-dev.yml` - Backend services for dev environment
 - `ci-app-web-prod.yml` - Web app production deployment
 - `ci-app-checkout-dev.yml` - New checkout app dev workflow
@@ -313,6 +336,7 @@ All workflows live in `.github/workflows/` with the following organization:
 - `_reusable-node-build.yml` - Reusable Node.js build template
 
 #### ❌ Incorrect:
+
 - `dev.yml` - Too generic, unclear what it builds
 - `web-app-ci.yml` - Wrong order, should be `ci-app-web-*.yml`
 - `ci-web.yml` - Missing `app-` prefix for frontend apps
@@ -330,6 +354,7 @@ When adding a new frontend app (e.g., `mobile`), create:
 ```
 
 **Template for dev workflow:**
+
 ```yaml
 name: CI - Mobile App (Dev)
 
@@ -337,13 +362,13 @@ on:
   push:
     branches: [main, dev-test]
     paths:
-      - 'apps/mobile/**'
-      - 'packages/shared-ui/**'
-      - 'packages/shared-types/**'
-      - 'packages/shared-utils/**'
+      - "apps/mobile/**"
+      - "packages/shared-ui/**"
+      - "packages/shared-types/**"
+      - "packages/shared-utils/**"
   pull_request:
     paths:
-      - 'apps/mobile/**'
+      - "apps/mobile/**"
 
 jobs:
   build-and-test:
@@ -357,7 +382,7 @@ jobs:
 ### Adding a New Frontend App
 
 1. **Directory**: `apps/new-app/`
-2. **Workflows**: 
+2. **Workflows**:
    - `ci-app-new-app-dev.yml`
    - `ci-app-new-app-prod.yml`
 3. **Package**: `@jan/new-app`

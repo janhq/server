@@ -5,6 +5,7 @@ This custom Kong plugin validates API keys stored in Keycloak user attributes.
 ## Overview
 
 The plugin:
+
 1. Extracts API key from `X-API-Key` header
 2. Validates it starts with `sk_` prefix
 3. Calls LLM-API validation endpoint
@@ -32,10 +33,10 @@ Kong injects headers -> Downstream Service
 ```yaml
 - name: keycloak-apikey
   config:
-    validation_url: "http://llm-api:8080/auth/validate-api-key"  # Validation endpoint
-    validation_timeout: 5000                                      # Timeout in ms
-    hide_credentials: true                                        # Hide API key from services
-    run_on_preflight: false                                       # Skip CORS preflight
+    validation_url: "http://llm-api:8080/auth/validate-api-key" # Validation endpoint
+    validation_timeout: 5000 # Timeout in ms
+    hide_credentials: true # Hide API key from services
+    run_on_preflight: false # Skip CORS preflight
 ```
 
 ### Injected Headers
@@ -53,6 +54,7 @@ When API key is valid, Kong injects:
 **Priority: 1002** - Runs after JWT plugin (1005) but before other plugins.
 
 This allows:
+
 - JWT to authenticate first if present
 - API key as fallback authentication
 - Both methods work independently
@@ -60,6 +62,7 @@ This allows:
 ## Authentication Flow
 
 ### 1. JWT Only
+
 ```
 Authorization: Bearer <jwt_token>
 -> JWT plugin validates
@@ -68,6 +71,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### 2. API Key Only
+
 ```
 X-API-Key: sk_abc123...
 -> JWT plugin skips (no JWT)
@@ -76,6 +80,7 @@ X-API-Key: sk_abc123...
 ```
 
 ### 3. Both JWT + API Key
+
 ```
 Authorization: Bearer <jwt_token>
 X-API-Key: sk_abc123...
@@ -85,6 +90,7 @@ X-API-Key: sk_abc123...
 ```
 
 ### 4. Neither
+
 ```
 (no auth headers)
 -> Both plugins skip
@@ -122,6 +128,7 @@ curl http://localhost:8000/v1/models \
 The plugin calls `POST /auth/validate-api-key`:
 
 **Request:**
+
 ```json
 {
   "api_key": "sk_abc123..."
@@ -129,6 +136,7 @@ The plugin calls `POST /auth/validate-api-key`:
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "user_id": "123",
@@ -142,6 +150,7 @@ The plugin calls `POST /auth/validate-api-key`:
 ```
 
 **Response (401 Unauthorized):**
+
 ```json
 {
   "message": "Invalid API key"
@@ -183,6 +192,7 @@ docker logs kong --tail 100 -f
 ### Headers Not Injected
 
 Check that `hide_credentials` is set correctly:
+
 - `true` - Removes API key header (recommended)
 - `false` - Keeps API key header (for debugging)
 

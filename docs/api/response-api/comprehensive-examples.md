@@ -22,16 +22,18 @@ Complete working examples for Response API multi-step tool orchestration with Py
 All Response API calls require authentication via Kong Gateway.
 
 **JavaScript:**
+
 ```javascript
 // Get guest token
 const authResponse = await fetch("http://localhost:8000/llm/auth/guest-login", {
-  method: "POST"
+  method: "POST",
 });
 const { access_token: token } = await authResponse.json();
-const headers = { "Authorization": `Bearer ${token}` };
+const headers = { Authorization: `Bearer ${token}` };
 ```
 
 **cURL:**
+
 ```bash
 # Get and export token
 TOKEN=$(curl -s -X POST http://localhost:8000/llm/auth/guest-login | jq -r '.access_token')
@@ -47,19 +49,20 @@ export TOKEN
 Execute a single tool with automatic LLM orchestration.
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/responses/v1/responses", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
     input: "What's the weather in San Francisco?",
     temperature: 0.7,
-    stream: false
-  })
+    stream: false,
+  }),
 });
 
 const result = await response.json();
@@ -69,6 +72,7 @@ console.log(`Tools Used: ${result.tool_executions?.length || 0}`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/responses/v1/responses \
   -H "Authorization: Bearer $TOKEN" \
@@ -82,6 +86,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
 ```
 
 **Response:**
+
 ```json
 {
   "id": "resp_01hqr8v9k2x3f4g5h6j7k8m9n0",
@@ -97,7 +102,7 @@ curl -X POST http://localhost:8000/responses/v1/responses \
   "tool_executions": [
     {
       "tool_name": "google_search",
-      "input": {"q": "San Francisco weather"},
+      "input": { "q": "San Francisco weather" },
       "output": "Current conditions: Partly cloudy, 62°F...",
       "execution_time_ms": 342,
       "depth": 0
@@ -117,20 +122,22 @@ curl -X POST http://localhost:8000/responses/v1/responses \
 Let the AI orchestrate multiple tools in sequence.
 
 **JavaScript:**
+
 ```javascript
 // Multi-step data gathering
 const response = await fetch("http://localhost:8000/responses/v1/responses", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
-    input: "Find the top 3 AI research papers from this week and summarize their key contributions",
+    input:
+      "Find the top 3 AI research papers from this week and summarize their key contributions",
     system_prompt: "Use search and scraping tools efficiently",
-    temperature: 0.3
-  })
+    temperature: 0.3,
+  }),
 });
 
 const result = await response.json();
@@ -142,6 +149,7 @@ console.log("\nSummary:", result.output);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST http://localhost:8000/responses/v1/responses \
   -H "Authorization: Bearer $TOKEN" \
@@ -170,13 +178,14 @@ Limit the depth of tool chaining:
 Submit long-running tasks without holding connection open.
 
 **JavaScript:**
+
 ```javascript
 // Submit background task with webhook
 const response = await fetch("http://localhost:8000/responses/v1/responses", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
@@ -185,9 +194,9 @@ const response = await fetch("http://localhost:8000/responses/v1/responses", {
     store: true,
     metadata: {
       webhook_url: "https://myapp.com/webhook",
-      callback_token: "secret_token_123"
-    }
-  })
+      callback_token: "secret_token_123",
+    },
+  }),
 });
 
 const task = await response.json();
@@ -195,6 +204,7 @@ console.log(`Task ${task.id} queued at ${new Date(task.queued_at * 1000)}`);
 ```
 
 **cURL:**
+
 ```bash
 # Submit background task
 TASK_ID=$(curl -s -X POST http://localhost:8000/responses/v1/responses \
@@ -218,49 +228,51 @@ echo "Task ID: $TASK_ID"
 Check task progress:
 
 **JavaScript:**
+
 ```javascript
 async function pollForCompletion(responseId, headers, maxWait = 300000) {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < maxWait) {
     const response = await fetch(
       `http://localhost:8000/responses/v1/responses/${responseId}`,
-      { headers }
+      { headers },
     );
     const result = await response.json();
-    
+
     console.log(`Status: ${result.status}`);
-    
-    if (['completed', 'failed', 'cancelled'].includes(result.status)) {
+
+    if (["completed", "failed", "cancelled"].includes(result.status)) {
       return result;
     }
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
-  
-  throw new Error('Task did not complete in time');
+
+  throw new Error("Task did not complete in time");
 }
 
 // Usage
-const result = await pollForCompletion('resp_abc123', headers);
-console.log('Output:', result.output);
+const result = await pollForCompletion("resp_abc123", headers);
+console.log("Output:", result.output);
 ```
 
 **cURL:**
+
 ```bash
 # Simple polling loop
 while true; do
   STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" \
     http://localhost:8000/responses/v1/responses/$TASK_ID | jq -r '.status')
-  
+
   echo "Status: $STATUS"
-  
+
   if [[ "$STATUS" == "completed" ]] || [[ "$STATUS" == "failed" ]]; then
     curl -s -H "Authorization: Bearer $TOKEN" \
       http://localhost:8000/responses/v1/responses/$TASK_ID | jq
     break
   fi
-  
+
   sleep 2
 done
 ```
@@ -270,6 +282,7 @@ done
 When a background task completes, the Response API sends a POST request to the webhook URL specified in metadata.
 
 **Webhook Payload (Completed):**
+
 ```json
 {
   "id": "resp_abc123",
@@ -295,18 +308,19 @@ When a background task completes, the Response API sends a POST request to the w
 
 **Webhook Handler (Python/Flask):**
 **Webhook Handler (Node.js/Express):**
+
 ```javascript
-app.post('/webhooks/responses', async (req, res) => {
+app.post("/webhooks/responses", async (req, res) => {
   const { id, status, output, metadata } = req.body;
-  
-  if (status === 'completed') {
+
+  if (status === "completed") {
     // Process result
     await database.saveResponse(metadata.user_id, id, output);
-    await notifyUser(metadata.user_id, 'Task completed!');
-  } else if (status === 'failed') {
+    await notifyUser(metadata.user_id, "Task completed!");
+  } else if (status === "failed") {
     await logError(id, req.body.error);
   }
-  
+
   res.json({ received: true });
 });
 ```
@@ -314,10 +328,11 @@ app.post('/webhooks/responses', async (req, res) => {
 ### Cancelling Background Tasks
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/responses/v1/responses/${taskId}/cancel`,
-  { method: "POST", headers }
+  { method: "POST", headers },
 );
 
 const result = await response.json();
@@ -325,6 +340,7 @@ console.log(`Task cancelled: ${result.status}`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/responses/v1/responses/$TASK_ID/cancel | jq
@@ -339,18 +355,19 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 Get tool execution updates and output as Server-Sent Events (SSE).
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch("http://localhost:8000/responses/v1/responses", {
   method: "POST",
   headers: {
     ...headers,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
     model: "jan-v2-30b",
     input: "Analyze current tech trends",
-    stream: true
-  })
+    stream: true,
+  }),
 });
 
 const reader = response.body.getReader();
@@ -359,18 +376,18 @@ const decoder = new TextDecoder();
 while (true) {
   const { done, value } = await reader.read();
   if (done) break;
-  
+
   const chunk = decoder.decode(value);
-  const lines = chunk.split('\n');
-  
+  const lines = chunk.split("\n");
+
   for (const line of lines) {
-    if (line.startsWith('data: ')) {
+    if (line.startsWith("data: ")) {
       const data = line.slice(6);
-      if (data === '[DONE]') {
-        console.log('\nStream complete');
+      if (data === "[DONE]") {
+        console.log("\nStream complete");
         break;
       }
-      
+
       try {
         const event = JSON.parse(data);
         if (event.tool_execution) {
@@ -387,6 +404,7 @@ while (true) {
 ```
 
 **cURL:**
+
 ```bash
 curl -N -X POST http://localhost:8000/responses/v1/responses \
   -H "Authorization: Bearer $TOKEN" \
@@ -399,6 +417,7 @@ curl -N -X POST http://localhost:8000/responses/v1/responses \
 ```
 
 **Stream Event Format:**
+
 ```
 data: {"tool_execution":{"tool_name":"google_search","status":"started","depth":0}}
 
@@ -420,10 +439,11 @@ data: [DONE]
 ### Get Response Details
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/responses/v1/responses/${responseId}`,
-  { headers }
+  { headers },
 );
 
 const result = await response.json();
@@ -432,6 +452,7 @@ console.log(`Output length: ${result.output?.length || 0} chars`);
 ```
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/responses/v1/responses/resp_abc123 | jq
@@ -442,6 +463,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 Get the normalized conversation items sent to the LLM:
 
 **cURL:**
+
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/responses/v1/responses/resp_abc123/input_items | jq
@@ -450,16 +472,18 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### Delete Response
 
 **JavaScript:**
+
 ```javascript
 const response = await fetch(
   `http://localhost:8000/responses/v1/responses/${responseId}`,
-  { method: "DELETE", headers }
+  { method: "DELETE", headers },
 );
 
 console.log(`Deleted: ${response.status === 204}`);
 ```
 
 **cURL:**
+
 ```bash
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/responses/v1/responses/resp_abc123
@@ -474,6 +498,7 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 **Request Validation Error (400):**
 **Tool Execution Timeout (408):**
 **Max Depth Exceeded:**
+
 ```json
 {
   "error": {
@@ -484,8 +509,7 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
-**Response Not Found (404):**
----
+## **Response Not Found (404):**
 
 ## Real-World Examples
 
@@ -513,15 +537,15 @@ Extract structured data from web sources:
 
 Key configuration options for Response API behavior:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RESPONSE_MAX_TOOL_DEPTH` | 8 | Maximum depth for tool chaining |
-| `TOOL_EXECUTION_TIMEOUT` | 45s | Per-tool execution timeout |
-| `BACKGROUND_WORKER_COUNT` | 4 | Number of background workers |
-| `BACKGROUND_POLL_INTERVAL` | 2s | Worker polling frequency |
-| `BACKGROUND_TASK_TIMEOUT` | 600s | Max time for background tasks |
-| `WEBHOOK_MAX_RETRIES` | 3 | Webhook delivery retry attempts |
-| `WEBHOOK_TIMEOUT` | 10s | Webhook HTTP timeout |
+| Variable                   | Default | Description                     |
+| -------------------------- | ------- | ------------------------------- |
+| `RESPONSE_MAX_TOOL_DEPTH`  | 8       | Maximum depth for tool chaining |
+| `TOOL_EXECUTION_TIMEOUT`   | 45s     | Per-tool execution timeout      |
+| `BACKGROUND_WORKER_COUNT`  | 4       | Number of background workers    |
+| `BACKGROUND_POLL_INTERVAL` | 2s      | Worker polling frequency        |
+| `BACKGROUND_TASK_TIMEOUT`  | 600s    | Max time for background tasks   |
+| `WEBHOOK_MAX_RETRIES`      | 3       | Webhook delivery retry attempts |
+| `WEBHOOK_TIMEOUT`          | 10s     | Webhook HTTP timeout            |
 
 ### Response Object Schema
 

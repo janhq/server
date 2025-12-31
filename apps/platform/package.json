@@ -1,5 +1,5 @@
 {
-  "name": "jan-platform-docs",
+  "name": "@janhq/platform",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/js-cookie": "^3.0.6",
     "@types/mdx": "^2.0.13",
@@ -58,10 +59,10 @@
     "remark-lint": "^10.0.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
   },
   "overrides": {
     "form-data": "^4.0.1"
-  },
-  "packageManager": "yarn@4.5.3+sha512.3003a14012e2987072d244c720506549c1aab73ee728208f1b2580a9fd67b92d61ba6b08fe93f6dce68fd771e3af1e59a0afa28dd242dd0940d73b95fedd4e90"
+  }
 }

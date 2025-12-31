@@ -54,77 +54,77 @@ The following table lists the configurable parameters and their default values.
 
 ### Global Settings
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `global.imageRegistry` | Global Docker registry | `""` |
-| `global.imagePullSecrets` | Global image pull secrets | `[]` |
-| `global.storageClass` | Global storage class | `""` |
+| Parameter                 | Description               | Default |
+| ------------------------- | ------------------------- | ------- |
+| `global.imageRegistry`    | Global Docker registry    | `""`    |
+| `global.imagePullSecrets` | Global image pull secrets | `[]`    |
+| `global.storageClass`     | Global storage class      | `""`    |
 
 ### PostgreSQL (Bitnami)
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `postgresql.enabled` | Enable PostgreSQL | `true` |
-| `postgresql.auth.username` | PostgreSQL username | `jan_user` |
-| `postgresql.auth.password` | PostgreSQL password | `jan_password` |
-| `postgresql.auth.database` | PostgreSQL database | `jan_llm_api` |
-| `postgresql.primary.persistence.size` | PVC size | `10Gi` |
+| Parameter                             | Description         | Default        |
+| ------------------------------------- | ------------------- | -------------- |
+| `postgresql.enabled`                  | Enable PostgreSQL   | `true`         |
+| `postgresql.auth.username`            | PostgreSQL username | `jan_user`     |
+| `postgresql.auth.password`            | PostgreSQL password | `jan_password` |
+| `postgresql.auth.database`            | PostgreSQL database | `jan_llm_api`  |
+| `postgresql.primary.persistence.size` | PVC size            | `10Gi`         |
 
 ### LLM API
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `llmApi.enabled` | Enable LLM API | `true` |
-| `llmApi.replicaCount` | Number of replicas | `2` |
-| `llmApi.image.repository` | Image repository | `jan/llm-api` |
-| `llmApi.image.tag` | Image tag | `latest` |
-| `llmApi.service.type` | Service type | `ClusterIP` |
-| `llmApi.service.port` | Service port | `8080` |
-| `llmApi.resources.requests.memory` | Memory request | `256Mi` |
-| `llmApi.resources.requests.cpu` | CPU request | `250m` |
-| `llmApi.autoscaling.enabled` | Enable autoscaling | `false` |
-| `llmApi.ingress.enabled` | Enable ingress | `false` |
+| Parameter                          | Description        | Default       |
+| ---------------------------------- | ------------------ | ------------- |
+| `llmApi.enabled`                   | Enable LLM API     | `true`        |
+| `llmApi.replicaCount`              | Number of replicas | `2`           |
+| `llmApi.image.repository`          | Image repository   | `jan/llm-api` |
+| `llmApi.image.tag`                 | Image tag          | `latest`      |
+| `llmApi.service.type`              | Service type       | `ClusterIP`   |
+| `llmApi.service.port`              | Service port       | `8080`        |
+| `llmApi.resources.requests.memory` | Memory request     | `256Mi`       |
+| `llmApi.resources.requests.cpu`    | CPU request        | `250m`        |
+| `llmApi.autoscaling.enabled`       | Enable autoscaling | `false`       |
+| `llmApi.ingress.enabled`           | Enable ingress     | `false`       |
 
 ### Media API
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `mediaApi.enabled` | Enable Media API | `true` |
-| `mediaApi.replicaCount` | Number of replicas | `2` |
-| `mediaApi.image.repository` | Image repository | `jan/media-api` |
-| `mediaApi.image.tag` | Image tag | `latest` |
-| `mediaApi.service.port` | Service port | `8285` |
-| `mediaApi.ingress.enabled` | Enable Media API ingress | `false` |
-| `mediaApi.secrets.s3Endpoint` | S3 endpoint URL | `https://s3.menlo.ai` |
-| `mediaApi.secrets.s3Bucket` | S3 bucket name | `platform-dev` |
-| `mediaApi.secrets.s3AccessKey` | S3 access key | `XXXXX` |
-| `mediaApi.secrets.s3SecretKey` | S3 secret key | `YYYY` |
+| Parameter                      | Description              | Default               |
+| ------------------------------ | ------------------------ | --------------------- |
+| `mediaApi.enabled`             | Enable Media API         | `true`                |
+| `mediaApi.replicaCount`        | Number of replicas       | `2`                   |
+| `mediaApi.image.repository`    | Image repository         | `jan/media-api`       |
+| `mediaApi.image.tag`           | Image tag                | `latest`              |
+| `mediaApi.service.port`        | Service port             | `8285`                |
+| `mediaApi.ingress.enabled`     | Enable Media API ingress | `false`               |
+| `mediaApi.secrets.s3Endpoint`  | S3 endpoint URL          | `https://s3.menlo.ai` |
+| `mediaApi.secrets.s3Bucket`    | S3 bucket name           | `platform-dev`        |
+| `mediaApi.secrets.s3AccessKey` | S3 access key            | `XXXXX`               |
+| `mediaApi.secrets.s3SecretKey` | S3 secret key            | `YYYY`                |
 
 ### MCP Tools
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `mcpTools.enabled` | Enable MCP Tools | `true` |
-| `mcpTools.replicaCount` | Number of replicas | `2` |
-| `mcpTools.service.port` | Service port | `8091` |
-| `mcpTools.secrets.serperApiKey` | Serper API key | `""` |
+| Parameter                       | Description        | Default |
+| ------------------------------- | ------------------ | ------- |
+| `mcpTools.enabled`              | Enable MCP Tools   | `true`  |
+| `mcpTools.replicaCount`         | Number of replicas | `2`     |
+| `mcpTools.service.port`         | Service port       | `8091`  |
+| `mcpTools.secrets.serperApiKey` | Serper API key     | `""`    |
 
 ### Keycloak
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `keycloak.enabled` | Enable Keycloak | `true` |
-| `keycloak.admin.username` | Admin username | `admin` |
-| `keycloak.admin.password` | Admin password | `changeme` |
-| `keycloak.service.port` | Service port | `8085` |
+| Parameter                 | Description     | Default    |
+| ------------------------- | --------------- | ---------- |
+| `keycloak.enabled`        | Enable Keycloak | `true`     |
+| `keycloak.admin.username` | Admin username  | `admin`    |
+| `keycloak.admin.password` | Admin password  | `changeme` |
+| `keycloak.service.port`   | Service port    | `8085`     |
 
 ### Kong API Gateway
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `kong.enabled` | Enable Kong | `true` |
+| Parameter           | Description  | Default        |
+| ------------------- | ------------ | -------------- |
+| `kong.enabled`      | Enable Kong  | `true`         |
 | `kong.service.type` | Service type | `LoadBalancer` |
-| `kong.service.port` | Service port | `8000` |
+| `kong.service.port` | Service port | `8000`         |
 
 ## Upgrading
 
@@ -329,6 +329,7 @@ kubectl exec -it -n jan-server jan-server-postgresql-0 -- psql -U jan_user -d ja
 ## Support
 
 For issues and questions:
+
 - GitHub: https://github.com/janhq/jan-server
 - Documentation: https://docs.jan.ai
 

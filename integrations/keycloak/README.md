@@ -5,6 +5,7 @@ This directory contains Keycloak configuration for Jan Server's user management,
 ## Overview
 
 Jan Server uses Keycloak as the **single source of truth** for:
+
 - User authentication and identity management
 - Role-Based Access Control (RBAC)
 - Group membership and organization
@@ -43,7 +44,7 @@ Keycloak will automatically import the realm configuration from `import/realm-ja
 
 - **URL**: http://localhost:8080 (or configured port)
 - **Admin Console**: http://localhost:8080/admin
-- **Default Admin Credentials**: 
+- **Default Admin Credentials**:
   - Username: `admin`
   - Password: `admin` (⚠️ Change in production!)
 
@@ -71,6 +72,7 @@ Keycloak will automatically import the realm configuration from `import/realm-ja
 ### Clients
 
 #### 1. backend (Service Account)
+
 - **Client ID**: `backend`
 - **Type**: Confidential (has secret)
 - **Purpose**: Backend service-to-service authentication
@@ -80,11 +82,12 @@ Keycloak will automatically import the realm configuration from `import/realm-ja
 - **Use Case**: Admin API operations, Keycloak management
 
 #### 2. jan-client (Public Client)
+
 - **Client ID**: `jan-client`
 - **Type**: Public (no secret)
 - **Purpose**: User authentication for web/mobile apps
 - **Grants**: Authorization Code Flow with PKCE
-- **Token Lifespan**: 
+- **Token Lifespan**:
   - Access Token: 3600 seconds (1 hour)
   - Refresh Token: 2592000 seconds (30 days)
 - **Redirect URIs**: Localhost + production domains
@@ -94,11 +97,11 @@ Keycloak will automatically import the realm configuration from `import/realm-ja
 
 #### Realm Roles
 
-| Role | Description | Capabilities |
-|------|-------------|--------------|
-| `admin` | Administrator | Full system access, manage users/groups/flags |
-| `user` | Registered User | Standard platform access |
-| `guest` | Guest User | Temporary/limited access |
+| Role    | Description     | Capabilities                                  |
+| ------- | --------------- | --------------------------------------------- |
+| `admin` | Administrator   | Full system access, manage users/groups/flags |
+| `user`  | Registered User | Standard platform access                      |
+| `guest` | Guest User      | Temporary/limited access                      |
 
 **Admin Detection**: Check for `admin` in `realm_access.roles` array in JWT
 
@@ -106,12 +109,12 @@ Keycloak will automatically import the realm configuration from `import/realm-ja
 
 Groups are used for organization and feature flag assignment. All groups have `feature_flags` attribute.
 
-| Group | Path | Auto-Assign | Feature Flags | Purpose |
-|-------|------|-------------|---------------|---------|
-| `jan_group` | `/jan_group` | Auto (@jan.ai, @menlo.ai emails) | `experimental_models` | Internal team members |
-| `pilot_users` | `/pilot_users` | Manual | `experimental_models` | Beta testers, early adopters |
-| `standard` | `/standard` | Auto (verified email) | None | Regular verified users |
-| `guest` | `/guest` | Auto (guest login) | None | Guest/temporary access |
+| Group         | Path           | Auto-Assign                      | Feature Flags         | Purpose                      |
+| ------------- | -------------- | -------------------------------- | --------------------- | ---------------------------- |
+| `jan_group`   | `/jan_group`   | Auto (@jan.ai, @menlo.ai emails) | `experimental_models` | Internal team members        |
+| `pilot_users` | `/pilot_users` | Manual                           | `experimental_models` | Beta testers, early adopters |
+| `standard`    | `/standard`    | Auto (verified email)            | None                  | Regular verified users       |
+| `guest`       | `/guest`       | Auto (guest login)               | None                  | Guest/temporary access       |
 
 **Default Group**: New users are automatically added to `/standard` group
 
@@ -121,13 +124,14 @@ Feature flags are stored as Keycloak group attributes and included in JWT tokens
 
 #### Current Feature Flags
 
-| Flag Key | Description | Groups with Access |
-|----------|-------------|-------------------|
+| Flag Key              | Description                                         | Groups with Access         |
+| --------------------- | --------------------------------------------------- | -------------------------- |
 | `experimental_models` | Access to experimental/beta models in model catalog | `jan_group`, `pilot_users` |
 
 #### Adding Feature Flags to Groups
 
 **Via Admin Console:**
+
 1. Navigate to **Groups** → Select group
 2. Go to **Attributes** tab
 3. Add attribute:
@@ -136,6 +140,7 @@ Feature flags are stored as Keycloak group attributes and included in JWT tokens
 4. Click **Add** then **Save**
 
 **Via Admin API (Go):**
+
 ```go
 import "github.com/Nerzal/gocloak/v13"
 
@@ -161,6 +166,7 @@ Protocol mappers add custom claims to JWT tokens.
 ### jan-client Mappers
 
 #### 1. Groups Mapper
+
 - **Type**: Group Membership
 - **Claim Name**: `groups`
 - **Full Path**: Yes (includes `/` prefix)
@@ -168,6 +174,7 @@ Protocol mappers add custom claims to JWT tokens.
 - **Example**: `["jan_group", "/pilot_users"]`
 
 #### 2. Feature Flags Mapper
+
 - **Type**: Group Membership (configured for attributes)
 - **Claim Name**: `feature_flags`
 - **Source**: Aggregated from all group `feature_flags` attributes
@@ -175,6 +182,7 @@ Protocol mappers add custom claims to JWT tokens.
 - **Example**: `["experimental_models"]`
 
 #### 3. Realm Roles Mapper
+
 - **Type**: User Realm Role
 - **Claim Name**: `realm_access.roles`
 - **Multivalued**: Yes
@@ -182,6 +190,7 @@ Protocol mappers add custom claims to JWT tokens.
 - **Example**: `{"realm_access": {"roles": ["admin", "user"]}}`
 
 #### 4. Email Verified Mapper
+
 - **Type**: User Property
 - **Claim Name**: `email_verified`
 - **JSON Type**: Boolean
@@ -189,6 +198,7 @@ Protocol mappers add custom claims to JWT tokens.
 - **Example**: `"email_verified": true`
 
 #### 5. Additional Standard Mappers
+
 - `preferred_username` - Username claim
 - `guest` - Guest user attribute
 - `pid` - Process/session ID attribute
@@ -227,22 +237,23 @@ Protocol mappers add custom claims to JWT tokens.
 
 ### Important Claims for Jan Server
 
-| Claim | Type | Purpose | Example |
-|-------|------|---------|---------|
-| `sub` | string | Unique user ID | `"a1b2c3d4-..."` |
-| `email` | string | User email | `"user@jan.ai"` |
-| `email_verified` | boolean | Email verification status | `true` |
-| `name` | string | Full name | `"John Doe"` |
-| `preferred_username` | string | Username | `"john.doe"` |
-| `groups` | array | Group paths with `/` prefix | `["/jan_group"]` |
-| `realm_access.roles` | array | Realm roles | `["admin", "user"]` |
-| `feature_flags` | array | Enabled feature flags | `["experimental_models"]` |
+| Claim                | Type    | Purpose                     | Example                   |
+| -------------------- | ------- | --------------------------- | ------------------------- |
+| `sub`                | string  | Unique user ID              | `"a1b2c3d4-..."`          |
+| `email`              | string  | User email                  | `"user@jan.ai"`           |
+| `email_verified`     | boolean | Email verification status   | `true`                    |
+| `name`               | string  | Full name                   | `"John Doe"`              |
+| `preferred_username` | string  | Username                    | `"john.doe"`              |
+| `groups`             | array   | Group paths with `/` prefix | `["/jan_group"]`          |
+| `realm_access.roles` | array   | Realm roles                 | `["admin", "user"]`       |
+| `feature_flags`      | array   | Enabled feature flags       | `["experimental_models"]` |
 
 ## User Management
 
 ### Creating Users
 
 #### Via Admin Console
+
 1. Select **jan** realm
 2. Navigate to **Users** → **Add user**
 3. Fill in details:
@@ -256,17 +267,20 @@ Protocol mappers add custom claims to JWT tokens.
 7. Go to **Role Mappings** tab → Assign realm roles
 
 #### Via Admin API
+
 See `pkg/keycloak/users.go` for Go client implementation.
 
 ### Assigning Admin Role
 
 **Option 1: Realm Role (Recommended)**
+
 1. Navigate to **Users** → Select user
 2. Go to **Role Mappings** tab
 3. Select **admin** from Available Roles
 4. Click **Add selected**
 
 **Option 2: User Attribute (Fallback)**
+
 1. Navigate to **Users** → Select user
 2. Go to **Attributes** tab
 3. Add attribute: `is_admin` = `true`
@@ -279,6 +293,7 @@ See `pkg/keycloak/users.go` for Go client implementation.
 4. Click **Join**
 
 **Auto-Assignment** (requires custom event listener):
+
 - Users with `@jan.ai` or `@menlo.ai` emails → `jan_group`
 - Verified users → `standard`
 - Guest login → `guest`
@@ -288,6 +303,7 @@ See `pkg/keycloak/users.go` for Go client implementation.
 ### Production Configuration
 
 #### 1. Change Default Credentials
+
 ```bash
 # Set via environment variables
 KEYCLOAK_ADMIN=your-admin-username
@@ -295,11 +311,13 @@ KEYCLOAK_ADMIN_PASSWORD=your-secure-password
 ```
 
 #### 2. Update Client Secrets
+
 - Generate strong random secrets for confidential clients
 - Store in secrets management system (Vault, AWS Secrets Manager, etc.)
 - Update `docker-compose.yml` and application config
 
 #### 3. Configure HTTPS
+
 ```yaml
 # In docker-compose.yml
 keycloak:
@@ -311,6 +329,7 @@ keycloak:
 ```
 
 #### 4. Enable Email Verification
+
 ```json
 // In realm-jan.json
 {
@@ -322,11 +341,13 @@ keycloak:
 Configure SMTP settings in Keycloak Admin Console → Realm Settings → Email.
 
 #### 5. Enable MFA for Admins
+
 1. Navigate to **Authentication** → **Required Actions**
 2. Enable **Configure OTP**
 3. Set as default for admin users
 
 #### 6. Enable Audit Logging
+
 ```json
 // In realm-jan.json
 {
@@ -341,18 +362,22 @@ Configure SMTP settings in Keycloak Admin Console → Realm Settings → Email.
 ### Token Security
 
 #### Token Lifespans (Production Recommendations)
+
 - **Access Token**: 15-30 minutes (not 1 hour)
 - **Refresh Token**: 30 days with rotation
 - **SSO Session**: 12 hours
 - **Offline Token**: 90 days (if needed)
 
 #### Token Validation
+
 Jan Server validates tokens using JWKS endpoint:
+
 ```
 http://localhost:8080/realms/jan/protocol/openid-connect/certs
 ```
 
 Configure in `config/defaults.yaml`:
+
 ```yaml
 auth:
   jwks_url: "http://keycloak:8080/realms/jan/protocol/openid-connect/certs"
@@ -365,9 +390,11 @@ auth:
 ### Common Issues
 
 #### 1. Realm Not Imported
+
 **Symptom**: "jan" realm not found
 
 **Solution**:
+
 ```bash
 # Check Keycloak logs
 docker logs jan-server-keycloak-1
@@ -378,28 +405,34 @@ docker exec -it jan-server-keycloak-1 /opt/keycloak/bin/kc.sh import \
 ```
 
 #### 2. Feature Flags Not in JWT
+
 **Symptom**: `feature_flags` claim missing
 
 **Solution**:
+
 1. Verify group attributes are set correctly (JSON array format)
 2. Check protocol mapper configuration
 3. Issue new token (refresh or re-login)
 4. Verify mapper is assigned to client
 
 #### 3. Admin Role Not Working
+
 **Symptom**: Admin endpoints return 403 Forbidden
 
 **Solution**:
+
 1. Check `realm_access.roles` in JWT (use jwt.io)
 2. Verify user has `admin` realm role assigned
 3. Check middleware is looking for correct role name
 4. Try fallback `is_admin` attribute
 
 #### 4. Group Paths Mismatch
+
 **Symptom**: Group detection fails
 
 **Solution**:
 Groups have leading slash in JWT: `/jan_group` not `jan_group`
+
 ```go
 // Correct comparison
 if contains(groups, "/jan_group") { ... }
@@ -409,9 +442,11 @@ groupName := strings.TrimPrefix(group, "/")
 ```
 
 #### 5. Token Validation Fails
+
 **Symptom**: 401 Unauthorized errors
 
 **Solution**:
+
 1. Verify JWKS URL is accessible from Jan Server
 2. Check issuer and audience match
 3. Ensure clock sync between services
@@ -420,6 +455,7 @@ groupName := strings.TrimPrefix(group, "/")
 ### Debug JWT Contents
 
 Use jwt.io or command line:
+
 ```bash
 # Decode JWT (requires jq)
 echo $ACCESS_TOKEN | cut -d. -f2 | base64 -d | jq
@@ -441,6 +477,7 @@ docker exec jan-server-keycloak-1 /opt/keycloak/bin/kc.sh start-dev --log-level=
 ## Development vs Production
 
 ### Development Settings (Current)
+
 - ✅ Auto-registration enabled
 - ✅ Email verification disabled
 - ✅ HTTP allowed
@@ -449,6 +486,7 @@ docker exec jan-server-keycloak-1 /opt/keycloak/bin/kc.sh start-dev --log-level=
 - ⚠️ Simple passwords allowed
 
 ### Production Checklist
+
 - [ ] Disable auto-registration (or add CAPTCHA)
 - [ ] Enable email verification
 - [ ] Enforce HTTPS only
@@ -476,14 +514,14 @@ func JWTAuth() gin.HandlerFunc {
     return func(c *gin.Context) {
         // Validate JWT (Kong or middleware)
         claims := extractJWTClaims(c)
-        
+
         // Store in context
         c.Set("claims", claims)
         c.Set("user_id", claims["sub"])
         c.Set("user_email", claims["email"])
         c.Set("user_groups", claims["groups"])
         c.Set("feature_flags", claims["feature_flags"])
-        
+
         c.Next()
     }
 }
@@ -495,12 +533,12 @@ func JWTAuth() gin.HandlerFunc {
 // Check if user has feature flag
 func IsFeatureEnabled(c *gin.Context, flagKey string) bool {
     claims := c.MustGet("claims").(map[string]interface{})
-    
+
     featureFlagsRaw, ok := claims["feature_flags"]
     if !ok {
         return false
     }
-    
+
     switch flags := featureFlagsRaw.(type) {
     case []interface{}:
         for _, flag := range flags {
@@ -515,7 +553,7 @@ func IsFeatureEnabled(c *gin.Context, flagKey string) bool {
             }
         }
     }
-    
+
     return false
 }
 ```
@@ -542,7 +580,7 @@ func (k *KeycloakClient) ListUsers(ctx context.Context) ([]*gocloak.User, error)
     if err != nil {
         return nil, err
     }
-    
+
     users, err := k.client.GetUsers(ctx, token.AccessToken, k.realm, gocloak.GetUsersParams{})
     return users, err
 }
@@ -607,6 +645,7 @@ curl -X PUT http://localhost:8080/admin/realms/jan/users/{user-id}/groups/{group
 ## Support
 
 For issues related to:
+
 - **Keycloak Setup**: Check Keycloak logs and documentation
 - **Jan Server Integration**: See `docs/guides/user-management-todo.md`
 - **Feature Flags**: Review group attributes and protocol mappers

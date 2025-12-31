@@ -1,44 +1,44 @@
-import { useRouter } from '@tanstack/react-router'
+import { useRouter } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Field, FieldError, FieldGroup } from '@/components/ui/field'
+} from "@janhq/interfaces/dialog";
+import { Button } from "@janhq/interfaces/button";
+import { Field, FieldError, FieldGroup } from "@janhq/interfaces/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from '@/components/ui/input-group'
-import { Textarea } from '@/components/ui/textarea'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useProjects } from '@/stores/projects-store'
-import { Folder } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { ApiError } from '@/lib/api-client'
-import { useState } from 'react'
-import { URL_PARAM, URL_PARAM_VALUE } from '@/constants'
+} from "@janhq/interfaces/input-group";
+import { Textarea } from "@janhq/interfaces/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useProjects } from "@/stores/projects-store";
+import { Folder } from "lucide-react";
+import { useIsMobile } from "@janhq/interfaces/hooks/use-mobile";
+import { ApiError } from "@/lib/api-client";
+import { useState } from "react";
+import { URL_PARAM, URL_PARAM_VALUE } from "@/constants";
 
 const createProjectSchema = z.object({
-  name: z.string().min(1, 'Project name is required'),
+  name: z.string().min(1, "Project name is required"),
   instruction: z.string().optional(),
-})
+});
 
-type CreateProjectFormData = z.infer<typeof createProjectSchema>
+type CreateProjectFormData = z.infer<typeof createProjectSchema>;
 
 interface CreateProjectProps {
-  open: boolean
-  onOpenChange?: (open: boolean) => void
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CreateProject({ open, onOpenChange }: CreateProjectProps) {
-  const router = useRouter()
-  const createProject = useProjects((state) => state.createProject)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const router = useRouter();
+  const createProject = useProjects((state) => state.createProject);
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -46,42 +46,45 @@ export function CreateProject({ open, onOpenChange }: CreateProjectProps) {
     reset,
   } = useForm<CreateProjectFormData>({
     resolver: zodResolver(createProjectSchema),
-  })
+  });
 
   const handleClose = () => {
-    onOpenChange?.(false)
-    setServerError(null)
+    onOpenChange?.(false);
+    setServerError(null);
     // Fallback to URL-based closing if no callback provided
-    const url = new URL(window.location.href)
-    if (!onOpenChange && url.searchParams.get(URL_PARAM.PROJECTS) === URL_PARAM_VALUE.CREATE) {
-      url.searchParams.delete(URL_PARAM.PROJECTS)
-      router.navigate({ to: url.pathname + url.search })
+    const url = new URL(window.location.href);
+    if (
+      !onOpenChange &&
+      url.searchParams.get(URL_PARAM.PROJECTS) === URL_PARAM_VALUE.CREATE
+    ) {
+      url.searchParams.delete(URL_PARAM.PROJECTS);
+      router.navigate({ to: url.pathname + url.search });
     }
-  }
+  };
 
   const onSubmit = async (data: CreateProjectFormData) => {
-    setServerError(null)
+    setServerError(null);
     try {
       const newProject = await createProject({
         name: data.name,
-        instruction: data.instruction || '',
-      })
-      reset()
-      handleClose()
+        instruction: data.instruction || "",
+      });
+      reset();
+      handleClose();
       router.navigate({
-        to: '/projects/$projectId',
+        to: "/projects/$projectId",
         params: { projectId: newProject.id },
-      })
+      });
     } catch (error) {
       if (error instanceof ApiError && error.isDuplicateProjectName()) {
-        setServerError(error.message)
+        setServerError(error.message);
       } else {
-        console.error('Failed to create project:', error)
+        console.error("Failed to create project:", error);
       }
     }
-  }
+  };
 
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile();
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -111,7 +114,7 @@ export function CreateProject({ open, onOpenChange }: CreateProjectProps) {
                       placeholder="Name"
                       autoComplete="off"
                       autoFocus={isMobile ? false : true}
-                      {...register('name', {
+                      {...register("name", {
                         onChange: () => setServerError(null),
                       })}
                     />
@@ -129,7 +132,7 @@ export function CreateProject({ open, onOpenChange }: CreateProjectProps) {
                     placeholder="Project instructions (optional)"
                     rows={4}
                     className="max-h-100"
-                    {...register('instruction')}
+                    {...register("instruction")}
                   />
                   {errors.instruction && (
                     <FieldError>{errors.instruction.message}</FieldError>
@@ -151,7 +154,7 @@ export function CreateProject({ open, onOpenChange }: CreateProjectProps) {
                       disabled={isSubmitting}
                       className="rounded-full"
                     >
-                      {isSubmitting ? 'Creating...' : 'Create Project'}
+                      {isSubmitting ? "Creating..." : "Create Project"}
                     </Button>
                   </div>
                 </Field>
@@ -161,5 +164,5 @@ export function CreateProject({ open, onOpenChange }: CreateProjectProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

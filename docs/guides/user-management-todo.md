@@ -4,7 +4,8 @@
 
 Implement a comprehensive user management system with role-based access control (RBAC), group-based organization, and **group-level feature flags** for Jan Server.
 
-**Architecture Decision**: 
+**Architecture Decision**:
+
 - Use **Keycloak as the single source of truth** for users, roles, and groups
 - **No local cache/sync** - Read directly from JWT claims
 - **Feature flags stored in Keycloak group attributes** and included in JWT
@@ -14,6 +15,7 @@ Implement a comprehensive user management system with role-based access control 
 ## Technology Stack
 
 ### Backend
+
 - **Language**: Go (Golang)
 - **Framework**: Gin (HTTP router)
 - **Database**: PostgreSQL (audit logs & feature flag definitions only)
@@ -22,6 +24,7 @@ Implement a comprehensive user management system with role-based access control 
 - **Circuit Breaker**: `github.com/sony/gobreaker` (Keycloak resilience)
 
 ### Frontend (Future)
+
 - **Framework**: React or Next.js
 - **UI Library**: shadcn/ui or Material-UI
 - **State Management**: React Query (for cache management)
@@ -29,15 +32,18 @@ Implement a comprehensive user management system with role-based access control 
 - **Forms**: React Hook Form + Zod validation
 
 ### Infrastructure
+
 - **Identity Provider**: Keycloak (users, groups, roles, attributes)
 - **API Gateway**: Kong (already in use)
 - **JWT Validation**: JWKS endpoint from Keycloak
 - **Observability**: Prometheus + Grafana (already in use)
+
 ## User Roles
 
 ### Admin Role
+
 - **Privileges**: Full system access, can manage all users and groups
-- **Identification**: 
+- **Identification**:
   - Keycloak realm role: `admin` OR
   - Keycloak user attribute: `is_admin: true`
 - **Source of Truth**: Keycloak realm roles
@@ -50,6 +56,7 @@ Implement a comprehensive user management system with role-based access control 
   - **Manage group feature flags** (admin-only)
 
 ### User Role
+
 - **Privileges**: Standard platform access
 - **Identification**: Default role for authenticated users
 - **Source of Truth**: Keycloak realm roles
@@ -64,6 +71,7 @@ Implement a comprehensive user management system with role-based access control 
 **Source of Truth**: All groups are managed in **Keycloak**. Jan Server reads group membership from JWT claims.
 
 ### jan_group
+
 - **Description**: Internal Jan team members
 - **Membership Criteria**: Email domain `@jan.ai` OR `@menlo.ai`
 - **Auto-assignment**: ✅ Automatic via Keycloak event listeners or registration flow
@@ -71,10 +79,11 @@ Implement a comprehensive user management system with role-based access control 
 - **Default Feature Flags**: Experimental model access enabled
   ```yaml
   feature_flags:
-    - experimental_models  # Can see all models including experimental ones
+    - experimental_models # Can see all models including experimental ones
   ```
 
 ### pilot_users
+
 - **Description**: Beta testers and early adopters
 - **Membership Criteria**: Manual assignment by admin
 - **Auto-assignment**: ❌ Manual only
@@ -82,37 +91,41 @@ Implement a comprehensive user management system with role-based access control 
 - **Default Feature Flags**: Experimental model access enabled
   ```yaml
   feature_flags:
-    - experimental_models  # Can see experimental models for testing
+    - experimental_models # Can see experimental models for testing
   ```
 
 ### standard
+
 - **Description**: Verified regular users
 - **Membership Criteria**: Verified email address
 - **Auto-assignment**: ✅ Automatic after email verification
 - **Keycloak Setup**: Create group in Keycloak realm
 - **Default Feature Flags**: None (stable models only)
   ```yaml
-  feature_flags: []  # Can only see stable/production models
+  feature_flags: [] # Can only see stable/production models
   ```
 
 ### guest
+
 - **Description**: Guest/temporary access
 - **Membership Criteria**: Guest login without full registration
 - **Auto-assignment**: ✅ Automatic for guest login flow
 - **Keycloak Setup**: Create group in Keycloak realm
 - **Default Feature Flags**: None (stable models only)
   ```yaml
-  feature_flags: []  # Can only see stable/production models
+  feature_flags: [] # Can only see stable/production models
   ```
 
 ## Feature Flags System
 
 ### Overview
+
 Feature flags allow fine-grained control over which features are available to users based on their group membership.
 
 **Current Implementation**: Single feature flag for experimental model access
 
 **Design Principles**:
+
 - ✅ **Group-level only**: Feature flags defined per group
 - ✅ **Additive inheritance**: Users get ALL flags from ALL their groups
 - ✅ **Simple management**: No user-level overrides, no global flags
@@ -123,19 +136,20 @@ Feature flags allow fine-grained control over which features are available to us
 
 **Source of Truth**: Keycloak group attributes
 
-**Resolution Logic**: 
+**Resolution Logic**:
+
 ```go
 // User has a feature if ANY of their groups has that feature
 // All data comes from JWT claims - no database queries
 func IsFeatureEnabled(c *gin.Context, flagKey string) bool {
     claims := getJWTClaims(c) // Already validated by auth middleware
-    
+
     // Defensive parsing of feature_flags array from JWT
     featureFlagsRaw, ok := claims["feature_flags"]
     if !ok {
         return false
     }
-    
+
     // Handle different possible types
     switch flags := featureFlagsRaw.(type) {
     case []interface{}:
@@ -154,40 +168,40 @@ func IsFeatureEnabled(c *gin.Context, flagKey string) bool {
         // Unexpected type, log warning
         log.Warn().Msgf("Unexpected feature_flags type: %T", flags)
     }
-    
+
     return false
 }
 
 // Get user info from JWT with defensive parsing
 func GetUserInfo(c *gin.Context) (UserInfo, error) {
     claims := getJWTClaims(c)
-    
+
     userInfo := UserInfo{}
-    
+
     // Parse sub (required)
     sub, ok := claims["sub"].(string)
     if !ok {
         return userInfo, fmt.Errorf("missing or invalid sub claim")
     }
     userInfo.ID = sub
-    
+
     // Parse email (required)
     email, ok := claims["email"].(string)
     if !ok {
         return userInfo, fmt.Errorf("missing or invalid email claim")
     }
     userInfo.Email = email
-    
+
     // Parse name (optional)
     if name, ok := claims["name"].(string); ok {
         userInfo.Name = name
     }
-    
+
     // Parse email_verified (optional, defaults to false)
     if emailVerified, ok := claims["email_verified"].(bool); ok {
         userInfo.EmailVerified = emailVerified
     }
-    
+
     // Parse groups with type checking
     if groupsRaw, ok := claims["groups"]; ok {
         switch groups := groupsRaw.(type) {
@@ -201,14 +215,15 @@ func GetUserInfo(c *gin.Context) (UserInfo, error) {
             userInfo.Groups = groups
         }
     }
-    
+
     // Check admin status
     userInfo.IsAdmin = hasAdminRole(claims)
-    
+
     return userInfo, nil
 }
 ```
-```
+
+````
 
 ### Feature Flag Storage
 
@@ -221,13 +236,15 @@ Store as group attributes:
     "feature_flags": ["experimental_models"]
   }
 }
-```
+````
 
 #### In Jan Server Database (Definitions Only)
+
 - `feature_flags` table - Feature flag metadata (key, name, description, category)
 - `audit_logs` table - Audit trail for admin actions
 
 #### In JWT (All Runtime Data)
+
 ```json
 {
   "sub": "user_id",
@@ -270,17 +287,18 @@ INSERT INTO model_catalogs (id, model_id, name, experimental) VALUES
 ```
 
 API filtering:
+
 ```go
 func GetModelCatalog(c *gin.Context) {
     userID := c.GetString("user_id")
     hasExperimentalAccess := featureFlagService.IsFeatureEnabled(userID, "experimental_models")
-    
+
     query := "SELECT * FROM model_catalogs WHERE 1=1"
     if !hasExperimentalAccess {
         query += " AND experimental = false"
     }
     query += " ORDER BY name"
-    
+
     // Execute query...
 }
 ```
@@ -288,12 +306,14 @@ func GetModelCatalog(c *gin.Context) {
 ## User Status
 
 ### 🟢 Active
+
 - User can log in and use the platform
 - All features accessible based on role and group feature flags
 - Default status for new users after verification
 - **Keycloak Representation**: `enabled: true`
 
 ### ⚪ Inactive
+
 - User account disabled
 - Cannot log in
 - Sessions invalidated by Keycloak
@@ -301,11 +321,13 @@ func GetModelCatalog(c *gin.Context) {
 - **Keycloak Representation**: `enabled: false`
 
 ### 🔵 Pending Verification
+
 - User registered but email not verified
 - Limited or no access until verification
 - **Keycloak Representation**: `emailVerified: false`
 
 ### 🔴 Banned
+
 - User permanently restricted from access
 - Cannot log in, requires admin intervention
 - **Keycloak Representation**: `enabled: false` with custom attribute `banned: true`
@@ -330,7 +352,7 @@ adminRoutes.Use(middleware.RequireAdmin())
     adminRoutes.POST("/users/:id/deactivate", handlers.DeactivateUser)
     adminRoutes.POST("/users/:id/roles/:roleName", handlers.AssignRole)
     adminRoutes.DELETE("/users/:id/roles/:roleName", handlers.RemoveRole)
-    
+
     // Group Management
     adminRoutes.GET("/groups", handlers.ListGroups)
     adminRoutes.POST("/groups", handlers.CreateGroup)
@@ -340,7 +362,7 @@ adminRoutes.Use(middleware.RequireAdmin())
     adminRoutes.GET("/groups/:id/members", handlers.GetGroupMembers)
     adminRoutes.POST("/users/:userId/groups/:groupId", handlers.AddUserToGroup)
     adminRoutes.DELETE("/users/:userId/groups/:groupId", handlers.RemoveUserFromGroup)
-    
+
     // Feature Flag Management (Group Level)
     adminRoutes.GET("/feature-flags", handlers.ListFeatureFlags)
     adminRoutes.POST("/feature-flags", handlers.CreateFeatureFlag)
@@ -350,7 +372,7 @@ adminRoutes.Use(middleware.RequireAdmin())
     adminRoutes.PATCH("/groups/:id/feature-flags", handlers.SetGroupFeatureFlags)
     adminRoutes.POST("/groups/:id/feature-flags/:flagKey", handlers.EnableGroupFeatureFlag)
     adminRoutes.DELETE("/groups/:id/feature-flags/:flagKey", handlers.DisableGroupFeatureFlag)
-    
+
     // System Monitoring
     adminRoutes.GET("/system/health", handlers.GetSystemHealth)
     adminRoutes.GET("/system/metrics", handlers.GetSystemMetrics)
@@ -396,14 +418,14 @@ func isAdmin(claims map[string]interface{}) bool {
             }
         }
     }
-    
+
     // Fallback: check is_admin attribute
     if attributes, ok := claims["attributes"].(map[string]interface{}); ok {
         if isAdminAttr, ok := attributes["is_admin"].(bool); ok && isAdminAttr {
             return true
         }
     }
-    
+
     return false
 }
 
@@ -418,7 +440,7 @@ func RequireAdmin() gin.HandlerFunc {
             c.Abort()
             return
         }
-        
+
         claims, ok := claimsRaw.(map[string]interface{})
         if !ok {
             c.JSON(http.StatusUnauthorized, gin.H{
@@ -428,7 +450,7 @@ func RequireAdmin() gin.HandlerFunc {
             c.Abort()
             return
         }
-        
+
         // Verify required claims exist
         if _, ok := claims["sub"]; !ok {
             c.JSON(http.StatusUnauthorized, gin.H{
@@ -438,7 +460,7 @@ func RequireAdmin() gin.HandlerFunc {
             c.Abort()
             return
         }
-        
+
         if _, ok := claims["email"]; !ok {
             c.JSON(http.StatusUnauthorized, gin.H{
                 "error": "Unauthorized",
@@ -447,7 +469,7 @@ func RequireAdmin() gin.HandlerFunc {
             c.Abort()
             return
         }
-        
+
         // Check admin status using helper
         if !isAdmin(claims) {
             c.JSON(http.StatusForbidden, gin.H{
@@ -457,7 +479,7 @@ func RequireAdmin() gin.HandlerFunc {
             c.Abort()
             return
         }
-        
+
         c.Next()
     }
 }
@@ -484,6 +506,7 @@ func RequireAdmin() gin.HandlerFunc {
 ## Operational Guardrails
 
 ### Rate Limiting
+
 - [ ] **Implement rate limiting on admin endpoints**
   - Use Kong rate limiting plugin or middleware
   - Limit: 100 requests/minute per admin user
@@ -491,6 +514,7 @@ func RequireAdmin() gin.HandlerFunc {
   - Return 429 Too Many Requests with Retry-After header
 
 ### Request Logging
+
 - [ ] **Structured logging for all admin endpoints**
   - Log level: INFO for successful operations, WARN for 4xx, ERROR for 5xx
   - Include: timestamp, admin_user_id, admin_email, action, resource_type, resource_id, status_code, duration_ms
@@ -498,13 +522,13 @@ func RequireAdmin() gin.HandlerFunc {
   - Integrate with existing observability stack (Prometheus/Grafana)
 
 ### Keycloak Resilience
+
 - [ ] **Circuit breaker for Keycloak Admin API calls**
   - Use `github.com/sony/gobreaker` (already in tech stack)
   - Threshold: 5 consecutive failures
   - Timeout: 30 seconds
   - Reset after: 60 seconds of successful calls
   - Fallback: Return 503 Service Unavailable with meaningful error
-  
 - [ ] **Retry logic with exponential backoff**
   - Max retries: 3
   - Initial delay: 100ms
@@ -523,6 +547,7 @@ func RequireAdmin() gin.HandlerFunc {
 ### Phase 0: Keycloak Integration
 
 - [ ] **Install Dependencies**
+
   ```bash
   go get github.com/Nerzal/gocloak/v13
   go get github.com/sony/gobreaker
@@ -534,11 +559,13 @@ func RequireAdmin() gin.HandlerFunc {
   - `pkg/keycloak/users.go` - User operations
   - `pkg/keycloak/groups.go` - Group operations
   - `pkg/keycloak/roles.go` - Role operations
+
 ### Phase 1: Database Schema (Minimal)
 
 - [ ] **Create Migration**: `services/llm-api/migrations/YYYYMMDD_user_management.sql`
 
 - [ ] **feature_flags** table (definitions only):
+
   ```sql
   CREATE TABLE feature_flags (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -552,13 +579,14 @@ func RequireAdmin() gin.HandlerFunc {
   );
   CREATE INDEX idx_feature_flags_key ON feature_flags(key);
   CREATE INDEX idx_feature_flags_category ON feature_flags(category);
-  
+
   -- Insert the experimental_models flag
   INSERT INTO feature_flags (key, name, description, category) VALUES
   ('experimental_models', 'Experimental Models', 'Access to experimental/beta models in model catalog', 'model_access');
   ```
 
 - [ ] **audit_logs** table:
+
   ```sql
   CREATE TABLE audit_logs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -588,31 +616,33 @@ func RequireAdmin() gin.HandlerFunc {
 ### Phase 2: JWT & Authentication
 
 - [ ] **JWT Middleware Enhancement**: `services/llm-api/internal/middleware/auth.go`
+
   ```go
   // Extract and store JWT claims in context
   func JWTAuth() gin.HandlerFunc {
       return func(c *gin.Context) {
           // Validate JWT (already done by Kong or existing middleware)
           claims := extractJWTClaims(c)
-          
+
           // Store in context for easy access
           c.Set("claims", claims)
           c.Set("user_id", claims["sub"])
           c.Set("user_email", claims["email"])
           c.Set("user_groups", claims["groups"])
           c.Set("feature_flags", claims["feature_flags"])
-          
+
           c.Next()
       }
   }
   ```
 
 - [ ] **RequireAdmin Middleware**: Check JWT for admin role
+
   ```go
   func RequireAdmin() gin.HandlerFunc {
       return func(c *gin.Context) {
           claims := c.MustGet("claims").(map[string]interface{})
-          
+
           // Check admin status using helper function
           if !isAdmin(claims) {
               c.JSON(http.StatusForbidden, gin.H{
@@ -622,7 +652,7 @@ func RequireAdmin() gin.HandlerFunc {
               c.Abort()
               return
           }
-          
+
           c.Next()
       }
   }
@@ -631,17 +661,18 @@ func RequireAdmin() gin.HandlerFunc {
 ### Phase 3: Model Catalog Filtering
 
 - [ ] **Update Model Catalog Handler**: `services/llm-api/internal/handlers/model_catalog.go`
+
   ```go
   func GetModelCatalog(c *gin.Context) {
       // Check if user has experimental model access from JWT
       hasExperimentalAccess := IsFeatureEnabled(c, "experimental_models")
-      
+
       query := "SELECT * FROM model_catalogs WHERE 1=1"
       if !hasExperimentalAccess {
           query += " AND (experimental = false OR experimental IS NULL)"
       }
       query += " ORDER BY name"
-      
+
       // Execute query and return models
       rows, err := db.Query(query)
       if err != nil {
@@ -649,10 +680,13 @@ func RequireAdmin() gin.HandlerFunc {
           return
       }
       defer rows.Close()
-      
+
       // Parse and return results...
   }
   ```
+
+  ```
+
   ```
 
 ### Phase 4: User Management API
@@ -689,7 +723,6 @@ func RequireAdmin() gin.HandlerFunc {
   - Add to ID token: Yes
   - Add to access token: Yes
   - Add to userinfo: Yes
-  
 - [ ] **Configure Group Attribute Mapper** for feature flags
   - Mapper Type: **Group Attribute Mapper** (or **User Attribute** if aggregating)
   - Group Attribute: `feature_flags`
@@ -698,13 +731,11 @@ func RequireAdmin() gin.HandlerFunc {
   - Aggregate attribute values: **Yes** (combine from all groups)
   - Add to ID token: Yes
   - Add to access token: Yes
-  
 - [ ] **Note on Group Paths**:
   - Keycloak includes leading slash in group paths: `/jan_group`, `/standard`
   - Nested groups use hierarchy: `/parent/child`
   - Strip leading slash in application code if needed for comparisons
   - Group inheritance: Users in child groups automatically in parent groups
-  
 - [ ] **Example JWT with all needed data**:
   ```json
   {
@@ -727,9 +758,11 @@ func RequireAdmin() gin.HandlerFunc {
 - [ ] **Integration Tests**: Test model catalog filtering with different user groups
 - [ ] **End-to-End Tests**: Test admin operations with Keycloak
 - [ ] **Performance Tests**: Validate JWT-only approach performance
+
 ## Database Queries
 
 ### Get Users with Experimental Model Access (from audit logs)
+
 ```sql
 -- This is for audit/reporting only, not for runtime checks
 SELECT DISTINCT admin_email, action, created_at
@@ -740,6 +773,7 @@ ORDER BY created_at DESC;
 ```
 
 ### Get User's Effective Feature Flags (from JWT)
+
 ```go
 // No database query needed - read from JWT claims
 func GetUserFeatures(c *gin.Context) []string {
@@ -753,14 +787,15 @@ func GetUserFeatures(c *gin.Context) []string {
 ```
 
 ### Get Experimental Models
+
 ```sql
 -- Get all experimental models (admin view)
-SELECT * FROM model_catalogs 
+SELECT * FROM model_catalogs
 WHERE experimental = true
 ORDER BY name;
 
 -- Get models available to user without experimental access
-SELECT * FROM model_catalogs 
+SELECT * FROM model_catalogs
 WHERE experimental = false OR experimental IS NULL
 ORDER BY name;
 
@@ -770,9 +805,10 @@ ORDER BY name;
 ```
 
 ### Feature Flag Audit Trail
+
 ```sql
 -- See who changed feature flags for a group
-SELECT 
+SELECT
   admin_email,
   action,
   payload->>'group_id' as group_id,
@@ -785,23 +821,21 @@ WHERE resource_type = 'group_feature_flag'
 ORDER BY created_at DESC
 LIMIT 100;
 ```
+
 ## Future Enhancements
 
 - [ ] **User impersonation** (via Keycloak Admin API)
   - Allow admins to impersonate users for troubleshooting
   - Audit log all impersonation sessions
-  
 - [ ] **Bulk operations**
   - Bulk user import/export
   - Bulk group membership changes
   - Bulk feature flag assignments
-  
 - [ ] **Additional feature flags** as product evolves
   - `fine_tuning`: Access to model fine-tuning features
   - `custom_models`: Upload and use custom models
   - `advanced_analytics`: Access to advanced usage analytics
   - `api_access`: Programmatic API access with keys
-  
 - [ ] **Advanced feature flag capabilities**
   - A/B testing with user percentage rollout
   - Gradual rollout with canary deployment
@@ -817,21 +851,20 @@ LIMIT 100;
   - Group management interface (list, create, edit, manage members)
   - Feature flag management UI (assign flags to groups)
   - Audit log viewer with filtering and export
-  
 - [ ] **Tech Stack Recommendations**
   - Framework: React or Next.js
   - UI Library: shadcn/ui or Material-UI
   - State Management: React Query (for API cache management)
   - Tables: TanStack Table
   - Forms: React Hook Form + Zod validation
-  
 - [ ] **Authentication**
   - Use Keycloak's JavaScript adapter for SSO
   - Redirect to Keycloak login
   - Store JWT in httpOnly cookie or memory
   - Handle token refresh automatically
-  
+
 **For now, admin operations can be performed via:**
+
 - Direct Keycloak Admin Console
 - API testing tools (Postman, Insomnia, curl)
 - Custom CLI tools if needed
@@ -839,6 +872,7 @@ LIMIT 100;
 ## Architecture Summary
 
 ### Key Principles
+
 - **JWT-Only**: All user/group/feature flag data comes from JWT claims - no server-side cache or sync
 - **Keycloak as Source of Truth**: Users, groups, roles, and feature flag assignments managed in Keycloak
 - **Minimal Database**: Only audit logs and feature flag definitions (metadata) stored in PostgreSQL

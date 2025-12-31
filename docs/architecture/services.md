@@ -4,15 +4,15 @@ Jan Server ships four core services plus shared infrastructure. Use this documen
 
 ## Core Services
 
-| Service | Purpose | Port(s) | Source | Primary Docs |
-|---------|---------|---------|--------|--------------|
-| **LLM API** | OpenAI-compatible chat completions, conversation storage, model management | 8080 (direct), 8000 via Kong | `services/llm-api` | [../api/llm-api/README.md](../api/llm-api/README.md) |
-| **Response API** | Multi-step orchestration, tool chaining, integration with MCP Tools | 8082 | `services/response-api` | [../api/response-api/README.md](../api/response-api/README.md) |
-| **Media API** | Binary ingestion, jan_* IDs, S3 storage and resolution | 8285 | `services/media-api` | [../api/media-api/README.md](../api/media-api/README.md) |
-| **MCP Tools** | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091 | `services/mcp-tools` | [../api/mcp-tools/README.md](../api/mcp-tools/README.md) |
-| **Memory Tools** | Semantic memory with BGE-M3 embeddings, conversation caching | 8090 | `services/memory-tools` | `services/memory-tools/README.md` |
-| **Realtime API** | WebRTC session management via LiveKit for real-time audio/video | 8186 | `services/realtime-api` | `services/realtime-api/README.md` |
-| **Template API (scaffold)** | Go microservice blueprint for new services (not deployed) | 8185 | `services/template-api` | [../guides/services-template.md](../guides/services-template.md) |
+| Service                     | Purpose                                                                       | Port(s)                      | Source                  | Primary Docs                                                     |
+| --------------------------- | ----------------------------------------------------------------------------- | ---------------------------- | ----------------------- | ---------------------------------------------------------------- |
+| **LLM API**                 | OpenAI-compatible chat completions, conversation storage, model management    | 8080 (direct), 8000 via Kong | `services/llm-api`      | [../api/llm-api/README.md](../api/llm-api/README.md)             |
+| **Response API**            | Multi-step orchestration, tool chaining, integration with MCP Tools           | 8082                         | `services/response-api` | [../api/response-api/README.md](../api/response-api/README.md)   |
+| **Media API**               | Binary ingestion, jan\_\* IDs, S3 storage and resolution                      | 8285                         | `services/media-api`    | [../api/media-api/README.md](../api/media-api/README.md)         |
+| **MCP Tools**               | Model Context Protocol tools (web search, scraping, file search, python exec) | 8091                         | `services/mcp-tools`    | [../api/mcp-tools/README.md](../api/mcp-tools/README.md)         |
+| **Memory Tools**            | Semantic memory with BGE-M3 embeddings, conversation caching                  | 8090                         | `services/memory-tools` | `services/memory-tools/README.md`                                |
+| **Realtime API**            | WebRTC session management via LiveKit for real-time audio/video               | 8186                         | `services/realtime-api` | `services/realtime-api/README.md`                                |
+| **Template API (scaffold)** | Go microservice blueprint for new services (not deployed)                     | 8185                         | `services/template-api` | [../guides/services-template.md](../guides/services-template.md) |
 
 ## Configuration
 
@@ -44,30 +44,34 @@ scripts/new-service-from-template.ps1 -Name my-service
 New services should use the centralized configuration system:
 
 1. **Define service config in `pkg/config/types.go`:**
- ```go
- type ServiceConfig struct {
- HTTP HTTPConfig `yaml:"http"`
- Database DatabaseConfig `yaml:"database"`
- // Add service-specific fields
- }
- ```
+
+```go
+type ServiceConfig struct {
+HTTP HTTPConfig `yaml:"http"`
+Database DatabaseConfig `yaml:"database"`
+// Add service-specific fields
+}
+```
 
 2. **Regenerate config files:**
- ```bash
- make config-generate
- ```
+
+```bash
+make config-generate
+```
 
 3. **Load config in your service:**
- ```go
- import "jan-server/pkg/config"
- 
- cfg, _:= config.Load()
- serviceCfg, _:= cfg.GetServiceConfig("my-service")
- ```
+
+```go
+import "jan-server/pkg/config"
+
+cfg, _:= config.Load()
+serviceCfg, _:= cfg.GetServiceConfig("my-service")
+```
 
 4. **Update deployment configs:**
- - Add service to `docker/services-api.yml`
- - Generate K8s values: `jan-cli config k8s-values --env production`
+
+- Add service to `docker/services-api.yml`
+- Generate K8s values: `jan-cli config k8s-values --env production`
 
 See [Configuration System](../configuration/README.md) and [Service Template Guide](../guides/services-template.md) for the scaffold and full instructions.
 
@@ -79,10 +83,10 @@ See [Configuration System](../configuration/README.md) and [Service Template Gui
 4. Update `k8s/jan-server/values.yaml` if deploying to Kubernetes
 
 ## Service Interactions
+
 - **LLM API -> Media API**: LLM API resolves `jan_*` IDs before sending payloads to vLLM or upstream providers (`MEDIA_RESOLVE_URL` env var).
 - **Response API -> LLM API**: Response API delegates final language generation to LLM API (`LLM_API_URL`).
 - **Response API -> MCP Tools**: orchestrated tool calls are issued via JSON-RPC (`MCP_TOOLS_URL`).
 - **MCP Tools -> Infrastructure**: uses SearXNG, Vector Store, and SandboxFusion to execute user requests.
 
 Keep this document updated whenever a service is added, renamed, or retires.
-

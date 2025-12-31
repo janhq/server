@@ -31,22 +31,23 @@ The Memory Tools service provides semantic memory capabilities for Jan Server us
 
 ### Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `DB_POSTGRESQL_WRITE_DSN` | PostgreSQL connection string for write operations | - | Yes |
-| `DB_POSTGRESQL_READ1_DSN` | PostgreSQL connection string for read replica (optional) | - | No |
-| `EMBEDDING_SERVICE_URL` | URL of BGE-M3 embedding service | - | Yes |
-| `EMBEDDING_SERVICE_API_KEY` | API key for embedding service | - | No |
-| `EMBEDDING_SERVICE_TIMEOUT` | Request timeout | `30s` | No |
-| `EMBEDDING_CACHE_TYPE` | Cache type: `redis`, `memory`, `noop` | `redis` | No |
-| `EMBEDDING_CACHE_REDIS_URL` | Redis connection URL | `redis://redis:6379/3` | If cache=redis |
-| `EMBEDDING_CACHE_TTL` | Cache TTL | `1h` | No |
-| `EMBEDDING_CACHE_MAX_SIZE` | Max cache size (memory only) | `10000` | If cache=memory |
-| `MEMORY_TOOLS_PORT` | HTTP port | `8090` | No |
+| Variable                    | Description                                              | Default                | Required        |
+| --------------------------- | -------------------------------------------------------- | ---------------------- | --------------- |
+| `DB_POSTGRESQL_WRITE_DSN`   | PostgreSQL connection string for write operations        | -                      | Yes             |
+| `DB_POSTGRESQL_READ1_DSN`   | PostgreSQL connection string for read replica (optional) | -                      | No              |
+| `EMBEDDING_SERVICE_URL`     | URL of BGE-M3 embedding service                          | -                      | Yes             |
+| `EMBEDDING_SERVICE_API_KEY` | API key for embedding service                            | -                      | No              |
+| `EMBEDDING_SERVICE_TIMEOUT` | Request timeout                                          | `30s`                  | No              |
+| `EMBEDDING_CACHE_TYPE`      | Cache type: `redis`, `memory`, `noop`                    | `redis`                | No              |
+| `EMBEDDING_CACHE_REDIS_URL` | Redis connection URL                                     | `redis://redis:6379/3` | If cache=redis  |
+| `EMBEDDING_CACHE_TTL`       | Cache TTL                                                | `1h`                   | No              |
+| `EMBEDDING_CACHE_MAX_SIZE`  | Max cache size (memory only)                             | `10000`                | If cache=memory |
+| `MEMORY_TOOLS_PORT`         | HTTP port                                                | `8090`                 | No              |
 
 ### Example Configurations
 
 #### Production (with Redis cache)
+
 ```bash
 DB_POSTGRESQL_WRITE_DSN=postgres://user:password@db-host:5432/jan_llm_api?sslmode=require
 # DB_POSTGRESQL_READ1_DSN=postgres://user:password@db-replica:5432/jan_llm_api?sslmode=require
@@ -57,6 +58,7 @@ MEMORY_TOOLS_PORT=8090
 ```
 
 #### Development (in-memory cache)
+
 ```bash
 DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
 EMBEDDING_SERVICE_URL=http://localhost:8091
@@ -66,6 +68,7 @@ MEMORY_TOOLS_PORT=8090
 ```
 
 #### Testing (no cache)
+
 ```bash
 DB_POSTGRESQL_WRITE_DSN=postgres://jan_user:jan_password@localhost:5432/jan_llm_api?sslmode=disable
 EMBEDDING_SERVICE_URL=http://localhost:8091
@@ -113,11 +116,13 @@ docker-compose --profile memory up -d
 ## API Endpoints
 
 ### Health Check
+
 ```bash
 GET /healthz
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -126,11 +131,13 @@ GET /healthz
 ```
 
 ### Test Embedding
+
 ```bash
 POST /v1/embed/test
 ```
 
 **Response:**
+
 ```json
 {
   "dimension": 1024,
@@ -141,12 +148,14 @@ POST /v1/embed/test
 ## Testing
 
 ### Unit Tests
+
 ```bash
 cd services/memory-tools
 go test ./...
 ```
 
 ### Integration Tests (jan-cli api-test)
+
 ```bash
 # Make sure services are running
 docker-compose --profile memory up -d
@@ -160,11 +169,11 @@ jan-cli api-test run tests/automation/bge-m3-integration.postman_collection.json
 
 ### Expected Latencies (with GPU)
 
-| Operation | Target (p95) | Expected |
-|-----------|-------------|----------|
-| Single embed (cache miss) | 50ms | 30-40ms |
-| Single embed (cache hit) | 5ms | 1-2ms |
-| Batch embed (32 items) | 200ms | 150-180ms |
+| Operation                 | Target (p95) | Expected  |
+| ------------------------- | ------------ | --------- |
+| Single embed (cache miss) | 50ms         | 30-40ms   |
+| Single embed (cache hit)  | 5ms          | 1-2ms     |
+| Batch embed (32 items)    | 200ms        | 150-180ms |
 
 ### Cache Hit Rates
 
@@ -184,11 +193,13 @@ jan-cli api-test run tests/automation/bge-m3-integration.postman_collection.json
 Users provide their own BGE-M3 inference server URL.
 
 **Pros:**
+
 - ✅ No GPU requirements for Jan Server
 - ✅ Users choose their own infrastructure
 - ✅ Easy to scale independently
 
 **Cons:**
+
 - ⚠️ Requires users to deploy BGE-M3 separately
 - ⚠️ Network latency if server is remote
 
@@ -197,10 +208,12 @@ Users provide their own BGE-M3 inference server URL.
 Jan Server includes BGE-M3 deployment.
 
 **Pros:**
+
 - ✅ All-in-one deployment
 - ✅ No external dependencies
 
 **Cons:**
+
 - ⚠️ Requires GPU infrastructure
 - ⚠️ Higher infrastructure costs
 

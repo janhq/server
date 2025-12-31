@@ -1,5 +1,5 @@
-import { MoreHorizontal, Trash2, PencilLine, Loader2 } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { MoreHorizontal, Trash2, PencilLine, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import {
   DropDrawer,
@@ -7,14 +7,14 @@ import {
   DropDrawerItem,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from '@/components/ui/dropdrawer'
-import { ProjectsChatInput } from '@/components/chat-input/projects-chat-input'
+} from "@janhq/interfaces/dropdrawer";
+import { ProjectsChatInput } from "@/components/chat-input/projects-chat-input";
 import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { useStaggeredFadeIn } from '@/hooks/useStaggeredFadeIn'
+} from "@/components/sidebar/sidebar";
+import { useStaggeredFadeIn } from "@/hooks/useStaggeredFadeIn";
 
 export function AnimatedChatItem({
   item,
@@ -27,17 +27,17 @@ export function AnimatedChatItem({
   onMoveToProject,
   index,
 }: {
-  item: Conversation
-  isActive: boolean
-  isMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  isBusy: boolean
-  onRenameClick: (item: Conversation) => void
-  onDeleteClick: (item: Conversation) => void
-  onMoveToProject: (conversationId: string, projectId: string) => void
-  index: number
+  item: Conversation;
+  isActive: boolean;
+  isMobile: boolean;
+  setOpenMobile: (open: boolean) => void;
+  isBusy: boolean;
+  onRenameClick: (item: Conversation) => void;
+  onDeleteClick: (item: Conversation) => void;
+  onMoveToProject: (conversationId: string, projectId: string) => void;
+  index: number;
 }) {
-  const animation = useStaggeredFadeIn(index)
+  const animation = useStaggeredFadeIn(index);
 
   return (
     <SidebarMenuItem className={animation.className} style={animation.style}>
@@ -48,7 +48,7 @@ export function AnimatedChatItem({
           title={item.title}
           onClick={() => {
             if (isMobile) {
-              setOpenMobile(false)
+              setOpenMobile(false);
             }
           }}
         >
@@ -69,8 +69,8 @@ export function AnimatedChatItem({
           </DropDrawerTrigger>
           <DropDrawerContent
             className="md:w-56"
-            side={isMobile ? 'bottom' : 'right'}
-            align={isMobile ? 'end' : 'start'}
+            side={isMobile ? "bottom" : "right"}
+            align={isMobile ? "end" : "start"}
           >
             <DropDrawerItem onClick={() => onRenameClick(item)}>
               <div className="flex gap-2 items-center justify-center">
@@ -99,5 +99,5 @@ export function AnimatedChatItem({
         </DropDrawer>
       )}
     </SidebarMenuItem>
-  )
+  );
 }

@@ -38,12 +38,8 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/healthz",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "healthz"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["healthz"]
             }
           }
         }
@@ -85,14 +81,8 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/v1/admin/users?first=0&max=20",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users"],
               "query": [
                 {
                   "key": "first",
@@ -149,14 +139,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/users",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users"]
             }
           }
         },
@@ -177,15 +161,8 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/v1/admin/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{user_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users", "{{user_id}}"]
             }
           }
         },
@@ -216,15 +193,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{user_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users", "{{user_id}}"]
             }
           }
         },
@@ -245,16 +215,8 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/v1/admin/users/{{user_id}}/deactivate",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{user_id}}",
-                "deactivate"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users", "{{user_id}}", "deactivate"]
             }
           }
         },
@@ -275,16 +237,8 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/v1/admin/users/{{user_id}}/activate",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{user_id}}",
-                "activate"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users", "{{user_id}}", "activate"]
             }
           }
         },
@@ -305,17 +259,8 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/v1/admin/users/{{user_id}}/roles/admin",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{user_id}}",
-                "roles",
-                "admin"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "users", "{{user_id}}", "roles", "admin"]
             }
           }
         }
@@ -345,14 +290,8 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/v1/admin/groups",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "groups"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "groups"]
             }
           }
         },
@@ -384,14 +323,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/groups",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "groups"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "groups"]
             }
           }
         },
@@ -412,9 +345,7 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/v1/admin/users/{{user_id}}/groups/{{group_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
+              "host": ["{{base_url}}"],
               "path": [
                 "v1",
                 "admin",
@@ -443,16 +374,8 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/v1/admin/groups/{{group_id}}/feature-flags",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "groups",
-                "{{group_id}}",
-                "feature-flags"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "groups", "{{group_id}}", "feature-flags"]
             }
           }
         },
@@ -483,16 +406,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/groups/{{group_id}}/feature-flags",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "groups",
-                "{{group_id}}",
-                "feature-flags"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "groups", "{{group_id}}", "feature-flags"]
             }
           }
         }
@@ -520,14 +435,8 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/v1/admin/feature-flags",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "feature-flags"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "feature-flags"]
             }
           }
         },
@@ -558,14 +467,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/feature-flags",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "feature-flags"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "feature-flags"]
             }
           }
         },
@@ -596,15 +499,8 @@
             },
             "url": {
               "raw": "{{base_url}}/v1/admin/feature-flags/{{feature_flag_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "feature-flags",
-                "{{feature_flag_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "feature-flags", "{{feature_flag_id}}"]
             }
           }
         }

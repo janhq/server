@@ -67,35 +67,36 @@ When rate limited, the API responds with HTTP 429 including error details (error
 
 ### Default Limits (Per User/API Key)
 
-| Endpoint | Method | Limit | Window | Cost |
-|----------|--------|-------|--------|------|
-| /v1/conversations | GET | 600 | 1 min | 1 |
-| /v1/conversations | POST | 100 | 1 min | 2 |
-| /v1/conversations/{id} | GET | 1000 | 1 min | 1 |
-| /v1/conversations/{id} | PATCH | 100 | 1 min | 1 |
-| /v1/conversations/{id} | DELETE | 100 | 1 min | 5 |
-| /v1/conversations/bulk-delete | POST | 50 | 1 min | 10 |
-| /v1/conversations/{id}/items | GET | 1000 | 1 min | 1 |
-| /v1/conversations/{id}/items | POST | 200 | 1 min | 2 |
-| /v1/conversations/{id}/items/{msg_id} | PATCH | 100 | 1 min | 1 |
-| /v1/conversations/{id}/items/{msg_id} | DELETE | 100 | 1 min | 1 |
-| /v1/conversations/{id}/share | POST | 50 | 1 min | 1 |
-| /v1/chat/completions | POST | 50 | 1 min | 10 |
-| /v1/models/catalogs | GET | 600 | 1 min | 1 |
-| /v1/users/me/settings | GET | 600 | 1 min | 1 |
-| /v1/users/me/settings | PATCH | 100 | 1 min | 1 |
-| /v1/responses | POST | 100 | 1 min | 5 |
-| /v1/media/upload | POST | 50 | 1 min | varies |
-| /v1/mcp/tools | GET | 600 | 1 min | 1 |
-| /v1/mcp/tools/{id}/execute | POST | 100 | 1 min | 2 |
-| /v1/admin/mcp/tools | GET | 100 | 1 min | 1 |
-| /v1/admin/mcp/tools | POST | 50 | 1 min | 1 |
+| Endpoint                              | Method | Limit | Window | Cost   |
+| ------------------------------------- | ------ | ----- | ------ | ------ |
+| /v1/conversations                     | GET    | 600   | 1 min  | 1      |
+| /v1/conversations                     | POST   | 100   | 1 min  | 2      |
+| /v1/conversations/{id}                | GET    | 1000  | 1 min  | 1      |
+| /v1/conversations/{id}                | PATCH  | 100   | 1 min  | 1      |
+| /v1/conversations/{id}                | DELETE | 100   | 1 min  | 5      |
+| /v1/conversations/bulk-delete         | POST   | 50    | 1 min  | 10     |
+| /v1/conversations/{id}/items          | GET    | 1000  | 1 min  | 1      |
+| /v1/conversations/{id}/items          | POST   | 200   | 1 min  | 2      |
+| /v1/conversations/{id}/items/{msg_id} | PATCH  | 100   | 1 min  | 1      |
+| /v1/conversations/{id}/items/{msg_id} | DELETE | 100   | 1 min  | 1      |
+| /v1/conversations/{id}/share          | POST   | 50    | 1 min  | 1      |
+| /v1/chat/completions                  | POST   | 50    | 1 min  | 10     |
+| /v1/models/catalogs                   | GET    | 600   | 1 min  | 1      |
+| /v1/users/me/settings                 | GET    | 600   | 1 min  | 1      |
+| /v1/users/me/settings                 | PATCH  | 100   | 1 min  | 1      |
+| /v1/responses                         | POST   | 100   | 1 min  | 5      |
+| /v1/media/upload                      | POST   | 50    | 1 min  | varies |
+| /v1/mcp/tools                         | GET    | 600   | 1 min  | 1      |
+| /v1/mcp/tools/{id}/execute            | POST   | 100   | 1 min  | 2      |
+| /v1/admin/mcp/tools                   | GET    | 100   | 1 min  | 1      |
+| /v1/admin/mcp/tools                   | POST   | 50    | 1 min  | 1      |
 
 ### Costs Explained
 
 **Request Cost** = 1 token per request
 
 **Higher Costs** for expensive operations:
+
 - **Bulk operations** (5-10 tokens) - Delete 100 items = 10 tokens
 - **Generation** (10 tokens) - LLM API calls
 - **Uploads** (1-10 tokens) - File size dependent
@@ -109,12 +110,12 @@ When rate limited, the API responds with HTTP 429 including error details (error
 
 Different pricing tiers have different quotas:
 
-| Tier | Requests/Min | Conversations | Storage | Cost |
-|------|--------------|---------------|---------|------|
-| Free | 10 | 5 | 100MB | Free |
-| Starter | 60 | 50 | 1GB | $10/mo |
-| Pro | 600 | 500 | 10GB | $50/mo |
-| Enterprise | 6000+ | Unlimited | 1TB+ | Custom |
+| Tier       | Requests/Min | Conversations | Storage | Cost   |
+| ---------- | ------------ | ------------- | ------- | ------ |
+| Free       | 10           | 5             | 100MB   | Free   |
+| Starter    | 60           | 50            | 1GB     | $10/mo |
+| Pro        | 600          | 500           | 10GB    | $50/mo |
+| Enterprise | 6000+        | Unlimited     | 1TB+    | Custom |
 
 ### Check Current Quota
 
@@ -190,20 +191,20 @@ Use PATCH /v1/billing/settings with your auth token to enable overage billing an
 
 ### Estimating Costs
 
-Calculate monthly costs by comparing your expected requests per month against tier limits. If you exceed the limit, add overage costs calculated as (overage_requests / 100) * rate_per_100.
+Calculate monthly costs by comparing your expected requests per month against tier limits. If you exceed the limit, add overage costs calculated as (overage_requests / 100) \* rate_per_100.
 
 ---
 
 ## Summary
 
-| Aspect | Details |
-|--------|---------|
-| **Default Limit** | 100 requests/minute |
-| **Window** | Rolling 60-second window |
-| **Algorithm** | Token bucket |
-| **Reset** | Automatic every 60 seconds |
-| **Headers** | X-RateLimit-Limit/Remaining/Reset |
-| **Error Code** | 429 Too Many Requests |
-| **Retry Header** | Retry-After (seconds) |
+| Aspect            | Details                           |
+| ----------------- | --------------------------------- |
+| **Default Limit** | 100 requests/minute               |
+| **Window**        | Rolling 60-second window          |
+| **Algorithm**     | Token bucket                      |
+| **Reset**         | Automatic every 60 seconds        |
+| **Headers**       | X-RateLimit-Limit/Remaining/Reset |
+| **Error Code**    | 429 Too Many Requests             |
+| **Retry Header**  | Retry-After (seconds)             |
 
 See [Error Codes Guide](error-codes.md) for handling 429 responses and [Monitoring Guide](monitoring-advanced.md) for quota tracking.

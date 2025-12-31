@@ -4,8 +4,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty'
-import { ShapesIcon } from 'lucide-react'
+} from "@janhq/interfaces/empty";
+import { ShapesIcon } from "lucide-react";
 
 export function AppsConnectorSettings() {
   return (
@@ -27,5 +27,5 @@ export function AppsConnectorSettings() {
         </Empty>
       </div>
     </div>
-  )
+  );
 }

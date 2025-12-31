@@ -38,9 +38,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.response.to.have.status(200);"
-                ]
+                "exec": ["pm.response.to.have.status(200);"]
               }
             }
           ]

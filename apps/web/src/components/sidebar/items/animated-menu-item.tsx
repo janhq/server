@@ -1,20 +1,20 @@
-import { type LucideIcon } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { type LucideIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 import {
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { useStaggeredFadeIn } from '@/hooks/useStaggeredFadeIn'
+} from "@/components/sidebar/sidebar";
+import { useStaggeredFadeIn } from "@/hooks/useStaggeredFadeIn";
 
 export type NavMainItem = {
-  title: string
-  url: string
-  icon: LucideIcon
-  isActive?: boolean
-  badge?: string
-  onClick?: () => void
-}
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  isActive?: boolean;
+  badge?: string;
+  onClick?: () => void;
+};
 
 export function AnimatedMenuItem({
   item,
@@ -22,12 +22,12 @@ export function AnimatedMenuItem({
   setOpenMobile,
   index,
 }: {
-  item: NavMainItem
-  isMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  index: number
+  item: NavMainItem;
+  isMobile: boolean;
+  setOpenMobile: (open: boolean) => void;
+  index: number;
 }) {
-  const animation = useStaggeredFadeIn(index)
+  const animation = useStaggeredFadeIn(index);
 
   return (
     <SidebarMenuItem className={animation.className} style={animation.style}>
@@ -35,9 +35,9 @@ export function AnimatedMenuItem({
         asChild={!item.onClick}
         isActive={item.isActive}
         onClick={() => {
-          item.onClick?.()
+          item.onClick?.();
           if (isMobile) {
-            setOpenMobile(false)
+            setOpenMobile(false);
           }
         }}
       >
@@ -54,5 +54,5 @@ export function AnimatedMenuItem({
         )}
       </SidebarMenuButton>
     </SidebarMenuItem>
-  )
+  );
 }

@@ -1,15 +1,19 @@
 /* eslint-disable react-hooks/refs */
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import ChatInput from '@/components/chat-input'
-import { AppSidebar } from '@/components/sidebar/app-sidebar'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { NavHeader } from '@/components/sidebar/nav-header'
-import { useChat } from '@/hooks/use-chat'
-import { janProvider } from '@/lib/api-client'
-import { EditProject } from '@/components/projects/edit-project'
-import { ManageInstructions } from '@/components/projects/manage-instructions'
+import {
+  createFileRoute,
+  useNavigate,
+  useParams,
+} from "@tanstack/react-router";
+import ChatInput from "@/components/chat-input";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/sidebar/sidebar";
+import { NavHeader } from "@/components/sidebar/nav-header";
+import { useChat } from "@/hooks/use-chat";
+import { janProvider } from "@/lib/api-client";
+import { EditProject } from "@/components/projects/edit-project";
+import { ManageInstructions } from "@/components/projects/manage-instructions";
 
-import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
+import type { PromptInputMessage } from "@janhq/interfaces/ai-elements/prompt-input";
 
 import {
   MessageCircleMore,
@@ -18,20 +22,20 @@ import {
   MoreHorizontalIcon,
   Trash2Icon,
   SparklesIcon,
-} from 'lucide-react'
-import { useModels } from '@/stores/models-store'
-import { useEffect, useRef, useState } from 'react'
-import { useProjects } from '@/stores/projects-store'
-import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+} from "lucide-react";
+import { useModels } from "@/stores/models-store";
+import { useEffect, useRef, useState } from "react";
+import { useProjects } from "@/stores/projects-store";
+import { Separator } from "@janhq/interfaces/separator";
+import { cn } from "@/lib/utils";
+import { Button } from "@janhq/interfaces/button";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
   DropDrawerSeparator,
-} from '@/components/ui/dropdrawer'
+} from "@janhq/interfaces/dropdrawer";
 import {
   Dialog,
   DialogClose,
@@ -40,103 +44,103 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@janhq/interfaces/dialog";
 
-import { ProjectConversations } from '@/components/projects/project-conversations'
-import { useConversations } from '@/stores/conversation-store'
-import { CHAT_STATUS } from '@/constants'
+import { ProjectConversations } from "@/components/projects/project-conversations";
+import { useConversations } from "@/stores/conversation-store";
+import { CHAT_STATUS } from "@/constants";
 
 function ProjectPageContent() {
-  const navigate = useNavigate()
-  const params = useParams({ strict: false })
-  const projectId = params.projectId as string | undefined
-  const selectedModel = useModels((state) => state.selectedModel)
-  const getProject = useProjects((state) => state.getProject)
-  const deleteProject = useProjects((state) => state.deleteProject)
-  const [project, setProject] = useState<Project | null>(null)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const navigate = useNavigate();
+  const params = useParams({ strict: false });
+  const projectId = params.projectId as string | undefined;
+  const selectedModel = useModels((state) => state.selectedModel);
+  const getProject = useProjects((state) => state.getProject);
+  const deleteProject = useProjects((state) => state.deleteProject);
+  const [project, setProject] = useState<Project | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isManageInstructionsOpen, setIsManageInstructionsOpen] =
-    useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const reasoningContainerRef = useRef<HTMLDivElement>(null)
-  const allConversations = useConversations((state) => state.conversations)
+    useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const reasoningContainerRef = useRef<HTMLDivElement>(null);
+  const allConversations = useConversations((state) => state.conversations);
 
   const projectConversations = allConversations.filter(
-    (conversation) => conversation.project_id === projectId
-  )
+    (conversation) => conversation.project_id === projectId,
+  );
 
   const handleOpenEditDialog = () => {
-    setIsEditDialogOpen(true)
-  }
+    setIsEditDialogOpen(true);
+  };
 
   const handleOpenManageInstructions = () => {
-    setIsManageInstructionsOpen(true)
-  }
+    setIsManageInstructionsOpen(true);
+  };
 
   const handleDeleteClick = () => {
-    setDeleteDialogOpen(true)
-  }
+    setDeleteDialogOpen(true);
+  };
 
   const handleConfirmDelete = async () => {
-    if (!projectId) return
+    if (!projectId) return;
 
     try {
-      await deleteProject(projectId)
-      setDeleteDialogOpen(false)
+      await deleteProject(projectId);
+      setDeleteDialogOpen(false);
       // Redirect to home after deletion
-      navigate({ to: '/' })
+      navigate({ to: "/" });
     } catch (error) {
-      console.error('Failed to delete project:', error)
+      console.error("Failed to delete project:", error);
     }
-  }
+  };
 
   const handleProjectUpdated = () => {
     if (projectId) {
       getProject(projectId)
         .then((projectData) => {
-          setProject(projectData)
+          setProject(projectData);
         })
         .catch((error) => {
-          console.error('Failed to reload project:', error)
-        })
+          console.error("Failed to reload project:", error);
+        });
     }
-  }
+  };
 
-  const provider = janProvider()
+  const provider = janProvider();
 
   const { status, sendMessage } = useChat(provider(selectedModel?.id), {
     onFinish: () => {
       // After finishing a message
     },
-  })
+  });
 
   const handleSubmit = (message?: PromptInputMessage) => {
     if (message)
       sendMessage({
-        text: message.text || 'Sent with attachments',
+        text: message.text || "Sent with attachments",
         files: message.files,
-      })
-  }
+      });
+  };
 
   useEffect(() => {
     if (projectId) {
       getProject(projectId)
         .then((projectData) => {
-          setProject(projectData)
+          setProject(projectData);
         })
         .catch((error) => {
-          console.error('Failed to load project:', error)
-        })
+          console.error("Failed to load project:", error);
+        });
     }
-  }, [projectId, getProject])
+  }, [projectId, getProject]);
 
   // Auto-scroll to bottom during streaming
   useEffect(() => {
     if (status === CHAT_STATUS.STREAMING && reasoningContainerRef.current) {
       reasoningContainerRef.current.scrollTop =
-        reasoningContainerRef.current.scrollHeight
+        reasoningContainerRef.current.scrollHeight;
     }
-  }, [status, reasoningContainerRef.current?.textContent])
+  }, [status, reasoningContainerRef.current?.textContent]);
 
   return (
     <>
@@ -206,7 +210,7 @@ function ProjectPageContent() {
                   {projectConversations.length === 0 ? (
                     <div
                       className={cn(
-                        'relative rounded-2xl flex-1 overflow-y-auto bg-muted/50 flex items-center justify-center text-center'
+                        "relative rounded-2xl flex-1 overflow-y-auto bg-muted/50 flex items-center justify-center text-center",
                       )}
                     >
                       <div className="px-8 w-full md:w-1/2 mx-auto">
@@ -219,8 +223,8 @@ function ProjectPageContent() {
                       </div>
                     </div>
                   ) : (
-                    <div className={cn('relative overflow-hidden min-h-0')}>
-                      <ProjectConversations projectId={project?.id || ''} />
+                    <div className={cn("relative overflow-hidden min-h-0")}>
+                      <ProjectConversations projectId={project?.id || ""} />
                     </div>
                   )}
                 </div>
@@ -313,7 +317,7 @@ function ProjectPageContent() {
           <DialogHeader>
             <DialogTitle>Delete Project</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
+              Are you sure you want to delete{" "}
               <span className="font-semibold">
                 &quot;{project?.name}&quot;?
               </span>
@@ -337,7 +341,7 @@ function ProjectPageContent() {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }
 
 function ProjectPage() {
@@ -345,9 +349,9 @@ function ProjectPage() {
     <SidebarProvider>
       <ProjectPageContent />
     </SidebarProvider>
-  )
+  );
 }
 
-export const Route = createFileRoute('/projects/$projectId')({
+export const Route = createFileRoute("/projects/$projectId")({
   component: ProjectPage,
-})
+});

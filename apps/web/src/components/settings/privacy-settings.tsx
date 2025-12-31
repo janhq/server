@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button'
-import { CloudIcon } from 'lucide-react'
+import { Button } from "@janhq/interfaces/button";
+import { CloudIcon } from "lucide-react";
 
 export function PrivacySettings() {
   return (
@@ -34,12 +34,12 @@ export function PrivacySettings() {
             variant="secondary"
             className="rounded-full"
             size="sm"
-            onClick={() => window.open('https://jan.ai', '_blank')}
+            onClick={() => window.open("https://jan.ai", "_blank")}
           >
             Download App
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

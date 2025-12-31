@@ -35,11 +35,13 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 ## Audience Navigation
 
 ### New Users
+
 - [Quick Start Guide](quickstart.md) - Installation, prerequisites, and walkthrough.
 - [System Architecture](architecture/README.md) - High-level diagram and components.
 - [LLM API Quick Start](api/llm-api/README.md#quick-start) - Sample curl call with auth flow.
 
 ### Developers
+
 - [Development Guide](guides/development.md) - Local + hybrid workflows, Make targets.
 - [Configuration System](configuration/README.md) - Precedence rules and env var mapping.
 - [Testing Guide](guides/testing.md) - jan-cli api-test collections, coverage, and best practices.
@@ -47,16 +49,18 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 - [Service Template](guides/services-template.md) - Generate a new Go microservice (scaffold docs live here).
 
 ### API Consumers
+
 - [API Overview](api/README.md) - Authentication, headers, and service map.
 - [Endpoint Matrix](api/endpoint-matrix.md) - Complete reference matrix of all API endpoints.
 - [API Guides](api/README.md#api-guides) - Patterns, rate limiting, performance, and versioning.
 - [LLM API](api/llm-api/README.md) - Chat, models, conversations, streaming.
 - [Response API](api/response-api/README.md) - Tool orchestration workflows.
-- [Media API](api/media-api/README.md) - Upload, jan_* IDs, presigned URLs.
+- [Media API](api/media-api/README.md) - Upload, jan\_\* IDs, presigned URLs.
 - [MCP Tools](api/mcp-tools/README.md) - JSON-RPC endpoints for tool providers.
 - [API Examples](api/examples/README.md) - Ready-made curl/SDK snippets across services.
 
 ### Operators
+
 - [Deployment Guide](guides/deployment.md) - Docker profiles, Kubernetes, and CI/CD.
 - [Multi-vLLM Deployment](guides/deployment.md#multi-vllm-instance-deployment-high-availability) - High-availability multi-instance setup.
 - [Kubernetes Setup](../k8s/SETUP.md) - Helm installation and cluster guidance.
@@ -68,17 +72,20 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 - [Security Policy](architecture/security.md) - Responsible disclosure and hardening checklist.
 
 ### v0.0.14 Feature Guides
+
 - [User Settings & Personalization](guides/user-settings-personalization.md) - Customize user experience with settings and preferences.
 - [Conversation Management](guides/conversation-management.md) - Create, organize, delete, and share conversations.
 - [Browser Compatibility](guides/browser-compatibility.md) - Model capabilities for web automation and scraping.
 - [MCP Admin Interface](guides/mcp-admin-interface.md) - Admin tool management and content filtering.
 
 ### Phase 3A: Advanced Feature Guides
+
 - [MCP Custom Tool Development](guides/mcp-custom-tools.md) - Build, test, and deploy custom MCP tools.
 - [Webhooks & Event Integration](guides/webhooks.md) - Setup webhooks, handle events, verify signatures securely.
 - [Monitoring & Troubleshooting Deep Dive](guides/monitoring-advanced.md) - Health checks, distributed tracing, incident response.
 
 ### Phase 3B: API Documentation & Examples
+
 - [Error Codes & Status Reference](api/error-codes.md) - Complete HTTP status codes with handling patterns.
 - [Rate Limiting & Quotas](api/rate-limiting.md) - Token bucket algorithm, per-endpoint limits, quota management.
 - [LLM API Comprehensive Examples](api/llm-api/comprehensive-examples.md) - Python, JavaScript, cURL for all endpoints.
@@ -87,6 +94,7 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 - [MCP Tools Comprehensive Examples](api/mcp-tools/comprehensive-examples.md) - Discovery, execution, and real-world scenarios.
 
 ### Phase 4A: SDK & Advanced Patterns
+
 - [Python SDK Quick-Start](api/sdks/python.md) - Complete guide with 30+ examples (streaming, pagination, async, webhooks, MCP tools).
 - [JavaScript SDK Quick-Start](api/sdks/javascript.md) - Full TypeScript support with 30+ examples.
 - [Go SDK Quick-Start](api/sdks/go.md) - Idiomatic Go patterns for concurrency and connection pooling.
@@ -94,10 +102,12 @@ Use this file as your jump-off point when you are not sure where a topic lives.
 - [Unified OpenAPI Specification](../openapi.yaml) - Complete REST API specification (40+ endpoints).
 
 ### Phase 4B: Operations & Compliance
+
 - [Performance & SLA Guide](api/performance.md) - Service Level Agreements, latency targets, scaling strategies, cost optimization.
 - [Security Architecture Deep Dive](architecture/security-advanced.md) - Authentication, RBAC, encryption, threat models, incident response.
 
 ### Reference & Governance
+
 - [Documentation Quality Report](../DOCUMENTATION_QUALITY_REPORT.md) - Release-ready criteria and latest findings.
 - [Conventions](conventions/conventions.md) - Code style, patterns, and workflow.
 

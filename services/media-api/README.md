@@ -90,7 +90,7 @@ Client injects the `jan_id` into the completion request using the format `data:i
     {
       "role": "user",
       "content": [
-        {"type": "text", "text": "What's in this image?"},
+        { "type": "text", "text": "What's in this image?" },
         {
           "type": "image_url",
           "image_url": {
@@ -134,21 +134,21 @@ curl -X POST http://localhost:8285/v1/media/resolve \
 
 Populate the repo-level `.env` (via `make env-create`) and tweak the following keys:
 
-| Variable | Description |
-| --- | --- |
-| `MEDIA_API_PORT` | HTTP listen port (default `8285`). |
-| `DB_POSTGRESQL_WRITE_DSN` | Postgres DSN for metadata. |
-| `MEDIA_S3_ENDPOINT` | S3-compatible endpoint (`https://s3.menlo.ai`). |
-| `MEDIA_S3_PUBLIC_ENDPOINT` | Optional public endpoint used when returning presigned URLs (e.g., `http://localhost:9000`). |
-| `MEDIA_S3_ACCESS_KEY_ID` / `MEDIA_S3_SECRET_ACCESS_KEY` | Credentials (`XXXXX` / `YYYY`). |
-| `MEDIA_S3_BUCKET` | Target bucket (`platform-dev`). |
-| `MEDIA_MAX_BYTES` | Max upload size (default 20 MB). |
-| `MEDIA_S3_PRESIGN_TTL` | Lifespan of presigned URLs (default 7 days). |
-| `MEDIA_RETENTION_DAYS` | Metadata retention window. |
-| `AUTH_ENABLED` | Set to `true` to enforce Keycloak-issued JWTs (required in shared environments). |
-| `AUTH_ISSUER` | Expected Keycloak issuer claim (e.g., `http://localhost:8085/realms/jan`). |
-| `ACCOUNT` | Audience or client ID the token is minted for (e.g., `account`). |
-| `AUTH_JWKS_URL` | JWKS endpoint used to validate signatures (e.g., `http://keycloak:8085/realms/jan/protocol/openid-connect/certs`). |
+| Variable                                                | Description                                                                                                        |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `MEDIA_API_PORT`                                        | HTTP listen port (default `8285`).                                                                                 |
+| `DB_POSTGRESQL_WRITE_DSN`                               | Postgres DSN for metadata.                                                                                         |
+| `MEDIA_S3_ENDPOINT`                                     | S3-compatible endpoint (`https://s3.menlo.ai`).                                                                    |
+| `MEDIA_S3_PUBLIC_ENDPOINT`                              | Optional public endpoint used when returning presigned URLs (e.g., `http://localhost:9000`).                       |
+| `MEDIA_S3_ACCESS_KEY_ID` / `MEDIA_S3_SECRET_ACCESS_KEY` | Credentials (`XXXXX` / `YYYY`).                                                                                    |
+| `MEDIA_S3_BUCKET`                                       | Target bucket (`platform-dev`).                                                                                    |
+| `MEDIA_MAX_BYTES`                                       | Max upload size (default 20 MB).                                                                                   |
+| `MEDIA_S3_PRESIGN_TTL`                                  | Lifespan of presigned URLs (default 7 days).                                                                       |
+| `MEDIA_RETENTION_DAYS`                                  | Metadata retention window.                                                                                         |
+| `AUTH_ENABLED`                                          | Set to `true` to enforce Keycloak-issued JWTs (required in shared environments).                                   |
+| `AUTH_ISSUER`                                           | Expected Keycloak issuer claim (e.g., `http://localhost:8085/realms/jan`).                                         |
+| `ACCOUNT`                                               | Audience or client ID the token is minted for (e.g., `account`).                                                   |
+| `AUTH_JWKS_URL`                                         | JWKS endpoint used to validate signatures (e.g., `http://keycloak:8085/realms/jan/protocol/openid-connect/certs`). |
 
 > If the S3 bucket or credentials are omitted the service still starts, but media upload/resolve endpoints will respond with `media storage backend is not configured` until valid `MEDIA_S3_*` values are provided.
 
@@ -165,12 +165,12 @@ curl -H "Authorization: Bearer <token>" \
 
 ## API surface
 
-| Method & Path | Description |
-| --- | --- |
-| `POST /v1/media` | **Method 1**: Ingests data URL or remote URL, stores bytes privately, returns `{id, mime, bytes, deduped, presigned_url}`. |
-| `POST /v1/media/prepare-upload` | **Method 2**: Generates presigned upload URL and reserves `jan_id`. Client uploads directly to S3. |
-| `POST /v1/media/resolve` | Replaces `data:<mime>;jan_<id>` (or `data:<mime>;base64,jan_<id>`) placeholders in arbitrary JSON with fresh presigned URLs. |
-| `GET /v1/media/{id}` | Streams media bytes through the API or returns presigned URL (see `PROXY_DOWNLOAD` config). |
+| Method & Path                   | Description                                                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/media`                | **Method 1**: Ingests data URL or remote URL, stores bytes privately, returns `{id, mime, bytes, deduped, presigned_url}`.   |
+| `POST /v1/media/prepare-upload` | **Method 2**: Generates presigned upload URL and reserves `jan_id`. Client uploads directly to S3.                           |
+| `POST /v1/media/resolve`        | Replaces `data:<mime>;jan_<id>` (or `data:<mime>;base64,jan_<id>`) placeholders in arbitrary JSON with fresh presigned URLs. |
+| `GET /v1/media/{id}`            | Streams media bytes through the API or returns presigned URL (see `PROXY_DOWNLOAD` config).                                  |
 
 See `docs/swagger/swagger.yaml` for the full OpenAPI schema (regenerate with `make swagger`).
 

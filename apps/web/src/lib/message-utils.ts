@@ -1,6 +1,6 @@
-import type { UIMessage } from 'ai'
-import type { PromptInputMessage } from '@/components/ai-elements/prompt-input'
-import { MESSAGE_ROLE, CONTENT_TYPE } from '@/constants'
+import type { UIMessage } from "ai";
+import type { PromptInputMessage } from "@janhq/interfaces/ai-elements/prompt-input";
+import { MESSAGE_ROLE, CONTENT_TYPE } from "@/constants";
 
 /**
  * Find the index of the preceding user message before an assistant message
@@ -10,14 +10,14 @@ import { MESSAGE_ROLE, CONTENT_TYPE } from '@/constants'
  */
 export function findPrecedingUserMessageIndex(
   messages: UIMessage[],
-  assistantIndex: number
+  assistantIndex: number,
 ): number {
   for (let i = assistantIndex - 1; i >= 0; i--) {
     if (messages[i].role === MESSAGE_ROLE.USER) {
-      return i
+      return i;
     }
   }
-  return -1
+  return -1;
 }
 
 /**
@@ -28,14 +28,14 @@ export function findPrecedingUserMessageIndex(
  */
 export function findPrecedingAssistantMessageIndex(
   messages: UIMessage[],
-  userIndex: number
+  userIndex: number,
 ): number {
   for (let i = userIndex - 1; i >= 0; i--) {
     if (messages[i].role === MESSAGE_ROLE.ASSISTANT) {
-      return i
+      return i;
     }
   }
-  return -1
+  return -1;
 }
 
 /**
@@ -49,14 +49,14 @@ export function buildIdMapping(
   localMessages: UIMessage[],
   backendMessages: UIMessage[],
   idMap: Map<string, string>,
-  upToIndex?: number
+  upToIndex?: number,
 ): void {
-  const limit = upToIndex ?? localMessages.length
+  const limit = upToIndex ?? localMessages.length;
   for (let i = 0; i < limit && i < backendMessages.length; i++) {
-    const local = localMessages[i]
-    const backend = backendMessages[i]
+    const local = localMessages[i];
+    const backend = backendMessages[i];
     if (local && backend && local.id !== backend.id) {
-      idMap.set(local.id, backend.id)
+      idMap.set(local.id, backend.id);
     }
   }
 }
@@ -69,9 +69,9 @@ export function buildIdMapping(
  */
 export function resolveMessageId(
   tempId: string,
-  idMap: Map<string, string>
+  idMap: Map<string, string>,
 ): string {
-  return idMap.get(tempId) ?? tempId
+  return idMap.get(tempId) ?? tempId;
 }
 
 /**
@@ -80,25 +80,25 @@ export function resolveMessageId(
  * @returns Array of conversation item content
  */
 export function buildMessageContent(
-  message: PromptInputMessage
+  message: PromptInputMessage,
 ): ConversationItemContent[] {
-  const content: ConversationItemContent[] = []
+  const content: ConversationItemContent[] = [];
 
   if (message.text) {
     content.push({
       type: CONTENT_TYPE.INPUT_TEXT,
       input_text: message.text,
-    })
+    });
   }
 
   message.files?.forEach((file) => {
     if (file.url) {
       content.push({
-        type: 'image',
+        type: "image",
         image: { url: file.url },
-      })
+      });
     }
-  })
+  });
 
-  return content
+  return content;
 }

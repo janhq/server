@@ -19,6 +19,7 @@ Common problems and how to fix them.
 **Error**: `Address already in use` or port conflict
 
 **Solutions**:
+
 ```bash
 # Find what's using the port (Linux/macOS)
 lsof -i:8080
@@ -41,6 +42,7 @@ MEDIA_API_PORT=8286
 **Problem**: Container starts then immediately stops
 
 **How to diagnose**:
+
 ```bash
 # Check the logs
 make logs-api
@@ -51,11 +53,13 @@ docker logs <container-id>
 ```
 
 **Common causes**:
+
 - Missing required settings in .env file
 - Database isn't ready yet
 - Wrong configuration values
 
 **Fix**:
+
 ```bash
 # Check your .env file has all required values
 cat .env
@@ -72,6 +76,7 @@ docker restart <container-name>
 **Error**: `connection refused` or `cannot reach service`
 
 **Solutions**:
+
 ```bash
 # Verify all services are running
 docker ps
@@ -94,6 +99,7 @@ docker exec llm-api nslookup media-api
 **Error**: `dial tcp: connect: connection refused` or `database connection error`
 
 **Solutions**:
+
 ```bash
 # Check if PostgreSQL is running
 docker ps | grep postgres
@@ -113,6 +119,7 @@ docker exec api-db psql -U postgres -l | grep jan
 **Error**: `database "jan_llm_api" does not exist`
 
 **Solutions**:
+
 ```bash
 # Create database
 docker exec api-db psql -U postgres -c "CREATE DATABASE jan_llm_api"
@@ -129,6 +136,7 @@ make db-migrate
 **Error**: Migration errors or schema mismatch
 
 **Solutions**:
+
 ```bash
 # View migrations
 docker exec api-db psql -U jan_user -d jan_llm_api \
@@ -146,6 +154,7 @@ make db-migrate
 **Error**: `No space left on device`
 
 **Solutions**:
+
 ```bash
 # Check disk usage
 df -h
@@ -165,6 +174,7 @@ docker volume rm <volume-name>
 **Error**: All requests return 401
 
 **Solutions**:
+
 ```bash
 # Get a guest token
 curl -X POST http://localhost:8000/llm/auth/guest-login
@@ -185,6 +195,7 @@ jwt decode <token> # requires jwt-cli
 **Error**: Endpoints return 404
 
 **Check**:
+
 ```bash
 # Verify service is running and healthy
 curl http://localhost:8080/healthz # LLM API
@@ -202,6 +213,7 @@ curl http://localhost:8000/v1/models # Via Kong
 **Error**: `408 Request Timeout` or connection hangs
 
 **Solutions**:
+
 ```bash
 # Increase timeout in .env
 TOOL_EXECUTION_TIMEOUT=120s
@@ -219,6 +231,7 @@ make logs-api | grep -i timeout
 **Error**: Unexpected server error
 
 **Debug**:
+
 ```bash
 # View detailed logs
 docker logs <service-name> --tail=100 -f
@@ -240,6 +253,7 @@ make down && make up-full
 **Error**: `Failed to connect to Keycloak` or auth endpoints fail
 
 **Solutions**:
+
 ```bash
 # Check if Keycloak is running
 docker ps | grep keycloak
@@ -259,6 +273,7 @@ docker restart keycloak
 **Error**: Token is expired or invalid
 
 **Solutions**:
+
 ```bash
 # Get new token
 curl -X POST http://localhost:8000/llm/auth/guest-login
@@ -278,6 +293,7 @@ curl -X POST http://localhost:8085/auth/realms/jan/protocol/openid-connect/token
 **Error**: `OOMKilled` or memory errors
 
 **Solutions**:
+
 ```bash
 # Check memory usage
 docker stats
@@ -294,6 +310,7 @@ make down
 **Error**: `no space left on device`
 
 **Solutions**:
+
 ```bash
 # Clean up unused images and volumes
 docker system prune -a --volumes
@@ -310,6 +327,7 @@ docker images --format "table {{.Repository}}\t{{.Size}}"
 **Error**: Services can't communicate
 
 **Solutions**:
+
 ```bash
 # Verify network exists
 docker network ls
@@ -329,6 +347,7 @@ docker network create jan-server_default
 **Error**: Pod stays in Pending state
 
 **Debug**:
+
 ```bash
 # Check events
 kubectl describe pod -n jan-server <pod-name>
@@ -345,6 +364,7 @@ kubectl get pvc -n jan-server
 **Error**: Can't pull image
 
 **Solutions**:
+
 ```bash
 # Verify image exists
 minikube image ls | grep jan
@@ -363,6 +383,7 @@ imagePullPolicy: Never # For minikube
 **Error**: Service endpoints not working
 
 **Debug**:
+
 ```bash
 # Check service exists
 kubectl get svc -n jan-server
@@ -381,6 +402,7 @@ kubectl get endpoints -n jan-server
 **Symptoms**: Services use lots of memory
 
 **Solutions**:
+
 ```bash
 # Monitor memory
 docker stats llm-api
@@ -397,6 +419,7 @@ docker logs llm-api | grep -i memory
 **Symptoms**: CPU usage maxed out
 
 **Solutions**:
+
 ```bash
 # Monitor CPU
 docker stats
@@ -413,6 +436,7 @@ docker logs llm-api | grep -i error
 **Symptoms**: API requests are slow
 
 **Solutions**:
+
 ```bash
 # Check database performance
 docker exec api-db psql -U jan_user -d jan_llm_api \
@@ -456,6 +480,7 @@ docker ps -a
 ### Requesting Support
 
 When reporting issues, include:
+
 1. Error messages and logs
 2. Steps to reproduce
 3. Your environment (OS, Docker version, etc.)
@@ -463,6 +488,7 @@ When reporting issues, include:
 5. What you've already tried
 
 **Resources**:
+
 - [GitHub Issues](https://github.com/janhq/jan-server/issues)
 - [Discussions](https://github.com/janhq/jan-server/discussions)
 - [Architecture Documentation](../architecture/)

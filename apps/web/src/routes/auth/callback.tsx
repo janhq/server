@@ -1,73 +1,76 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
-import { useAuth } from '@/stores/auth-store'
-import { retrieveOAuthState, exchangeCodeForTokens } from '@/lib/oauth'
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/stores/auth-store";
+import { retrieveOAuthState, exchangeCodeForTokens } from "@/lib/oauth";
 
-export const Route = createFileRoute('/auth/callback')({
+export const Route = createFileRoute("/auth/callback")({
   component: OAuthCallbackPage,
-})
+});
 
 function OAuthCallbackPage() {
-  const navigate = useNavigate()
-  const loginWithOAuth = useAuth((state) => state.loginWithOAuth)
-  const [error, setError] = useState<string | null>(null)
-  const processingRef = useRef(false)
+  const navigate = useNavigate();
+  const loginWithOAuth = useAuth((state) => state.loginWithOAuth);
+  const [error, setError] = useState<string | null>(null);
+  const processingRef = useRef(false);
 
   useEffect(() => {
     // Prevent duplicate processing
-    if (processingRef.current) return
-    processingRef.current = true
+    if (processingRef.current) return;
+    processingRef.current = true;
 
     const handleCallback = async () => {
       try {
         // Parse URL parameters
-        const params = new URLSearchParams(window.location.search)
-        const code = params.get('code')
-        const state = params.get('state')
-        const errorParam = params.get('error')
-        const errorDescription = params.get('error_description')
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        const state = params.get("state");
+        const errorParam = params.get("error");
+        const errorDescription = params.get("error_description");
 
         // Handle OAuth errors
         if (errorParam) {
-          throw new Error(errorDescription || `OAuth error: ${errorParam}`)
+          throw new Error(errorDescription || `OAuth error: ${errorParam}`);
         }
 
         // Validate required parameters
         if (!code || !state) {
-          throw new Error('Missing authorization code or state parameter')
+          throw new Error("Missing authorization code or state parameter");
         }
 
         // Retrieve and validate stored OAuth state
-        const oauthData = retrieveOAuthState(state)
+        const oauthData = retrieveOAuthState(state);
         if (!oauthData) {
           throw new Error(
-            'Invalid state parameter. Possible CSRF attack or expired session.'
-          )
+            "Invalid state parameter. Possible CSRF attack or expired session.",
+          );
         }
 
         // Exchange authorization code for tokens
-        const tokens = await exchangeCodeForTokens(code, oauthData.codeVerifier)
+        const tokens = await exchangeCodeForTokens(
+          code,
+          oauthData.codeVerifier,
+        );
 
         // Login with OAuth tokens
-        loginWithOAuth(tokens)
-        console.log('OAuth login successful')
+        loginWithOAuth(tokens);
+        console.log("OAuth login successful");
         // Navigate to the original URL or home
-        let redirectUrl = '/'
+        const redirectUrl = "/";
 
-        navigate({ to: redirectUrl })
+        navigate({ to: redirectUrl });
       } catch (err) {
-        console.error('OAuth callback error:', err)
-        setError(err instanceof Error ? err.message : 'Authentication failed')
+        console.error("OAuth callback error:", err);
+        setError(err instanceof Error ? err.message : "Authentication failed");
 
         // Navigate to home with error after 3 seconds
         setTimeout(() => {
-          navigate({ to: '/' })
-        }, 3000)
+          navigate({ to: "/" });
+        }, 3000);
       }
-    }
+    };
 
-    handleCallback()
-  }, [loginWithOAuth, navigate])
+    handleCallback();
+  }, [loginWithOAuth, navigate]);
 
   if (error) {
     return (
@@ -80,7 +83,7 @@ function OAuthCallbackPage() {
           <p className="text-xs text-red-600">Redirecting to home page...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -90,5 +93,5 @@ function OAuthCallbackPage() {
         <p className="text-sm text-gray-600">Completing authentication...</p>
       </div>
     </div>
-  )
+  );
 }

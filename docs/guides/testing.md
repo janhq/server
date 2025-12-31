@@ -9,6 +9,7 @@ How to test Jan Server on Windows, Linux, and macOS.
 ## Quick Summary
 
 Jan Server works on all major platforms:
+
 - **Windows** - PowerShell scripts and build tools
 - **Linux** - Full Docker support
 - **macOS** - Full Docker support
@@ -28,6 +29,7 @@ Jan Server works on all major platforms:
 ### Manual Testing
 
 **Unix/Linux/macOS:**
+
 ```bash
 # Basic jan-cli commands
 ./jan-cli.sh --help
@@ -47,6 +49,7 @@ make clean-build
 ```
 
 **Windows:**
+
 ```powershell
 
 ### Windows
@@ -119,27 +122,27 @@ make clean-build
 
 #### jan-cli Commands (All Platforms)
 
-| Command | Windows | Linux | macOS | Notes |
-|---------|---------|-------|-------|-------|
-| `jan-cli --help` | OK | OK | OK | Shows all commands |
-| `jan-cli dev setup` | OK | OK | OK | Creates directories, networks,.env |
-| `jan-cli config generate` | OK | OK | OK | Generates schemas and defaults.yaml |
-| `jan-cli config validate` | OK | OK | OK | Validates YAML configuration |
-| `jan-cli config show` | OK | OK | OK | Displays merged configuration |
-| `jan-cli config export --format env` | OK | OK | OK | Exports as environment variables |
-| `jan-cli service list` | OK | OK | OK | Lists all services with ports |
-| `jan-cli swagger generate --service llm-api` | OK | OK | OK | Generates OpenAPI docs |
+| Command                                      | Windows | Linux | macOS | Notes                               |
+| -------------------------------------------- | ------- | ----- | ----- | ----------------------------------- |
+| `jan-cli --help`                             | OK      | OK    | OK    | Shows all commands                  |
+| `jan-cli dev setup`                          | OK      | OK    | OK    | Creates directories, networks,.env  |
+| `jan-cli config generate`                    | OK      | OK    | OK    | Generates schemas and defaults.yaml |
+| `jan-cli config validate`                    | OK      | OK    | OK    | Validates YAML configuration        |
+| `jan-cli config show`                        | OK      | OK    | OK    | Displays merged configuration       |
+| `jan-cli config export --format env`         | OK      | OK    | OK    | Exports as environment variables    |
+| `jan-cli service list`                       | OK      | OK    | OK    | Lists all services with ports       |
+| `jan-cli swagger generate --service llm-api` | OK      | OK    | OK    | Generates OpenAPI docs              |
 
 #### Makefile Targets (All Platforms)
 
-| Target | Windows | Linux | macOS | Notes |
-|--------|---------|-------|-------|-------|
-| `make setup` | OK | OK | OK | Delegates to jan-cli dev setup |
-| `make config-generate` | OK | OK | OK | Uses jan-cli config generate |
-| `make build-llm-api` | OK | OK | OK | Cross-platform build |
-| `make build-media-api` | OK | OK | OK | Cross-platform build |
-| `make build-mcp` | OK | OK | OK | Cross-platform build |
-| `make clean-build` | OK | OK | OK | Platform-specific cleanup |
+| Target                 | Windows | Linux | macOS | Notes                          |
+| ---------------------- | ------- | ----- | ----- | ------------------------------ |
+| `make setup`           | OK      | OK    | OK    | Delegates to jan-cli dev setup |
+| `make config-generate` | OK      | OK    | OK    | Uses jan-cli config generate   |
+| `make build-llm-api`   | OK      | OK    | OK    | Cross-platform build           |
+| `make build-media-api` | OK      | OK    | OK    | Cross-platform build           |
+| `make build-mcp`       | OK      | OK    | OK    | Cross-platform build           |
+| `make clean-build`     | OK      | OK    | OK    | Platform-specific cleanup      |
 
 ---
 
@@ -148,37 +151,44 @@ make clean-build
 ### Full Stack Tests (Linux/macOS)
 
 **Authentication Tests:**
+
 ```bash
 make test-auth
 ```
 
 Tests:
+
 - JWT token generation and validation
 - API key authentication
 - OAuth/OIDC flows with Keycloak
 - Token refresh endpoint
 
 **Conversation Tests:**
+
 ```bash
 make test-conversations
 ```
 
 Tests:
+
 - Create, read, update, delete conversations
 - Message history
 - Conversation metadata
 
 **Response API Tests:**
+
 ```bash
 make test-response
 ```
 
 **Media API Tests:**
+
 ```bash
 make test-media
 ```
 
 **MCP Integration Tests:**
+
 ```bash
 make test-mcp-integration
 ```
@@ -204,11 +214,13 @@ sudo apt-get install docker-compose-plugin
 #### macOS
 
 **Option 1: Docker Desktop (Recommended for local development)**
+
 - Download: https://www.docker.com/products/docker-desktop
 - Pros: Easy to use, integrated Kubernetes
 - Cons: Resource heavy, requires license for enterprise
 
 **Option 2: Colima (Lightweight alternative)**
+
 ```bash
 # Install via Homebrew
 brew install docker colima
@@ -232,10 +244,12 @@ docker compose version
 #### Windows
 
 **Local Development:**
+
 - Install Docker Desktop: https://www.docker.com/products/docker-desktop
 - Requires WSL2 for best performance
 
 **GitHub Actions CI:**
+
 - Docker not available on Windows runners
 - Full stack tests run on Ubuntu instead
 - Windows CI focuses on CLI and build tests
@@ -289,6 +303,7 @@ endif
 **Fix:** Check all `*.go` files recursively:
 
 **Windows (jan-cli.ps1):**
+
 ```powershell
 $needsRebuild = $false
 Get-ChildItem -Path $CLIDir -Filter "*.go" -Recurse | ForEach-Object {
@@ -299,6 +314,7 @@ Get-ChildItem -Path $CLIDir -Filter "*.go" -Recurse | ForEach-Object {
 ```
 
 **Unix (jan-cli.sh):**
+
 ```bash
 if find "$CLI_DIR" -name "*.go" -type f -newer "$BINARY" | grep -q.; then
  echo "Detected changes in source files. Rebuilding..."
@@ -398,12 +414,14 @@ go mod verify
 ### Makefile Not Found (Windows)
 
 Make requires Git Bash or WSL on Windows:
+
 - Install Git for Windows: https://git-scm.com/download/win
 - Or use WSL: https://docs.microsoft.com/en-us/windows/wsl/install
 
 ### Path Issues on Windows
 
 GitHub Actions Windows runners use Git bash. Ensure:
+
 - Use forward slashes in Makefile paths
 - Use `ifeq ($(OS),Windows_NT)` branches for Windows-specific commands
 - Binary names include `.exe` extension for Windows
@@ -415,6 +433,7 @@ GitHub Actions Windows runners use Git bash. Ensure:
 ### 1. Use jan-cli for Complex Operations
 
 Prefer `jan-cli` commands for:
+
 - File system operations (creating directories, copying files)
 - Interactive prompts
 - Complex conditional logic
@@ -424,6 +443,7 @@ Prefer `jan-cli` commands for:
 ### 2. Use Makefile for Docker Operations
 
 Prefer `Makefile` for:
+
 - Docker Compose commands (`up-infra`, `up-full`, `down`)
 - Service orchestration
 - Testing with jan-cli api-test
@@ -434,6 +454,7 @@ Prefer `Makefile` for:
 ### 3. Test Both Systems
 
 When adding new functionality:
+
 1. Test on Windows PowerShell first (most restrictive)
 2. Test on Linux/macOS
 3. Verify wrapper scripts auto-rebuild correctly
@@ -442,6 +463,7 @@ When adding new functionality:
 ### 4. Manual Testing Before Pushing
 
 **Unix/Linux/macOS:**
+
 ```bash
 # Test basic commands
 ./jan-cli.sh --help
@@ -450,6 +472,7 @@ make build-llm-api
 ```
 
 **Windows:**
+
 ```powershell
 # Test basic commands
 .\jan-cli.ps1 --help
@@ -472,13 +495,16 @@ make build-llm-api
 ### WARNING Platform Limitations
 
 **Windows:**
+
 - Requires Git Bash or WSL for Makefile
 - Binary names need `.exe` extension
 
 **macOS:**
+
 - Requires Docker Desktop or Colima for Docker support
 
 **Linux:**
+
 - Full compatibility, no known limitations
 
 ### Docs Testing Coverage
@@ -501,6 +527,7 @@ make build-llm-api
 ---
 
 **Tested Platforms:**
+
 - OK Windows 11 PowerShell 5.1
 - OK Ubuntu 22.04+
 - OK macOS 14+
