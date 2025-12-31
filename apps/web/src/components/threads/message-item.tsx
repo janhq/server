@@ -102,6 +102,11 @@ export const MessageItem = memo(
     const isStreaming = isLastMessage && status === CHAT_STATUS.STREAMING;
 
     const renderTextPart = (part: { text: string }, partIndex: number) => {
+      // Don't render if text is empty
+      if (!part.text || part.text.trim() === "") {
+        return null;
+      }
+
       const isLastPart = partIndex === message.parts.length - 1;
 
       return (
@@ -282,10 +287,25 @@ export const MessageItem = memo(
 
       const toolName = part.type.split("-").slice(1).join("-");
 
+      // Check if there's any text/file/reasoning part before this tool
+      const hasContentBefore = message.parts
+        .slice(0, partIndex)
+        .some(
+          (p) =>
+            p.type === CONTENT_TYPE.TEXT ||
+            p.type === CONTENT_TYPE.FILE ||
+            p.type === CONTENT_TYPE.REASONING,
+        );
+
+      // Check if this is the first tool part
+      const isFirstTool = !message.parts
+        .slice(0, partIndex)
+        .some((p) => p.type.startsWith("tool-"));
+
       return (
         <Tool
           key={`${message.id}-${partIndex}`}
-          className={cn(partIndex < 2 && "mt-4")}
+          className={cn(hasContentBefore && isFirstTool && "mt-4")}
         >
           <ToolHeader
             title={toolName}
