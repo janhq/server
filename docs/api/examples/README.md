@@ -26,7 +26,6 @@ Complete working examples across all APIs in Python, JavaScript, and cURL.
 ## Image Generation
 - **[Image Generation Guide](../../guides/image-generation.md)** - Generate images from text prompts:
   - Basic image generation
-  - Multiple models (flux-schnell, flux-dev)
   - Size and quality options
   - Conversation integration
   - Python and JavaScript examples
@@ -75,7 +74,7 @@ IMAGE_RESP=$(curl -s -X POST http://localhost:8000/v1/images/generations \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A futuristic cityscape at sunset",
-    "model": "flux-schnell",
+    "model": "z-image",
     "size": "1024x1024",
     "conversation_id": "'$CONV_ID'",
     "store": true

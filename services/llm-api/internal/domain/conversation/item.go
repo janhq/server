@@ -13,7 +13,7 @@ import (
 // Item Types and Enums
 // ===============================================
 
-// @Enum(message, function_call, function_call_output, reasoning, file_search_call, web_search_call, image_generation_call, computer_call, computer_call_output, code_interpreter_call, local_shell_call, local_shell_call_output, shell_call, shell_call_output, apply_patch_call, apply_patch_call_output, mcp_list_tools, mcp_approval_request, mcp_approval_response, mcp_call, custom_tool_call, custom_tool_call_output)
+// @Enum(message, function_call, function_call_output, reasoning, file_search_call, web_search_call, image_generation_call, image_edit_call, computer_call, computer_call_output, code_interpreter_call, local_shell_call, local_shell_call_output, shell_call, shell_call_output, apply_patch_call, apply_patch_call_output, mcp_list_tools, mcp_approval_request, mcp_approval_response, mcp_call, custom_tool_call, custom_tool_call_output)
 type ItemType string
 
 const (
@@ -27,6 +27,7 @@ const (
 	ItemTypeFileSearchCall       ItemType = "file_search_call"
 	ItemTypeWebSearchCall        ItemType = "web_search_call"
 	ItemTypeImageGenerationCall  ItemType = "image_generation_call"
+	ItemTypeImageEditCall        ItemType = "image_edit_call"
 	ItemTypeComputerCall         ItemType = "computer_call"
 	ItemTypeComputerCallOutput   ItemType = "computer_call_output"
 	ItemTypeCodeInterpreterCall  ItemType = "code_interpreter_call"
@@ -59,7 +60,7 @@ const (
 func ValidateItemType(input string) bool {
 	switch ItemType(input) {
 	case ItemTypeMessage, ItemTypeFunctionCall, ItemTypeFunctionCallOut, ItemTypeReasoning,
-		ItemTypeFileSearchCall, ItemTypeWebSearchCall, ItemTypeImageGenerationCall,
+		ItemTypeFileSearchCall, ItemTypeWebSearchCall, ItemTypeImageGenerationCall, ItemTypeImageEditCall,
 		ItemTypeComputerCall, ItemTypeComputerCallOutput,
 		ItemTypeCodeInterpreterCall,
 		ItemTypeLocalShellCall, ItemTypeLocalShellCallOutput,

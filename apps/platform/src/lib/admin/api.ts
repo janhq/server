@@ -54,6 +54,7 @@ export interface Provider {
   base_url?: string;
   endpoints?: Endpoint[];
   active: boolean;
+  category?: string;
   default_provider_image_generate?: boolean;
   default_provider_image_edit?: boolean;
   model_count?: number; // Backend uses 'model_count'
@@ -658,6 +659,7 @@ export class ProviderManagementAPI {
   async createProvider(data: {
     name: string;
     vendor: string;
+    category?: string;
     base_url?: string;
     url?: string;
     endpoints?: Endpoint[];

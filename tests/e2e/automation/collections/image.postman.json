@@ -743,7 +743,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prompt\": \"A serene mountain landscape at sunset with vibrant orange and purple sky, photorealistic\",\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\",\n  \"conversation_id\": \"{{image_conversation_id}}\",\n  \"store\": true\n}"
+              "raw": "{\n  \"prompt\": \"A serene mountain landscape at sunset with vibrant orange and purple sky, photorealistic\",\n  \"model\": \"z-image\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\",\n  \"conversation_id\": \"{{image_conversation_id}}\",\n  \"store\": true\n}"
             },
             "url": "{{kong_url}}/v1/images/generations"
           },
@@ -891,6 +891,126 @@
                   "        pm.expect(true).to.be.true;",
                   "    });",
                   "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 5b: Edit Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Make it a rainy night scene with neon reflections\",\n  \"image\": {\n    \"url\": \"{{generated_image_url}}\"\n  },\n  \"n\": 1,\n  \"size\": \"original\",\n  \"response_format\": \"url\",\n  \"conversation_id\": \"{{image_conversation_id}}\",\n  \"store\": true\n}"
+            },
+            "url": "{{kong_url}}/v1/images/edits"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const imgSuccess = pm.collectionVariables.get('image_generation_success') === 'true';",
+                  "const isHttpUrl = pm.collectionVariables.get('image_url_is_http') === 'true';",
+                  "const imgUrl = pm.collectionVariables.get('generated_image_url');",
+                  "if (!imgSuccess || !isHttpUrl || !imgUrl) {",
+                  "    pm.collectionVariables.set('image_edit_success', 'false');",
+                  "    postman.setNextRequest('Step 6: Send Follow-up Chat Message');",
+                  "    return;",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const imgSuccess = pm.collectionVariables.get('image_generation_success') === 'true';",
+                  "const isHttpUrl = pm.collectionVariables.get('image_url_is_http') === 'true';",
+                  "const imgUrl = pm.collectionVariables.get('generated_image_url');",
+                  "if (!imgSuccess || !isHttpUrl || !imgUrl) {",
+                  "    pm.test('[Step 5b] Skipped - no HTTP image URL available', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "pm.test('[Step 5b] Image edit request processed', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 500, 501, 504]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test('[Step 5b] Response contains image data', function () {",
+                  "        pm.expect(data).to.have.property('data');",
+                  "        pm.expect(data.data).to.be.an('array').that.is.not.empty;",
+                  "    });",
+                  "    const imageData = data.data[0];",
+                  "    const hasUrl = !!imageData.url;",
+                  "    const hasB64 = !!imageData.b64_json;",
+                  "    pm.test('[Step 5b] Image has URL or base64 data', function () {",
+                  "        pm.expect(hasUrl || hasB64).to.be.true;",
+                  "    });",
+                  "    if (hasUrl) {",
+                  "        pm.collectionVariables.set('edited_image_url', imageData.url);",
+                  "    }",
+                  "    pm.collectionVariables.set('image_edit_success', (hasUrl || hasB64) ? 'true' : 'false');",
+                  "} else {",
+                  "    pm.collectionVariables.set('image_edit_success', 'false');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 5c: Verify Edited Image URL Accessible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{kong_url}}/healthz"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const editSuccess = pm.collectionVariables.get('image_edit_success') === 'true';",
+                  "const editUrl = pm.collectionVariables.get('edited_image_url');",
+                  "const isHttpUrl = editUrl && editUrl.match(/^https?:\\/\\//);",
+                  "pm.collectionVariables.set('edited_image_url_is_http', isHttpUrl ? 'true' : 'false');",
+                  "if (!editSuccess || !isHttpUrl || !editUrl) {",
+                  "    pm.test('[Step 5c] Skipped - no HTTP edited image URL available', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "pm.test('[Step 5c] Edited image URL is accessible', function (done) {",
+                  "    pm.sendRequest({",
+                  "        url: editUrl,",
+                  "        method: 'GET'",
+                  "    }, function (err, res) {",
+                  "        pm.expect(err).to.equal(null);",
+                  "        pm.expect(res.code).to.be.oneOf([200, 301, 302, 307, 308]);",
+                  "        const contentType = res.headers.get('Content-Type');",
+                  "        if (contentType) {",
+                  "            pm.expect(contentType).to.match(/image\\//);",
+                  "        }",
+                  "        done();",
+                  "    });",
+                  "});"
                 ]
               }
             }
@@ -1046,7 +1166,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prompt\": \"A cute robot holding a coffee cup, digital art style\",\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\"\n}"
+              "raw": "{\n  \"prompt\": \"A cute robot holding a coffee cup, digital art style\",\n  \"model\": \"z-image\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\"\n}"
             },
             "url": "{{kong_url}}/v1/images/generations"
           },
@@ -1085,7 +1205,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prompt\": \"A watercolor illustration of a lighthouse on a cliff\",\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\"\n}"
+              "raw": "{\n  \"prompt\": \"A watercolor illustration of a lighthouse on a cliff\",\n  \"model\": \"z-image\",\n  \"n\": 1,\n  \"size\": \"512x512\",\n  \"response_format\": \"url\"\n}"
             },
             "url": "{{kong_url}}/v1/images/generations"
           },
@@ -1128,7 +1248,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"model\": \"flux-schnell\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}"
+              "raw": "{\n  \"model\": \"z-image\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}"
             },
             "url": "{{kong_url}}/v1/images/generations"
           },
@@ -1163,7 +1283,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prompt\": \"A test image\",\n  \"model\": \"flux-schnell\"\n}"
+              "raw": "{\n  \"prompt\": \"A test image\",\n  \"model\": \"z-image\"\n}"
             },
             "url": "{{kong_url}}/v1/images/generations"
           },
@@ -1284,30 +1404,30 @@
       "key": "model_id",
       "value": ""
     },
-      {
-        "key": "image_conversation_id",
-        "value": ""
-      },
-      {
-        "key": "mcp_conversation_id",
-        "value": ""
-      },
-      {
-        "key": "mcp_tool_call_id",
-        "value": ""
-      },
-      {
-        "key": "mcp_image_url_is_http",
-        "value": "false"
-      },
-      {
-        "key": "first_chat_message_id",
-        "value": ""
-      },
-      {
-        "key": "image_request_chat_message_id",
-        "value": ""
-      },
+    {
+      "key": "image_conversation_id",
+      "value": ""
+    },
+    {
+      "key": "mcp_conversation_id",
+      "value": ""
+    },
+    {
+      "key": "mcp_tool_call_id",
+      "value": ""
+    },
+    {
+      "key": "mcp_image_url_is_http",
+      "value": "false"
+    },
+    {
+      "key": "first_chat_message_id",
+      "value": ""
+    },
+    {
+      "key": "image_request_chat_message_id",
+      "value": ""
+    },
     {
       "key": "second_chat_message_id",
       "value": ""
@@ -1347,6 +1467,18 @@
     {
       "key": "mcp_generated_image_url",
       "value": ""
+    },
+    {
+      "key": "image_edit_success",
+      "value": "false"
+    },
+    {
+      "key": "edited_image_url",
+      "value": ""
+    },
+    {
+      "key": "edited_image_url_is_http",
+      "value": "false"
     }
   ]
 }

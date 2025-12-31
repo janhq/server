@@ -8,7 +8,7 @@ import (
 
 // ImageGenerateRequest represents an OpenAI-compatible image generation request.
 type ImageGenerateRequest struct {
-	// Model specifies the image generation model (e.g., "flux-schnell", "flux-dev", "dall-e-3").
+	// Model specifies the image generation model (e.g., "z-image", "flux-dev", "dall-e-3").
 	Model string `json:"model,omitempty"`
 
 	// Prompt is the text description of the desired image.
@@ -31,6 +31,28 @@ type ImageGenerateRequest struct {
 
 	// User is an optional unique identifier representing the end-user.
 	User string `json:"user,omitempty"`
+}
+
+// ImageEditRequest represents an OpenAI-compatible image edit request.
+type ImageEditRequest struct {
+	Model          string  `json:"model,omitempty"`
+	Prompt         string  `json:"prompt"`
+	N              int     `json:"n,omitempty"`
+	Size           string  `json:"size,omitempty"`
+	ResponseFormat string  `json:"response_format,omitempty"`
+	Strength       float64 `json:"strength,omitempty"`
+	Steps          int     `json:"steps,omitempty"`
+	Seed           int     `json:"seed,omitempty"`
+	CfgScale       float64 `json:"cfg_scale,omitempty"`
+	Sampler        string  `json:"sampler,omitempty"`
+	Scheduler      string  `json:"scheduler,omitempty"`
+	NegativePrompt string  `json:"negative_prompt,omitempty"`
+	User           string  `json:"user,omitempty"`
+
+	ImageData        []byte `json:"-"`
+	ImageContentType string `json:"-"`
+	MaskData         []byte `json:"-"`
+	MaskContentType  string `json:"-"`
 }
 
 // ImageData represents a single generated image.
@@ -58,6 +80,9 @@ type ImageGenerateResponse struct {
 type ImageService interface {
 	// Generate creates images based on the provided request and provider.
 	Generate(ctx context.Context, provider *domainmodel.Provider, request *ImageGenerateRequest) (*ImageGenerateResponse, error)
+
+	// Edit edits an image based on the provided request and provider.
+	Edit(ctx context.Context, provider *domainmodel.Provider, request *ImageEditRequest) (*ImageGenerateResponse, error)
 
 	// SupportsModel checks if the service supports the given model.
 	SupportsModel(model string) bool

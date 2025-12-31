@@ -110,7 +110,7 @@ type Config struct {
 	// Image Generation
 	ImageGenerationEnabled     bool          `env:"IMAGE_GENERATION_ENABLED" envDefault:"false"`
 	ImageGenerationTimeout     time.Duration `env:"IMAGE_GENERATION_TIMEOUT" envDefault:"120s"`
-	ImageDefaultModel          string        `env:"IMAGE_DEFAULT_MODEL" envDefault:"flux-schnell"`
+	ImageDefaultModel          string        `env:"IMAGE_DEFAULT_MODEL" envDefault:"z-image"`
 	ImageDefaultSize           string        `env:"IMAGE_DEFAULT_SIZE" envDefault:"1024x1024"`
 	ImageMaxN                  int           `env:"IMAGE_MAX_N" envDefault:"4"`
 	ImageDefaultQuality        string        `env:"IMAGE_DEFAULT_QUALITY" envDefault:"standard"`

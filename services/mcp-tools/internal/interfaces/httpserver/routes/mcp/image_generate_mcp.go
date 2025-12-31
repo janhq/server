@@ -30,9 +30,9 @@ type ImageGenerateArgs struct {
 	ConversationID    *string  `json:"conversation_id,omitempty"`
 	Store             *bool    `json:"store,omitempty"`
 	// Context passthrough
-	ToolCallID     string `json:"tool_call_id,omitempty"`
-	RequestID      string `json:"request_id,omitempty"`
-	UserID         string `json:"user_id,omitempty"`
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	RequestID  string `json:"request_id,omitempty"`
+	UserID     string `json:"user_id,omitempty"`
 }
 
 type ImageGenerateMCP struct {
@@ -80,7 +80,7 @@ func (i *ImageGenerateMCP) RegisterTools(server *mcp.Server) {
 			},
 			"model": map[string]any{
 				"type":        []string{"string", "null"},
-				"description": "Image generation model (e.g., flux-schnell, flux-dev)",
+				"description": "Image generation model (e.g., z-image, flux-dev)",
 			},
 			"n": map[string]any{
 				"type":        []string{"integer", "null"},

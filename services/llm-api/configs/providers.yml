@@ -49,7 +49,7 @@ providers:
         default_quality: "standard"
         default_style: "natural"
         # Supported models (comma-separated or JSON array)
-        models: "flux-schnell,flux-dev"
+        models: "z-image,flux-dev"
     # - name: External Gemini
     #   type: gemini
     #   url: https://generativelanguage.googleapis.com/v1beta/openai

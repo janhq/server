@@ -69,6 +69,7 @@ const (
 	MetadataKeyEnvironment      = "environment"            // e.g., "production", "staging", "local"
 	MetadataKeyAutoEnableModels = "auto_enable_new_models" // "true" to auto-enable new models
 	MetadataKeyToolSupport      = "tool_support"           // "true" if provider supports tools/tool_choice
+	MetadataKeyImageEditPath    = "image_edit_path"        // optional path or full URL override for image edits
 )
 
 // ImageInputCapability describes how a provider supports image input

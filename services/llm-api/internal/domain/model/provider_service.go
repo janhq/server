@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -616,9 +617,27 @@ func (s *ProviderService) FindDefaultImageGenerateProvider(ctx context.Context) 
 
 // FindDefaultImageEditProvider returns the configured default image provider for edits.
 func (s *ProviderService) FindDefaultImageEditProvider(ctx context.Context) (*Provider, error) {
-	return s.findDefaultImageProvider(ctx, func(p *Provider) bool {
+	provider, err := s.findDefaultImageProvider(ctx, func(p *Provider) bool {
 		return p.DefaultImageEdit
 	}, "image-edit")
+	if err == nil {
+		return provider, nil
+	}
+
+	var platformErr *platformerrors.PlatformError
+	if errors.As(err, &platformErr) && platformErr.UUID == "default-image-provider-not-found" {
+		// Allow default edit providers that live outside the image category.
+		if fallback, fallbackErr := s.findDefaultImageProviderAnyCategory(ctx, func(p *Provider) bool {
+			return p.DefaultImageEdit
+		}, "image-edit"); fallbackErr == nil {
+			return fallback, nil
+		}
+		return s.findDefaultImageProvider(ctx, func(p *Provider) bool {
+			return p.DefaultImageGenerate
+		}, "image-generate")
+	}
+
+	return nil, err
 }
 
 func (s *ProviderService) findDefaultImageProvider(
@@ -659,6 +678,47 @@ func (s *ProviderService) findDefaultImageProvider(
 		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
 			platformerrors.ErrorTypeValidation,
 			fmt.Sprintf("multiple default image providers configured for %s", label),
+			nil, "default-image-provider-multiple")
+	}
+	return defaults[0], nil
+}
+
+func (s *ProviderService) findDefaultImageProviderAnyCategory(
+	ctx context.Context,
+	isDefault func(*Provider) bool,
+	label string,
+) (*Provider, error) {
+	filter := ProviderFilter{
+		Active: ptr.ToBool(true),
+	}
+	providers, err := s.providerRepo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(providers) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			"no active provider configured", nil,
+			"default-image-provider-not-found")
+	}
+
+	defaults := make([]*Provider, 0, 1)
+	for _, provider := range providers {
+		if provider != nil && isDefault(provider) {
+			defaults = append(defaults, provider)
+		}
+	}
+
+	if len(defaults) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			fmt.Sprintf("no default provider configured for %s", label), nil,
+			"default-image-provider-not-found")
+	}
+	if len(defaults) > 1 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeValidation,
+			fmt.Sprintf("multiple default providers configured for %s", label),
 			nil, "default-image-provider-multiple")
 	}
 	return defaults[0], nil

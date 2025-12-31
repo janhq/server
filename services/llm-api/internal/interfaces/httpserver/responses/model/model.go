@@ -58,6 +58,7 @@ type ProviderResponse struct {
 	BaseURL   string             `json:"base_url"`
 	Endpoints []EndpointResponse `json:"endpoints,omitempty"`
 	Active    bool               `json:"active"`
+	Category  string             `json:"category"`
 	DefaultProviderImageGenerate bool `json:"default_provider_image_generate"`
 	DefaultProviderImageEdit     bool `json:"default_provider_image_edit"`
 	Metadata  map[string]string  `json:"metadata,omitempty"`
@@ -70,6 +71,7 @@ type ProviderWithModelCountResponse struct {
 	BaseURL          string             `json:"base_url"`
 	Endpoints        []EndpointResponse `json:"endpoints,omitempty"`
 	Active           bool               `json:"active"`
+	Category         string             `json:"category"`
 	DefaultProviderImageGenerate bool `json:"default_provider_image_generate"`
 	DefaultProviderImageEdit     bool `json:"default_provider_image_edit"`
 	ModelCount       int64              `json:"model_count"`
@@ -85,6 +87,7 @@ type ProviderWithModelsResponse struct {
 	Endpoints []EndpointResponse `json:"endpoints,omitempty"`
 	Models    []ModelResponse    `json:"models"`
 	Active    bool               `json:"active"`
+	Category  string             `json:"category"`
 	DefaultProviderImageGenerate bool `json:"default_provider_image_generate"`
 	DefaultProviderImageEdit     bool `json:"default_provider_image_edit"`
 	Metadata  map[string]string  `json:"metadata,omitempty"`
@@ -258,6 +261,7 @@ func BuildProviderResponse(provider *domainmodel.Provider) ProviderResponse {
 		BaseURL:   provider.BaseURL,
 		Endpoints: buildEndpointResponses(provider.GetEndpoints()),
 		Active:    provider.Active,
+		Category:  string(provider.Category),
 		DefaultProviderImageGenerate: provider.DefaultImageGenerate,
 		DefaultProviderImageEdit:     provider.DefaultImageEdit,
 		Metadata:  provider.Metadata,
@@ -276,6 +280,7 @@ func BuildProviderWithModelCountResponse(
 		BaseURL:          provider.BaseURL,
 		Endpoints:        buildEndpointResponses(provider.GetEndpoints()),
 		Active:           provider.Active,
+		Category:         string(provider.Category),
 		DefaultProviderImageGenerate: provider.DefaultImageGenerate,
 		DefaultProviderImageEdit:     provider.DefaultImageEdit,
 		ModelCount:       modelCount,
@@ -316,6 +321,7 @@ func BuildProviderWithModelsResponse(
 		Endpoints: buildEndpointResponses(provider.GetEndpoints()),
 		Models:    modelResponses,
 		Active:    provider.Active,
+		Category:  string(provider.Category),
 		DefaultProviderImageGenerate: provider.DefaultImageGenerate,
 		DefaultProviderImageEdit:     provider.DefaultImageEdit,
 		Metadata:  provider.Metadata,

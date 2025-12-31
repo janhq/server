@@ -4009,6 +4009,166 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/images/edits": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates an edited image given an original image and a prompt.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Images API"
+                ],
+                "summary": "Create image edit",
+                "parameters": [
+                    {
+                        "description": "Image edit request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageEditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful image edit response",
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - missing or invalid authentication",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No active image provider configured",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error or image provider error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/images/generations": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates images from a text prompt using the configured image provider.\nThis endpoint is compatible with the OpenAI Images API format.\n\n**Response Formats:**\n- url: Returns presigned URLs to download images (default, recommended)\n- b64_json: Returns base64-encoded image data\n\n**Size Options:**\n- 1024x1024 (default)\n- 512x512\n- 1792x1024 (landscape)\n- 1024x1792 (portrait)\n",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Images API"
+                ],
+                "summary": "Create image generation",
+                "parameters": [
+                    {
+                        "description": "Image generation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful image generation response",
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - missing or invalid authentication",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No active image provider configured",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error or image provider error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Feature not implemented",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/images/variations": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a variation of a given image.\nNOTE: This endpoint is not yet implemented and will return 501 Not Implemented.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Images API"
+                ],
+                "summary": "Create image variation (Not Implemented)",
+                "responses": {
+                    "501": {
+                        "description": "Not implemented",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/mcp-tools": {
             "get": {
                 "description": "Get all active MCP tools (public endpoint for mcp-tools service)",
@@ -6068,6 +6228,7 @@ const docTemplate = `{
                 "file_search_call",
                 "web_search_call",
                 "image_generation_call",
+                "image_edit_call",
                 "computer_call",
                 "computer_call_output",
                 "code_interpreter_call",
@@ -6107,6 +6268,7 @@ const docTemplate = `{
                 "ItemTypeFileSearchCall",
                 "ItemTypeWebSearchCall",
                 "ItemTypeImageGenerationCall",
+                "ItemTypeImageEditCall",
                 "ItemTypeComputerCall",
                 "ItemTypeComputerCallOutput",
                 "ItemTypeCodeInterpreterCall",
@@ -6654,6 +6816,9 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
                 }
             }
         },
@@ -6825,6 +6990,294 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/conversation.ItemType"
+                }
+            }
+        },
+        "image.ImageData": {
+            "description": "Single generated image data",
+            "type": "object",
+            "properties": {
+                "b64_json": {
+                    "description": "B64JSON is the base64-encoded image data.\nPresent when response_format=\"b64_json\".",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is the Jan media ID (jan_xxxxx) for the stored image.",
+                    "type": "string",
+                    "example": "jan_abc123"
+                },
+                "revised_prompt": {
+                    "description": "RevisedPrompt is the revised prompt used for generation, if the provider modified it.",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "URL is the presigned URL to the generated image.\nPresent when response_format=\"url\".",
+                    "type": "string",
+                    "example": "https://media.jan.ai/images/jan_abc123.png?sig=..."
+                }
+            }
+        },
+        "image.ImageEditRequest": {
+            "type": "object",
+            "required": [
+                "image",
+                "prompt"
+            ],
+            "properties": {
+                "cfg_scale": {
+                    "description": "CfgScale is classifier-free guidance scale.",
+                    "type": "number",
+                    "example": 1
+                },
+                "conversation_id": {
+                    "description": "ConversationID optionally links this edit to a conversation.",
+                    "type": "string",
+                    "example": "conv_abc123"
+                },
+                "image": {
+                    "description": "Image is the input image to edit. Required.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/image.ImageInput"
+                        }
+                    ]
+                },
+                "mask": {
+                    "description": "Mask is an optional mask for inpainting.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/image.ImageInput"
+                        }
+                    ]
+                },
+                "model": {
+                    "description": "Model specifies the image edit model. Optional.",
+                    "type": "string",
+                    "example": "qwen-image-edit"
+                },
+                "n": {
+                    "description": "N is the number of images to generate (only 1 supported by most providers).",
+                    "type": "integer",
+                    "example": 1
+                },
+                "negative_prompt": {
+                    "description": "NegativePrompt describes what to avoid.",
+                    "type": "string",
+                    "example": " "
+                },
+                "prompt": {
+                    "description": "Prompt is the text instruction describing the edit. Required.",
+                    "type": "string",
+                    "example": "add golden sunglasses"
+                },
+                "provider_id": {
+                    "description": "ProviderID optionally overrides the default image edit provider.",
+                    "type": "string",
+                    "example": "prov_abc123"
+                },
+                "response_format": {
+                    "description": "ResponseFormat determines output format (\"url\" or \"b64_json\").",
+                    "type": "string",
+                    "example": "b64_json"
+                },
+                "sampler": {
+                    "description": "Sampler selects the sampling algorithm.",
+                    "type": "string",
+                    "example": "euler"
+                },
+                "scheduler": {
+                    "description": "Scheduler selects the scheduler.",
+                    "type": "string",
+                    "example": "simple"
+                },
+                "seed": {
+                    "description": "Seed sets random seed (-1 for random).",
+                    "type": "integer",
+                    "example": -1
+                },
+                "size": {
+                    "description": "Size specifies the output size (\"original\" or \"WIDTHxHEIGHT\").",
+                    "type": "string",
+                    "example": "original"
+                },
+                "steps": {
+                    "description": "Steps controls sampling steps.",
+                    "type": "integer",
+                    "example": 4
+                },
+                "store": {
+                    "description": "Store controls whether to save the result to the conversation.\nnil/true = store (default), false = don't store.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "strength": {
+                    "description": "Strength controls edit intensity (0.0-1.0).",
+                    "type": "number",
+                    "example": 1
+                }
+            }
+        },
+        "image.ImageGenerationRequest": {
+            "description": "OpenAI-compatible image generation request",
+            "type": "object",
+            "required": [
+                "prompt"
+            ],
+            "properties": {
+                "cfg_scale": {
+                    "description": "CfgScale is a provider-specific parameter (z-image/Flux) for guidance scale.",
+                    "type": "number",
+                    "example": 7.5
+                },
+                "conversation_id": {
+                    "description": "ConversationID optionally links this generation to a conversation.",
+                    "type": "string",
+                    "example": "conv_abc123"
+                },
+                "model": {
+                    "description": "Model specifies the image generation model (e.g., \"z-image\", \"flux-dev\", \"dall-e-3\").\nIf omitted, defaults to the configured default model.",
+                    "type": "string",
+                    "example": "z-image"
+                },
+                "n": {
+                    "description": "N is the number of images to generate (1-10, default: 1).",
+                    "type": "integer",
+                    "example": 1
+                },
+                "num_inference_steps": {
+                    "description": "NumInferenceSteps is a provider-specific parameter (z-image/Flux).",
+                    "type": "integer",
+                    "example": 20
+                },
+                "prompt": {
+                    "description": "Prompt is the text description of the desired image. Required.",
+                    "type": "string",
+                    "example": "A serene mountain landscape at sunset"
+                },
+                "provider_id": {
+                    "description": "ProviderID optionally overrides the default image provider selection.",
+                    "type": "string",
+                    "example": "prov_abc123"
+                },
+                "quality": {
+                    "description": "Quality determines image quality. Valid values: \"standard\", \"hd\".\nDefault: \"standard\".",
+                    "type": "string",
+                    "example": "standard"
+                },
+                "response_format": {
+                    "description": "ResponseFormat determines output format. Valid values: \"url\", \"b64_json\".\nDefault: \"url\".",
+                    "type": "string",
+                    "example": "url"
+                },
+                "size": {
+                    "description": "Size specifies the dimensions of the generated image.\nSupported sizes: \"256x256\", \"512x512\", \"1024x1024\", \"1024x1792\", \"1792x1024\".\nDefault: \"1024x1024\".",
+                    "type": "string",
+                    "example": "1024x1024"
+                },
+                "store": {
+                    "description": "Store controls whether to save the result to the conversation.\nnil/true = store (default), false = don't store.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "style": {
+                    "description": "Style influences the visual aesthetic. Valid values: \"vivid\", \"natural\".\nDefault: \"natural\".",
+                    "type": "string",
+                    "example": "natural"
+                },
+                "user": {
+                    "description": "User is an optional unique identifier representing the end-user for abuse monitoring.",
+                    "type": "string",
+                    "example": "user-123"
+                }
+            }
+        },
+        "image.ImageGenerationResponse": {
+            "description": "OpenAI-compatible image generation response",
+            "type": "object",
+            "properties": {
+                "created": {
+                    "description": "Created is the Unix timestamp of when the response was generated.",
+                    "type": "integer",
+                    "example": 1699000000
+                },
+                "data": {
+                    "description": "Data contains the generated images.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/image.ImageData"
+                    }
+                },
+                "usage": {
+                    "description": "Usage contains token usage information for billing purposes.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/image.ImageUsage"
+                        }
+                    ]
+                }
+            }
+        },
+        "image.ImageInput": {
+            "type": "object",
+            "properties": {
+                "b64_json": {
+                    "description": "B64JSON is base64-encoded image data (no data URL prefix).",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is a Jan media ID (jan_*).",
+                    "type": "string",
+                    "example": "jan_abc123"
+                },
+                "url": {
+                    "description": "URL is a remote URL to the image.",
+                    "type": "string",
+                    "example": "https://example.com/image.png"
+                }
+            }
+        },
+        "image.ImageUsage": {
+            "description": "Token usage information for billing",
+            "type": "object",
+            "properties": {
+                "input_tokens": {
+                    "description": "InputTokens is the estimated tokens for the prompt.",
+                    "type": "integer",
+                    "example": 100
+                },
+                "input_tokens_details": {
+                    "description": "InputTokensDetails provides a breakdown of input token types.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/image.InputTokensDetail"
+                        }
+                    ]
+                },
+                "output_tokens": {
+                    "description": "OutputTokens is the estimated tokens for the generated images.",
+                    "type": "integer",
+                    "example": 1400
+                },
+                "total_tokens": {
+                    "description": "TotalTokens is the sum of input and output tokens.",
+                    "type": "integer",
+                    "example": 1500
+                }
+            }
+        },
+        "image.InputTokensDetail": {
+            "description": "Breakdown of input token types",
+            "type": "object",
+            "properties": {
+                "image_tokens": {
+                    "description": "ImageTokens is the number of tokens from input images (for edit/variation operations).",
+                    "type": "integer",
+                    "example": 0
+                },
+                "text_tokens": {
+                    "description": "TextTokens is the number of tokens from the text prompt.",
+                    "type": "integer",
+                    "example": 100
                 }
             }
         },
@@ -7524,6 +7977,12 @@ const docTemplate = `{
                 "base_url": {
                     "type": "string"
                 },
+                "default_provider_image_edit": {
+                    "type": "boolean"
+                },
+                "default_provider_image_generate": {
+                    "type": "boolean"
+                },
                 "endpoints": {
                     "type": "array",
                     "items": {
@@ -7570,6 +8029,12 @@ const docTemplate = `{
                 "base_url": {
                     "type": "string"
                 },
+                "default_provider_image_edit": {
+                    "type": "boolean"
+                },
+                "default_provider_image_generate": {
+                    "type": "boolean"
+                },
                 "endpoints": {
                     "type": "array",
                     "items": {
@@ -7607,6 +8072,12 @@ const docTemplate = `{
                 },
                 "base_url": {
                     "type": "string"
+                },
+                "default_provider_image_edit": {
+                    "type": "boolean"
+                },
+                "default_provider_image_generate": {
+                    "type": "boolean"
                 },
                 "endpoints": {
                     "type": "array",
@@ -8389,6 +8860,16 @@ const docTemplate = `{
                 "base_url": {
                     "type": "string"
                 },
+                "category": {
+                    "description": "\"llm\" or \"image\", defaults to \"llm\"",
+                    "type": "string"
+                },
+                "default_provider_image_edit": {
+                    "type": "boolean"
+                },
+                "default_provider_image_generate": {
+                    "type": "boolean"
+                },
                 "endpoints": {
                     "type": "array",
                     "items": {
@@ -8608,6 +9089,12 @@ const docTemplate = `{
                 "base_url": {
                     "type": "string"
                 },
+                "default_provider_image_edit": {
+                    "type": "boolean"
+                },
+                "default_provider_image_generate": {
+                    "type": "boolean"
+                },
                 "endpoints": {
                     "type": "array",
                     "items": {
@@ -8713,6 +9200,24 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "description": "For data URLs or external image URLs",
+                    "type": "string"
+                }
+            }
+        },
+        "shareresponses.ImageRefResp": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "url": {
                     "type": "string"
                 }
             }
@@ -8834,6 +9339,12 @@ const docTemplate = `{
                 },
                 "file_ref": {
                     "$ref": "#/definitions/shareresponses.FileRefResp"
+                },
+                "image": {
+                    "$ref": "#/definitions/shareresponses.ImageRefResp"
+                },
+                "input_text": {
+                    "type": "string"
                 },
                 "output_text": {
                     "type": "string"
@@ -9147,6 +9658,14 @@ const docTemplate = `{
                 }
             }
         },
+        "usersettingshandler.ServerCapabilities": {
+            "type": "object",
+            "properties": {
+                "image_generation_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "usersettingshandler.UpdatePreferencesRequest": {
             "type": "object",
             "properties": {
@@ -9183,6 +9702,9 @@ const docTemplate = `{
                 },
                 "profile_settings": {
                     "$ref": "#/definitions/usersettings.ProfileSettings"
+                },
+                "server_capabilities": {
+                    "$ref": "#/definitions/usersettingshandler.ServerCapabilities"
                 },
                 "updated_at": {
                     "type": "string"
