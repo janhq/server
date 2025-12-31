@@ -497,10 +497,14 @@ function DropDrawerItem({
       disabled={disabled}
       {...props}
     >
-      <div className="flex w-full items-center justify-between">
-        {children}
-        {icon && <div>{icon}</div>}
-      </div>
+      {icon ? (
+        <div className="flex w-full items-center justify-between">
+          {children}
+          <div>{icon}</div>
+        </div>
+      ) : (
+        children
+      )}
     </DropdownMenuItem>
   );
 }

@@ -1,12 +1,13 @@
-import { ChevronsUpDown, LogOut, SettingsIcon } from "lucide-react";
+import { ChevronsUpDown, LogOut, SettingsIcon, FlagIcon } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@janhq/interfaces/avatar";
+
+declare const VITE_REPORT_ISSUE_URL: string;
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerLabel,
-  DropDrawerSeparator,
   DropDrawerTrigger,
 } from "@janhq/interfaces/dropdrawer";
 import {
@@ -76,8 +77,6 @@ export function NavUser() {
                 </div>
               </div>
             </DropDrawerLabel>
-            <DropDrawerSeparator />
-
             <DropDrawerItem
               onClick={() => handleOpenSettings(SETTINGS_SECTION.GENERAL)}
             >
@@ -98,7 +97,17 @@ export function NavUser() {
                   Support
                 </div>
               </DropDrawerItem> */}
-            <DropDrawerSeparator />
+            <DropDrawerItem asChild>
+              <a
+                href={VITE_REPORT_ISSUE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex gap-2 items-center"
+              >
+                <FlagIcon className="text-muted-foreground" />
+                Report Issue
+              </a>
+            </DropDrawerItem>
             <DropDrawerItem
               onClick={async () => {
                 await logout();

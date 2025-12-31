@@ -34,4 +34,5 @@ jobs:
         VITE_AUTH_REALM=jan
         VITE_AUTH_CLIENT_ID=jan-client
         VITE_OAUTH_REDIRECT_URI=https://chat-dev.jan.ai/auth/callback
+        VITE_REPORT_ISSUE_URL=https://forms.gle/LoxNVacHqUT261sa9
       is_push: ${{ github.event_name == 'push' }}

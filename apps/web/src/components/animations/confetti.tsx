@@ -117,10 +117,29 @@ export function Confetti() {
   return (
     <div className="relative">
       <Button variant="link" size="icon" onClick={handleClick}>
-        <img
+        <motion.img
           src="/misc/confetti-cone.png"
           alt="Confetti cone"
-          className="size-8 object-contain"
+          className="size-8 object-contain cursor-pointer"
+          animate={{
+            rotate: [0, -10, 10, -10, 10, 0],
+          }}
+          transition={{
+            duration: 0.5,
+            repeat: Infinity,
+            repeatDelay: 2,
+            ease: "easeInOut",
+          }}
+          whileHover={{
+            scale: 1.1,
+            rotate: [0, -15, 15, -15, 15, 0],
+            transition: {
+              duration: 0.5,
+              repeat: Infinity,
+              repeatDelay: 2,
+              ease: "easeInOut",
+            },
+          }}
         />
       </Button>
     </div>
