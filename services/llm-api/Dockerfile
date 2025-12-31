@@ -1,6 +1,6 @@
 ARG GO_VERSION=1.25
 
-FROM registry.menlo.ai/dockerhub/golang:${GO_VERSION} AS builder
+FROM golang:${GO_VERSION} AS builder
 
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -9,7 +9,7 @@ COPY . ./
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/llm-api ./cmd/server
 
-FROM registry.menlo.ai/dockerhub/debian:bookworm-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl && \

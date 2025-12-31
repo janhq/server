@@ -1,5 +1,5 @@
 # Build stage
-FROM registry.menlo.ai/dockerhub/node:20-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ ENV NEXT_PUBLIC_JAN_BASE_URL=$NEXT_PUBLIC_JAN_BASE_URL
 RUN npm run build
 
 # Production stage
-FROM registry.menlo.ai/dockerhub/node:20-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 

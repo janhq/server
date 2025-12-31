@@ -1,7 +1,7 @@
 # Build stage
 ARG GO_VERSION=1.25
 
-FROM registry.menlo.ai/dockerhub/golang:${GO_VERSION}-alpine AS builder
+FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /app
 # Install build dependencies
@@ -18,7 +18,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o memory-tools ./cmd/server
 
 # Final stage
-FROM registry.menlo.ai/dockerhub/alpine:latest
+FROM alpine:latest
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl
