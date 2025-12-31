@@ -17,6 +17,8 @@ type AddProviderRequest struct {
 	Metadata  map[string]string `json:"metadata"`
 	Active    *bool             `json:"active"`
 	Category  string            `json:"category"` // "llm" or "image", defaults to "llm"
+	DefaultProviderImageGenerate *bool `json:"default_provider_image_generate"`
+	DefaultProviderImageEdit     *bool `json:"default_provider_image_edit"`
 }
 
 type UpdateProviderRequest struct {
@@ -27,6 +29,8 @@ type UpdateProviderRequest struct {
 	APIKey    *string            `json:"api_key"`
 	Metadata  *map[string]string `json:"metadata"`
 	Active    *bool              `json:"active"`
+	DefaultProviderImageGenerate *bool `json:"default_provider_image_generate"`
+	DefaultProviderImageEdit     *bool `json:"default_provider_image_edit"`
 }
 
 type EndpointDTO struct {

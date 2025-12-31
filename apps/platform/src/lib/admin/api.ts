@@ -54,6 +54,9 @@ export interface Provider {
   base_url?: string;
   endpoints?: Endpoint[];
   active: boolean;
+  category?: string;
+  default_provider_image_generate?: boolean;
+  default_provider_image_edit?: boolean;
   model_count?: number; // Backend uses 'model_count'
   model_active_count?: number; // Backend uses 'model_active_count'
   metadata?: Record<string, any>;
@@ -656,12 +659,15 @@ export class ProviderManagementAPI {
   async createProvider(data: {
     name: string;
     vendor: string;
+    category?: string;
     base_url?: string;
     url?: string;
     endpoints?: Endpoint[];
     api_key?: string;
     metadata?: Record<string, string>;
     active?: boolean;
+    default_provider_image_generate?: boolean;
+    default_provider_image_edit?: boolean;
   }): Promise<Provider> {
     return fetchWithAuth(
       `${JAN_BASE_URL}/v1/admin/providers`,

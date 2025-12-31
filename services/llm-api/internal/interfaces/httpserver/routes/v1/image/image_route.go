@@ -9,8 +9,11 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/imagehandler"
 	imagerequest "jan-server/services/llm-api/internal/interfaces/httpserver/requests/image"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
+	imageresponse "jan-server/services/llm-api/internal/interfaces/httpserver/responses/image"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
+
+var _ = imageresponse.ImageGenerationResponse{}
 
 // ImageRoute handles image generation routes.
 type ImageRoute struct {
@@ -39,7 +42,6 @@ func (r *ImageRoute) RegisterRouter(router gin.IRouter) {
 			)...,
 		)
 
-		// Future endpoints - return 501 Not Implemented
 		images.POST("/edits",
 			r.authHandler.WithAppUserAuthChain(
 				r.PostEdit,
@@ -55,12 +57,8 @@ func (r *ImageRoute) RegisterRouter(router gin.IRouter) {
 
 // PostGeneration
 // @Summary Create image generation
-// @Description Generates images from a text prompt using the configured image provider (e.g., Flux via z-image).
+// @Description Generates images from a text prompt using the configured image provider.
 // @Description This endpoint is compatible with the OpenAI Images API format.
-// @Description
-// @Description **Supported Models:**
-// @Description - flux-schnell: Fast image generation (default)
-// @Description - flux-dev: Higher quality, slower generation
 // @Description
 // @Description **Response Formats:**
 // @Description - url: Returns presigned URLs to download images (default, recommended)
@@ -125,17 +123,56 @@ func (r *ImageRoute) PostGeneration(reqCtx *gin.Context) {
 }
 
 // PostEdit
-// @Summary Create image edit (Not Implemented)
-// @Description Creates an edited or extended image given an original image and a prompt.
-// @Description NOTE: This endpoint is not yet implemented and will return 501 Not Implemented.
+// @Summary Create image edit
+// @Description Creates an edited image given an original image and a prompt.
 // @Tags Images API
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Success 501 {object} responses.ErrorResponse "Not implemented"
+// @Param request body imagerequest.ImageEditRequest true "Image edit request"
+// @Success 200 {object} imageresponse.ImageGenerationResponse "Successful image edit response"
+// @Failure 400 {object} responses.ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized - missing or invalid authentication"
+// @Failure 404 {object} responses.ErrorResponse "No active image provider configured"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error or image provider error"
 // @Router /v1/images/edits [post]
 func (r *ImageRoute) PostEdit(reqCtx *gin.Context) {
-	responses.HandleNewError(reqCtx, platformerrors.ErrorTypeNotImplemented, "image edits not implemented", "image-edit-not-impl")
+	user, ok := authhandler.GetUserFromContext(reqCtx)
+	if !ok {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeUnauthorized, "authentication required", "image-auth-001")
+		return
+	}
+
+	var request imagerequest.ImageEditRequest
+	if err := reqCtx.ShouldBindJSON(&request); err != nil {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, "Invalid request body", "image-edit-validation-000")
+		return
+	}
+
+	if request.Prompt == "" {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, "prompt is required", "image-edit-validation-001")
+		return
+	}
+	if request.Image == nil {
+		responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, "image is required", "image-edit-validation-002")
+		return
+	}
+
+	result, err := r.imageHandler.EditImage(reqCtx.Request.Context(), reqCtx, user.ID, request)
+	if err != nil {
+		if platformerrors.IsErrorType(err, platformerrors.ErrorTypeNotFound) {
+			responses.HandleNewError(reqCtx, platformerrors.ErrorTypeNotFound, err.Error(), "image-provider-not-found")
+			return
+		}
+		if platformerrors.IsValidationError(err) {
+			responses.HandleNewError(reqCtx, platformerrors.ErrorTypeValidation, err.Error(), "image-edit-validation-error")
+			return
+		}
+		responses.HandleError(reqCtx, err, "Image edit failed")
+		return
+	}
+
+	reqCtx.JSON(http.StatusOK, result.Response)
 }
 
 // PostVariation

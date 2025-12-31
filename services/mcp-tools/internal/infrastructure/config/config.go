@@ -62,6 +62,7 @@ type Config struct {
 	EnableMemoryRetrieve         bool `env:"MCP_ENABLE_MEMORY_RETRIEVE" envDefault:"true"`
 	EnableFileSearch             bool `env:"MCP_ENABLE_FILE_SEARCH" envDefault:"false"`
 	EnableImageGenerate          bool `env:"MCP_ENABLE_IMAGE_GENERATE" envDefault:"true"`
+	EnableImageEdit              bool `env:"MCP_ENABLE_IMAGE_EDIT" envDefault:"true"`
 
 	// Authentication
 	AuthEnabled bool   `env:"AUTH_ENABLED" envDefault:"false"`

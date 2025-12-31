@@ -163,12 +163,15 @@ export default function ProvidersManagementPage() {
   async function handleCreateProvider(data: {
     name: string;
     vendor: string;
+    category?: string;
     base_url?: string;
     url?: string;
     endpoints?: Endpoint[];
     api_key?: string;
     metadata?: Record<string, string>;
     active?: boolean;
+    default_provider_image_generate?: boolean;
+    default_provider_image_edit?: boolean;
   }) {
     try {
       setIsSubmitting(true);
@@ -195,10 +198,14 @@ export default function ProvidersManagementPage() {
   async function handleEditProvider(data: {
     name?: string;
     vendor?: string;
+    category?: string;
     base_url?: string;
     url?: string;
     endpoints?: Endpoint[];
     active?: boolean;
+    default_provider_image_generate?: boolean;
+    default_provider_image_edit?: boolean;
+    metadata?: Record<string, string>;
   }) {
     if (!selectedProvider) return;
 
@@ -229,6 +236,40 @@ export default function ProvidersManagementPage() {
 
   // Get unique kinds for filter
   const availableKinds = ['openrouter', 'openai', 'anthropic', 'google', 'local'];
+
+  function normalizeMetadataValue(value: unknown): string | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function mergeMetadata(
+    base: Record<string, any> | undefined,
+    updates: { imageEditPath?: string },
+  ): Record<string, string> | undefined {
+    const merged: Record<string, string> = {};
+    if (base) {
+      Object.entries(base).forEach(([key, value]) => {
+        const normalized = normalizeMetadataValue(value);
+        if (normalized) merged[key] = normalized;
+      });
+    }
+
+    if (updates.imageEditPath !== undefined) {
+      const trimmed = updates.imageEditPath.trim();
+      if (trimmed) {
+        merged.image_edit_path = trimmed;
+      } else {
+        delete merged.image_edit_path;
+      }
+    }
+
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
 
   return (
     <div className="space-y-6">
@@ -518,10 +559,12 @@ export default function ProvidersManagementPage() {
                 const metadata: Record<string, string> = {};
                 const description = formData.get('metadata_description') as string;
                 const environment = formData.get('metadata_environment') as string;
+                const imageEditPath = formData.get('metadata_image_edit_path') as string;
                 const autoEnable = formData.get('metadata_auto_enable') === 'on';
 
                 if (description) metadata.description = description;
                 if (environment) metadata.environment = environment;
+                if (imageEditPath) metadata.image_edit_path = imageEditPath;
                 metadata.auto_enable_new_models = autoEnable ? 'true' : 'false';
 
                 const endpointsRaw = (formData.get('endpoints') as string) || '';
@@ -543,10 +586,14 @@ export default function ProvidersManagementPage() {
                 handleCreateProvider({
                   name: formData.get('name') as string,
                   vendor: formData.get('vendor') as string,
+                  category: (formData.get('category') as string) || undefined,
                   base_url: baseUrl || undefined,
                   endpoints: endpoints.length ? endpoints : undefined,
                   api_key: (formData.get('api_key') as string) || undefined,
                   active: formData.get('active') === 'on',
+                  default_provider_image_generate:
+                    formData.get('default_provider_image_generate') === 'on',
+                  default_provider_image_edit: formData.get('default_provider_image_edit') === 'on',
                   metadata,
                 });
               }}
@@ -573,6 +620,18 @@ export default function ProvidersManagementPage() {
                     placeholder="e.g. custom"
                     className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Category</label>
+                  <select
+                    name="category"
+                    defaultValue="llm"
+                    className="w-full px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="llm">LLM</option>
+                    <option value="image">Image</option>
+                  </select>
                 </div>
 
                 <div>
@@ -614,6 +673,19 @@ export default function ProvidersManagementPage() {
                 </div>
 
                 <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">Image Edit Path (Optional)</label>
+                  <input
+                    type="text"
+                    name="metadata_image_edit_path"
+                    placeholder="/v1/images/edits or full URL"
+                    className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Overrides the edit endpoint for this provider.
+                  </p>
+                </div>
+
+                <div className="col-span-2">
                   <label className="block text-sm font-medium mb-1">API Key (Optional)</label>
                   <input
                     type="password"
@@ -645,6 +717,30 @@ export default function ProvidersManagementPage() {
                   <span className="text-sm font-medium">Active</span>
                   <span className="text-xs text-muted-foreground ml-auto">
                     Enable this provider immediately
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_generate"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Generate</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/generations
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_edit"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Edit</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/edits
                   </span>
                 </label>
 
@@ -721,13 +817,22 @@ export default function ProvidersManagementPage() {
                   alert('Please provide either a Base URL or one or more endpoints.');
                   return;
                 }
+                const imageEditPath = (formData.get('metadata_image_edit_path') as string) || '';
+                const metadata = mergeMetadata(selectedProvider.metadata, {
+                  imageEditPath,
+                });
 
                 handleEditProvider({
                   name: formData.get('name') as string,
                   vendor: formData.get('vendor') as string,
+                  category: (formData.get('category') as string) || undefined,
                   base_url: baseUrl || undefined,
                   endpoints,
                   active: formData.get('active') === 'on',
+                  default_provider_image_generate:
+                    formData.get('default_provider_image_generate') === 'on',
+                  default_provider_image_edit: formData.get('default_provider_image_edit') === 'on',
+                  metadata,
                 });
               }}
               className="space-y-4"
@@ -750,6 +855,18 @@ export default function ProvidersManagementPage() {
                   defaultValue={selectedProvider.vendor}
                   className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <select
+                  name="category"
+                  defaultValue={selectedProvider.category || 'llm'}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="llm">LLM</option>
+                  <option value="image">Image</option>
+                </select>
               </div>
 
               <div>
@@ -786,6 +903,24 @@ export default function ProvidersManagementPage() {
                 </p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-1">Image Edit Path (Optional)</label>
+                <input
+                  type="text"
+                  name="metadata_image_edit_path"
+                  defaultValue={
+                    typeof selectedProvider.metadata?.image_edit_path === 'string'
+                      ? selectedProvider.metadata?.image_edit_path
+                      : ''
+                  }
+                  placeholder="/v1/images/edits or full URL"
+                  className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Overrides the edit endpoint for this provider.
+                </p>
+              </div>
+
               <div className="flex flex-col gap-3 pt-2 border-t">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -797,6 +932,32 @@ export default function ProvidersManagementPage() {
                   <span className="text-sm font-medium">Active</span>
                   <span className="text-xs text-muted-foreground ml-auto">
                     Enable this provider
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_generate"
+                    defaultChecked={!!selectedProvider.default_provider_image_generate}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Generate</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/generations
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="default_provider_image_edit"
+                    defaultChecked={!!selectedProvider.default_provider_image_edit}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium">Default for Image Edit</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Use as default for /v1/images/edits
                   </span>
                 </label>
               </div>

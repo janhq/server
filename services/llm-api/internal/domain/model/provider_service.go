@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -46,6 +47,8 @@ type RegisterProviderInput struct {
 	APIKey    string
 	Metadata  map[string]string
 	Active    bool
+	DefaultImageGenerate bool
+	DefaultImageEdit     bool
 }
 
 type UpdateProviderInput struct {
@@ -56,6 +59,8 @@ type UpdateProviderInput struct {
 	Metadata  *map[string]string
 	Active    *bool
 	Category  *ProviderCategory // Optional category update
+	DefaultImageGenerate *bool
+	DefaultImageEdit     *bool
 }
 
 type UpsertProviderInput struct {
@@ -67,6 +72,8 @@ type UpsertProviderInput struct {
 	APIKey    string
 	Metadata  map[string]string
 	Active    bool
+	DefaultImageGenerate bool
+	DefaultImageEdit     bool
 }
 
 func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterProviderInput) (*Provider, error) {
@@ -95,16 +102,7 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 
 	kind := ProviderKindFromVendor(input.Vendor)
 
-	if kind != ProviderCustom {
-		filter := ProviderFilter{Kind: &kind}
-		count, err := s.providerRepo.Count(ctx, filter)
-		if err != nil {
-			return nil, err
-		}
-		if count > 0 {
-			return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain, platformerrors.ErrorTypeConflict, "provider kind already exists", nil, "ac1dfff6-c184-4572-b613-6f900c36443f")
-		}
-	}
+	// Allow multiple providers with the same kind.
 
 	publicID, err := idgen.GenerateSecureID("prov", 16)
 	if err != nil {
@@ -149,6 +147,8 @@ func (s *ProviderService) RegisterProvider(ctx context.Context, input RegisterPr
 		APIKeyHint:      apiKeyHint,
 		IsModerated:     false,
 		Active:          input.Active,
+		DefaultImageGenerate: input.DefaultImageGenerate,
+		DefaultImageEdit:     input.DefaultImageEdit,
 		Metadata:        metadata,
 	}
 	// SetEndpoints updates both Endpoints and BaseURL (for backward compat)
@@ -319,6 +319,8 @@ func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProvid
 			APIKey:    &input.APIKey,
 			Metadata:  &input.Metadata,
 			Active:    &input.Active,
+			DefaultImageGenerate: &input.DefaultImageGenerate,
+			DefaultImageEdit:     &input.DefaultImageEdit,
 		}
 		// Only update category if explicitly provided
 		if input.Category != "" {
@@ -338,6 +340,8 @@ func (s *ProviderService) UpsertProvider(ctx context.Context, input UpsertProvid
 		APIKey:    input.APIKey,
 		Metadata:  input.Metadata,
 		Active:    input.Active,
+		DefaultImageGenerate: input.DefaultImageGenerate,
+		DefaultImageEdit:     input.DefaultImageEdit,
 	}
 	return s.RegisterProvider(ctx, registerInput)
 }
@@ -401,6 +405,12 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, provider *Provider
 	}
 	if input.Active != nil {
 		provider.Active = *input.Active
+	}
+	if input.DefaultImageGenerate != nil {
+		provider.DefaultImageGenerate = *input.DefaultImageGenerate
+	}
+	if input.DefaultImageEdit != nil {
+		provider.DefaultImageEdit = *input.DefaultImageEdit
 	}
 	if err := s.providerRepo.Update(ctx, provider); err != nil {
 		return nil, err
@@ -596,6 +606,122 @@ func (s *ProviderService) FindActiveImageProvider(ctx context.Context) (*Provide
 			"image-provider-not-found")
 	}
 	return providers[0], nil // Return first active image provider
+}
+
+// FindDefaultImageGenerateProvider returns the configured default image provider for generation.
+func (s *ProviderService) FindDefaultImageGenerateProvider(ctx context.Context) (*Provider, error) {
+	return s.findDefaultImageProvider(ctx, func(p *Provider) bool {
+		return p.DefaultImageGenerate
+	}, "image-generate")
+}
+
+// FindDefaultImageEditProvider returns the configured default image provider for edits.
+func (s *ProviderService) FindDefaultImageEditProvider(ctx context.Context) (*Provider, error) {
+	provider, err := s.findDefaultImageProvider(ctx, func(p *Provider) bool {
+		return p.DefaultImageEdit
+	}, "image-edit")
+	if err == nil {
+		return provider, nil
+	}
+
+	var platformErr *platformerrors.PlatformError
+	if errors.As(err, &platformErr) && platformErr.UUID == "default-image-provider-not-found" {
+		// Allow default edit providers that live outside the image category.
+		if fallback, fallbackErr := s.findDefaultImageProviderAnyCategory(ctx, func(p *Provider) bool {
+			return p.DefaultImageEdit
+		}, "image-edit"); fallbackErr == nil {
+			return fallback, nil
+		}
+		return s.findDefaultImageProvider(ctx, func(p *Provider) bool {
+			return p.DefaultImageGenerate
+		}, "image-generate")
+	}
+
+	return nil, err
+}
+
+func (s *ProviderService) findDefaultImageProvider(
+	ctx context.Context,
+	isDefault func(*Provider) bool,
+	label string,
+) (*Provider, error) {
+	category := ProviderCategoryImage
+	filter := ProviderFilter{
+		Active:   ptr.ToBool(true),
+		Category: &category,
+	}
+	providers, err := s.providerRepo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(providers) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			"no active image provider configured", nil,
+			"image-provider-not-found")
+	}
+
+	defaults := make([]*Provider, 0, 1)
+	for _, provider := range providers {
+		if provider != nil && isDefault(provider) {
+			defaults = append(defaults, provider)
+		}
+	}
+
+	if len(defaults) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			fmt.Sprintf("no default image provider configured for %s", label), nil,
+			"default-image-provider-not-found")
+	}
+	if len(defaults) > 1 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeValidation,
+			fmt.Sprintf("multiple default image providers configured for %s", label),
+			nil, "default-image-provider-multiple")
+	}
+	return defaults[0], nil
+}
+
+func (s *ProviderService) findDefaultImageProviderAnyCategory(
+	ctx context.Context,
+	isDefault func(*Provider) bool,
+	label string,
+) (*Provider, error) {
+	filter := ProviderFilter{
+		Active: ptr.ToBool(true),
+	}
+	providers, err := s.providerRepo.FindByFilter(ctx, filter, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(providers) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			"no active provider configured", nil,
+			"default-image-provider-not-found")
+	}
+
+	defaults := make([]*Provider, 0, 1)
+	for _, provider := range providers {
+		if provider != nil && isDefault(provider) {
+			defaults = append(defaults, provider)
+		}
+	}
+
+	if len(defaults) == 0 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeNotFound,
+			fmt.Sprintf("no default provider configured for %s", label), nil,
+			"default-image-provider-not-found")
+	}
+	if len(defaults) > 1 {
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerDomain,
+			platformerrors.ErrorTypeValidation,
+			fmt.Sprintf("multiple default providers configured for %s", label),
+			nil, "default-image-provider-multiple")
+	}
+	return defaults[0], nil
 }
 
 // FindAllActiveProvidersByCategory returns all active providers of a specific category

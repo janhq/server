@@ -1,6 +1,7 @@
 package inference
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -70,11 +71,8 @@ type zImageErrorDetail struct {
 
 // supportedModels lists models this service supports.
 var supportedModels = map[string]bool{
-	"flux-schnell":   true,
-	"flux-dev":       true,
-	"flux":           true,
-	"z-image":        true, // alias
-	"zimage":         true, // alias
+	"z-image": true,
+	"zimage":  true, // alias
 }
 
 // Generate implements ImageService.Generate.
@@ -105,6 +103,29 @@ func (s *ZImageService) Generate(ctx context.Context, provider *domainmodel.Prov
 	return s.convertResponse(resp), nil
 }
 
+// Edit implements ImageService.Edit.
+func (s *ZImageService) Edit(ctx context.Context, provider *domainmodel.Provider, request *ImageEditRequest) (*ImageGenerateResponse, error) {
+	log.Debug().
+		Str("provider_id", provider.PublicID).
+		Str("provider_name", provider.DisplayName).
+		Str("prompt", truncatePrompt(request.Prompt, 50)).
+		Str("size", request.Size).
+		Int("n", request.N).
+		Msg("[ZImageService] Edit called")
+
+	client, selectedURL, err := s.createRestyClient(ctx, provider)
+	if err != nil {
+		return nil, platformerrors.AsError(ctx, platformerrors.LayerInfrastructure, err, "failed to create z-image client")
+	}
+
+	resp, err := s.callEditProvider(ctx, client, provider, selectedURL, request)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.convertResponse(resp), nil
+}
+
 // SupportsModel implements ImageService.SupportsModel.
 func (s *ZImageService) SupportsModel(model string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(model))
@@ -116,7 +137,7 @@ func (s *ZImageService) DefaultModel() string {
 	if s.cfg != nil && s.cfg.ImageDefaultModel != "" {
 		return s.cfg.ImageDefaultModel
 	}
-	return "flux-schnell"
+	return "z-image"
 }
 
 // GetProviderKind implements ImageService.GetProviderKind.
@@ -165,9 +186,160 @@ func (s *ZImageService) buildProviderRequest(req *ImageGenerateRequest) *zImageR
 	}
 }
 
+func (s *ZImageService) callEditProvider(ctx context.Context, client *resty.Client, provider *domainmodel.Provider, baseURL string, req *ImageEditRequest) (*zImageResponse, error) {
+	endpoint := resolveImageEditEndpoint(provider, baseURL)
+
+	log.Debug().
+		Str("endpoint", endpoint).
+		Str("model", req.Model).
+		Int("n", req.N).
+		Msg("[ZImageService] Calling edit provider")
+
+	form := client.R().
+		SetContext(ctx).
+		SetHeader("Accept", "application/json")
+
+	imageName := "image.png"
+	if req.ImageContentType == "image/jpeg" {
+		imageName = "image.jpg"
+	}
+	form.SetMultipartField("image", imageName, req.ImageContentType, bytes.NewReader(req.ImageData))
+
+	if len(req.MaskData) > 0 {
+		maskName := "mask.png"
+		if req.MaskContentType == "image/jpeg" {
+			maskName = "mask.jpg"
+		}
+		form.SetMultipartField("mask", maskName, req.MaskContentType, bytes.NewReader(req.MaskData))
+	}
+
+	providerResponseFormat := req.ResponseFormat
+	if providerResponseFormat == "" || providerResponseFormat == "url" {
+		providerResponseFormat = "b64_json"
+	}
+
+	fields := map[string]string{
+		"prompt": req.Prompt,
+	}
+	if req.Size != "" {
+		fields["size"] = req.Size
+	}
+	if providerResponseFormat != "" {
+		fields["response_format"] = providerResponseFormat
+	}
+	if req.Model != "" {
+		fields["model"] = req.Model
+	}
+	if req.NegativePrompt != "" {
+		fields["negative_prompt"] = req.NegativePrompt
+	}
+	if req.Sampler != "" {
+		fields["sampler"] = req.Sampler
+	}
+	if req.Scheduler != "" {
+		fields["scheduler"] = req.Scheduler
+	}
+	if req.N > 0 {
+		fields["n"] = fmt.Sprintf("%d", req.N)
+	}
+	if req.Strength > 0 {
+		fields["strength"] = fmt.Sprintf("%v", req.Strength)
+	}
+	if req.Steps > 0 {
+		fields["steps"] = fmt.Sprintf("%d", req.Steps)
+	}
+	if req.Seed != 0 {
+		fields["seed"] = fmt.Sprintf("%d", req.Seed)
+	}
+	if req.CfgScale > 0 {
+		fields["cfg_scale"] = fmt.Sprintf("%v", req.CfgScale)
+	}
+
+	form.SetFormData(fields)
+
+	resp, err := form.Post(endpoint)
+	if err != nil {
+		log.Error().Err(err).Str("endpoint", endpoint).Msg("[ZImageService] Edit provider call failed")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerInfrastructure,
+			platformerrors.ErrorTypeExternal,
+			fmt.Sprintf("image edit provider call failed: %v", err),
+			nil, "zimage-provider-error")
+	}
+
+	respBytes := resp.Bytes()
+	if resp.StatusCode() >= 400 {
+		var errResp zImageResponse
+		if parseErr := json.Unmarshal(respBytes, &errResp); parseErr == nil && errResp.Error != nil {
+			return nil, platformerrors.NewError(ctx, platformerrors.LayerInfrastructure,
+				platformerrors.ErrorTypeExternal,
+				fmt.Sprintf("image edit provider error: %s", errResp.Error.Message),
+				nil, "zimage-provider-error")
+		}
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerInfrastructure,
+			platformerrors.ErrorTypeExternal,
+			fmt.Sprintf("image edit provider returned status %d: %s", resp.StatusCode(), string(respBytes)),
+			nil, "zimage-provider-http-error")
+	}
+
+	var result zImageResponse
+	if err := json.Unmarshal(respBytes, &result); err != nil {
+		log.Error().Err(err).Str("body", string(respBytes)).Msg("[ZImageService] Failed to parse edit provider response")
+		return nil, platformerrors.NewError(ctx, platformerrors.LayerInfrastructure,
+			platformerrors.ErrorTypeInternal,
+			"failed to parse image edit provider response",
+			err, "zimage-parse-error")
+	}
+
+	log.Debug().
+		Int64("created", result.Created).
+		Int("image_count", len(result.Data)).
+		Msg("[ZImageService] Edit provider response received")
+
+	return &result, nil
+}
+
+func resolveImageEditEndpoint(provider *domainmodel.Provider, baseURL string) string {
+	trimmedBase := strings.TrimSuffix(baseURL, "/")
+	if provider == nil || provider.Metadata == nil {
+		return joinZImageEndpoint(trimmedBase, "/images/edits")
+	}
+
+	customPath := normalizeImageEditPath(provider.Metadata[domainmodel.MetadataKeyImageEditPath])
+	if customPath == "" {
+		return joinZImageEndpoint(trimmedBase, "/images/edits")
+	}
+	if strings.HasPrefix(customPath, "http://") || strings.HasPrefix(customPath, "https://") {
+		return strings.TrimSuffix(customPath, "/")
+	}
+
+	customPath = "/" + strings.TrimPrefix(customPath, "/")
+	return trimmedBase + customPath
+}
+
+func normalizeImageEditPath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+	lower := strings.ToLower(trimmed)
+	if strings.HasSuffix(lower, "/v1/image/edits") && !strings.HasSuffix(lower, "/v1/images/edits") {
+		return trimmed[:len(trimmed)-len("/v1/image/edits")] + "/v1/images/edits"
+	}
+	return trimmed
+}
+
+func joinZImageEndpoint(baseURL, path string) string {
+	trimmedBase := strings.TrimSuffix(baseURL, "/")
+	normalizedPath := "/" + strings.TrimPrefix(path, "/")
+	if strings.HasSuffix(trimmedBase, "/v1") {
+		return trimmedBase + normalizedPath
+	}
+	return trimmedBase + "/v1" + normalizedPath
+}
+
 // callProvider makes the HTTP call to the z-image provider.
 func (s *ZImageService) callProvider(ctx context.Context, client *resty.Client, baseURL string, req *zImageRequest) (*zImageResponse, error) {
-	endpoint := fmt.Sprintf("%s/v1/images/generations", strings.TrimSuffix(baseURL, "/"))
+	endpoint := joinZImageEndpoint(baseURL, "/images/generations")
 
 	log.Debug().
 		Str("endpoint", endpoint).

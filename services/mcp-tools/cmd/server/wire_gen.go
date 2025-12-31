@@ -37,9 +37,10 @@ func CreateApplication(ctx context.Context) (*Application, error) {
 	sandboxFusionMCP := routes.ProvideSandboxFusionMCP(sandboxfusionClient, config)
 	memoryMCP := routes.ProvideMemoryMCP(config)
 	imageGenerateMCP := routes.ProvideImageGenerateMCP(config)
+	imageEditMCP := routes.ProvideImageEditMCP(config)
 	llmapiClient := infrastructure.ProvideLLMAPIClient(config)
 	cache := routes.ProvideToolConfigCache(config, llmapiClient)
-	mcpRoute := routes.ProvideMCPRoute(serperMCP, providerMCP, sandboxFusionMCP, memoryMCP, imageGenerateMCP, llmapiClient, cache)
+	mcpRoute := routes.ProvideMCPRoute(serperMCP, providerMCP, sandboxFusionMCP, memoryMCP, imageGenerateMCP, imageEditMCP, llmapiClient, cache)
 	validator, err := infrastructure.ProvideAuthValidator(ctx, config)
 	if err != nil {
 		return nil, err

@@ -3,9 +3,9 @@ package image
 // ImageGenerationRequest represents an OpenAI-compatible image generation request.
 // @Description OpenAI-compatible image generation request
 type ImageGenerationRequest struct {
-	// Model specifies the image generation model (e.g., "flux-schnell", "flux-dev", "dall-e-3").
+	// Model specifies the image generation model (e.g., "z-image", "flux-dev", "dall-e-3").
 	// If omitted, defaults to the configured default model.
-	Model string `json:"model,omitempty" example:"flux-schnell"`
+	Model string `json:"model,omitempty" example:"z-image"`
 
 	// Prompt is the text description of the desired image. Required.
 	Prompt string `json:"prompt" binding:"required" example:"A serene mountain landscape at sunset"`
@@ -34,6 +34,9 @@ type ImageGenerationRequest struct {
 	User string `json:"user,omitempty" example:"user-123"`
 
 	// Jan-specific extensions:
+
+	// ProviderID optionally overrides the default image provider selection.
+	ProviderID string `json:"provider_id,omitempty" example:"prov_abc123"`
 
 	// ConversationID optionally links this generation to a conversation.
 	ConversationID string `json:"conversation_id,omitempty" example:"conv_abc123"`

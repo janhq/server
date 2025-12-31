@@ -27,6 +27,8 @@ type Provider struct {
 	APIKeyHint      *string        `gorm:"size:128"`
 	IsModerated     *bool          `gorm:"not null;default:false;index"`
 	Active          *bool          `gorm:"not null;default:true;index;index:idx_provider_active_kind,priority:1"`
+	DefaultImageGenerate *bool     `gorm:"column:default_provider_image_generate;not null;default:false"`
+	DefaultImageEdit     *bool     `gorm:"column:default_provider_image_edit;not null;default:false"`
 	Metadata        datatypes.JSON `gorm:"type:jsonb"`
 	LastSyncedAt    *time.Time     `gorm:"index"`
 }
@@ -58,6 +60,8 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 
 	isModerated := p.IsModerated
 	active := p.Active
+	defaultImageGenerate := p.DefaultImageGenerate
+	defaultImageEdit := p.DefaultImageEdit
 	return &Provider{
 		BaseModel: BaseModel{
 			ID:        p.ID,
@@ -74,6 +78,8 @@ func NewSchemaProvider(p *domainmodel.Provider) *Provider {
 		APIKeyHint:      p.APIKeyHint,
 		IsModerated:     &isModerated,
 		Active:          &active,
+		DefaultImageGenerate: &defaultImageGenerate,
+		DefaultImageEdit:     &defaultImageEdit,
 		Metadata:        metadataJSON,
 		LastSyncedAt:    p.LastSyncedAt,
 	}
@@ -109,6 +115,14 @@ func (p *Provider) EtoD() *domainmodel.Provider {
 	if p.Active != nil {
 		active = *p.Active
 	}
+	defaultImageGenerate := false
+	if p.DefaultImageGenerate != nil {
+		defaultImageGenerate = *p.DefaultImageGenerate
+	}
+	defaultImageEdit := false
+	if p.DefaultImageEdit != nil {
+		defaultImageEdit = *p.DefaultImageEdit
+	}
 
 	// Default category to LLM for backward compatibility
 	category := domainmodel.ProviderCategoryLLM
@@ -128,6 +142,8 @@ func (p *Provider) EtoD() *domainmodel.Provider {
 		APIKeyHint:      p.APIKeyHint,
 		IsModerated:     isModerated,
 		Active:          active,
+		DefaultImageGenerate: defaultImageGenerate,
+		DefaultImageEdit:     defaultImageEdit,
 		Metadata:        metadata,
 		LastSyncedAt:    p.LastSyncedAt,
 		CreatedAt:       p.CreatedAt,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/imroc/req/v3"
@@ -40,6 +41,10 @@ type IngestResponse struct {
 	Bytes        int64  `json:"bytes"`         // Size in bytes
 	Deduped      bool   `json:"deduped"`       // Whether content was deduplicated
 	PresignedURL string `json:"presigned_url"` // Presigned URL for immediate access
+}
+
+type PresignResponse struct {
+	URL string `json:"url"`
 }
 
 // NewClient creates a new media client.
@@ -116,4 +121,46 @@ func (c *Client) UploadBase64Image(ctx context.Context, base64Data string, mimeT
 		Msg("[MediaClient] Image uploaded successfully")
 
 	return &result, nil
+}
+
+// GetPresignedURL returns a presigned URL for a media ID.
+func (c *Client) GetPresignedURL(ctx context.Context, mediaID string, authHeader string) (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("media client not configured")
+	}
+	if strings.TrimSpace(mediaID) == "" {
+		return "", fmt.Errorf("media ID is required")
+	}
+
+	base := strings.TrimSuffix(c.cfg.MediaIngestURL, "/")
+	url := fmt.Sprintf("%s/%s/presign", base, mediaID)
+
+	c.log.Debug().Str("media_id", mediaID).Msg("[MediaClient] Requesting presigned URL")
+
+	resp, err := c.client.R().
+		SetContext(ctx).
+		SetHeader("Authorization", authHeader).
+		Get(url)
+	if err != nil {
+		c.log.Error().Err(err).Msg("[MediaClient] Failed to presign media URL")
+		return "", fmt.Errorf("media presign failed: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		c.log.Error().
+			Int("status", resp.StatusCode).
+			Str("body", resp.String()).
+			Msg("[MediaClient] Media API returned error for presign")
+		return "", fmt.Errorf("media presign returned status %d: %s", resp.StatusCode, resp.String())
+	}
+
+	var result PresignResponse
+	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+		c.log.Error().Err(err).Str("body", resp.String()).Msg("[MediaClient] Failed to parse presign response")
+		return "", fmt.Errorf("failed to parse media presign response: %w", err)
+	}
+	if strings.TrimSpace(result.URL) == "" {
+		return "", fmt.Errorf("media presign returned empty url")
+	}
+	return result.URL, nil
 }

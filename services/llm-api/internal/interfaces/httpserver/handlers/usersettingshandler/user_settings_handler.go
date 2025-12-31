@@ -71,7 +71,7 @@ func (h *UserSettingsHandler) computeServerCapabilities(ctx context.Context) Ser
 
 	// Check if image generation is enabled in config and has an active provider
 	if h.cfg.ImageGenerationEnabled {
-		provider, err := h.providerService.FindActiveImageProvider(ctx)
+		provider, err := h.providerService.FindDefaultImageGenerateProvider(ctx)
 		if err == nil && provider != nil {
 			capabilities.ImageGenerationEnabled = true
 		}
