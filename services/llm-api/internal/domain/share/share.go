@@ -73,23 +73,29 @@ type Snapshot struct {
 
 // SnapshotItem represents a sanitized conversation item for public display
 type SnapshotItem struct {
-	ID        string             `json:"id"` // Public ID
-	Type      string             `json:"type"`
-	Role      string             `json:"role"`
-	Content   []SnapshotContent  `json:"content"`
-	CreatedAt time.Time          `json:"created_at"`
+	ID        string            `json:"id"` // Public ID
+	Type      string            `json:"type"`
+	Role      string            `json:"role"`
+	Content   []SnapshotContent `json:"content"`
+	CreatedAt time.Time         `json:"created_at"`
 }
 
-// SnapshotContent represents sanitized content for public display
-// Only includes safe content types: text, output_text, and file references
+// SnapshotContent represents sanitized content for public display.
 type SnapshotContent struct {
-	Type       string      `json:"type"`
-	Text       string      `json:"text,omitempty"`
-	InputText  string      `json:"input_text,omitempty"`
-	OutputText string      `json:"output_text,omitempty"`
-	Image      *ImageRef   `json:"image,omitempty"` // For image content
-	FileRef    *FileRef    `json:"file_ref,omitempty"` // For file attachments
-	Annotations []Annotation `json:"annotations,omitempty"`
+	Type            string           `json:"type"`
+	Text            string           `json:"text,omitempty"`
+	InputText       string           `json:"input_text,omitempty"`
+	OutputText      string           `json:"output_text,omitempty"`
+	ReasoningText   string           `json:"reasoning_text,omitempty"`
+	Thinking        string           `json:"thinking,omitempty"`
+	ToolResult      string           `json:"tool_result,omitempty"`
+	McpCall         string           `json:"mcp_call,omitempty"`
+	ToolCalls       []ToolCall       `json:"tool_calls,omitempty"`
+	FunctionCall    *FunctionCall    `json:"function_call,omitempty"`
+	FunctionCallOut *FunctionCallOut `json:"function_call_output,omitempty"`
+	Image           *ImageRef        `json:"image,omitempty"`    // For image content
+	FileRef         *FileRef         `json:"file_ref,omitempty"` // For file attachments
+	Annotations     []Annotation     `json:"annotations,omitempty"`
 }
 
 // ImageRef represents an image reference in the snapshot
@@ -107,14 +113,34 @@ type FileRef struct {
 	Name     *string `json:"name,omitempty"`
 }
 
+// ToolCall represents a tool invocation in shared snapshots.
+type ToolCall struct {
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function FunctionCall `json:"function,omitempty"`
+}
+
+// FunctionCall represents a function/tool call payload.
+type FunctionCall struct {
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name"`
+	Arguments string `json:"arguments,omitempty"`
+}
+
+// FunctionCallOut represents the output of a function call.
+type FunctionCallOut struct {
+	CallID string `json:"call_id"`
+	Output string `json:"output"`
+}
+
 // Annotation represents text annotations (citations, links)
 type Annotation struct {
-	Type      string `json:"type"`
-	Text      string `json:"text,omitempty"`
-	StartIdx  *int   `json:"start_index,omitempty"`
-	EndIdx    *int   `json:"end_index,omitempty"`
-	URL       string `json:"url,omitempty"`
-	FileID    string `json:"file_id,omitempty"`
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	StartIdx *int   `json:"start_index,omitempty"`
+	EndIdx   *int   `json:"end_index,omitempty"`
+	URL      string `json:"url,omitempty"`
+	FileID   string `json:"file_id,omitempty"`
 }
 
 // ===============================================

@@ -113,7 +113,7 @@ func DefaultPreferences() map[string]interface{} {
 	return map[string]interface{}{
 		"selected_model":       "", // Will be set to first model from /v1/models
 		"enable_deep_research": false,
-		"enable_thinking":      true,
+		"enable_thinking":      false,
 		"enable_search":        true,
 		"enable_browser":       false,
 	}
