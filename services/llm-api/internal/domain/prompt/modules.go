@@ -985,7 +985,7 @@ func (m *ToolInstructionsModule) Apply(ctx context.Context, promptCtx *Context, 
 			builder.WriteString("\n")
 		}
 		if vars["HasImageTool"].(bool) {
-			builder.WriteString("- When you need to generate images: use ")
+			builder.WriteString("- When you need to generate or edit images: use ")
 			builder.WriteString(vars["ImageToolName"].(string))
 			builder.WriteString("\n")
 		}
@@ -1100,7 +1100,7 @@ func buildToolTemplateVars(promptCtx *Context) map[string]any {
 			vars["ScrapeToolName"] = toolName
 		}
 
-		// Image generation tools (generate_image, image generation, etc.)
+		// Image tools (generate_image, edit_image, image generation, etc.)
 		if strings.Contains(toolNameLower, "generate_image") ||
 			strings.Contains(toolNameLower, "image") ||
 			strings.Contains(toolDescLower, "generate image") ||

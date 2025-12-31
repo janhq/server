@@ -105,6 +105,42 @@ Execute trusted code inside SandboxFusion when a containerized interpreter is re
 **Output:**
 - JSON payload containing `stdout`, `stderr`, `duration_ms`, `session_id`, and any downloadable artifacts surfaced by SandboxFusion.
 
+### 6. generate_image
+Generate images from a text prompt via the LLM API.
+
+**Arguments:**
+- `prompt` (required): Text prompt for image generation
+- `size` (optional): Image size (e.g., `512x512`, `1024x1024`)
+- `model` (optional): Image generation model
+- `n` (optional): Number of images
+- `num_inference_steps` (optional): Provider-specific steps
+- `cfg_scale` (optional): Provider-specific guidance scale
+- `quality` (optional): Image quality (`standard`, `hd`)
+- `style` (optional): Image style (`vivid`, `natural`)
+- `conversation_id` (optional): Conversation to store the result
+- `store` (optional): Whether to store the result
+
+### 7. edit_image
+Edit images with a prompt and input image via the LLM API.
+
+**Arguments:**
+- `prompt` (required): Edit instruction
+- `image` (required): Input image (`id`, `url`, or `b64_json`)
+- `mask` (optional): Mask for inpainting (`id`, `url`, or `b64_json`)
+- `size` (optional): Output size (`original` or `WIDTHxHEIGHT`)
+- `model` (optional): Image edit model
+- `n` (optional): Number of images
+- `response_format` (optional): `url` or `b64_json`
+- `strength` (optional): Edit strength (0.0-1.0)
+- `steps` (optional): Sampling steps
+- `seed` (optional): Random seed (-1 for random)
+- `cfg_scale` (optional): Guidance scale
+- `sampler` (optional): Sampling algorithm
+- `scheduler` (optional): Scheduler
+- `negative_prompt` (optional): What to avoid
+- `conversation_id` (optional): Conversation to store the result
+- `store` (optional): Whether to store the result
+
 ## Environment Variables
 
 ### Core Service Configuration
@@ -167,6 +203,9 @@ SANDBOX_FUSION_URL=http://localhost:3010 # SandboxFusion container service
 SANDBOX_FUSION_REQUIRE_APPROVAL=false   # Gate python_exec until manually approved
 MCP_ENABLE_PYTHON_EXEC=true       # Set false to remove python_exec from tool list
 MCP_ENABLE_MEMORY_RETRIEVE=true   # Set false to remove memory_retrieve from tool list
+MCP_ENABLE_IMAGE_GENERATE=true    # Set false to remove generate_image from tool list
+MCP_ENABLE_IMAGE_EDIT=true        # Set false to remove edit_image from tool list
+LLM_API_BASE_URL=http://llm-api:8080 # LLM API base URL for image tools and tracking
 MEMORY_TOOLS_URL=http://localhost:8090  # Memory tools service URL for memory_retrieve
 ```
 

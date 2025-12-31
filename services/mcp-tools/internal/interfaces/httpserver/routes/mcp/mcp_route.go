@@ -46,6 +46,7 @@ type MCPRoute struct {
 	sandboxMCP      *SandboxFusionMCP
 	memoryMCP       *MemoryMCP
 	imageMCP        *ImageGenerateMCP
+	imageEditMCP    *ImageEditMCP
 	llmClient       *llmapi.Client    // LLM-API client for tool call tracking
 	toolConfigCache *toolconfig.Cache // Cache for dynamic tool descriptions
 	mcpServer       *mcp.Server
@@ -58,6 +59,7 @@ func NewMCPRoute(
 	sandboxMCP *SandboxFusionMCP,
 	memoryMCP *MemoryMCP,
 	imageMCP *ImageGenerateMCP,
+	imageEditMCP *ImageEditMCP,
 	llmClient *llmapi.Client,
 	toolConfigCache *toolconfig.Cache,
 ) *MCPRoute {
@@ -83,6 +85,9 @@ func NewMCPRoute(
 	if imageMCP != nil {
 		imageMCP.RegisterTools(server)
 	}
+	if imageEditMCP != nil {
+		imageEditMCP.RegisterTools(server)
+	}
 
 	if sandboxMCP != nil {
 		sandboxMCP.RegisterTools(server)
@@ -107,6 +112,7 @@ func NewMCPRoute(
 		sandboxMCP:      sandboxMCP,
 		memoryMCP:       memoryMCP,
 		imageMCP:        imageMCP,
+		imageEditMCP:    imageEditMCP,
 		llmClient:       llmClient,
 		toolConfigCache: toolConfigCache,
 		mcpServer:       server,
@@ -136,6 +142,7 @@ func (route *MCPRoute) RegisterRouter(router *gin.RouterGroup) {
 // @Description - `python_exec`: Execute trusted code through SandboxFusion (params: code, language, session_id, approved) to retrieve stdout/stderr/artifacts.
 // @Description - `memory_retrieve`: Retrieve relevant user preferences, project context, or conversation history (params: query, user_id, project_id, max_user_items, max_project_items, min_similarity). Returns personalized context.
 // @Description - `generate_image`: Generate images from a text prompt via LLM API /v1/images/generations (params: prompt, size, n, num_inference_steps, cfg_scale).
+// @Description - `edit_image`: Edit images with a prompt + input image via LLM API /v1/images/edits (params: prompt, image, mask, size, strength, steps, seed, cfg_scale).
 // @Description
 // @Description **MCP Protocol:**
 // @Description - Request format: JSON-RPC 2.0 with method and params

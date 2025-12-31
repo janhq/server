@@ -132,6 +132,18 @@ func main() {
 		log.Warn().Msg("LLM_API_BASE_URL not configured, generate_image tool will not be available")
 	}
 
+	// Initialize image edit MCP
+	var imageEditMCP *mcp.ImageEditMCP
+	switch {
+	case !cfg.EnableImageEdit:
+		log.Warn().Msg("edit_image MCP tool disabled via config")
+	case cfg.LLMAPIBaseURL != "":
+		imageEditMCP = mcp.NewImageEditMCP(cfg.LLMAPIBaseURL, cfg.EnableImageEdit)
+		log.Info().Str("llm_api_url", cfg.LLMAPIBaseURL).Msg("Image edit MCP tool enabled")
+	default:
+		log.Warn().Msg("LLM_API_BASE_URL not configured, edit_image tool will not be available")
+	}
+
 	// Initialize external MCP providers
 	ctx := context.Background()
 	providerMCP := mcp.NewProviderMCP(providerConfig)
@@ -170,7 +182,7 @@ func main() {
 		serperMCP.SetToolConfigCache(toolConfigCache)
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, llmClient, toolConfigCache)
+	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, imageEditMCP, llmClient, toolConfigCache)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

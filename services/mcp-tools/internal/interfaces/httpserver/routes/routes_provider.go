@@ -18,6 +18,7 @@ var RoutesProvider = wire.NewSet(
 	ProvideSandboxFusionMCP,
 	ProvideMemoryMCP,
 	ProvideImageGenerateMCP,
+	ProvideImageEditMCP,
 	ProvideToolConfigCache,
 	ProvideMCPRoute,
 	ProvideSerperMCPConfig,
@@ -70,6 +71,19 @@ func ProvideImageGenerateMCP(cfg *config.Config) *mcp.ImageGenerateMCP {
 	return mcp.NewImageGenerateMCP(cfg.LLMAPIBaseURL, cfg.EnableImageGenerate)
 }
 
+// ProvideImageEditMCP creates an ImageEditMCP if configured
+func ProvideImageEditMCP(cfg *config.Config) *mcp.ImageEditMCP {
+	if !cfg.EnableImageEdit {
+		log.Warn().Msg("edit_image MCP tool disabled via config")
+		return nil
+	}
+	if cfg.LLMAPIBaseURL == "" {
+		log.Warn().Msg("LLM_API_BASE_URL not configured; skipping edit_image tool registration")
+		return nil
+	}
+	return mcp.NewImageEditMCP(cfg.LLMAPIBaseURL, cfg.EnableImageEdit)
+}
+
 // ProvideToolConfigCache creates a tool config cache if LLM-API is configured
 func ProvideToolConfigCache(cfg *config.Config, llmClient *llmapi.Client) *toolconfig.Cache {
 	if cfg.LLMAPIBaseURL == "" {
@@ -90,6 +104,7 @@ func ProvideMCPRoute(
 	sandboxMCP *mcp.SandboxFusionMCP,
 	memoryMCP *mcp.MemoryMCP,
 	imageMCP *mcp.ImageGenerateMCP,
+	imageEditMCP *mcp.ImageEditMCP,
 	llmClient *llmapi.Client,
 	toolConfigCache *toolconfig.Cache,
 ) *mcp.MCPRoute {
@@ -97,5 +112,5 @@ func ProvideMCPRoute(
 	if toolConfigCache != nil {
 		serperMCP.SetToolConfigCache(toolConfigCache)
 	}
-	return mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, llmClient, toolConfigCache)
+	return mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, imageEditMCP, llmClient, toolConfigCache)
 }
