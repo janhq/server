@@ -1,5 +1,5 @@
 # Build stage
-FROM registry.menlo.ai/dockerhub/node:20-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ ENV VITE_REPORT_ISSUE_URL=$VITE_REPORT_ISSUE_URL
 RUN npx vite build
 
 # Production stage
-FROM registry.menlo.ai/dockerhub/nginx:alpine AS runner
+FROM nginx:alpine AS runner
 
 WORKDIR /usr/share/nginx/html
 
