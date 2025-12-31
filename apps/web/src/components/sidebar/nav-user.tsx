@@ -102,7 +102,7 @@ export function NavUser() {
                 href={VITE_REPORT_ISSUE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex gap-2 items-center w-full"
+                className="flex gap-2 items-center"
               >
                 <FlagIcon className="text-muted-foreground" />
                 Report Issue
