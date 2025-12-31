@@ -9,8 +9,11 @@ import (
 	"jan-server/services/llm-api/internal/interfaces/httpserver/handlers/imagehandler"
 	imagerequest "jan-server/services/llm-api/internal/interfaces/httpserver/requests/image"
 	"jan-server/services/llm-api/internal/interfaces/httpserver/responses"
+	imageresponse "jan-server/services/llm-api/internal/interfaces/httpserver/responses/image"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
+
+var _ = imageresponse.ImageGenerationResponse{}
 
 // ImageRoute handles image generation routes.
 type ImageRoute struct {

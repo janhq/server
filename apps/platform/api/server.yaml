@@ -678,6 +678,7 @@ definitions:
     - file_search_call
     - web_search_call
     - image_generation_call
+    - image_edit_call
     - computer_call
     - computer_call_output
     - code_interpreter_call
@@ -716,6 +717,7 @@ definitions:
     - ItemTypeFileSearchCall
     - ItemTypeWebSearchCall
     - ItemTypeImageGenerationCall
+    - ItemTypeImageEditCall
     - ItemTypeComputerCall
     - ItemTypeComputerCallOutput
     - ItemTypeCodeInterpreterCall
@@ -1089,6 +1091,8 @@ definitions:
         type: string
       title:
         type: string
+      updated_at:
+        type: integer
     type: object
   conversationresponses.ItemListResponse:
     properties:
@@ -1209,6 +1213,243 @@ definitions:
         type: array
       type:
         $ref: '#/definitions/conversation.ItemType'
+    type: object
+  image.ImageData:
+    description: Single generated image data
+    properties:
+      b64_json:
+        description: |-
+          B64JSON is the base64-encoded image data.
+          Present when response_format="b64_json".
+        type: string
+      id:
+        description: ID is the Jan media ID (jan_xxxxx) for the stored image.
+        example: jan_abc123
+        type: string
+      revised_prompt:
+        description: RevisedPrompt is the revised prompt used for generation, if the
+          provider modified it.
+        type: string
+      url:
+        description: |-
+          URL is the presigned URL to the generated image.
+          Present when response_format="url".
+        example: https://media.jan.ai/images/jan_abc123.png?sig=...
+        type: string
+    type: object
+  image.ImageEditRequest:
+    properties:
+      cfg_scale:
+        description: CfgScale is classifier-free guidance scale.
+        example: 1
+        type: number
+      conversation_id:
+        description: ConversationID optionally links this edit to a conversation.
+        example: conv_abc123
+        type: string
+      image:
+        allOf:
+        - $ref: '#/definitions/image.ImageInput'
+        description: Image is the input image to edit. Required.
+      mask:
+        allOf:
+        - $ref: '#/definitions/image.ImageInput'
+        description: Mask is an optional mask for inpainting.
+      model:
+        description: Model specifies the image edit model. Optional.
+        example: qwen-image-edit
+        type: string
+      "n":
+        description: N is the number of images to generate (only 1 supported by most
+          providers).
+        example: 1
+        type: integer
+      negative_prompt:
+        description: NegativePrompt describes what to avoid.
+        example: ' '
+        type: string
+      prompt:
+        description: Prompt is the text instruction describing the edit. Required.
+        example: add golden sunglasses
+        type: string
+      provider_id:
+        description: ProviderID optionally overrides the default image edit provider.
+        example: prov_abc123
+        type: string
+      response_format:
+        description: ResponseFormat determines output format ("url" or "b64_json").
+        example: b64_json
+        type: string
+      sampler:
+        description: Sampler selects the sampling algorithm.
+        example: euler
+        type: string
+      scheduler:
+        description: Scheduler selects the scheduler.
+        example: simple
+        type: string
+      seed:
+        description: Seed sets random seed (-1 for random).
+        example: -1
+        type: integer
+      size:
+        description: Size specifies the output size ("original" or "WIDTHxHEIGHT").
+        example: original
+        type: string
+      steps:
+        description: Steps controls sampling steps.
+        example: 4
+        type: integer
+      store:
+        description: |-
+          Store controls whether to save the result to the conversation.
+          nil/true = store (default), false = don't store.
+        example: true
+        type: boolean
+      strength:
+        description: Strength controls edit intensity (0.0-1.0).
+        example: 1
+        type: number
+    required:
+    - image
+    - prompt
+    type: object
+  image.ImageGenerationRequest:
+    description: OpenAI-compatible image generation request
+    properties:
+      cfg_scale:
+        description: CfgScale is a provider-specific parameter (z-image/Flux) for
+          guidance scale.
+        example: 7.5
+        type: number
+      conversation_id:
+        description: ConversationID optionally links this generation to a conversation.
+        example: conv_abc123
+        type: string
+      model:
+        description: |-
+          Model specifies the image generation model (e.g., "z-image", "flux-dev", "dall-e-3").
+          If omitted, defaults to the configured default model.
+        example: z-image
+        type: string
+      "n":
+        description: 'N is the number of images to generate (1-10, default: 1).'
+        example: 1
+        type: integer
+      num_inference_steps:
+        description: NumInferenceSteps is a provider-specific parameter (z-image/Flux).
+        example: 20
+        type: integer
+      prompt:
+        description: Prompt is the text description of the desired image. Required.
+        example: A serene mountain landscape at sunset
+        type: string
+      provider_id:
+        description: ProviderID optionally overrides the default image provider selection.
+        example: prov_abc123
+        type: string
+      quality:
+        description: |-
+          Quality determines image quality. Valid values: "standard", "hd".
+          Default: "standard".
+        example: standard
+        type: string
+      response_format:
+        description: |-
+          ResponseFormat determines output format. Valid values: "url", "b64_json".
+          Default: "url".
+        example: url
+        type: string
+      size:
+        description: |-
+          Size specifies the dimensions of the generated image.
+          Supported sizes: "256x256", "512x512", "1024x1024", "1024x1792", "1792x1024".
+          Default: "1024x1024".
+        example: 1024x1024
+        type: string
+      store:
+        description: |-
+          Store controls whether to save the result to the conversation.
+          nil/true = store (default), false = don't store.
+        example: true
+        type: boolean
+      style:
+        description: |-
+          Style influences the visual aesthetic. Valid values: "vivid", "natural".
+          Default: "natural".
+        example: natural
+        type: string
+      user:
+        description: User is an optional unique identifier representing the end-user
+          for abuse monitoring.
+        example: user-123
+        type: string
+    required:
+    - prompt
+    type: object
+  image.ImageGenerationResponse:
+    description: OpenAI-compatible image generation response
+    properties:
+      created:
+        description: Created is the Unix timestamp of when the response was generated.
+        example: 1699000000
+        type: integer
+      data:
+        description: Data contains the generated images.
+        items:
+          $ref: '#/definitions/image.ImageData'
+        type: array
+      usage:
+        allOf:
+        - $ref: '#/definitions/image.ImageUsage'
+        description: Usage contains token usage information for billing purposes.
+    type: object
+  image.ImageInput:
+    properties:
+      b64_json:
+        description: B64JSON is base64-encoded image data (no data URL prefix).
+        type: string
+      id:
+        description: ID is a Jan media ID (jan_*).
+        example: jan_abc123
+        type: string
+      url:
+        description: URL is a remote URL to the image.
+        example: https://example.com/image.png
+        type: string
+    type: object
+  image.ImageUsage:
+    description: Token usage information for billing
+    properties:
+      input_tokens:
+        description: InputTokens is the estimated tokens for the prompt.
+        example: 100
+        type: integer
+      input_tokens_details:
+        allOf:
+        - $ref: '#/definitions/image.InputTokensDetail'
+        description: InputTokensDetails provides a breakdown of input token types.
+      output_tokens:
+        description: OutputTokens is the estimated tokens for the generated images.
+        example: 1400
+        type: integer
+      total_tokens:
+        description: TotalTokens is the sum of input and output tokens.
+        example: 1500
+        type: integer
+    type: object
+  image.InputTokensDetail:
+    description: Breakdown of input token types
+    properties:
+      image_tokens:
+        description: ImageTokens is the number of tokens from input images (for edit/variation
+          operations).
+        example: 0
+        type: integer
+      text_tokens:
+        description: TextTokens is the number of tokens from the text prompt.
+        example: 100
+        type: integer
     type: object
   mcptool.UpdateMCPToolRequest:
     properties:
@@ -1678,6 +1919,12 @@ definitions:
         type: boolean
       base_url:
         type: string
+      category:
+        type: string
+      default_provider_image_edit:
+        type: boolean
+      default_provider_image_generate:
+        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/modelresponses.EndpointResponse'
@@ -1708,6 +1955,12 @@ definitions:
         type: boolean
       base_url:
         type: string
+      category:
+        type: string
+      default_provider_image_edit:
+        type: boolean
+      default_provider_image_generate:
+        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/modelresponses.EndpointResponse'
@@ -1733,6 +1986,12 @@ definitions:
         type: boolean
       base_url:
         type: string
+      category:
+        type: string
+      default_provider_image_edit:
+        type: boolean
+      default_provider_image_generate:
+        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/modelresponses.EndpointResponse'
@@ -2285,6 +2544,13 @@ definitions:
         type: string
       base_url:
         type: string
+      category:
+        description: '"llm" or "image", defaults to "llm"'
+        type: string
+      default_provider_image_edit:
+        type: boolean
+      default_provider_image_generate:
+        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/requestmodels.EndpointDTO'
@@ -2436,6 +2702,10 @@ definitions:
         type: string
       base_url:
         type: string
+      default_provider_image_edit:
+        type: boolean
+      default_provider_image_generate:
+        type: boolean
       endpoints:
         items:
           $ref: '#/definitions/requestmodels.EndpointDTO'
@@ -2507,6 +2777,18 @@ definitions:
       mime_type:
         type: string
       name:
+        type: string
+      url:
+        description: For data URLs or external image URLs
+        type: string
+    type: object
+  shareresponses.ImageRefResp:
+    properties:
+      detail:
+        type: string
+      file_id:
+        type: string
+      url:
         type: string
     type: object
   shareresponses.PublicShareResponse:
@@ -2586,6 +2868,10 @@ definitions:
         type: array
       file_ref:
         $ref: '#/definitions/shareresponses.FileRefResp'
+      image:
+        $ref: '#/definitions/shareresponses.ImageRefResp'
+      input_text:
+        type: string
       output_text:
         type: string
       text:
@@ -2792,6 +3078,11 @@ definitions:
         additionalProperties: true
         type: object
     type: object
+  usersettingshandler.ServerCapabilities:
+    properties:
+      image_generation_enabled:
+        type: boolean
+    type: object
   usersettingshandler.UpdatePreferencesRequest:
     properties:
       preferences:
@@ -2817,6 +3108,8 @@ definitions:
         type: object
       profile_settings:
         $ref: '#/definitions/usersettings.ProfileSettings'
+      server_capabilities:
+        $ref: '#/definitions/usersettingshandler.ServerCapabilities'
       updated_at:
         type: string
       user_id:
@@ -5614,6 +5907,121 @@ paths:
       summary: Health check endpoint
       tags:
       - Server API
+  /v1/images/edits:
+    post:
+      consumes:
+      - application/json
+      description: Creates an edited image given an original image and a prompt.
+      parameters:
+      - description: Image edit request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/image.ImageEditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful image edit response
+          schema:
+            $ref: '#/definitions/image.ImageGenerationResponse'
+        "400":
+          description: Invalid request payload or validation error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: No active image provider configured
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error or image provider error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create image edit
+      tags:
+      - Images API
+  /v1/images/generations:
+    post:
+      consumes:
+      - application/json
+      description: |
+        Generates images from a text prompt using the configured image provider.
+        This endpoint is compatible with the OpenAI Images API format.
+
+        **Response Formats:**
+        - url: Returns presigned URLs to download images (default, recommended)
+        - b64_json: Returns base64-encoded image data
+
+        **Size Options:**
+        - 1024x1024 (default)
+        - 512x512
+        - 1792x1024 (landscape)
+        - 1024x1792 (portrait)
+      parameters:
+      - description: Image generation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/image.ImageGenerationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful image generation response
+          schema:
+            $ref: '#/definitions/image.ImageGenerationResponse'
+        "400":
+          description: Invalid request payload or validation error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: No active image provider configured
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error or image provider error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "501":
+          description: Feature not implemented
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create image generation
+      tags:
+      - Images API
+  /v1/images/variations:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a variation of a given image.
+        NOTE: This endpoint is not yet implemented and will return 501 Not Implemented.
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not implemented
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create image variation (Not Implemented)
+      tags:
+      - Images API
   /v1/mcp-tools:
     get:
       consumes:

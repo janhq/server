@@ -1919,6 +1919,8 @@ definitions:
         type: boolean
       base_url:
         type: string
+      category:
+        type: string
       default_provider_image_edit:
         type: boolean
       default_provider_image_generate:
@@ -1953,6 +1955,8 @@ definitions:
         type: boolean
       base_url:
         type: string
+      category:
+        type: string
       default_provider_image_edit:
         type: boolean
       default_provider_image_generate:
@@ -1981,6 +1985,8 @@ definitions:
       active:
         type: boolean
       base_url:
+        type: string
+      category:
         type: string
       default_provider_image_edit:
         type: boolean

@@ -7977,6 +7977,9 @@ const docTemplate = `{
                 "base_url": {
                     "type": "string"
                 },
+                "category": {
+                    "type": "string"
+                },
                 "default_provider_image_edit": {
                     "type": "boolean"
                 },
@@ -8029,6 +8032,9 @@ const docTemplate = `{
                 "base_url": {
                     "type": "string"
                 },
+                "category": {
+                    "type": "string"
+                },
                 "default_provider_image_edit": {
                     "type": "boolean"
                 },
@@ -8071,6 +8077,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "base_url": {
+                    "type": "string"
+                },
+                "category": {
                     "type": "string"
                 },
                 "default_provider_image_edit": {
