@@ -54,6 +54,7 @@ func ProvideSearchClient(cfg *config.Config) search.SearchClient {
 		DomainFilters: cfg.SerperDomainFilter,
 		LocationHint:  cfg.SerperLocationHint,
 		OfflineMode:   cfg.SerperOfflineMode,
+		CBEnabled:     cfg.SearchCBEnabled,
 	})
 }
 

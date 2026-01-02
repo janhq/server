@@ -62,6 +62,7 @@ func main() {
 		DomainFilters:      cfg.SerperDomainFilter,
 		LocationHint:       cfg.SerperLocationHint,
 		OfflineMode:        cfg.SerperOfflineMode,
+		CBEnabled:          cfg.SearchCBEnabled,
 		CBFailureThreshold: cfg.SerperCBFailureThreshold,
 		CBSuccessThreshold: cfg.SerperCBSuccessThreshold,
 		CBTimeout:          time.Duration(cfg.SerperCBTimeout) * time.Second,
