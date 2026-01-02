@@ -62,11 +62,10 @@ export const AppSidebar = memo(function AppSidebar({
               <Jan className="size-4 shrink-0 block md:hidden" />
               <span className="text-lg font-bold font-studio">Jan</span>
             </div>
-            {isOpen ||
-              (openMobile && (
-                <SidebarTrigger className="text-muted-foreground" />
-              ))}
-            {isOpen && <SidebarTrigger className="text-muted-foreground" />}
+
+            {(isOpen || openMobile) && (
+              <SidebarTrigger className="text-muted-foreground" />
+            )}
           </div>
           <NavMain />
         </SidebarHeader>
