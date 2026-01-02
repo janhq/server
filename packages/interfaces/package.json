@@ -1,8 +1,21 @@
 {
   "name": "@janhq/interfaces",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
+  "description": "Shared UI components and interfaces for Jan",
+  "author": "Jan <contact@jan.ai>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janhq/jan-server.git",
+    "directory": "packages/interfaces"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
     "./lib": {
       "types": "./src/lib/utils.ts",
@@ -23,6 +36,14 @@
     "./hooks/use-resolved-media-url": {
       "types": "./src/hooks/use-resolved-media-url.ts",
       "default": "./src/hooks/use-resolved-media-url.ts"
+    },
+    "./providers/*": {
+      "types": "./src/providers/*.tsx",
+      "default": "./src/providers/*.tsx"
+    },
+    "./providers/theme-provider": {
+      "types": "./src/providers/theme-provider.tsx",
+      "default": "./src/providers/theme-provider.tsx"
     },
     "./ai-elements/*": {
       "types": "./src/ai-elements/*.tsx",
@@ -50,8 +71,10 @@
     }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": "^19.2.0",
