@@ -177,7 +177,7 @@ export function SearchDialog({ open }: SearchDialogProps) {
             {recentSearches.map((conversation) => (
               <CommandItem
                 key={conversation.id}
-                value={conversation.title}
+                value={`${conversation.id}-${conversation.title}`}
                 onSelect={() => handleSelectConversation(conversation.id)}
                 className="cursor-pointer"
               >
@@ -194,7 +194,7 @@ export function SearchDialog({ open }: SearchDialogProps) {
             {searchResults.withProject.map(({ conversation, projectName }) => (
               <CommandItem
                 key={conversation.id}
-                value={`${conversation.title} ${projectName}`}
+                value={`${conversation.id}-${conversation.title} ${projectName}`}
                 onSelect={() => handleSelectConversation(conversation.id)}
                 className="cursor-pointer"
               >
@@ -216,7 +216,7 @@ export function SearchDialog({ open }: SearchDialogProps) {
             {searchResults.withoutProject.map((conversation) => (
               <CommandItem
                 key={conversation.id}
-                value={conversation.title}
+                value={`${conversation.id}-${conversation.title}`}
                 onSelect={() => handleSelectConversation(conversation.id)}
                 className="cursor-pointer"
               >
