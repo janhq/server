@@ -19,6 +19,7 @@
     "dev:web": "npm run dev --workspace=@janhq/web",
     "dev:platform": "npm run dev --workspace=@janhq/platform",
     "build": "npm run build --workspaces --if-present",
+    "build:interfaces": "npm run build --workspace=@janhq/interfaces",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
