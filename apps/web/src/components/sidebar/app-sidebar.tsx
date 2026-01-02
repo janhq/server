@@ -46,8 +46,6 @@ export const AppSidebar = memo(function AppSidebar({
     loadData();
   }, [getProjects, getConversations]);
 
-  console.log(openMobile, state);
-
   return (
     <Sidebar className="border-r-0" {...props}>
       <StaggeredAnimationProvider ready={isReady}>
