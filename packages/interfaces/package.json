@@ -1,15 +1,20 @@
 {
   "name": "@janhq/interfaces",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
-  "description": "Shared UI components and interfaces for Jan",
-  "author": "Jan <contact@jan.ai>",
-  "license": "MIT",
+  "homepage": "https://jan.ai/",
+  "description": "Shared UI component library for Jan",
+  "author": "Jan service@jan.ai",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/janhq/jan-server.git",
     "directory": "packages/interfaces"
   },
+  "keywords": [
+    "jan",
+    "interfaces"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
