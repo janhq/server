@@ -94,7 +94,7 @@ export function GeneralSettings() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 ">
-          <h4 className="font-medium text-lg">{user?.name}</h4>
+          <h4 className="font-medium text-base font-studio">{user?.name}</h4>
           <p className="text-xs text-muted-foreground">{user?.email}</p>
         </div>
       </div>
