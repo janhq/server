@@ -101,6 +101,62 @@ export const MessageItem = memo(
 
     const isStreaming = isLastMessage && status === CHAT_STATUS.STREAMING;
 
+    // Cache for normalized LaTeX content
+    const latexCache = new Map<string, string>();
+
+    /**
+     * Optimized preprocessor: normalize LaTeX fragments into $ / $$.
+     * Uses caching to avoid reprocessing the same content.
+     */
+    const normalizeLatex = (input: string): string => {
+      // Check cache first
+      if (latexCache.has(input)) {
+        return latexCache.get(input)!;
+      }
+
+      const segments = input.split(/(```[\s\S]*?```|`[^`]*`|<[^>]+>)/g);
+
+      const result = segments
+        .map((segment) => {
+          if (!segment) return "";
+
+          // Skip code blocks, inline code, html tags
+          if (/^```[\s\S]*```$/.test(segment)) return segment;
+          if (/^`[^`]*`$/.test(segment)) return segment;
+          if (/^<[^>]+>$/.test(segment)) return segment;
+
+          let s = segment;
+
+          // --- Display math: \[...\] surrounded by newlines
+          s = s.replace(
+            /(^|\n)\\\[\s*\n([\s\S]*?)\n\s*\\\](?=\n|$)/g,
+            (_, pre, inner) => `${pre}$$\n${inner.trim()}\n$$`
+          );
+
+          // --- Inline math: space \( ... \)
+          s = s.replace(
+            /(^|[^$\\])\\\((.+?)\\\)(?=[^$\\]|$)/g,
+            (_, pre, inner) => `${pre}$${inner.trim()}$`
+          );
+
+          // --- Escape $<number> to prevent Markdown from treating it as LaTeX
+          // Example: "$1" → "\$1"
+          s = s.replace(/\$(\d+)/g, (_, num) => "\\$" + num);
+
+          return s;
+        })
+        .join("");
+
+      // Cache the result (with size limit to prevent memory leaks)
+      if (latexCache.size > 100) {
+        const firstKey = latexCache.keys().next().value || "";
+        latexCache.delete(firstKey);
+      }
+      latexCache.set(input, result);
+
+      return result;
+    };
+
     const renderTextPart = (part: { text: string }, partIndex: number) => {
       // Don't render if text is empty
       if (!part.text || part.text.trim() === "") {
@@ -115,19 +171,19 @@ export const MessageItem = memo(
           from={message.role}
           className={cn(
             "group",
-            isFirstMessage && message.role === MESSAGE_ROLE.USER && "mt-0!",
+            isFirstMessage && message.role === MESSAGE_ROLE.USER && "mt-0!"
           )}
         >
           <MessageContent
             className={cn(
               "leading-relaxed",
-              message.role === MESSAGE_ROLE.USER && "whitespace-pre-wrap",
+              message.role === MESSAGE_ROLE.USER && "whitespace-pre-wrap"
             )}
           >
             {message.role === MESSAGE_ROLE.USER ? (
               part.text
             ) : (
-              <MessageResponse>{part.text}</MessageResponse>
+              <MessageResponse>{normalizeLatex(part.text)}</MessageResponse>
             )}
           </MessageContent>
 
@@ -137,7 +193,7 @@ export const MessageItem = memo(
                 "gap-0 justify-end transition-opacity",
                 status === CHAT_STATUS.STREAMING
                   ? "opacity-0 pointer-events-none"
-                  : "opacity-0 group-hover:opacity-100",
+                  : "opacity-0 group-hover:opacity-100"
               )}
             >
               {onRegenerate && (
@@ -160,7 +216,7 @@ export const MessageItem = memo(
               className={cn(
                 "mt-1 gap-0 transition-opacity",
                 status === CHAT_STATUS.STREAMING &&
-                  "opacity-0 pointer-events-none",
+                  "opacity-0 pointer-events-none"
               )}
             >
               <MessageAction onClick={() => handleCopy(part.text)} label="Copy">
@@ -183,7 +239,7 @@ export const MessageItem = memo(
 
     const renderFilePart = (
       part: { filename?: string; url?: string; mediaType?: string },
-      partIndex: number,
+      partIndex: number
     ) => {
       const isAssistant = message.role === MESSAGE_ROLE.ASSISTANT;
       const isImage = part.mediaType?.startsWith("image/");
@@ -200,7 +256,7 @@ export const MessageItem = memo(
         >
           <MessageAttachments
             className={cn(
-              isAssistant && "ml-0 mr-auto", // Left-align for assistant
+              isAssistant && "ml-0 mr-auto" // Left-align for assistant
             )}
           >
             <MessageAttachment
@@ -208,7 +264,7 @@ export const MessageItem = memo(
               key={part.filename || "image"}
               className={cn(
                 isAssistant && "size-64", // Bigger for assistant (size-64 = 16rem = 256px vs size-24 = 6rem = 96px)
-                isImage && !isLoading && displayUrl && "cursor-pointer",
+                isImage && !isLoading && displayUrl && "cursor-pointer"
               )}
               onClick={() => {
                 if (isImage && displayUrl && !isLoading) {
@@ -230,7 +286,7 @@ export const MessageItem = memo(
                 className={cn(
                   "gap-0 transition-opacity",
                   status === CHAT_STATUS.STREAMING &&
-                    "opacity-0 pointer-events-none",
+                    "opacity-0 pointer-events-none"
                 )}
               >
                 <MessageAction
@@ -270,7 +326,7 @@ export const MessageItem = memo(
                 "w-full overflow-auto relative",
                 isStreaming
                   ? "max-h-32 opacity-70 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                  : "h-auto opacity-100",
+                  : "h-auto opacity-100"
               )}
             >
               <ReasoningContent>{part.text}</ReasoningContent>
@@ -415,7 +471,7 @@ export const MessageItem = memo(
       prevProps.isLastMessage === nextProps.isLastMessage &&
       prevProps.status === nextProps.status
     );
-  },
+  }
 );
 
 MessageItem.displayName = "MessageItem";
