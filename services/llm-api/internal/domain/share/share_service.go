@@ -47,13 +47,14 @@ func NewShareService(repo ShareRepository, convRepo conversation.ConversationRep
 // CreateShareInput contains the input for creating a share
 type CreateShareInput struct {
 	ConversationID         uint
-	ItemPublicID           *string    // For single-message share
+	ItemPublicID           *string // For single-message share
 	OwnerUserID            uint
 	Title                  *string
 	Scope                  ShareScope
 	IncludeImages          bool
 	IncludeContextMessages bool    // For single-message share: include preceding user turn
 	Branch                 *string // Branch to share from (defaults to active branch if not specified)
+	LimitData              bool
 }
 
 // CreateShareOutput contains the result of creating a share
@@ -355,11 +356,11 @@ func (s *ShareService) buildSnapshot(ctx context.Context, conv *conversation.Con
 		itemsToInclude = s.getItemsForSingleShare(items, *input.ItemPublicID, input.IncludeContextMessages)
 	} else {
 		// Full conversation share: include all user/assistant items on active branch
-		itemsToInclude = s.filterItemsForShare(items, input.IncludeImages)
+		itemsToInclude = s.filterItemsForShare(items, input.IncludeImages, input.LimitData)
 	}
 
 	for _, item := range itemsToInclude {
-		snapshotItem := s.sanitizeItem(item, input.IncludeImages)
+		snapshotItem := s.sanitizeItem(item, input.IncludeImages, input.LimitData)
 		if snapshotItem != nil {
 			snapshot.Items = append(snapshot.Items, *snapshotItem)
 		}
@@ -400,7 +401,7 @@ func (s *ShareService) getItemsForSingleShare(items []conversation.Item, targetI
 	return result
 }
 
-func (s *ShareService) filterItemsForShare(items []conversation.Item, includeImages bool) []conversation.Item {
+func (s *ShareService) filterItemsForShare(items []conversation.Item, includeImages bool, limitData bool) []conversation.Item {
 	var result []conversation.Item
 
 	for _, item := range items {
@@ -416,9 +417,11 @@ func (s *ShareService) filterItemsForShare(items []conversation.Item, includeIma
 			continue
 		}
 
-		// Only include user and assistant messages
+		// Only include user/assistant, plus tool items when not limiting data
 		if role != conversation.ItemRoleUser && role != conversation.ItemRoleAssistant {
-			continue
+			if role != conversation.ItemRoleTool || limitData {
+				continue
+			}
 		}
 
 		result = append(result, item)
@@ -427,7 +430,7 @@ func (s *ShareService) filterItemsForShare(items []conversation.Item, includeIma
 	return result
 }
 
-func (s *ShareService) sanitizeItem(item conversation.Item, includeImages bool) *SnapshotItem {
+func (s *ShareService) sanitizeItem(item conversation.Item, includeImages bool, limitData bool) *SnapshotItem {
 	role := ""
 	if item.Role != nil {
 		role = string(*item.Role)
@@ -442,7 +445,7 @@ func (s *ShareService) sanitizeItem(item conversation.Item, includeImages bool) 
 	}
 
 	for _, content := range item.Content {
-		sanitized := s.sanitizeContent(content, includeImages)
+		sanitized := s.sanitizeContent(content, includeImages, limitData)
 		if sanitized != nil {
 			snapshotItem.Content = append(snapshotItem.Content, *sanitized)
 		}
@@ -456,7 +459,7 @@ func (s *ShareService) sanitizeItem(item conversation.Item, includeImages bool) 
 	return snapshotItem
 }
 
-func (s *ShareService) sanitizeContent(content conversation.Content, includeImages bool) *SnapshotContent {
+func (s *ShareService) sanitizeContent(content conversation.Content, includeImages bool, limitData bool) *SnapshotContent {
 	switch content.Type {
 	case "text":
 		text := extractTextFromContent(content)
@@ -491,6 +494,110 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 			sc.Annotations = sanitizeAnnotations(content.OutputText.Annotations)
 		}
 		return sc
+
+	case "reasoning_text":
+		if limitData {
+			return nil
+		}
+		if content.TextString == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:          "reasoning_text",
+			ReasoningText: *content.TextString,
+		}
+
+	case "thinking":
+		if limitData {
+			return nil
+		}
+		if content.Thinking == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:     "thinking",
+			Thinking: *content.Thinking,
+		}
+
+	case "tool_result":
+		if limitData {
+			return nil
+		}
+		if content.TextString == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:       "tool_result",
+			ToolResult: *content.TextString,
+		}
+
+	case "mcp_call":
+		if limitData {
+			return nil
+		}
+		if content.TextString == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:       "mcp_call",
+			McpCall:    *content.TextString,
+			ToolCallID: content.ToolCallID,
+		}
+
+	case "tool_calls":
+		if limitData {
+			return nil
+		}
+		if len(content.ToolCalls) == 0 {
+			return nil
+		}
+		toolCalls := make([]ToolCall, 0, len(content.ToolCalls))
+		for _, call := range content.ToolCalls {
+			toolCalls = append(toolCalls, ToolCall{
+				ID:   call.ID,
+				Type: call.Type,
+				Function: FunctionCall{
+					ID:        call.Function.ID,
+					Name:      call.Function.Name,
+					Arguments: call.Function.Arguments,
+				},
+			})
+		}
+		return &SnapshotContent{
+			Type:      "tool_calls",
+			ToolCalls: toolCalls,
+		}
+
+	case "function_call":
+		if limitData {
+			return nil
+		}
+		if content.FunctionCall == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type: "function_call",
+			FunctionCall: &FunctionCall{
+				ID:        content.FunctionCall.ID,
+				Name:      content.FunctionCall.Name,
+				Arguments: content.FunctionCall.Arguments,
+			},
+		}
+
+	case "function_call_output":
+		if limitData {
+			return nil
+		}
+		if content.FunctionCallOut == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type: "function_call_output",
+			FunctionCallOut: &FunctionCallOut{
+				CallID: content.FunctionCallOut.CallID,
+				Output: content.FunctionCallOut.Output,
+			},
+		}
 
 	case "image", "image_url":
 		if !includeImages {
@@ -535,9 +642,6 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		return nil
 	case "computer_screenshot", "computer_action":
 		// Skip computer use content
-		return nil
-	case "thinking", "reasoning":
-		// Skip internal reasoning
 		return nil
 	case "refusal":
 		// Skip refusals

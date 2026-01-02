@@ -90,6 +90,7 @@ func (h *ShareHandler) CreateShare(reqCtx *gin.Context) {
 		IncludeImages:          req.IncludeImages,
 		IncludeContextMessages: req.IncludeContextMessages,
 		Branch:                 req.Branch,
+		LimitData:              h.cfg.ShareLimitData,
 	}
 
 	output, err := h.shareService.CreateShare(ctx, input)

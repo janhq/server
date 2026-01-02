@@ -101,6 +101,7 @@ type Config struct {
 
 	// Conversation Sharing
 	ConversationSharingEnabled bool `env:"CONVERSATION_SHARING_ENABLED" envDefault:"false"`
+	ShareLimitData             bool `env:"SHARE_LIMIT_DATA" envDefault:"false"`
 
 	// Image Generation
 	ImageGenerationEnabled     bool          `env:"IMAGE_GENERATION_ENABLED" envDefault:"false"`
