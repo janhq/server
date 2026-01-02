@@ -1,6 +1,6 @@
 {
   "name": "@janhq/interfaces",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "homepage": "https://jan.ai/",
   "description": "Shared UI component library for Jan",
@@ -23,12 +23,40 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./lib": {
+      "types": "./dist/lib/utils.d.ts",
+      "import": "./dist/lib/utils.js"
+    },
+    "./constants": {
+      "types": "./dist/lib/constants.d.ts",
+      "import": "./dist/lib/constants.js"
+    },
+    "./hooks/*": {
+      "types": "./dist/hooks/*.d.ts",
+      "import": "./dist/hooks/*.js"
+    },
+    "./ai-elements/*": {
+      "types": "./dist/ai-elements/*.d.ts",
+      "import": "./dist/ai-elements/*.js"
+    },
+    "./svgs/*": {
+      "types": "./dist/svgs/*.d.ts",
+      "import": "./dist/svgs/*.js"
+    },
+    "./providers/*": {
+      "types": "./dist/providers/*.d.ts",
+      "import": "./dist/providers/*.js"
+    },
+    "./ui/*": {
+      "types": "./dist/ui/*.d.ts",
+      "import": "./dist/ui/*.js"
     },
     "./*": {
-      "import": "./dist/*.js",
-      "types": "./dist/*.d.ts"
+      "types": "./dist/ui/*.d.ts",
+      "import": "./dist/ui/*.js"
     }
   },
   "scripts": {
