@@ -21,7 +21,7 @@ import { useConversations } from "@/stores/conversation-store";
 export const AppSidebar = memo(function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
-  const { state } = useSidebar();
+  const { state, isMobile, openMobile } = useSidebar();
   const isOpen = state === "expanded";
 
   const [isReady, setIsReady] = useState(false);
@@ -52,15 +52,20 @@ export const AppSidebar = memo(function AppSidebar({
         <SidebarHeader className="pt-3.5 ">
           <div
             className={cn(
-              "flex justify-between items-center w-full pl-0.5",
-              isOpen && "pl-2 mb-2",
+              "flex items-center w-full pl-0.5",
+              isOpen && "pl-2 mb-2 justify-between",
+              openMobile && "pl-2 mb-2 justify-between",
+              !isMobile && !isOpen && "justify-center",
             )}
           >
             <div className="flex items-center gap-2">
               <Jan className="size-4 shrink-0 block md:hidden" />
               <span className="text-lg font-bold font-studio">Jan</span>
             </div>
-            <SidebarTrigger className="text-muted-foreground" />
+
+            {(isOpen || openMobile) && (
+              <SidebarTrigger className="text-muted-foreground" />
+            )}
           </div>
           <NavMain />
         </SidebarHeader>

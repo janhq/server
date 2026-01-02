@@ -14,17 +14,20 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/sidebar/sidebar";
 import { useAuth } from "@/stores/auth-store";
 import { useRouter } from "@tanstack/react-router";
 import { getInitialsAvatar } from "@/lib/utils";
 import { URL_PARAM, SETTINGS_SECTION } from "@/constants";
+import { cn } from "@janhq/interfaces/lib";
 
 export function NavUser() {
   const user = useAuth((state) => state.user);
   const isGuest = useAuth((state) => state.isGuest);
   const logout = useAuth((state) => state.logout);
   const router = useRouter();
+  const { state } = useSidebar();
 
   if (!user || isGuest) {
     return null;
@@ -37,7 +40,7 @@ export function NavUser() {
   };
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className={cn(state === "collapsed" && "md:items-center")}>
       <SidebarMenuItem>
         <DropDrawer>
           <DropDrawerTrigger asChild>
@@ -63,7 +66,7 @@ export function NavUser() {
           </DropDrawerTrigger>
           <DropDrawerContent
             className="md:w-56"
-            side="top"
+            side={state === "collapsed" ? "right" : "top"}
             align="end"
             sideOffset={4}
           >

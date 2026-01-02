@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { SidebarMenu, useSidebar } from "@/components/sidebar/sidebar";
 import { AnimatedMenuItem, type NavMainItem } from "@/components/sidebar/items";
 import { URL_PARAM, URL_PARAM_VALUE } from "@/constants";
+import { cn } from "@janhq/interfaces/lib";
 
 export function NavMain() {
   const router = useRouter();
@@ -41,10 +42,10 @@ export function NavMain() {
     },
   ];
 
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, state } = useSidebar();
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className={cn(state === "collapsed" && "md:items-center")}>
       {navMain.map((item, index) => (
         <AnimatedMenuItem
           key={item.title}
