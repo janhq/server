@@ -1,6 +1,6 @@
 {
   "name": "@janhq/interfaces",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "homepage": "https://jan.ai/",
   "description": "Shared UI component library for Jan",
@@ -22,57 +22,13 @@
     "README.md"
   ],
   "exports": {
-    "./lib": {
-      "types": "./src/lib/utils.ts",
-      "default": "./src/lib/utils.ts"
-    },
-    "./hooks": {
-      "types": "./src/hooks/use-mobile.ts",
-      "default": "./src/hooks/use-mobile.ts"
-    },
-    "./hooks/use-mobile": {
-      "types": "./src/hooks/use-mobile.ts",
-      "default": "./src/hooks/use-mobile.ts"
-    },
-    "./hooks/use-is-mobile-device": {
-      "types": "./src/hooks/use-is-mobile-device.ts",
-      "default": "./src/hooks/use-is-mobile-device.ts"
-    },
-    "./hooks/use-resolved-media-url": {
-      "types": "./src/hooks/use-resolved-media-url.ts",
-      "default": "./src/hooks/use-resolved-media-url.ts"
-    },
-    "./providers/*": {
-      "types": "./src/providers/*.tsx",
-      "default": "./src/providers/*.tsx"
-    },
-    "./providers/theme-provider": {
-      "types": "./src/providers/theme-provider.tsx",
-      "default": "./src/providers/theme-provider.tsx"
-    },
-    "./ai-elements/*": {
-      "types": "./src/ai-elements/*.tsx",
-      "default": "./src/ai-elements/*.tsx"
-    },
-    "./constants": {
-      "types": "./src/lib/constants.ts",
-      "default": "./src/lib/constants.ts"
-    },
-    "./svgs/*": {
-      "types": "./src/svgs/*.tsx",
-      "default": "./src/svgs/*.tsx"
-    },
-    "./ui/*": {
-      "types": "./src/ui/*.tsx",
-      "default": "./src/ui/*.tsx"
-    },
-    "./components/*": {
-      "types": "./src/ui/*.tsx",
-      "default": "./src/ui/*.tsx"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
     "./*": {
-      "types": "./src/ui/*.tsx",
-      "default": "./src/ui/*.tsx"
+      "import": "./dist/*.js",
+      "types": "./dist/*.d.ts"
     }
   },
   "scripts": {
