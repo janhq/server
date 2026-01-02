@@ -88,11 +88,27 @@ type SnapshotContent struct {
 	InputText   string       `json:"input_text,omitempty"`
 	OutputText  string       `json:"output_text,omitempty"`
 	Thinking    string       `json:"thinking,omitempty"`     // For reasoning/thinking content
-	ToolCallID  *string      `json:"tool_call_id,omitempty"` // For tool role messages
+	ToolCallID  *string      `json:"tool_call_id,omitempty"` // For tool role messages and mcp_call
+	ToolCalls   []ToolCall   `json:"tool_calls,omitempty"`   // For assistant tool calls
+	MCPCallData string       `json:"mcp_call,omitempty"`     // For MCP tool calls - JSON string directly
+	ToolResult  string       `json:"tool_result,omitempty"`  // For tool result content
 	Image       *ImageRef    `json:"image,omitempty"`        // For image content
 	FileRef     *FileRef     `json:"file_ref,omitempty"`     // For file attachments
 	Annotations []Annotation `json:"annotations,omitempty"`
 	Reasoning   string       `json:"reasoning_text,omitempty"` // For reasoning/thinking content
+}
+
+// ToolCall represents a tool call in the snapshot
+type ToolCall struct {
+	ID       string            `json:"id"`
+	Type     string            `json:"type"`
+	Function *ToolCallFunction `json:"function,omitempty"`
+}
+
+// ToolCallFunction represents the function details in a tool call
+type ToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
 
 // ImageRef represents an image reference in the snapshot

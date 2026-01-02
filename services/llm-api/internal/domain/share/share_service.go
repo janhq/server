@@ -552,6 +552,50 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 			ToolCallID: content.ToolCallID,
 		}
 
+	case "tool_calls":
+		// Include tool calls from assistant messages
+		if len(content.ToolCalls) == 0 {
+			return nil
+		}
+		toolCalls := make([]ToolCall, 0, len(content.ToolCalls))
+		for _, tc := range content.ToolCalls {
+			toolCall := ToolCall{
+				ID:   tc.ID,
+				Type: tc.Type,
+			}
+			if tc.Function.Name != "" {
+				toolCall.Function = &ToolCallFunction{
+					Name:      tc.Function.Name,
+					Arguments: tc.Function.Arguments,
+				}
+			}
+			toolCalls = append(toolCalls, toolCall)
+		}
+		return &SnapshotContent{
+			Type:      "tool_calls",
+			ToolCalls: toolCalls,
+		}
+
+	case "mcp_call":
+		// Include MCP call data - mcp_call and tool_call_id are direct fields
+		text := extractTextFromContent(content)
+		return &SnapshotContent{
+			Type:        "mcp_call",
+			MCPCallData: text,
+			ToolCallID:  content.ToolCallID,
+		}
+
+	case "tool_result":
+		// Include tool result content
+		text := extractTextFromContent(content)
+		if text == "" {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:       "tool_result",
+			ToolResult: text,
+		}
+
 	// Skip sensitive/internal content types
 	case "audio", "input_audio":
 		// Skip audio data entirely (contains audio.data, input_audio.data)
