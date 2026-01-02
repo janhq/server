@@ -34,6 +34,7 @@ export function AnimatedMenuItem({
       <SidebarMenuButton
         asChild={!item.onClick}
         isActive={item.isActive}
+        tooltip={item.title}
         onClick={() => {
           item.onClick?.();
           if (isMobile) {
