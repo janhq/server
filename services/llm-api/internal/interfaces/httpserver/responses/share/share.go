@@ -71,6 +71,7 @@ type SnapshotContentResp struct {
 	OutputText      string               `json:"output_text,omitempty"`
 	ReasoningText   string               `json:"reasoning_text,omitempty"`
 	Thinking        string               `json:"thinking,omitempty"`
+	ToolCallID      *string              `json:"tool_call_id,omitempty"`
 	ToolResult      string               `json:"tool_result,omitempty"`
 	McpCall         string               `json:"mcp_call,omitempty"`
 	ToolCalls       []ToolCallResp       `json:"tool_calls,omitempty"`
@@ -237,6 +238,7 @@ func newSnapshotContentResp(content share.SnapshotContent) SnapshotContentResp {
 		OutputText:    content.OutputText,
 		ReasoningText: content.ReasoningText,
 		Thinking:      content.Thinking,
+		ToolCallID:    content.ToolCallID,
 		ToolResult:    content.ToolResult,
 		McpCall:       content.McpCall,
 	}

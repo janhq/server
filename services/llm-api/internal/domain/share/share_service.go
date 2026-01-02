@@ -539,8 +539,9 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 			return nil
 		}
 		return &SnapshotContent{
-			Type:    "mcp_call",
-			McpCall: *content.TextString,
+			Type:       "mcp_call",
+			McpCall:    *content.TextString,
+			ToolCallID: content.ToolCallID,
 		}
 
 	case "tool_calls":
