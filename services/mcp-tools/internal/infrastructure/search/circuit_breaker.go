@@ -32,6 +32,7 @@ func (s CircuitState) String() string {
 
 // CircuitBreakerConfig defines circuit breaker behavior
 type CircuitBreakerConfig struct {
+	Enabled          bool
 	FailureThreshold int           // Number of failures before opening
 	SuccessThreshold int           // Number of successes to close from half-open
 	Timeout          time.Duration // How long to stay open before trying half-open
@@ -41,6 +42,7 @@ type CircuitBreakerConfig struct {
 // DefaultCircuitBreakerConfig returns sensible defaults
 func DefaultCircuitBreakerConfig() CircuitBreakerConfig {
 	return CircuitBreakerConfig{
+		Enabled:          true,
 		FailureThreshold: 15,
 		SuccessThreshold: 5,
 		Timeout:          45 * time.Second,
@@ -84,6 +86,10 @@ func (cb *CircuitBreaker) allowRequest() bool {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
+	if !cb.cfg.Enabled {
+		return true
+	}
+
 	switch cb.state {
 	case StateClosed:
 		return true
@@ -112,6 +118,10 @@ func (cb *CircuitBreaker) allowRequest() bool {
 func (cb *CircuitBreaker) recordResult(operation string, err error) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
+
+	if !cb.cfg.Enabled {
+		return
+	}
 
 	if err != nil {
 		cb.failures++
@@ -156,6 +166,9 @@ func (cb *CircuitBreaker) recordResult(operation string, err error) {
 func (cb *CircuitBreaker) GetState() CircuitState {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
+	if !cb.cfg.Enabled {
+		return StateClosed
+	}
 	return cb.state
 }
 
@@ -177,6 +190,10 @@ func (cb *CircuitBreaker) GetMetrics() map[string]any {
 func (cb *CircuitBreaker) Reset() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
+
+	if !cb.cfg.Enabled {
+		return
+	}
 
 	log.Info().Msg("manually resetting circuit breaker")
 	cb.state = StateClosed

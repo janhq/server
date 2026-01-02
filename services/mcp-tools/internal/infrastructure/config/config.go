@@ -24,10 +24,11 @@ type Config struct {
 	SerperOfflineMode  bool     `env:"SERPER_OFFLINE_MODE" envDefault:"false"`
 
 	// Circuit Breaker Configuration
-	SerperCBFailureThreshold int `env:"SERPER_CB_FAILURE_THRESHOLD" envDefault:"15"`
-	SerperCBSuccessThreshold int `env:"SERPER_CB_SUCCESS_THRESHOLD" envDefault:"5"`
-	SerperCBTimeout          int `env:"SERPER_CB_TIMEOUT" envDefault:"45"`
-	SerperCBMaxHalfOpen      int `env:"SERPER_CB_MAX_HALF_OPEN" envDefault:"10"`
+	SearchCBEnabled          bool `env:"MCP_SEARCH_CB_ENABLED" envDefault:"false"`
+	SerperCBFailureThreshold int  `env:"SERPER_CB_FAILURE_THRESHOLD" envDefault:"15"`
+	SerperCBSuccessThreshold int  `env:"SERPER_CB_SUCCESS_THRESHOLD" envDefault:"5"`
+	SerperCBTimeout          int  `env:"SERPER_CB_TIMEOUT" envDefault:"45"`
+	SerperCBMaxHalfOpen      int  `env:"SERPER_CB_MAX_HALF_OPEN" envDefault:"10"`
 
 	// HTTP Client Performance
 	SerperHTTPTimeout     int `env:"SERPER_HTTP_TIMEOUT" envDefault:"15"`

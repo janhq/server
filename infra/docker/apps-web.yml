@@ -5,6 +5,8 @@ services:
   web:
     build:
       context: ../../apps/web
+      additional_contexts:
+        interfaces: ../../packages/interfaces
       dockerfile: Dockerfile
       args:
         JAN_API_BASE_URL: ${KONG_PUBLIC_URL:-http://localhost:8000/}

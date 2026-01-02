@@ -41,6 +41,7 @@ type ClientConfig struct {
 	OfflineMode   bool
 
 	// Circuit Breaker Settings
+	CBEnabled          bool
 	CBFailureThreshold int
 	CBSuccessThreshold int
 	CBTimeout          time.Duration
@@ -163,6 +164,7 @@ func NewSearchClient(cfg ClientConfig) *SearchClient {
 
 	// Build circuit breaker config from ClientConfig
 	cbConfig := DefaultCircuitBreakerConfig()
+	cbConfig.Enabled = cfg.CBEnabled
 	if cfg.CBFailureThreshold > 0 {
 		cbConfig.FailureThreshold = cfg.CBFailureThreshold
 	}
