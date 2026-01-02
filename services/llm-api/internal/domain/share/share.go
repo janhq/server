@@ -73,23 +73,26 @@ type Snapshot struct {
 
 // SnapshotItem represents a sanitized conversation item for public display
 type SnapshotItem struct {
-	ID        string             `json:"id"` // Public ID
-	Type      string             `json:"type"`
-	Role      string             `json:"role"`
-	Content   []SnapshotContent  `json:"content"`
-	CreatedAt time.Time          `json:"created_at"`
+	ID        string            `json:"id"` // Public ID
+	Type      string            `json:"type"`
+	Role      string            `json:"role"`
+	Content   []SnapshotContent `json:"content"`
+	CreatedAt time.Time         `json:"created_at"`
 }
 
 // SnapshotContent represents sanitized content for public display
-// Only includes safe content types: text, output_text, and file references
+// Includes safe content types: text, output_text, file references, reasoning, and tool call metadata
 type SnapshotContent struct {
-	Type       string      `json:"type"`
-	Text       string      `json:"text,omitempty"`
-	InputText  string      `json:"input_text,omitempty"`
-	OutputText string      `json:"output_text,omitempty"`
-	Image      *ImageRef   `json:"image,omitempty"` // For image content
-	FileRef    *FileRef    `json:"file_ref,omitempty"` // For file attachments
+	Type        string       `json:"type"`
+	Text        string       `json:"text,omitempty"`
+	InputText   string       `json:"input_text,omitempty"`
+	OutputText  string       `json:"output_text,omitempty"`
+	Thinking    string       `json:"thinking,omitempty"`     // For reasoning/thinking content
+	ToolCallID  *string      `json:"tool_call_id,omitempty"` // For tool role messages
+	Image       *ImageRef    `json:"image,omitempty"`        // For image content
+	FileRef     *FileRef     `json:"file_ref,omitempty"`     // For file attachments
 	Annotations []Annotation `json:"annotations,omitempty"`
+	Reasoning   string       `json:"reasoning_text,omitempty"` // For reasoning/thinking content
 }
 
 // ImageRef represents an image reference in the snapshot
@@ -109,12 +112,12 @@ type FileRef struct {
 
 // Annotation represents text annotations (citations, links)
 type Annotation struct {
-	Type      string `json:"type"`
-	Text      string `json:"text,omitempty"`
-	StartIdx  *int   `json:"start_index,omitempty"`
-	EndIdx    *int   `json:"end_index,omitempty"`
-	URL       string `json:"url,omitempty"`
-	FileID    string `json:"file_id,omitempty"`
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	StartIdx *int   `json:"start_index,omitempty"`
+	EndIdx   *int   `json:"end_index,omitempty"`
+	URL      string `json:"url,omitempty"`
+	FileID   string `json:"file_id,omitempty"`
 }
 
 // ===============================================

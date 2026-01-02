@@ -47,7 +47,7 @@ func NewShareService(repo ShareRepository, convRepo conversation.ConversationRep
 // CreateShareInput contains the input for creating a share
 type CreateShareInput struct {
 	ConversationID         uint
-	ItemPublicID           *string    // For single-message share
+	ItemPublicID           *string // For single-message share
 	OwnerUserID            uint
 	Title                  *string
 	Scope                  ShareScope
@@ -416,8 +416,8 @@ func (s *ShareService) filterItemsForShare(items []conversation.Item, includeIma
 			continue
 		}
 
-		// Only include user and assistant messages
-		if role != conversation.ItemRoleUser && role != conversation.ItemRoleAssistant {
+		// Include user, assistant, and tool messages
+		if role != conversation.ItemRoleUser && role != conversation.ItemRoleAssistant && role != conversation.ItemRoleTool {
 			continue
 		}
 
@@ -526,6 +526,32 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 			},
 		}
 
+	case "reasoning_text":
+		// Include reasoning/thinking content
+		text := ""
+		if content.Reasoning != nil {
+			text = *content.Reasoning
+		} else {
+			text = extractTextFromContent(content)
+		}
+		if text == "" {
+			return nil
+		}
+		return &SnapshotContent{
+			Type: content.Type,
+			Text: text,
+		}
+
+	case "tool_call_id":
+		// Include tool call ID for tool role messages
+		if content.ToolCallID == nil {
+			return nil
+		}
+		return &SnapshotContent{
+			Type:       "tool_call_id",
+			ToolCallID: content.ToolCallID,
+		}
+
 	// Skip sensitive/internal content types
 	case "audio", "input_audio":
 		// Skip audio data entirely (contains audio.data, input_audio.data)
@@ -535,9 +561,6 @@ func (s *ShareService) sanitizeContent(content conversation.Content, includeImag
 		return nil
 	case "computer_screenshot", "computer_action":
 		// Skip computer use content
-		return nil
-	case "thinking", "reasoning":
-		// Skip internal reasoning
 		return nil
 	case "refusal":
 		// Skip refusals

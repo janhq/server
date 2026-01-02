@@ -358,10 +358,10 @@ type SafetyCheck struct {
 // ComputerCallItem represents a computer use tool call
 type ComputerCallItem struct {
 	BaseItem
-	CallID              string        `json:"call_id"`
+	CallID              string         `json:"call_id"`
 	Action              ComputerAction `json:"action"`
-	Status              string        `json:"status"`
-	PendingSafetyChecks []SafetyCheck `json:"pending_safety_checks,omitempty"`
+	Status              string         `json:"status"`
+	PendingSafetyChecks []SafetyCheck  `json:"pending_safety_checks,omitempty"`
 }
 
 // ComputerCallOutputItem represents the output of a computer use call
@@ -405,10 +405,10 @@ type ShellOutput struct {
 // ShellCallItem represents a server-side shell execution call
 type ShellCallItem struct {
 	BaseItem
-	CallID          string  `json:"call_id"`
+	CallID          string   `json:"call_id"`
 	Commands        []string `json:"commands"`
-	MaxOutputLength *int64  `json:"max_output_length,omitempty"`
-	Status          string  `json:"status"`
+	MaxOutputLength *int64   `json:"max_output_length,omitempty"`
+	Status          string   `json:"status"`
 }
 
 // ShellCallOutputItem represents the output of a shell call
@@ -443,23 +443,23 @@ type Item struct {
 	RatingComment *string     `json:"rating_comment,omitempty"` // Optional comment with rating
 
 	// OpenAI-compatible fields for specific item types
-	CallID                   *string                `json:"call_id,omitempty"`                      // For function/tool calls
-	Name                     *string                `json:"name,omitempty"`                         // For MCP tool calls - tool name
-	ServerLabel              *string                `json:"server_label,omitempty"`                 // For MCP calls
-	ApprovalRequestID        *string                `json:"approval_request_id,omitempty"`          // For MCP approval
-	Arguments                *string                `json:"arguments,omitempty"`                    // For tool calls (JSON string)
-	Output                   *string                `json:"output,omitempty"`                       // For tool call outputs
-	Error                    *string                `json:"error,omitempty"`                        // For failed calls
-	Action                   map[string]interface{} `json:"action,omitempty"`                       // For computer/shell actions
-	Tools                    []McpTool              `json:"tools,omitempty"`                        // For mcp_list_tools
-	PendingSafetyChecks      []SafetyCheck          `json:"pending_safety_checks,omitempty"`        // For computer calls
-	AcknowledgedSafetyChecks []SafetyCheck          `json:"acknowledged_safety_checks,omitempty"`   // For computer call outputs
-	Approve                  *bool                  `json:"approve,omitempty"`                      // For MCP approval response
-	Reason                   *string                `json:"reason,omitempty"`                       // For MCP approval reason
-	Commands                 []string               `json:"commands,omitempty"`                     // For shell calls
-	MaxOutputLength          *int64                 `json:"max_output_length,omitempty"`            // For shell calls
-	ShellOutputs             []ShellOutput          `json:"shell_outputs,omitempty"`                // For shell call outputs
-	Operation                map[string]interface{} `json:"operation,omitempty"`                    // For patch operations
+	CallID                   *string                `json:"call_id,omitempty"`                    // For function/tool calls
+	Name                     *string                `json:"name,omitempty"`                       // For MCP tool calls - tool name
+	ServerLabel              *string                `json:"server_label,omitempty"`               // For MCP calls
+	ApprovalRequestID        *string                `json:"approval_request_id,omitempty"`        // For MCP approval
+	Arguments                *string                `json:"arguments,omitempty"`                  // For tool calls (JSON string)
+	Output                   *string                `json:"output,omitempty"`                     // For tool call outputs
+	Error                    *string                `json:"error,omitempty"`                      // For failed calls
+	Action                   map[string]interface{} `json:"action,omitempty"`                     // For computer/shell actions
+	Tools                    []McpTool              `json:"tools,omitempty"`                      // For mcp_list_tools
+	PendingSafetyChecks      []SafetyCheck          `json:"pending_safety_checks,omitempty"`      // For computer calls
+	AcknowledgedSafetyChecks []SafetyCheck          `json:"acknowledged_safety_checks,omitempty"` // For computer call outputs
+	Approve                  *bool                  `json:"approve,omitempty"`                    // For MCP approval response
+	Reason                   *string                `json:"reason,omitempty"`                     // For MCP approval reason
+	Commands                 []string               `json:"commands,omitempty"`                   // For shell calls
+	MaxOutputLength          *int64                 `json:"max_output_length,omitempty"`          // For shell calls
+	ShellOutputs             []ShellOutput          `json:"shell_outputs,omitempty"`              // For shell call outputs
+	Operation                map[string]interface{} `json:"operation,omitempty"`                  // For patch operations
 
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -524,6 +524,7 @@ type Content struct {
 	FunctionCallOut    *FunctionCallOut   `json:"function_call_output,omitempty"` // Function call output
 	ToolCalls          []ToolCall         `json:"tool_calls,omitempty"`           // Tool calls (for assistant messages)
 	ToolCallID         *string            `json:"tool_call_id,omitempty"`         // Tool call ID (for tool responses)
+	Reasoning          *string            `json:"reasoning_text,omitempty"`       // Internal reasoning (o1 models)
 }
 
 // Text content - matches OpenAI's text content format
@@ -1007,7 +1008,7 @@ func NewComputerActionContent(action string, coords *Coordinates, text *string) 
 // This handles the text field which can be either a string or an object with annotations
 func (c Content) MarshalJSON() ([]byte, error) {
 	type Alias Content
-	
+
 	// Marshal the base struct without text field
 	baseJSON, err := json.Marshal((*Alias)(&c))
 	if err != nil {
