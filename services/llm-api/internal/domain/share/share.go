@@ -87,7 +87,6 @@ type SnapshotContent struct {
 	Text        string       `json:"text,omitempty"`
 	InputText   string       `json:"input_text,omitempty"`
 	OutputText  string       `json:"output_text,omitempty"`
-	Thinking    string       `json:"thinking,omitempty"`     // For reasoning/thinking content
 	ToolCallID  *string      `json:"tool_call_id,omitempty"` // For tool role messages
 	Image       *ImageRef    `json:"image,omitempty"`        // For image content
 	FileRef     *FileRef     `json:"file_ref,omitempty"`     // For file attachments
