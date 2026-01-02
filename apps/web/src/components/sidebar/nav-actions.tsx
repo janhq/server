@@ -37,11 +37,34 @@ export function NavActions({
     router.navigate({ to: url.pathname + url.search });
   };
 
+  // Show login button and share button for unauthenticated/guest users
   if (!isAuthenticated || isGuest) {
     return (
-      <Button size="sm" onClick={handleLogin}>
-        Log in
-      </Button>
+      <>
+        {/* Share button - available for all users with a conversation */}
+        {conversationId && !isPrivateChat && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={() => setShareDialogOpen(true)}
+          >
+            <Share2Icon className="size-4 text-muted-foreground" />
+          </Button>
+        )}
+        <Button size="sm" onClick={handleLogin}>
+          Log in
+        </Button>
+        {/* Share Dialog */}
+        {conversationId && (
+          <ShareDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            conversationId={conversationId}
+            conversationTitle={conversationTitle}
+          />
+        )}
+      </>
     );
   }
 

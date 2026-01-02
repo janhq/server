@@ -8,20 +8,20 @@ import (
 
 // ShareResponse represents the response for a share
 type ShareResponse struct {
-	ID              string             `json:"id"`
-	Object          string             `json:"object"`
-	Slug            string             `json:"slug"`
-	ShareURL        string             `json:"share_url,omitempty"`
-	Title           *string            `json:"title,omitempty"`
-	ItemID          *string            `json:"item_id,omitempty"`
-	Visibility      string             `json:"visibility"`
-	ViewCount       int                `json:"view_count"`
-	RevokedAt       *int64             `json:"revoked_at,omitempty"`
-	LastViewedAt    *int64             `json:"last_viewed_at,omitempty"`
-	SnapshotVersion int                `json:"snapshot_version"`
-	ShareOptions    *ShareOptionsResp  `json:"share_options,omitempty"`
-	CreatedAt       int64              `json:"created_at"`
-	UpdatedAt       int64              `json:"updated_at"`
+	ID              string            `json:"id"`
+	Object          string            `json:"object"`
+	Slug            string            `json:"slug"`
+	ShareURL        string            `json:"share_url,omitempty"`
+	Title           *string           `json:"title,omitempty"`
+	ItemID          *string           `json:"item_id,omitempty"`
+	Visibility      string            `json:"visibility"`
+	ViewCount       int               `json:"view_count"`
+	RevokedAt       *int64            `json:"revoked_at,omitempty"`
+	LastViewedAt    *int64            `json:"last_viewed_at,omitempty"`
+	SnapshotVersion int               `json:"snapshot_version"`
+	ShareOptions    *ShareOptionsResp `json:"share_options,omitempty"`
+	CreatedAt       int64             `json:"created_at"`
+	UpdatedAt       int64             `json:"updated_at"`
 }
 
 // ShareOptionsResp represents the share options in response
@@ -38,29 +38,29 @@ type ShareListResponse struct {
 
 // PublicShareResponse represents the public-facing share response (no auth)
 type PublicShareResponse struct {
-	Object    string           `json:"object"`
-	Slug      string           `json:"slug"`
-	Title     *string          `json:"title,omitempty"`
-	CreatedAt int64            `json:"created_at"`
-	Snapshot  *SnapshotResp    `json:"snapshot"`
+	Object    string        `json:"object"`
+	Slug      string        `json:"slug"`
+	Title     *string       `json:"title,omitempty"`
+	CreatedAt int64         `json:"created_at"`
+	Snapshot  *SnapshotResp `json:"snapshot"`
 }
 
 // SnapshotResp represents the snapshot in public response
 type SnapshotResp struct {
-	Title         string              `json:"title"`
-	ModelName     *string             `json:"model_name,omitempty"`
-	AssistantName *string             `json:"assistant_name,omitempty"`
-	CreatedAt     int64               `json:"created_at"`
-	Items         []SnapshotItemResp  `json:"items"`
+	Title         string             `json:"title"`
+	ModelName     *string            `json:"model_name,omitempty"`
+	AssistantName *string            `json:"assistant_name,omitempty"`
+	CreatedAt     int64              `json:"created_at"`
+	Items         []SnapshotItemResp `json:"items"`
 }
 
 // SnapshotItemResp represents an item in the snapshot
 type SnapshotItemResp struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Role      string                 `json:"role"`
-	Content   []SnapshotContentResp  `json:"content"`
-	CreatedAt int64                  `json:"created_at"`
+	ID        string                `json:"id"`
+	Type      string                `json:"type"`
+	Role      string                `json:"role"`
+	Content   []SnapshotContentResp `json:"content"`
+	CreatedAt int64                 `json:"created_at"`
 }
 
 // SnapshotContentResp represents content in the snapshot
@@ -69,9 +69,27 @@ type SnapshotContentResp struct {
 	Text        string           `json:"text,omitempty"`
 	InputText   string           `json:"input_text,omitempty"`
 	OutputText  string           `json:"output_text,omitempty"`
+	ToolCallID  *string          `json:"tool_call_id,omitempty"`
+	ToolCalls   []ToolCallResp   `json:"tool_calls,omitempty"`
+	MCPCallData string           `json:"mcp_call,omitempty"` // Direct JSON string for mcp_call
+	ToolResult  string           `json:"tool_result,omitempty"`
 	Image       *ImageRefResp    `json:"image,omitempty"`
 	FileRef     *FileRefResp     `json:"file_ref,omitempty"`
 	Annotations []AnnotationResp `json:"annotations,omitempty"`
+	Reasoning   string           `json:"reasoning_text,omitempty"`
+}
+
+// ToolCallResp represents a tool call in the response
+type ToolCallResp struct {
+	ID       string                `json:"id"`
+	Type     string                `json:"type"`
+	Function *ToolCallFunctionResp `json:"function,omitempty"`
+}
+
+// ToolCallFunctionResp represents the function details in a tool call
+type ToolCallFunctionResp struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
 
 // ImageRefResp represents an image reference
@@ -204,10 +222,31 @@ func newSnapshotItemResp(item share.SnapshotItem) SnapshotItemResp {
 
 func newSnapshotContentResp(content share.SnapshotContent) SnapshotContentResp {
 	resp := SnapshotContentResp{
-		Type:       content.Type,
-		Text:       content.Text,
-		InputText:  content.InputText,
-		OutputText: content.OutputText,
+		Type:        content.Type,
+		Text:        content.Text,
+		InputText:   content.InputText,
+		OutputText:  content.OutputText,
+		ToolCallID:  content.ToolCallID,
+		ToolResult:  content.ToolResult,
+		Reasoning:   content.Reasoning,
+		MCPCallData: content.MCPCallData,
+	}
+
+	if len(content.ToolCalls) > 0 {
+		resp.ToolCalls = make([]ToolCallResp, 0, len(content.ToolCalls))
+		for _, tc := range content.ToolCalls {
+			tcResp := ToolCallResp{
+				ID:   tc.ID,
+				Type: tc.Type,
+			}
+			if tc.Function != nil {
+				tcResp.Function = &ToolCallFunctionResp{
+					Name:      tc.Function.Name,
+					Arguments: tc.Function.Arguments,
+				}
+			}
+			resp.ToolCalls = append(resp.ToolCalls, tcResp)
+		}
 	}
 
 	if content.Image != nil {
