@@ -106,7 +106,7 @@ jobs:
       docker-file: apps/platform/Dockerfile
       context: apps/platform
       registry-url: registry.menlo.ai
-      tags: registry.menlo.ai/server/platform:prod-${{ github.ref_name }}
+      tags: registry.menlo.ai/menlo-platform/platform-web:prod-${{ github.ref_name }}
       is_push: true
       build-args: |
         NEXT_PUBLIC_JAN_BASE_URL=https://api.jan.ai

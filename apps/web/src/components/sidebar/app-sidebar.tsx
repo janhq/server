@@ -49,7 +49,7 @@ export const AppSidebar = memo(function AppSidebar({
   return (
     <Sidebar className="border-r-0" {...props}>
       <StaggeredAnimationProvider ready={isReady}>
-        <SidebarHeader className="pt-3.5 ">
+        <SidebarHeader className={cn("pt-3.5", !isOpen && "md:gap-y-4")}>
           <div
             className={cn(
               "flex items-center w-full pl-0.5",
@@ -73,7 +73,7 @@ export const AppSidebar = memo(function AppSidebar({
           <NavProjects startIndex={3} />
           <NavChats startIndex={chatsStartIndex} />
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className={cn(!isOpen && "pb-4")}>
           <NavUser />
         </SidebarFooter>
       </StaggeredAnimationProvider>

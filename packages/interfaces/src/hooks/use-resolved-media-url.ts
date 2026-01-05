@@ -12,8 +12,7 @@ import { useState, useEffect } from "react";
  */
 export function useResolvedMediaUrl(
   url: string | undefined,
-  isJanMediaUrl?: (url: string) => boolean,
-  resolveJanMediaUrl?: (url: string) => Promise<string>,
+  resolveJanMediaUrl: (url: string) => Promise<string>,
 ) {
   const [displayUrl, setDisplayUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,4 +46,14 @@ export function useResolvedMediaUrl(
   }, [url, isJanMediaUrl, resolveJanMediaUrl]);
 
   return { displayUrl, isLoading };
+}
+
+/**
+ * Check if a URL is a jan media URL format
+ * Format: data:image/jpeg;base64,jan_MEDIA_ID
+ * @param url - The URL to check
+ * @returns true if the URL is a jan media URL
+ */
+export function isJanMediaUrl(url: string): boolean {
+  return url.startsWith("data:") && url.includes(",jan_");
 }

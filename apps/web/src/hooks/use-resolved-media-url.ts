@@ -1,6 +1,5 @@
 import { useResolvedMediaUrl as useResolvedMediaUrlBase } from "@janhq/interfaces/hooks/use-resolved-media-url";
 import {
-  isJanMediaUrl,
   resolveJanMediaUrl,
 } from "@/services/media-upload-service";
 
@@ -12,5 +11,5 @@ import {
  * @returns Object with displayUrl, isLoading state
  */
 export function useResolvedMediaUrl(url: string | undefined) {
-  return useResolvedMediaUrlBase(url, isJanMediaUrl, resolveJanMediaUrl);
+  return useResolvedMediaUrlBase(url, resolveJanMediaUrl);
 }

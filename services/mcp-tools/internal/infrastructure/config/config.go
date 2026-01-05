@@ -13,7 +13,7 @@ import (
 type Config struct {
 	// HTTP Server - using MCP_TOOLS_ prefix to avoid collisions
 	HTTPPort  string `env:"MCP_TOOLS_HTTP_PORT" envDefault:"8091"`
-	LogLevel  string `env:"MCP_TOOLS_LOG_LEVEL" envDefault:"info"`
+	LogLevel  string `env:"MCP_TOOLS_LOG_LEVEL" envDefault:"debug"`
 	LogFormat string `env:"MCP_TOOLS_LOG_FORMAT" envDefault:"json"` // json or console
 
 	// Search Configuration

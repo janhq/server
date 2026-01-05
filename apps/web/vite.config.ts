@@ -114,7 +114,7 @@ export default defineConfig(({ mode }) => {
       JAN_API_BASE_URL: JSON.stringify(env.JAN_API_BASE_URL),
       VITE_GA_ID: JSON.stringify(env.VITE_GA_ID),
       VITE_AUTH_URL: JSON.stringify(
-        env.VITE_AUTH_URL || "https://auth-dev.jan.ai",
+        env.VITE_AUTH_URL || "https://auth-dev.menlo.ai",
       ),
       VITE_AUTH_REALM: JSON.stringify(env.VITE_AUTH_REALM || "jan"),
       VITE_AUTH_CLIENT_ID: JSON.stringify(
