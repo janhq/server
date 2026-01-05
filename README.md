@@ -104,6 +104,9 @@ Governance and quality:
 
 ```text
 jan-server/
+|-- apps/                  # Frontend applications
+|   |-- web/               # Chat UI (React + Vite, port 3001)
+|   |-- platform/          # Admin panel & docs (Next.js, port 3000)
 |-- services/              # Go microservices
 |   |-- llm-api/
 |   |-- response-api/
@@ -111,6 +114,8 @@ jan-server/
 |   |-- mcp-tools/
 |   |-- realtime-api/
 |   |-- template-api/
+|-- packages/              # Shared packages
+|   |-- interfaces/        # Shared UI components (@janhq/interfaces)
 |-- docs/                  # Documentation hub
 |-- infra/docker/          # Compose profiles (infra, api, mcp, realtime, inference)
 |-- monitoring/            # Grafana, Prometheus, OTEL configs
@@ -124,7 +129,9 @@ jan-server/
 
 Key directories:
 
+- `apps/` - frontend applications (React chat UI, Next.js admin/docs).
 - `services/` - source for each microservice plus local docs.
+- `packages/` - shared packages (UI components, utilities).
 - `docs/` - user, operator, and developer documentation (see [docs/README.md](docs/README.md)).
 - `infra/docker/` - compose files included via `docker-compose.yml`.
 - `monitoring/` - observability stack definitions (Grafana dashboards live here).
@@ -132,6 +139,25 @@ Key directories:
 - `config/` - `.env` templates and environment overlays.
 - `kong/` / `keycloak/` - edge and auth configuration.
 - `scripts/` - automation (service scaffolding, utility scripts).
+
+### Frontend Applications
+
+| Application | Purpose                                      | Port | Source           | Tech Stack                          |
+| ----------- | -------------------------------------------- | ---- | ---------------- | ----------------------------------- |
+| Web App     | Chat UI for conversations                    | 3001 | `apps/web`       | React 19, Vite, TanStack Router     |
+| Platform    | Admin panel & documentation                  | 3000 | `apps/platform`  | Next.js 16, Fumadocs                |
+
+**Shared Package:** `packages/interfaces` - UI components (shadcn/ui), hooks, and utilities used by both apps.
+
+```bash
+# Run frontend apps
+cd apps/web && npm install && npm run dev       # http://localhost:3001
+cd apps/platform && npm install && npm run dev  # http://localhost:3000
+
+# Or via Docker
+make up-web       # Start web app container
+make up-platform  # Start platform app container
+```
 
 ### Microservices Overview
 
