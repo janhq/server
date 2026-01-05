@@ -137,7 +137,10 @@ export function NavChats({ startIndex = 3 }: { startIndex?: number }) {
           Chats
           <DropDrawer>
             <DropDrawerTrigger asChild>
-              <Button variant="ghost" className="size-5 mr-0.5">
+              <Button
+                variant="ghost"
+                className="size-5 mr-0.5 hover:bg-primary/10"
+              >
                 <MoreHorizontal className="text-muted-foreground" />
               </Button>
             </DropDrawerTrigger>

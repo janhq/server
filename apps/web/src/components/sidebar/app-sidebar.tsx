@@ -21,7 +21,7 @@ import { useConversations } from "@/stores/conversation-store";
 export const AppSidebar = memo(function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
-  const { state, isMobile, openMobile } = useSidebar();
+  const { state, isMobile, openMobile, variant } = useSidebar();
   const isOpen = state === "expanded";
 
   const [isReady, setIsReady] = useState(false);
@@ -47,7 +47,7 @@ export const AppSidebar = memo(function AppSidebar({
   }, [getProjects, getConversations]);
 
   return (
-    <Sidebar className="border-r-0" {...props}>
+    <Sidebar className="border-r-0" {...props} variant={variant}>
       <StaggeredAnimationProvider ready={isReady}>
         <SidebarHeader className={cn("pt-3.5", !isOpen && "md:gap-y-4")}>
           <div
@@ -64,7 +64,7 @@ export const AppSidebar = memo(function AppSidebar({
             </div>
 
             {(isOpen || openMobile) && (
-              <SidebarTrigger className="text-muted-foreground" />
+              <SidebarTrigger className="text-muted-foreground hover:bg-primary/10" />
             )}
           </div>
           <NavMain />

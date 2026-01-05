@@ -67,7 +67,7 @@ export function NavUser() {
           <DropDrawerContent
             className="md:w-56"
             side={state === "collapsed" ? "right" : "top"}
-            align="end"
+            align="center"
             sideOffset={4}
           >
             <DropDrawerLabel className="lg:p-0 font-normal">

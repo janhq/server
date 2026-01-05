@@ -6,16 +6,30 @@ import {
   DropDrawerTrigger,
 } from "@janhq/interfaces/dropdrawer";
 import { useAuth } from "@/stores/auth-store";
-import { getInitialsAvatar } from "@/lib/utils";
+import { getInitialsAvatar, cn } from "@/lib/utils";
 import { useTheme } from "@/components/themes/theme-provider";
-import { ChevronsUpDown, CircleCheck, Monitor, Moon, Sun } from "lucide-react";
+import {
+  ChevronsUpDown,
+  CircleCheck,
+  Monitor,
+  Moon,
+  Sun,
+  PanelLeft,
+  RectangleVertical,
+} from "lucide-react";
 import { Button } from "@janhq/interfaces/button";
 import { useRef } from "react";
 import { THEME } from "@/constants";
+import { Separator } from "@janhq/interfaces/ui/separator";
+import { useAccentColor } from "@/hooks/use-accent-color";
+import { useSidebarStore } from "@/stores/sidebar-store";
 
 export function GeneralSettings() {
   const user = useAuth((state) => state.user);
   const { theme, setTheme } = useTheme();
+  const { accentColor, setAccentColor, availableColors } = useAccentColor();
+  const variant = useSidebarStore((state) => state.variant);
+  const setSidebarVariant = useSidebarStore((state) => state.setSidebarVariant);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
@@ -101,7 +115,7 @@ export function GeneralSettings() {
 
       {/* Appearance Section */}
       <p className="text-base font-semibold mb-4 font-studio">Appearance</p>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <p className="font-medium text-sm">Color mode</p>
         </div>
@@ -163,6 +177,67 @@ export function GeneralSettings() {
             </DropDrawerItem>
           </DropDrawerContent>
         </DropDrawer>
+      </div>
+
+      <Separator className="my-4" />
+
+      {/* Accent Color Section */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="font-medium text-sm">Accent color</p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {availableColors.map((color) => (
+            <button
+              key={color.value}
+              onClick={() => setAccentColor(color.value)}
+              className={cn(
+                "size-6 rounded-full transition-all hover:scale-110",
+                accentColor === color.value
+                  ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                  : "hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-muted-foreground/50",
+              )}
+              style={{ backgroundColor: `${color.primary}` }}
+              title={color.name}
+              aria-label={`Select ${color.name} primary color`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <Separator className="my-4" />
+
+      {/* Sidebar Variant Section */}
+      <div>
+        <p className="font-medium text-sm mb-3">Menu sidebar</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setSidebarVariant("sidebar")}
+            className={cn(
+              "flex items-center gap-3 p-4 rounded-lg border transition-all",
+              variant === "sidebar"
+                ? "border-primary bg-primary/10"
+                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
+            )}
+          >
+            <PanelLeft className="w-5 h-5" />
+            <span className="font-medium">Default</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSidebarVariant("floating")}
+            className={cn(
+              "flex items-center gap-3 p-4 rounded-lg border transition-all",
+              variant === "floating"
+                ? "border-primary bg-primary/10"
+                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
+            )}
+          >
+            <RectangleVertical className="w-5 h-5" />
+            <span className="font-medium">Floating</span>
+          </button>
+        </div>
       </div>
     </div>
   );

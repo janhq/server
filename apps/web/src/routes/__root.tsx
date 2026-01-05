@@ -20,6 +20,7 @@ import {
   URL_PARAM_VALUE,
   SETTINGS_SECTION,
 } from "@/constants";
+import { useAccentColor } from "@/hooks/use-accent-color";
 
 function RootLayout() {
   const location = useLocation();
@@ -27,6 +28,9 @@ function RootLayout() {
   const accessToken = useAuth((state) => state.accessToken);
   const guestLogin = useAuth((state) => state.guestLogin);
   const hasAttemptedGuestLogin = useRef(false);
+
+  // Initialize accent color
+  useAccentColor();
 
   // Auto guest login if no token exists
   useEffect(() => {
