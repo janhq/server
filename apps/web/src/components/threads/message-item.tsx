@@ -47,6 +47,7 @@ import {
 import { Button } from "@janhq/interfaces/button";
 import { twMerge } from "tailwind-merge";
 import { cn } from "@/lib/utils";
+import { resolveJanMediaUrl } from "@/services/media-upload-service";
 
 export type MessageItemProps = {
   message: UIMessage;
@@ -274,6 +275,7 @@ export const MessageItem = memo(
                   });
                 }
               }}
+              resolver={resolveJanMediaUrl}
             />
           </MessageAttachments>
 
@@ -374,12 +376,14 @@ export const MessageItem = memo(
               <ToolOutput
                 output={part.output}
                 errorText={"errorText" in part ? part.errorText : undefined}
+                resolver={resolveJanMediaUrl}
               />
             )}
             {part.state === TOOL_STATE.OUTPUT_ERROR && (
               <ToolOutput
                 output={undefined}
                 errorText={"errorText" in part ? part.errorText : undefined}
+                resolver={resolveJanMediaUrl}
               />
             )}
           </ToolContent>
