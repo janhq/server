@@ -1,5 +1,6 @@
 import { MessageCirclePlusIcon, FolderPenIcon, Search } from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
+import * as React from "react";
 
 import { SidebarMenu, useSidebar } from "@/components/sidebar/sidebar";
 import { AnimatedMenuItem, type NavMainItem } from "@/components/sidebar/items";
@@ -43,9 +44,32 @@ export function NavMain() {
   ];
 
   const { isMobile, setOpenMobile, state } = useSidebar();
+  const [isTransitionComplete, setIsTransitionComplete] = React.useState(
+    state === "collapsed",
+  );
+
+  React.useEffect(() => {
+    if (state === "collapsed") {
+      // Wait for the sidebar transition to complete (200ms as defined in sidebar.tsx)
+      const timer = setTimeout(() => {
+        setIsTransitionComplete(true);
+      }, 200);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTransitionComplete(false);
+    }
+  }, [state]);
 
   return (
-    <SidebarMenu className={cn(state === "collapsed" && "md:items-center")}>
+    <SidebarMenu
+      className={cn(
+        state === "collapsed" &&
+          "[&>li]:transition-transform [&>li]:duration-200 [&>li]:ease-linear",
+        state === "collapsed" &&
+          isTransitionComplete &&
+          "md:[&>li]:translate-x-[calc(50%-1rem)]",
+      )}
+    >
       {navMain.map((item, index) => (
         <AnimatedMenuItem
           key={item.title}
