@@ -1,4 +1,4 @@
-name: Deprecated/CI - Backend Services (Prod)
+name: CI - Backend Services (Prod)
 on:
   push:
     branches:

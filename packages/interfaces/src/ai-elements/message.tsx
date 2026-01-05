@@ -337,12 +337,14 @@ export type MessageAttachmentProps = HTMLAttributes<HTMLDivElement> & {
   data: FileUIPart;
   className?: string;
   onRemove?: () => void;
+  resolver: (input: string) => Promise<string>;
 };
 
 export function MessageAttachment({
   data,
   className,
   onRemove,
+  resolver,
   ...props
 }: MessageAttachmentProps) {
   const filename = data.filename || "";
@@ -352,8 +354,7 @@ export function MessageAttachment({
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
 
   // Resolve jan media URL to presigned URL using shared hook
-  const { displayUrl, isLoading } = useResolvedMediaUrl(data.url);
-
+  const { displayUrl, isLoading } = useResolvedMediaUrl(data.url, resolver);
   return (
     <div
       className={cn(

@@ -22,7 +22,7 @@ import { isValidElement, useEffect, useState } from "react";
 import { CodeBlock } from "./code-block";
 import { TOOL_STATE } from "../lib/constants";
 
-export type ToolProps = ComponentProps<typeof Collapsible>;
+export type ToolProps = ComponentProps<typeof Collapsible>
 
 export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible
@@ -134,9 +134,10 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
 type ToolImageProps = {
   data: string;
   index: number;
+  resolver: (input: string) => Promise<string>;
 };
 
-const ToolImage = ({ data, index }: ToolImageProps) => {
+const ToolImage = ({ data, index, resolver }: ToolImageProps) => {
   // Prepare the URL - convert base64 to data URL if needed
   const [preparedUrl, setPreparedUrl] = useState<string | undefined>(undefined);
 
@@ -151,7 +152,7 @@ const ToolImage = ({ data, index }: ToolImageProps) => {
   }, [data]);
 
   // Resolve Jan media URL to displayable URL using shared hook
-  const { displayUrl, isLoading } = useResolvedMediaUrl(preparedUrl);
+  const { displayUrl, isLoading } = useResolvedMediaUrl(preparedUrl, resolver);
 
   if (isLoading) {
     return (
@@ -181,12 +182,14 @@ const ToolImage = ({ data, index }: ToolImageProps) => {
 export type ToolOutputProps = ComponentProps<"div"> & {
   output: ToolUIPart["output"];
   errorText: ToolUIPart["errorText"];
+  resolver: (input: string) => Promise<string>;
 };
 
 export const ToolOutput = ({
   className,
   output,
   errorText,
+  resolver,
   ...props
 }: ToolOutputProps) => {
   if (!(output || errorText)) {
@@ -224,6 +227,7 @@ export const ToolOutput = ({
                   key={index}
                   data={item.data ?? item.image?.url}
                   index={index}
+                  resolver={resolver}
                 />
               ))}
           </div>
