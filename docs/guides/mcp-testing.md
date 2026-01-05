@@ -5,7 +5,8 @@ Validate the MCP (Model Context Protocol) toolchain end to end. Every command be
 ## 1. Prerequisites
 
 - `make up-full` (or `make up-mcp` + `make up-api`) so Kong, MCP Tools, and vector-store are running
-- `SERPER_API_KEY` and other MCP-related env vars set in `.env`
+- `SERPER_API_KEY` (if `SERPER_ENABLED=true`) or alternative provider keys (`EXA_API_KEY`, `TAVILY_API_KEY`) set in `.env`
+- Provider flags set as needed: `SERPER_ENABLED`, `EXA_ENABLED`, `TAVILY_ENABLED`, `SEARXNG_ENABLED`
 - Services reachable on:
   - Kong Gateway: http://localhost:8000
   - MCP Tools: http://localhost:8091 (direct) or http://localhost:8000/mcp (via Kong)
@@ -40,7 +41,7 @@ jan-cli api-test run tests/automation/mcp-postman-scripts.json \
 Expectations:
 
 - Guest token requests succeed (`/llm/auth/guest-login`)
-- MCP search variants (domain filter, offline) return structured JSON
+- MCP search variants (domain filter, offline) return structured JSON or explicit errors when all providers fail
 - Tool list includes `google_search`, `scrape`, `file_search_index`, `file_search_query`, `python_exec`
 - File index/query flows return 200 and include the previously indexed document
 - SandboxFusion executions return stdout/stderr

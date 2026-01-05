@@ -41,7 +41,7 @@ var allowedMCPMethods = map[string]bool{
 }
 
 type MCPRoute struct {
-	serperMCP       *SerperMCP
+	searchMCP       *SearchMCP
 	providerMCP     *ProviderMCP
 	sandboxMCP      *SandboxFusionMCP
 	memoryMCP       *MemoryMCP
@@ -54,7 +54,7 @@ type MCPRoute struct {
 }
 
 func NewMCPRoute(
-	serperMCP *SerperMCP,
+	searchMCP *SearchMCP,
 	providerMCP *ProviderMCP,
 	sandboxMCP *SandboxFusionMCP,
 	memoryMCP *MemoryMCP,
@@ -70,7 +70,7 @@ func NewMCPRoute(
 	server := mcp.NewServer(impl, nil)
 
 	// Pass LLM client to tool handlers for tracking
-	serperMCP.SetLLMClient(llmClient)
+	searchMCP.SetLLMClient(llmClient)
 
 	if sandboxMCP != nil {
 		sandboxMCP.SetLLMClient(llmClient)
@@ -81,7 +81,7 @@ func NewMCPRoute(
 		memoryMCP.SetLLMClient(llmClient)
 	}
 
-	serperMCP.RegisterTools(server)
+	searchMCP.RegisterTools(server)
 	if imageMCP != nil {
 		imageMCP.RegisterTools(server)
 	}
@@ -107,7 +107,7 @@ func NewMCPRoute(
 	}
 
 	return &MCPRoute{
-		serperMCP:       serperMCP,
+		searchMCP:       searchMCP,
 		providerMCP:     providerMCP,
 		sandboxMCP:      sandboxMCP,
 		memoryMCP:       memoryMCP,

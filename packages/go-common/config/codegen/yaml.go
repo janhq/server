@@ -131,7 +131,17 @@ func buildDefaultConfig() *config.Config {
 				LogFormat:              "json",
 				SearchEngine:           "serper",
 				SerperAPIKey:           "", // From secrets
+				SerperEnabled:          true,
+				ExaAPIKey:              "", // From secrets
+				ExaEnabled:             false,
+				ExaSearchEndpoint:      "https://api.exa.ai/search",
+				ExaTimeout:             15 * time.Second,
+				TavilyAPIKey:           "", // From secrets
+				TavilyEnabled:          false,
+				TavilySearchEndpoint:   "https://api.tavily.com/search",
+				TavilyTimeout:          15 * time.Second,
 				SearxngURL:             "http://searxng:8080",
+				SearxngEnabled:         false,
 				VectorStoreURL:         "http://vector-store:3015",
 				SandboxFusionURL:       "http://sandboxfusion:8080",
 				SandboxRequireApproval: true,

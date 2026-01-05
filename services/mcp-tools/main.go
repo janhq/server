@@ -29,6 +29,9 @@ func init() {
 	// Initialize MCP metrics with a startup marker
 	// This ensures metrics appear in Prometheus immediately
 	metrics.SetCircuitBreakerState("serper", "closed")
+	metrics.SetCircuitBreakerState("exa", "closed")
+	metrics.SetCircuitBreakerState("tavily", "closed")
+	metrics.SetCircuitBreakerState("searxng", "closed")
 	metrics.SetCircuitBreakerState("sandboxfusion", "closed")
 	metrics.SetCircuitBreakerState("memory-tools", "closed")
 }
@@ -58,10 +61,20 @@ func main() {
 	searchClient := searchclient.NewSearchClient(searchclient.ClientConfig{
 		Engine:             searchclient.Engine(cfg.SearchEngine),
 		SerperAPIKey:       cfg.SerperAPIKey,
+		SerperEnabled:      cfg.SerperEnabled,
 		SearxngURL:         cfg.SearxngURL,
+		SearxngEnabled:     cfg.SearxngEnabled,
 		DomainFilters:      cfg.SerperDomainFilter,
 		LocationHint:       cfg.SerperLocationHint,
 		OfflineMode:        cfg.SerperOfflineMode,
+		ExaAPIKey:          cfg.ExaAPIKey,
+		ExaEnabled:         cfg.ExaEnabled,
+		ExaEndpoint:        cfg.ExaSearchEndpoint,
+		ExaTimeout:         cfg.ExaTimeout,
+		TavilyAPIKey:       cfg.TavilyAPIKey,
+		TavilyEnabled:      cfg.TavilyEnabled,
+		TavilyEndpoint:     cfg.TavilySearchEndpoint,
+		TavilyTimeout:      cfg.TavilyTimeout,
 		CBEnabled:          cfg.SearchCBEnabled,
 		CBFailureThreshold: cfg.SerperCBFailureThreshold,
 		CBSuccessThreshold: cfg.SerperCBSuccessThreshold,
@@ -102,7 +115,7 @@ func main() {
 	}
 
 	// Initialize MCP routes
-	serperMCP := mcp.NewSerperMCP(searchService, vectorClient, mcp.SerperMCPConfig{
+	searchMCP := mcp.NewSearchMCP(searchService, vectorClient, mcp.SearchMCPConfig{
 		MaxSnippetChars:       cfg.MaxSnippetChars,
 		MaxScrapePreviewChars: cfg.MaxScrapePreviewChars,
 		MaxScrapeTextChars:    cfg.MaxScrapeTextChars,
@@ -178,12 +191,12 @@ func main() {
 		log.Info().Msg("Tool config cache initialized for dynamic descriptions")
 	}
 
-	// Set tool config cache on serperMCP
+	// Set tool config cache on searchMCP
 	if toolConfigCache != nil {
-		serperMCP.SetToolConfigCache(toolConfigCache)
+		searchMCP.SetToolConfigCache(toolConfigCache)
 	}
 
-	mcpRoute := mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, imageEditMCP, llmClient, toolConfigCache)
+	mcpRoute := mcp.NewMCPRoute(searchMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, imageEditMCP, llmClient, toolConfigCache)
 
 	authValidator, err := auth.NewValidator(ctx, cfg, log.Logger)
 	if err != nil {

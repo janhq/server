@@ -726,6 +726,7 @@ test-media:
 
 test-mcp:
 	$(API_TEST) $(COLLECTIONS_DIR)/mcp-runtime.postman.json $(COLLECTIONS_DIR)/mcp-admin.postman.json $(API_TEST_FLAGS)
+
 test-user-management:
 	$(API_TEST) $(COLLECTIONS_DIR)/user-management.postman.json $(API_TEST_BASE_FLAGS) --auto-auth admin
 

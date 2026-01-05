@@ -80,7 +80,18 @@ services:
     log_level: info
     log_format: json
     search_engine: serper
+    serper_enabled: true
+    serper_api_key: ""
+    exa_api_key: ""
+    exa_enabled: false
+    exa_search_endpoint: https://api.exa.ai/search
+    exa_timeout: 15s
+    tavily_api_key: ""
+    tavily_enabled: false
+    tavily_search_endpoint: https://api.tavily.com/search
+    tavily_timeout: 15s
     searxng_url: http://searxng:8080
+    searxng_enabled: false
     vector_store_url: http://vector-store:3015
     sandbox_fusion_url: http://sandboxfusion:8080
     sandbox_require_approval: true
