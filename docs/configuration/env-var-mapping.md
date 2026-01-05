@@ -94,7 +94,18 @@ This document maps centralized configuration (`pkg/config/types.go`) environment
 | `MCP_TOOLS_LOG_LEVEL`          | string | `info`                      | `LOG_LEVEL`                | TODO Need prefix |
 | `MCP_TOOLS_LOG_FORMAT`         | string | `json`                      | `LOG_FORMAT`               | TODO Need prefix |
 | `MCP_SEARCH_ENGINE`            | string | `serper`                    | `SEARCH_ENGINE`            | TODO Need prefix |
+| `SERPER_ENABLED`               | bool   | `true`                      | `SERPER_ENABLED`           | New              |
+| `SERPER_API_KEY`               | string | (secret)                    | `SERPER_API_KEY`           | OK Aligned       |
+| `EXA_ENABLED`                  | bool   | `false`                     | `EXA_ENABLED`              | New              |
+| `EXA_API_KEY`                  | string | (secret)                    | `EXA_API_KEY`              | New              |
+| `EXA_SEARCH_ENDPOINT`          | string | `https://api.exa.ai/search` | `EXA_SEARCH_ENDPOINT`      | New              |
+| `EXA_TIMEOUT`                  | duration | `15s`                     | `EXA_TIMEOUT`              | New              |
+| `TAVILY_ENABLED`               | bool   | `false`                     | `TAVILY_ENABLED`           | New              |
+| `TAVILY_API_KEY`               | string | (secret)                    | `TAVILY_API_KEY`           | New              |
+| `TAVILY_SEARCH_ENDPOINT`       | string | `https://api.tavily.com/search` | `TAVILY_SEARCH_ENDPOINT` | New            |
+| `TAVILY_TIMEOUT`               | duration | `15s`                    | `TAVILY_TIMEOUT`           | New              |
 | `SEARXNG_URL`                  | string | `http://searxng:8080`       | `SEARXNG_URL`              | OK Aligned       |
+| `SEARXNG_ENABLED`              | bool   | `false`                     | `SEARXNG_ENABLED`          | New              |
 | `VECTOR_STORE_URL`             | string | `http://vector-store:3015`  | `VECTOR_STORE_URL`         | OK Aligned       |
 | `SANDBOXFUSION_URL`            | string | `http://sandboxfusion:8080` | `SANDBOXFUSION_URL`        | OK Aligned       |
 | `MCP_SANDBOX_REQUIRE_APPROVAL` | bool   | `true`                      | `SANDBOX_REQUIRE_APPROVAL` | TODO Need prefix |

@@ -5,8 +5,8 @@ A standalone **Model Context Protocol (MCP)** service that provides AI models wi
 ## Features
 
 - **MCP Protocol Support** - Full implementation of the Model Context Protocol
-- **Web Search** - Pluggable engines (Serper, SearXNG) with offline and domain filters
-- **Web Scraping** - Extract content from any webpage with structured metadata
+- **Web Search** - Cascading providers (Serper, Exa, Tavily, SearXNG) with offline and domain filters
+- **Web Scraping** - Cascading scrape providers with direct HTTP fallback
 - **File Search Tools** - Lightweight vector store (index + query) for MCP automations
 - **Code Interpreter** - SandboxFusion-backed python_exec tool
 - **Standalone Service** - Can run independently or with jan-server
@@ -48,7 +48,7 @@ services/mcp-tools/
 ## Available Tools
 
 ### 1. google_search
-Perform web searches via the configured engine (Serper or SearXNG) and emit structured citations.
+Perform web searches via the cascading provider chain (Serper → Exa → Tavily → SearXNG) and emit structured citations.
 
 **Arguments:**
 - `q` (required): Search query string
@@ -64,7 +64,7 @@ Perform web searches via the configured engine (Serper or SearXNG) and emit stru
 - `offline_mode` (optional): Force cached/offline behaviour even if live engines are available
 
 **Output:**
-- JSON payload containing `results` blocks with `{ source_url, snippet, fetched_at, cache_status }`, plus a `citations` array and the raw upstream response for backward compatibility.
+- JSON payload containing `results` blocks with `{ source_url, snippet, fetched_at, cache_status }`, plus a `citations` array and the raw upstream response. Errors are returned explicitly when all providers fail.
 
 ### 2. scrape
 Scrape webpage content with metadata describing cache/fallback state.
@@ -74,7 +74,7 @@ Scrape webpage content with metadata describing cache/fallback state.
 - `includeMarkdown` (optional): Return markdown format (default: false)
 
 **Output:**
-- JSON payload containing raw text, a `text_preview`, `cache_status`, and metadata describing whether the fallback fetcher was used.
+- JSON payload containing raw text, a `text_preview`, `cache_status`, and metadata describing whether the fallback fetcher was used. Errors are returned explicitly when all providers fail.
 
 ### 3. file_search_index
 Index arbitrary text into the lightweight vector store so that automations can cite custom documents.
@@ -155,8 +155,18 @@ LOG_FORMAT=json                   # Log format (json, console)
 
 ```env
 SERPER_API_KEY=your_api_key_here  # Serper API key (required for live search)
-SEARCH_ENGINE=serper              # serper or searxng
+SERPER_ENABLED=true               # Enable Serper provider
+EXA_API_KEY=your_api_key_here     # Exa API key (optional)
+EXA_ENABLED=false                 # Enable Exa provider
+EXA_SEARCH_ENDPOINT=https://api.exa.ai/search
+EXA_TIMEOUT=15s
+TAVILY_API_KEY=your_api_key_here  # Tavily API key (optional)
+TAVILY_ENABLED=false              # Enable Tavily provider
+TAVILY_SEARCH_ENDPOINT=https://api.tavily.com/search
+TAVILY_TIMEOUT=15s
+SEARCH_ENGINE=serper              # Deprecated: serper, exa, tavily, or searxng
 SEARXNG_URL=http://localhost:8086 # SearXNG base URL when SEARCH_ENGINE=searxng
+SEARXNG_ENABLED=false             # Enable SearXNG provider
 SERPER_DOMAIN_FILTER=             # Optional CSV of domains to pin (e.g., example.com,wikipedia.org)
 SERPER_LOCATION_HINT=             # Optional default location hint (e.g., California, United States)
 SERPER_OFFLINE_MODE=false         # Force cached/offline search mode

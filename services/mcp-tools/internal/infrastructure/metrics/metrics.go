@@ -24,6 +24,9 @@ var (
 
 	// External provider latency
 	ExternalProviderLatency *prometheus.HistogramVec
+
+	// External provider requests
+	ProviderRequestsTotal *prometheus.CounterVec
 )
 
 // init creates and registers all metrics with the default registry
@@ -90,12 +93,23 @@ func init() {
 		[]string{"provider"},
 	)
 
+	ProviderRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "jan",
+			Subsystem: "mcp",
+			Name:      "external_provider_requests_total",
+			Help:      "Total external provider requests",
+		},
+		[]string{"operation", "provider", "status"},
+	)
+
 	prometheus.MustRegister(RequestsTotal)
 	prometheus.MustRegister(ToolCallsTotal)
 	prometheus.MustRegister(ToolTokensTotal)
 	prometheus.MustRegister(ToolDuration)
 	prometheus.MustRegister(CircuitBreakerState)
 	prometheus.MustRegister(ExternalProviderLatency)
+	prometheus.MustRegister(ProviderRequestsTotal)
 	log.Info().Msg("MCP metrics registered with Prometheus")
 }
 
@@ -144,4 +158,18 @@ func SetCircuitBreakerState(provider string, state string) {
 // RecordExternalProviderLatency records external provider response time
 func RecordExternalProviderLatency(provider string, durationSec float64) {
 	ExternalProviderLatency.WithLabelValues(provider).Observe(durationSec)
+}
+
+// RecordProviderRequest records an external provider request
+func RecordProviderRequest(operation, provider, status string) {
+	if operation == "" {
+		operation = "unknown"
+	}
+	if provider == "" {
+		provider = "unknown"
+	}
+	if status == "" {
+		status = "unknown"
+	}
+	ProviderRequestsTotal.WithLabelValues(operation, provider, status).Inc()
 }

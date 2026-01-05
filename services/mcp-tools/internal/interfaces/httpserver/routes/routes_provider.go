@@ -13,7 +13,7 @@ import (
 
 // RoutesProvider provides all route dependencies
 var RoutesProvider = wire.NewSet(
-	mcp.NewSerperMCP,
+	mcp.NewSearchMCP,
 	mcp.NewProviderMCP,
 	ProvideSandboxFusionMCP,
 	ProvideMemoryMCP,
@@ -21,12 +21,12 @@ var RoutesProvider = wire.NewSet(
 	ProvideImageEditMCP,
 	ProvideToolConfigCache,
 	ProvideMCPRoute,
-	ProvideSerperMCPConfig,
+	ProvideSearchMCPConfig,
 )
 
-// ProvideSerperMCPConfig creates a SerperMCPConfig from the main config
-func ProvideSerperMCPConfig(cfg *config.Config) mcp.SerperMCPConfig {
-	return mcp.SerperMCPConfig{
+// ProvideSearchMCPConfig creates a SearchMCPConfig from the main config
+func ProvideSearchMCPConfig(cfg *config.Config) mcp.SearchMCPConfig {
+	return mcp.SearchMCPConfig{
 		EnableFileSearch: cfg.EnableFileSearch,
 	}
 }
@@ -99,7 +99,7 @@ func ProvideToolConfigCache(cfg *config.Config, llmClient *llmapi.Client) *toolc
 
 // ProvideMCPRoute creates a MCPRoute with all dependencies
 func ProvideMCPRoute(
-	serperMCP *mcp.SerperMCP,
+	searchMCP *mcp.SearchMCP,
 	providerMCP *mcp.ProviderMCP,
 	sandboxMCP *mcp.SandboxFusionMCP,
 	memoryMCP *mcp.MemoryMCP,
@@ -108,9 +108,9 @@ func ProvideMCPRoute(
 	llmClient *llmapi.Client,
 	toolConfigCache *toolconfig.Cache,
 ) *mcp.MCPRoute {
-	// Set tool config cache on serperMCP for dynamic descriptions
+	// Set tool config cache on searchMCP for dynamic descriptions
 	if toolConfigCache != nil {
-		serperMCP.SetToolConfigCache(toolConfigCache)
+		searchMCP.SetToolConfigCache(toolConfigCache)
 	}
-	return mcp.NewMCPRoute(serperMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, imageEditMCP, llmClient, toolConfigCache)
+	return mcp.NewMCPRoute(searchMCP, providerMCP, sandboxMCP, memoryMCP, imageMCP, imageEditMCP, llmClient, toolConfigCache)
 }

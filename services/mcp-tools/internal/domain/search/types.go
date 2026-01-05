@@ -37,10 +37,42 @@ type SearchResponse struct {
 	AnswerBox        map[string]any   `json:"answerBox,omitempty"`
 }
 
+// ExaContents specifies what content to retrieve from Exa API
+type ExaContents struct {
+	Text          bool `json:"text,omitempty"`          // Include page text content
+	Highlights    bool `json:"highlights,omitempty"`    // Include highlighted snippets
+	Summary       bool `json:"summary,omitempty"`       // Include AI-generated summary
+	MaxCharacters int  `json:"maxCharacters,omitempty"` // Limit text length
+}
+
+// ExaSearchRequest for Exa API
+type ExaSearchRequest struct {
+	Query          string       `json:"query"`
+	NumResults     int          `json:"num_results,omitempty"`
+	IncludeDomains []string     `json:"include_domains,omitempty"`
+	ExcludeDomains []string     `json:"exclude_domains,omitempty"`
+	StartPublished string       `json:"start_published_date,omitempty"`
+	UseAutoprompt  bool         `json:"use_autoprompt,omitempty"`
+	Type           string       `json:"type,omitempty"` // "keyword" or "neural"
+	Contents       *ExaContents `json:"contents,omitempty"`
+}
+
+// TavilySearchRequest for Tavily API
+type TavilySearchRequest struct {
+	Query             string   `json:"query"`
+	SearchDepth       string   `json:"search_depth,omitempty"` // "basic" or "advanced"
+	MaxResults        int      `json:"max_results,omitempty"`
+	IncludeDomains    []string `json:"include_domains,omitempty"`
+	ExcludeDomains    []string `json:"exclude_domains,omitempty"`
+	IncludeAnswer     bool     `json:"include_answer,omitempty"`
+	IncludeRawContent bool     `json:"include_raw_content,omitempty"`
+}
+
 // FetchWebpageRequest represents a webpage scraping request
 type FetchWebpageRequest struct {
 	Url             string `json:"url"`
 	IncludeMarkdown *bool  `json:"includeMarkdown,omitempty"`
+	OfflineMode     *bool  `json:"offline_mode,omitempty"`
 }
 
 // FetchWebpageResponse contains scraped webpage content

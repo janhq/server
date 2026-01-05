@@ -250,13 +250,43 @@ type MCPToolsConfig struct {
 	LogFormat string `yaml:"log_format" json:"log_format" env:"LOG_FORMAT" envDefault:"json" jsonschema:"enum=json,enum=console" description:"Log format"`
 
 	// Search engine to use
-	SearchEngine string `yaml:"search_engine" json:"search_engine" env:"SEARCH_ENGINE" envDefault:"serper" jsonschema:"enum=serper,enum=searxng" description:"Search engine to use"`
+	SearchEngine string `yaml:"search_engine" json:"search_engine" env:"SEARCH_ENGINE" envDefault:"serper" jsonschema:"enum=serper,enum=exa,enum=tavily,enum=searxng" description:"Search engine to use (deprecated; fallback chain uses *_ENABLED flags)"`
 
 	// Serper API key (from secrets)
 	SerperAPIKey string `yaml:"serper_api_key,omitempty" json:"serper_api_key,omitempty" env:"SERPER_API_KEY" description:"Serper API key (from secret provider)"`
 
+	// Serper enabled flag
+	SerperEnabled bool `yaml:"serper_enabled" json:"serper_enabled" env:"SERPER_ENABLED" envDefault:"true" description:"Enable Serper provider"`
+
+	// Exa API key (from secrets)
+	ExaAPIKey string `yaml:"exa_api_key,omitempty" json:"exa_api_key,omitempty" env:"EXA_API_KEY" description:"Exa API key (from secret provider)"`
+
+	// Exa enabled flag
+	ExaEnabled bool `yaml:"exa_enabled" json:"exa_enabled" env:"EXA_ENABLED" envDefault:"false" description:"Enable Exa provider"`
+
+	// Exa search endpoint
+	ExaSearchEndpoint string `yaml:"exa_search_endpoint" json:"exa_search_endpoint" env:"EXA_SEARCH_ENDPOINT" envDefault:"https://api.exa.ai/search" description:"Exa search endpoint"`
+
+	// Exa timeout
+	ExaTimeout time.Duration `yaml:"exa_timeout" json:"exa_timeout" env:"EXA_TIMEOUT" envDefault:"15s" description:"Exa request timeout"`
+
+	// Tavily API key (from secrets)
+	TavilyAPIKey string `yaml:"tavily_api_key,omitempty" json:"tavily_api_key,omitempty" env:"TAVILY_API_KEY" description:"Tavily API key (from secret provider)"`
+
+	// Tavily enabled flag
+	TavilyEnabled bool `yaml:"tavily_enabled" json:"tavily_enabled" env:"TAVILY_ENABLED" envDefault:"false" description:"Enable Tavily provider"`
+
+	// Tavily search endpoint
+	TavilySearchEndpoint string `yaml:"tavily_search_endpoint" json:"tavily_search_endpoint" env:"TAVILY_SEARCH_ENDPOINT" envDefault:"https://api.tavily.com/search" description:"Tavily search endpoint"`
+
+	// Tavily timeout
+	TavilyTimeout time.Duration `yaml:"tavily_timeout" json:"tavily_timeout" env:"TAVILY_TIMEOUT" envDefault:"15s" description:"Tavily request timeout"`
+
 	// SearXNG URL
 	SearxngURL string `yaml:"searxng_url" json:"searxng_url" env:"SEARXNG_URL" envDefault:"http://searxng:8080" jsonschema:"format=uri" description:"SearXNG service URL"`
+
+	// SearXNG enabled flag
+	SearxngEnabled bool `yaml:"searxng_enabled" json:"searxng_enabled" env:"SEARXNG_ENABLED" envDefault:"false" description:"Enable SearXNG provider"`
 
 	// Vector store URL
 	VectorStoreURL string `yaml:"vector_store_url" json:"vector_store_url" env:"VECTOR_STORE_URL" envDefault:"http://vector-store:3015" jsonschema:"format=uri" description:"Vector store service URL"`

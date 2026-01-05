@@ -17,8 +17,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// SerperSearchArgs defines the arguments for the google_search tool
-type SerperSearchArgs struct {
+// SearchArgs defines the arguments for the google_search tool
+type SearchArgs struct {
 	Q               string   `json:"q"`
 	DomainAllowList []string `json:"domain_allow_list,omitempty"`
 	GL              *string  `json:"gl,omitempty"`
@@ -37,10 +37,11 @@ type SerperSearchArgs struct {
 	UserID         string `json:"user_id,omitempty"`
 }
 
-// SerperScrapeArgs defines the arguments for the scrape tool
-type SerperScrapeArgs struct {
+// ScrapeArgs defines the arguments for the scrape tool
+type ScrapeArgs struct {
 	Url             string `json:"url"`
 	IncludeMarkdown *bool  `json:"includeMarkdown,omitempty"`
+	OfflineMode     *bool  `json:"offline_mode,omitempty"`
 	// Context passthrough
 	ToolCallID     string `json:"tool_call_id,omitempty"`
 	RequestID      string `json:"request_id,omitempty"`
@@ -100,12 +101,12 @@ type scrapeToolPayload struct {
 	FetchedAt   string         `json:"fetched_at"`
 }
 
-// SerperMCP handles MCP tool registration for search tooling.
-type SerperMCP struct {
+// SearchMCP handles MCP tool registration for search tooling.
+type SearchMCP struct {
 	searchService         *domainsearch.SearchService
 	vectorStore           *vectorstore.Client
-	llmClient             *llmapi.Client          // LLM-API client for tool tracking
-	toolConfigCache       *toolconfig.Cache       // Cache for dynamic tool configurations
+	llmClient             *llmapi.Client    // LLM-API client for tool tracking
+	toolConfigCache       *toolconfig.Cache // Cache for dynamic tool configurations
 	fileIndexMu           sync.Mutex
 	fileIndex             map[string]FileSearchIndexArgs
 	maxSnippetChars       int
@@ -114,16 +115,16 @@ type SerperMCP struct {
 	enableFileSearch      bool
 }
 
-// SerperMCPConfig contains configuration for SerperMCP.
-type SerperMCPConfig struct {
+// SearchMCPConfig contains configuration for SearchMCP.
+type SearchMCPConfig struct {
 	MaxSnippetChars       int
 	MaxScrapePreviewChars int
 	MaxScrapeTextChars    int
 	EnableFileSearch      bool
 }
 
-// NewSerperMCP creates a new search MCP handler.
-func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vectorstore.Client, cfg SerperMCPConfig) *SerperMCP {
+// NewSearchMCP creates a new search MCP handler.
+func NewSearchMCP(searchService *domainsearch.SearchService, vectorStore *vectorstore.Client, cfg SearchMCPConfig) *SearchMCP {
 	// Apply defaults if not set
 	maxSnippet := cfg.MaxSnippetChars
 	if maxSnippet <= 0 {
@@ -138,7 +139,7 @@ func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vector
 		maxText = 50000
 	}
 
-	return &SerperMCP{
+	return &SearchMCP{
 		searchService:         searchService,
 		vectorStore:           vectorStore,
 		fileIndex:             make(map[string]FileSearchIndexArgs),
@@ -150,12 +151,12 @@ func NewSerperMCP(searchService *domainsearch.SearchService, vectorStore *vector
 }
 
 // SetLLMClient sets the LLM-API client for tool call tracking
-func (s *SerperMCP) SetLLMClient(client *llmapi.Client) {
+func (s *SearchMCP) SetLLMClient(client *llmapi.Client) {
 	s.llmClient = client
 }
 
 // SetToolConfigCache sets the tool config cache for dynamic descriptions
-func (s *SerperMCP) SetToolConfigCache(cache *toolconfig.Cache) {
+func (s *SearchMCP) SetToolConfigCache(cache *toolconfig.Cache) {
 	s.toolConfigCache = cache
 }
 
@@ -169,14 +170,14 @@ const (
 
 // Default tool descriptions (fallback when cache is unavailable)
 var defaultToolDescriptions = map[string]string{
-	ToolKeyGoogleSearch:    "Perform web searches via the configured engines (Serper, SearXNG, or cached fallback) and fetch structured citations.",
-	ToolKeyScrape:          "Scrape a webpage and retrieve the text with optional markdown formatting.",
+	ToolKeyGoogleSearch:    "Perform web searches via the configured engines (Serper, Exa, Tavily, or SearXNG) and fetch structured citations.",
+	ToolKeyScrape:          "Scrape a webpage and retrieve the text with optional markdown formatting using the configured providers.",
 	ToolKeyFileSearchIndex: "Index arbitrary text into the lightweight vector store used for MCP automations.",
 	ToolKeyFileSearchQuery: "Run a semantic query against documents indexed via file_search_index.",
 }
 
 // getToolDescription gets the description for a tool, using cached config if available
-func (s *SerperMCP) getToolDescription(ctx context.Context, toolKey string) string {
+func (s *SearchMCP) getToolDescription(ctx context.Context, toolKey string) string {
 	if s.toolConfigCache != nil {
 		tool, err := s.toolConfigCache.GetToolByKey(ctx, toolKey)
 		if err == nil && tool != nil {
@@ -191,7 +192,7 @@ func (s *SerperMCP) getToolDescription(ctx context.Context, toolKey string) stri
 }
 
 // isToolActive checks if a tool is active (should be listed/callable)
-func (s *SerperMCP) isToolActive(ctx context.Context, toolKey string) bool {
+func (s *SearchMCP) isToolActive(ctx context.Context, toolKey string) bool {
 	if s.toolConfigCache != nil {
 		tool, err := s.toolConfigCache.GetToolByKey(ctx, toolKey)
 		if err == nil && tool != nil {
@@ -203,7 +204,7 @@ func (s *SerperMCP) isToolActive(ctx context.Context, toolKey string) bool {
 }
 
 // getToolConfig gets the full cached tool config
-func (s *SerperMCP) getToolConfig(ctx context.Context, toolKey string) *toolconfig.CachedTool {
+func (s *SearchMCP) getToolConfig(ctx context.Context, toolKey string) *toolconfig.CachedTool {
 	if s.toolConfigCache != nil {
 		tool, _ := s.toolConfigCache.GetToolByKey(ctx, toolKey)
 		return tool
@@ -211,9 +212,9 @@ func (s *SerperMCP) getToolConfig(ctx context.Context, toolKey string) *toolconf
 	return nil
 }
 
-// RegisterTools registers Serper tools with the MCP server
+// RegisterTools registers search tools with the MCP server
 // Note: Tool descriptions are fetched dynamically from cache when available
-func (s *SerperMCP) RegisterTools(server *mcp.Server) {
+func (s *SearchMCP) RegisterTools(server *mcp.Server) {
 	// Use background context for initial description fetch
 	ctx := context.Background()
 
@@ -221,13 +222,24 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolKeyGoogleSearch,
 		Description: s.getToolDescription(ctx, ToolKeyGoogleSearch),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperSearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input SearchArgs) (*mcp.CallToolResult, searchToolPayload, error) {
 		// Check if tool is active
 		if !s.isToolActive(ctx, ToolKeyGoogleSearch) {
+			disabledPayload := searchToolPayload{
+				Query:       input.Q,
+				Engine:      "disabled",
+				Live:        false,
+				CacheStatus: "disabled",
+				Metadata: map[string]any{
+					"error": "tool is disabled",
+				},
+				Results:   []searchToolResult{},
+				Citations: []string{},
+			}
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{&mcp.TextContent{Text: "tool is disabled"}},
 				IsError: true,
-			}, searchToolPayload{}, nil
+			}, disabledPayload, nil
 		}
 
 		startTime := time.Now()
@@ -245,8 +257,20 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			Bool("tracking_enabled", trackingEnabled).
 			Msg("MCP tool call received")
 
+		log.Debug().
+			Str("tool", "google_search").
+			Str("query", input.Q).
+			Interface("domain_allow_list", input.DomainAllowList).
+			Interface("location_hint", input.LocationHint).
+			Interface("offline_mode", input.OfflineMode).
+			Interface("num", input.Num).
+			Msg("google_search request details")
+
 		searchReq := domainsearch.SearchRequest{
 			Q: input.Q,
+		}
+		if len(input.DomainAllowList) > 0 {
+			searchReq.DomainAllowList = input.DomainAllowList
 		}
 
 		if input.GL != nil {
@@ -286,15 +310,31 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 
 		searchResp, err := s.searchService.Search(ctx, searchReq)
 		if err != nil {
-			log.Warn().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed; using fallback stub")
-			payload = s.buildFallbackSearchPayload(searchReq.Q, searchReq)
-			toolErr = err // Keep track of error for tracking
+			log.Warn().Err(err).Str("tool", "google_search").Str("query", searchReq.Q).Msg("search service failed")
+			toolErr = err
+			payload = searchToolPayload{
+				Query:       searchReq.Q,
+				Engine:      "error",
+				Live:        false,
+				CacheStatus: "error",
+				Metadata: map[string]any{
+					"error": toolErr.Error(),
+				},
+				Results:   []searchToolResult{},
+				Citations: []string{},
+			}
 		} else {
+			log.Debug().
+				Str("tool", "google_search").
+				Str("query", searchReq.Q).
+				Int("result_count", len(searchResp.Organic)).
+				Interface("engine", searchResp.SearchParameters["engine"]).
+				Bool("live", searchResp.SearchParameters["live"] == true).
+				Msg("google_search response received")
 			payload = s.buildSearchPayload(searchReq.Q, searchReq, searchResp)
+			// Apply disallowed keyword filtering
+			payload = s.filterSearchResults(ctx, ToolKeyGoogleSearch, payload)
 		}
-
-		// Apply disallowed keyword filtering
-		payload = s.filterSearchResults(ctx, ToolKeyGoogleSearch, payload)
 
 		// If tracking is enabled, save result to LLM-API (single PATCH call)
 		if trackingEnabled && s.llmClient != nil {
@@ -342,17 +382,44 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			}()
 		}
 
+		if toolErr != nil {
+			if payload.Metadata == nil {
+				payload.Metadata = map[string]any{
+					"error": toolErr.Error(),
+				}
+			}
+			if payload.Results == nil {
+				payload.Results = []searchToolResult{}
+			}
+			if payload.Citations == nil {
+				payload.Citations = []string{}
+			}
+			metrics.RecordToolCall("google_search", "none", "error", time.Since(startTime).Seconds())
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: toolErr.Error()}},
+				IsError: true,
+			}, payload, nil
+		}
+		if payload.Metadata == nil {
+			payload.Metadata = map[string]any{}
+		}
+		if payload.Results == nil {
+			payload.Results = []searchToolResult{}
+		}
+		if payload.Citations == nil {
+			payload.Citations = []string{}
+		}
+
 		// Estimate payload tokens for observability
 		estimatedTokens := estimateTokensFromSearchPayload(payload)
 
-		// Record metrics
-		status := "success"
-		if toolErr != nil {
-			status = "error"
+		provider := payload.Engine
+		if provider == "" {
+			provider = "unknown"
 		}
-		metrics.RecordToolCall("google_search", "serper", status, time.Since(startTime).Seconds())
+		metrics.RecordToolCall("google_search", provider, "success", time.Since(startTime).Seconds())
 		if estimatedTokens > 0 {
-			metrics.RecordToolTokens("google_search", "serper", estimatedTokens)
+			metrics.RecordToolTokens("google_search", provider, estimatedTokens)
 		}
 
 		return nil, payload, nil
@@ -362,13 +429,23 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        ToolKeyScrape,
 		Description: s.getToolDescription(ctx, ToolKeyScrape),
-	}, func(ctx context.Context, req *mcp.CallToolRequest, input SerperScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input ScrapeArgs) (*mcp.CallToolResult, scrapeToolPayload, error) {
 		// Check if tool is active
 		if !s.isToolActive(ctx, ToolKeyScrape) {
+			disabledPayload := scrapeToolPayload{
+				SourceURL:   input.Url,
+				Text:        "",
+				TextPreview: "",
+				Metadata: map[string]any{
+					"error": "tool is disabled",
+				},
+				CacheStatus: "disabled",
+				FetchedAt:   time.Now().UTC().Format(time.RFC3339),
+			}
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{&mcp.TextContent{Text: "tool is disabled"}},
 				IsError: true,
-			}, scrapeToolPayload{}, nil
+			}, disabledPayload, nil
 		}
 
 		startTime := time.Now()
@@ -386,6 +463,13 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			Bool("tracking_enabled", trackingEnabled).
 			Msg("MCP tool call received")
 
+		log.Debug().
+			Str("tool", "scrape").
+			Str("url", input.Url).
+			Interface("include_markdown", input.IncludeMarkdown).
+			Interface("offline_mode", input.OfflineMode).
+			Msg("scrape request details")
+
 		scrapeReq := domainsearch.FetchWebpageRequest{
 			Url: input.Url,
 		}
@@ -393,23 +477,35 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 		if input.IncludeMarkdown != nil && *input.IncludeMarkdown {
 			scrapeReq.IncludeMarkdown = input.IncludeMarkdown
 		}
+		if input.OfflineMode != nil {
+			scrapeReq.OfflineMode = input.OfflineMode
+		}
 
 		var payload scrapeToolPayload
 		var toolErr error
 
 		scrapeResp, err := s.searchService.FetchWebpage(ctx, scrapeReq)
 		if err != nil {
-			log.Warn().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("scrape service failed; using fallback stub")
+			log.Warn().Err(err).Str("tool", "scrape").Str("url", scrapeReq.Url).Msg("scrape service failed")
+			toolErr = err
 			payload = scrapeToolPayload{
 				SourceURL:   scrapeReq.Url,
-				Text:        "Example Domain\nThis domain is for use in illustrative examples in documents.",
-				TextPreview: "Example Domain",
-				Metadata:    map[string]any{"cache_status": "offline_stub"},
-				CacheStatus: "offline_stub",
+				Text:        "",
+				TextPreview: "",
+				Metadata: map[string]any{
+					"error": toolErr.Error(),
+				},
+				CacheStatus: "error",
 				FetchedAt:   time.Now().UTC().Format(time.RFC3339),
 			}
-			toolErr = err
 		} else {
+			log.Debug().
+				Str("tool", "scrape").
+				Str("url", scrapeReq.Url).
+				Str("status", scrapeResp.Status).
+				Int("text_length", len(scrapeResp.Text)).
+				Interface("metadata", scrapeResp.Metadata).
+				Msg("scrape response received")
 			payload = s.buildScrapePayload(scrapeReq.Url, scrapeResp)
 		}
 
@@ -457,17 +553,36 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 			}()
 		}
 
+		if toolErr != nil {
+			if payload.Metadata == nil {
+				payload.Metadata = map[string]any{
+					"error": toolErr.Error(),
+				}
+			}
+			metrics.RecordToolCall("scrape", "none", "error", time.Since(startTime).Seconds())
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: toolErr.Error()}},
+				IsError: true,
+			}, payload, nil
+		}
+		if payload.Metadata == nil {
+			payload.Metadata = map[string]any{}
+		}
+
 		// Estimate payload tokens for observability
 		scrapeTokens := estimateTokensFromScrapePayload(payload)
 
-		// Record metrics
-		status := "success"
-		if toolErr != nil {
-			status = "error"
+		provider := "unknown"
+		if payload.Metadata != nil {
+			if val, ok := payload.Metadata["provider"].(string); ok && val != "" {
+				provider = val
+			} else if val, ok := payload.Metadata["fallback_mode"].(bool); ok && val {
+				provider = "direct-http"
+			}
 		}
-		metrics.RecordToolCall("scrape", "serper", status, time.Since(startTime).Seconds())
+		metrics.RecordToolCall("scrape", provider, "success", time.Since(startTime).Seconds())
 		if scrapeTokens > 0 {
-			metrics.RecordToolTokens("scrape", "serper", scrapeTokens)
+			metrics.RecordToolTokens("scrape", provider, scrapeTokens)
 		}
 
 		return nil, payload, nil
@@ -651,7 +766,7 @@ func (s *SerperMCP) RegisterTools(server *mcp.Server) {
 	} // end if enableFileSearch
 }
 
-func (s *SerperMCP) buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {
+func (s *SearchMCP) buildSearchPayload(query string, req domainsearch.SearchRequest, resp *domainsearch.SearchResponse) searchToolPayload {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	metadata := map[string]any{}
@@ -723,7 +838,7 @@ func (s *SerperMCP) buildSearchPayload(query string, req domainsearch.SearchRequ
 	return payload
 }
 
-func (s *SerperMCP) buildScrapePayload(url string, resp *domainsearch.FetchWebpageResponse) scrapeToolPayload {
+func (s *SearchMCP) buildScrapePayload(url string, resp *domainsearch.FetchWebpageResponse) scrapeToolPayload {
 	metadata := map[string]any{}
 	if resp != nil && resp.Metadata != nil {
 		metadata = resp.Metadata
@@ -816,36 +931,8 @@ func extractMapArgument(args map[string]any, key string) map[string]any {
 	return nil
 }
 
-func (s *SerperMCP) buildFallbackSearchPayload(query string, req domainsearch.SearchRequest) searchToolPayload {
-	now := time.Now().UTC().Format(time.RFC3339)
-	result := searchToolResult{
-		Position:    1,
-		Title:       "Example Domain",
-		SourceURL:   "https://example.com",
-		Snippet:     "Example Domain placeholder result for offline/testing scenarios.",
-		CacheStatus: "offline_stub",
-		FetchedAt:   now,
-	}
-
-	return searchToolPayload{
-		Query:       query,
-		Engine:      "offline_stub",
-		Live:        false,
-		CacheStatus: "offline_stub",
-		Metadata: map[string]any{
-			"reason":  "offline_stub",
-			"live":    false,
-			"offline": true,
-			"query":   query,
-		},
-		Results:   []searchToolResult{result},
-		Citations: []string{result.SourceURL},
-		Raw:       nil,
-	}
-}
-
 // filterSearchResults applies disallowed keyword filtering to search results
-func (s *SerperMCP) filterSearchResults(ctx context.Context, toolKey string, payload searchToolPayload) searchToolPayload {
+func (s *SearchMCP) filterSearchResults(ctx context.Context, toolKey string, payload searchToolPayload) searchToolPayload {
 	toolConfig := s.getToolConfig(ctx, toolKey)
 	if toolConfig == nil || len(toolConfig.CompiledFilters) == 0 {
 		return payload
