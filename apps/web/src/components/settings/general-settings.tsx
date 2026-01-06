@@ -184,7 +184,7 @@ export function GeneralSettings() {
               key={color.value}
               onClick={() => setAccentColor(color.value)}
               className={cn(
-                "size-6 rounded-full transition-all hover:scale-110",
+                "size-4 rounded-full transition-all hover:scale-110",
                 accentColor === color.value
                   ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
                   : "hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-muted-foreground/50",

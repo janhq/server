@@ -42,7 +42,7 @@ export function AnimatedProjectItem({
       </SidebarMenuButton>
       <DropDrawer>
         <DropDrawerTrigger asChild>
-          <SidebarMenuAction showOnHover className="hover:bg-primary/10">
+          <SidebarMenuAction showOnHover className="hover:bg-foreground/10">
             <MoreHorizontal className="text-muted-foreground" />
             <span className="sr-only">More</span>
           </SidebarMenuAction>
