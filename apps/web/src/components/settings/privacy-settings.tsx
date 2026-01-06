@@ -4,7 +4,7 @@ import { CloudIcon } from "lucide-react";
 export function PrivacySettings() {
   return (
     <div>
-      <p className="text-base font-medium mb-2 font-studio">Privacy</p>
+      <p className="text-base font-semibold mb-2 font-studio">Privacy</p>
       <div className="flex justify-between items-center">
         <div className="bg-muted/50 p-4 rounded-md w-full">
           <div className="font-medium flex items-center gap-x-2">
