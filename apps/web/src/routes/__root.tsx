@@ -20,6 +20,7 @@ import {
   URL_PARAM_VALUE,
   SETTINGS_SECTION,
 } from "@/constants";
+import { AccentColorProvider } from "@/hooks/use-accent-color";
 
 function RootLayout() {
   const location = useLocation();
@@ -62,37 +63,39 @@ function RootLayout() {
       defaultTheme={THEME.SYSTEM}
       storageKey={LOCAL_STORAGE_KEY.THEME}
     >
-      {/* Main content - always rendered */}
-      <Outlet />
+      <AccentColorProvider>
+        {/* Main content - always rendered */}
+        <Outlet />
 
-      {/* Login Modal */}
-      <Dialog
-        open={isLoginModal}
-        onOpenChange={(open: boolean) => !open && handleCloseModal()}
-      >
-        <DialogContent
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
+        {/* Login Modal */}
+        <Dialog
+          open={isLoginModal}
+          onOpenChange={(open: boolean) => !open && handleCloseModal()}
         >
-          <LoginForm />
-        </DialogContent>
-      </Dialog>
+          <DialogContent
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
+            <LoginForm />
+          </DialogContent>
+        </Dialog>
 
-      {/* Settings Dialog */}
-      <SettingsDialog
-        open={isSettingsOpen}
-        section={settingSection || SETTINGS_SECTION.GENERAL}
-      />
+        {/* Settings Dialog */}
+        <SettingsDialog
+          open={isSettingsOpen}
+          section={settingSection || SETTINGS_SECTION.GENERAL}
+        />
 
-      {/* Projects Dialog */}
-      <CreateProject open={isProjectsOpen} />
+        {/* Projects Dialog */}
+        <CreateProject open={isProjectsOpen} />
 
-      {/* Search Dialog */}
-      <SearchDialog open={isSearchOpen} />
+        {/* Search Dialog */}
+        <SearchDialog open={isSearchOpen} />
 
-      {/* Toast Notifications */}
-      {/* <Toaster position="top-center" /> */}
-      <Toaster richColors position="top-center" />
+        {/* Toast Notifications */}
+        {/* <Toaster position="top-center" /> */}
+        <Toaster richColors position="top-center" />
+      </AccentColorProvider>
     </ThemeProvider>
   );
 }

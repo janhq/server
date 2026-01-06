@@ -6,6 +6,8 @@
 export const LOCAL_STORAGE_KEY = {
   PRIVATE_CHAT: "private-chat-storage",
   THEME: "theme",
+  ACCENT_COLOR: "accent-color",
+  SIDEBAR_VARIANT: "sidebar-variant",
   RECENT_SEARCHES: "recent-searches",
   // OAuth keys
   OAUTH_STATE: "oauth_state",

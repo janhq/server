@@ -76,7 +76,7 @@ export function NavProjects({ startIndex = 3 }: { startIndex?: number }) {
       </SidebarGroup>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]" showCloseButton={false}>
+        <DialogContent className="sm:max-w-106.25" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Delete Project</DialogTitle>
             <DialogDescription>
