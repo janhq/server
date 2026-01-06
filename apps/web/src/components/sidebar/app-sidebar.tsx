@@ -64,7 +64,7 @@ export const AppSidebar = memo(function AppSidebar({
             </div>
 
             {(isOpen || openMobile) && (
-              <SidebarTrigger className="text-muted-foreground hover:bg-primary/10" />
+              <SidebarTrigger className="text-muted-foreground hover:bg-foreground/10" />
             )}
           </div>
           <NavMain />

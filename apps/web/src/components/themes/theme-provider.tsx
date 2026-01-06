@@ -19,15 +19,11 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  accentColor: string;
-  setAccentColor: (color: string) => void;
 };
 
 const initialState: ThemeProviderState = {
   theme: THEME.SYSTEM,
   setTheme: () => null,
-  accentColor: "default",
-  setAccentColor: () => null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -40,10 +36,6 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
-  );
-
-  const [accentColor, setAccentColorState] = useState<string>(
-    () => localStorage.getItem(LOCAL_STORAGE_KEY.ACCENT_COLOR) || "default",
   );
 
   useEffect(() => {
@@ -64,21 +56,11 @@ export function ThemeProvider({
     root.classList.add(theme);
   }, [theme]);
 
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.setAttribute("data-accent", accentColor);
-  }, [accentColor]);
-
   const value = {
     theme,
     setTheme: (theme: Theme) => {
       localStorage.setItem(storageKey, theme);
       setTheme(theme);
-    },
-    accentColor,
-    setAccentColor: (color: string) => {
-      localStorage.setItem(LOCAL_STORAGE_KEY.ACCENT_COLOR, color);
-      setAccentColorState(color);
     },
   };
 

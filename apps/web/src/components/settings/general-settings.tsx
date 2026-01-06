@@ -8,28 +8,20 @@ import {
 import { useAuth } from "@/stores/auth-store";
 import { getInitialsAvatar, cn } from "@/lib/utils";
 import { useTheme } from "@/components/themes/theme-provider";
-import {
-  ChevronsUpDown,
-  CircleCheck,
-  Monitor,
-  Moon,
-  Sun,
-  PanelLeft,
-  RectangleVertical,
-} from "lucide-react";
+import { ChevronsUpDown, CircleCheck, Monitor, Moon, Sun } from "lucide-react";
 import { Button } from "@janhq/interfaces/button";
 import { useRef } from "react";
 import { THEME } from "@/constants";
 import { Separator } from "@janhq/interfaces/ui/separator";
 import { useAccentColor } from "@/hooks/use-accent-color";
-import { useSidebarStore } from "@/stores/sidebar-store";
+// import { useSidebarStore } from "@/stores/sidebar-store";
 
 export function GeneralSettings() {
   const user = useAuth((state) => state.user);
   const { theme, setTheme } = useTheme();
   const { accentColor, setAccentColor, availableColors } = useAccentColor();
-  const variant = useSidebarStore((state) => state.variant);
-  const setSidebarVariant = useSidebarStore((state) => state.setSidebarVariant);
+  // const variant = useSidebarStore((state) => state.variant);
+  // const setSidebarVariant = useSidebarStore((state) => state.setSidebarVariant);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
@@ -197,7 +189,7 @@ export function GeneralSettings() {
                   ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
                   : "hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-muted-foreground/50",
               )}
-              style={{ backgroundColor: `${color.primary}` }}
+              style={{ backgroundColor: `${color.thumb}` }}
               title={color.name}
               aria-label={`Select ${color.name} primary color`}
             />
@@ -205,10 +197,10 @@ export function GeneralSettings() {
         </div>
       </div>
 
-      <Separator className="my-4" />
-
+      {/* Temporary disable */}
+      {/* <Separator className="my-4" /> */}
       {/* Sidebar Variant Section */}
-      <div>
+      {/* <div>
         <p className="font-medium text-sm mb-3">Menu sidebar</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
@@ -218,7 +210,7 @@ export function GeneralSettings() {
               "flex items-center gap-3 p-4 rounded-lg border transition-all",
               variant === "sidebar"
                 ? "border-primary bg-primary/10"
-                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
+                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
             )}
           >
             <PanelLeft className="w-5 h-5" />
@@ -231,14 +223,14 @@ export function GeneralSettings() {
               "flex items-center gap-3 p-4 rounded-lg border transition-all",
               variant === "floating"
                 ? "border-primary bg-primary/10"
-                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600",
+                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
             )}
           >
             <RectangleVertical className="w-5 h-5" />
             <span className="font-medium">Floating</span>
           </button>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
