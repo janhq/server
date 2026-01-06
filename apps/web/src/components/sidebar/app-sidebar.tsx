@@ -28,12 +28,30 @@ export const AppSidebar = memo(function AppSidebar({
   const getProjects = useProjects((state) => state.getProjects);
   const getConversations = useConversations((state) => state.getConversations);
   const projects = useProjects((state) => state.projects);
+  const [isTransitionComplete, setIsTransitionComplete] = useState(
+    state === "collapsed",
+  );
 
   // Calculate animation indices:
   // NavMain: 0, 1, 2 (3 items)
   // NavProjects: starts at 3
   // NavChats: starts after projects (3 + 1 label + N projects, or 3 if no projects)
   const chatsStartIndex = projects.length > 0 ? 3 + 1 + projects.length : 3;
+
+  useEffect(() => {
+    if (state === "collapsed") {
+      // Wait for the sidebar transition to complete (200ms as defined in sidebar.tsx)
+      const timer = setTimeout(() => {
+        setIsTransitionComplete(true);
+      }, 200);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        setIsTransitionComplete(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [state]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -55,16 +73,26 @@ export const AppSidebar = memo(function AppSidebar({
               "flex items-center w-full pl-0.5",
               isOpen && "pl-2 mb-2 justify-between",
               openMobile && "pl-2 mb-2 justify-between",
-              !isMobile && !isOpen && "justify-center",
+              !isMobile && !isOpen && "justify-between",
             )}
           >
-            <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex gap-2 items-center transition-transform duration-200 ease-linear",
+                state === "collapsed" &&
+                  isTransitionComplete &&
+                  "md:translate-x-[calc(50%-8px)]",
+              )}
+            >
               <Jan className="size-4 shrink-0 block md:hidden" />
               <span className="text-lg font-bold font-studio">Jan</span>
             </div>
 
             {(isOpen || openMobile) && (
               <SidebarTrigger className="text-muted-foreground hover:bg-foreground/10" />
+            )}
+            {!isOpen && !openMobile && !isMobile && !isTransitionComplete && (
+              <div className="w-8 h-8 shrink-0" />
             )}
           </div>
           <NavMain />
