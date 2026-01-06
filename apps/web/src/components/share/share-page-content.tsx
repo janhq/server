@@ -155,21 +155,21 @@ export function SharePageContent({ slug }: SharePageContentProps) {
                 damping={SCROLL_ANIMATION.DAMPING}
                 stiffness={SCROLL_ANIMATION.STIFFNESS}
               >
-                <ConversationContent className="max-w-3xl mx-auto">
+                <ConversationContent className="w-full md:max-w-3xl mx-auto">
                   <div className="pt-8 pb-6 w-full flex justify-center px-4">
                     <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border/50 backdrop-blur-sm max-w-2xl">
                       <div className="size-1.5 rounded-full bg-primary/60 animate-pulse shrink-0" />
-                      <p className="text-sm font-medium text-muted-foreground min-w-0 flex items-center gap-1">
+                      <div className="text-sm font-medium text-muted-foreground min-w-0 flex items-center gap-1">
                         <span className="shrink-0">
                           Viewing shared conversation:
                         </span>{" "}
                         <span
-                          className="text-foreground truncate"
+                          className="text-foreground line-clamp-1"
                           title={shareData.title || "Untitled"}
                         >
                           {shareData.title || "Untitled"}
                         </span>
-                      </p>
+                      </div>
                     </div>
                   </div>
 
