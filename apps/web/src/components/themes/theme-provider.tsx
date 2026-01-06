@@ -3,13 +3,6 @@ import { LOCAL_STORAGE_KEY, THEME } from "@/constants";
 
 type Theme = "dark" | "light" | "system";
 
-export type AccentColor = {
-  name: string;
-  value: string;
-  lightValue?: string;
-  darkValue?: string;
-};
-
 type ThemeProviderProps = {
   children: React.ReactNode;
   defaultTheme?: Theme;
