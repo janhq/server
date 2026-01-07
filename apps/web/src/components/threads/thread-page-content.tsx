@@ -12,7 +12,7 @@ import {
   ConversationScrollButton,
 } from "@janhq/interfaces/ai-elements/conversation";
 import type { PromptInputMessage } from "@janhq/interfaces/ai-elements/prompt-input";
-import { Loader } from "lucide-react";
+import { Loader, AlertTriangleIcon } from "lucide-react";
 import { useModels } from "@/stores/models-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversations } from "@/stores/conversation-store";
@@ -196,13 +196,14 @@ export function ThreadPageContent({
     sendMessage,
     regenerate,
     setMessages,
+    error,
     addToolOutput,
     stop,
   } = useChat(provider(selectedModel?.id), {
     experimental_throttle: 50,
     sessionId: chatSessionId,
     sessionTitle: conversationTitle || undefined,
-    onFinish: ({ message, isAbort }) => {
+    onFinish: ({ message, isAbort, isError }) => {
       // Note: These values are captured at Chat creation time, which is correct
       // because onFinish fires for the Chat that started the stream, not the current conversation
       initialMessageSentRef.current = false;
@@ -753,6 +754,16 @@ export function ThreadPageContent({
                     onRegenerate={conversationId ? handleRegenerate : undefined}
                   />
                 ))}
+                {error && (
+                  <div className="size-full mb-4 flex justify-center items-center">
+                    <div className="text-center text-sm bg-muted rounded-full text-muted-foreground py-3 px-6 flex items-center gap-2 max-w-2xl">
+                      <AlertTriangleIcon className="text-yellow-500 shrink-0" />
+                      <span>
+                        {error.message || "Something seem to have gone wrong."}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {(generatingImage
                   ? CHAT_STATUS.STREAMING
                   : status === CHAT_STATUS.SUBMITTED) && (
