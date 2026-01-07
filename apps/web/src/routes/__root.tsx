@@ -72,10 +72,7 @@ function RootLayout() {
           open={isLoginModal}
           onOpenChange={(open: boolean) => !open && handleCloseModal()}
         >
-          <DialogContent
-            onPointerDownOutside={(e) => e.preventDefault()}
-            onEscapeKeyDown={(e) => e.preventDefault()}
-          >
+          <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
             <LoginForm />
           </DialogContent>
         </Dialog>

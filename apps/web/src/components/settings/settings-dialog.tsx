@@ -90,11 +90,7 @@ export function SettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent
-        className="md:max-w-2xl lg:max-w-[800px] lg:max-h-[700px] p-0 gap-0 rounded-xl overflow-hidden"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
+      <DialogContent className="md:max-w-2xl lg:max-w-[800px] lg:max-h-[700px] p-0 gap-0 rounded-xl overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b border-muted text-left">
           <DialogTitle className="font-medium">Settings</DialogTitle>
         </DialogHeader>
