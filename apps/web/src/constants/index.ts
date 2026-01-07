@@ -21,7 +21,12 @@ export {
 } from "./content";
 
 // Tool states
-export { TOOL_STATE, TOOL_OUTPUT_STATES, type ToolStateValue } from "./tool";
+export {
+  TOOL_STATE,
+  TOOL_OUTPUT_STATES,
+  IMAGE_GENERATION_TOOLS,
+  type ToolStateValue,
+} from "./tool";
 
 // Storage keys
 export {

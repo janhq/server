@@ -9,6 +9,7 @@ import {
 import { type ChatInit, type LanguageModel } from "ai";
 import { useEffect, useMemo, useRef } from "react";
 import { useChatSessions } from "@/stores/chat-session-store";
+import { IMAGE_GENERATION_TOOLS } from "@/constants";
 
 type CustomChatOptions = Omit<ChatInit<UIMessage>, "transport"> &
   Pick<UseChatOptions<UIMessage>, "experimental_throttle" | "resume"> & {
@@ -31,6 +32,9 @@ export function useChat(model: LanguageModel, options?: CustomChatOptions) {
     (state) => state.deepResearchEnabled,
   );
   const browserEnabled = useCapabilities((state) => state.browserEnabled);
+  const imageGenerationEnabled = useCapabilities(
+    (state) => state.imageGenerationEnabled,
+  );
 
   const existingSessionTransport = sessionId
     ? useChatSessions.getState().sessions[sessionId]?.transport
@@ -66,6 +70,15 @@ export function useChat(model: LanguageModel, options?: CustomChatOptions) {
       transportRef.current.updateBrowseEnabled(browserEnabled);
     }
   }, [browserEnabled]);
+
+  useEffect(() => {
+    if (transportRef.current) {
+      transportRef.current.updateImageGenerationEnabled(
+        imageGenerationEnabled,
+        IMAGE_GENERATION_TOOLS,
+      );
+    }
+  }, [imageGenerationEnabled]);
 
   // Memoize to prevent calling ensureSession (which has side effects) on every render
   const chat = useMemo(() => {

@@ -23,3 +23,6 @@ export const TOOL_OUTPUT_STATES = [
   TOOL_STATE.OUTPUT_ERROR,
   TOOL_STATE.OUTPUT_DENIED,
 ] as const;
+
+// Image generation tool names
+export const IMAGE_GENERATION_TOOLS = ["edit_image", "generate_image"] as const;

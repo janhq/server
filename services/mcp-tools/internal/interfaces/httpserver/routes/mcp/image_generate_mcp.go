@@ -123,7 +123,7 @@ func (i *ImageGenerateMCP) RegisterTools(server *mcp.Server) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "generate_image",
-		Description: "Generate images from a text prompt via LLM API /v1/images/generations.",
+		Description: "Generate images from text prompts. Use when the user asks to create, generate, or make a new image from a text description.",
 		InputSchema: inputSchema,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input ImageGenerateArgs) (*mcp.CallToolResult, map[string]any, error) {
 		startTime := time.Now()

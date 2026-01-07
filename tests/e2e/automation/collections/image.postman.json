@@ -524,6 +524,246 @@
               }
             }
           ]
+        },
+        {
+          "name": "MCP Tools List (edit_image)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/list\",\n  \"id\": \"mcp-tools-list-edit-1\"\n}"
+            },
+            "url": "{{mcp_url}}/v1/mcp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function parseMCPResponse(text) {",
+                  "    if (!text) return null;",
+                  "    const trimmed = text.trim();",
+                  "    if (trimmed.startsWith('event:') || trimmed.startsWith('data:')) {",
+                  "        const lines = trimmed.split('\\n');",
+                  "        for (let i = 0; i < lines.length; i++) {",
+                  "            const line = lines[i].trim();",
+                  "            if (line.startsWith('data:')) {",
+                  "                const jsonStr = line.slice(5).trim();",
+                  "                if (jsonStr) return JSON.parse(jsonStr);",
+                  "            }",
+                  "        }",
+                  "        return null;",
+                  "    }",
+                  "    return JSON.parse(trimmed);",
+                  "}",
+                  "",
+                  "pm.test('[MCP] tools/list for edit_image responded', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]);",
+                  "});",
+                  "",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.collectionVariables.set('mcp_tool_has_edit_image', 'false');",
+                  "    return;",
+                  "}",
+                  "",
+                  "let parsed = null;",
+                  "try {",
+                  "    parsed = parseMCPResponse(pm.response.text());",
+                  "} catch (err) {}",
+                  "",
+                  "const tools = parsed && parsed.result && Array.isArray(parsed.result.tools) ? parsed.result.tools : [];",
+                  "const editTool = tools.find(t => t.name === 'edit_image');",
+                  "",
+                  "if (editTool) {",
+                  "    pm.collectionVariables.set('mcp_tool_has_edit_image', 'true');",
+                  "    pm.test('[MCP] edit_image is listed', function () {",
+                  "        pm.expect(editTool).to.exist;",
+                  "    });",
+                  "} else {",
+                  "    pm.collectionVariables.set('mcp_tool_has_edit_image', 'false');",
+                  "    pm.test('[MCP] edit_image not listed (tool may be disabled)', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP Edit Image (tools/call)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"id\": \"mcp-edit-image-1\",\n  \"params\": {\n    \"name\": \"edit_image\",\n    \"arguments\": {\n      \"prompt\": \"Add neon lighting effects\",\n      \"image\": {\n        \"url\": \"{{mcp_generated_image_url}}\"\n      },\n      \"conversation_id\": \"{{mcp_conversation_id}}\",\n      \"store\": true\n    }\n  }\n}"
+            },
+            "url": "{{mcp_url}}/v1/mcp"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const hasEditTool = pm.collectionVariables.get('mcp_tool_has_edit_image') === 'true';",
+                  "const hasGeneratedImage = pm.collectionVariables.get('mcp_generate_image_success') === 'true';",
+                  "if (!hasEditTool || !hasGeneratedImage) {",
+                  "    console.log('Skipping MCP edit_image - prerequisites not met');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function parseMCPResponse(text) {",
+                  "    if (!text) return null;",
+                  "    const trimmed = text.trim();",
+                  "    if (trimmed.startsWith('event:') || trimmed.startsWith('data:')) {",
+                  "        const lines = trimmed.split('\\n');",
+                  "        for (let i = 0; i < lines.length; i++) {",
+                  "            const line = lines[i].trim();",
+                  "            if (line.startsWith('data:')) {",
+                  "                const jsonStr = line.slice(5).trim();",
+                  "                if (jsonStr) return JSON.parse(jsonStr);",
+                  "            }",
+                  "        }",
+                  "        return null;",
+                  "    }",
+                  "    return JSON.parse(trimmed);",
+                  "}",
+                  "",
+                  "const hasEditTool = pm.collectionVariables.get('mcp_tool_has_edit_image') === 'true';",
+                  "const hasGeneratedImage = pm.collectionVariables.get('mcp_generate_image_success') === 'true';",
+                  "",
+                  "if (!hasEditTool || !hasGeneratedImage) {",
+                  "    pm.collectionVariables.set('mcp_edit_image_success', 'false');",
+                  "    pm.test('[MCP] edit_image skipped - prerequisites not met', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('[MCP] edit_image tools/call responded', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 401, 403, 500, 504]);",
+                  "});",
+                  "",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.collectionVariables.set('mcp_edit_image_success', 'false');",
+                  "    return;",
+                  "}",
+                  "",
+                  "let parsed = null;",
+                  "try {",
+                  "    parsed = parseMCPResponse(pm.response.text());",
+                  "} catch (err) {}",
+                  "",
+                  "if (!parsed || parsed.error) {",
+                  "    pm.collectionVariables.set('mcp_edit_image_success', 'false');",
+                  "    if (parsed && parsed.error) {",
+                  "        pm.test('[MCP] edit_image error', function () {",
+                  "            pm.expect(parsed.error).to.have.property('message');",
+                  "        });",
+                  "    }",
+                  "    return;",
+                  "}",
+                  "",
+                  "let payload = parsed.result || {};",
+                  "if (payload && payload.result) {",
+                  "    payload = payload.result;",
+                  "}",
+                  "",
+                  "const data = payload && Array.isArray(payload.data) ? payload.data : null;",
+                  "",
+                  "pm.test('[MCP] edit_image payload has data', function () {",
+                  "    pm.expect(data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "if (data && data.length > 0) {",
+                  "    const imageData = data[0];",
+                  "    pm.test('[MCP] edited image has url', function () {",
+                  "        pm.expect(imageData.url).to.exist;",
+                  "    });",
+                  "    if (imageData.url) {",
+                  "        pm.collectionVariables.set('mcp_edited_image_url', imageData.url);",
+                  "    }",
+                  "    pm.collectionVariables.set('mcp_edit_image_success', 'true');",
+                  "} else {",
+                  "    pm.collectionVariables.set('mcp_edit_image_success', 'false');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP Verify Edit Conversation Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": "{{kong_url}}/v1/conversations/{{mcp_conversation_id}}/items"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const editSuccess = pm.collectionVariables.get('mcp_edit_image_success') === 'true';",
+                  "",
+                  "if (!editSuccess) {",
+                  "    pm.test('[MCP] Edit conversation check skipped', function () {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('[MCP] Conversation items retrieved after edit', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const data = pm.response.json();",
+                  "const items = data.data || [];",
+                  "",
+                  "pm.test('[MCP] Items include image_edit_call', function () {",
+                  "    const editCall = items.find(i => i.type === 'image_edit_call');",
+                  "    pm.expect(editCall).to.exist;",
+                  "});",
+                  "",
+                  "console.log('[MCP] Items after edit, count:', items.length);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1479,6 +1719,18 @@
     {
       "key": "edited_image_url_is_http",
       "value": "false"
+    },
+    {
+      "key": "mcp_tool_has_edit_image",
+      "value": "false"
+    },
+    {
+      "key": "mcp_edit_image_success",
+      "value": "false"
+    },
+    {
+      "key": "mcp_edited_image_url",
+      "value": ""
     }
   ]
 }

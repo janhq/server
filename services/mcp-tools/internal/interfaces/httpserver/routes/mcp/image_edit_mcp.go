@@ -179,7 +179,7 @@ func (i *ImageEditMCP) RegisterTools(server *mcp.Server) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "edit_image",
-		Description: "Edit images with a prompt via LLM API /v1/images/edits.",
+		Description: "Edit an existing image based on a text prompt. Use when the user wants to modify, change, or add elements to an existing image. Requires the image parameter with id or url of the image to edit.",
 		InputSchema: inputSchema,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input ImageEditArgs) (*mcp.CallToolResult, map[string]any, error) {
 		startTime := time.Now()

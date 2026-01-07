@@ -28,31 +28,36 @@ async function passUrlsDirectly(
 }
 
 /**
- * Convert file parts to custom image_url format for the API.
- * The server expects: { type: "image_url", image_url: { url: "data:image/jpeg;jan_MEDIA_ID", detail: "auto" } }
+ * Convert file parts to image_url format for the API.
+ * The server expects: { type: "image_url", image_url: { url: "...", detail: "auto" } }
  */
 function convertToImageUrlFormat(messages: CoreMessage[]): CoreMessage[] {
   return messages.map((message) => {
     if (message.role === MESSAGE_ROLE.USER && Array.isArray(message.content)) {
+      const processedContent = message.content.map((part: any) => {
+        // Parts already in image_url format - pass through
+        if (part.type === "image_url") {
+          return part;
+        }
+
+        // Convert image parts to image_url format
+        if (part.type === "image" && "image" in part) {
+          const imageData = part.image;
+          if (typeof imageData === "string") {
+            return {
+              type: "image_url",
+              image_url: {
+                url: imageData,
+                detail: "auto",
+              },
+            };
+          }
+        }
+        return part;
+      });
       return {
         ...message,
-        content: message.content.map((part) => {
-          // Convert image parts to image_url format
-          if (part.type === "image" && "image" in part) {
-            const imageData = part.image;
-            // If it's a URL string (jan media URL or presigned URL)
-            if (typeof imageData === "string") {
-              return {
-                type: "image_url",
-                image_url: {
-                  url: imageData,
-                  detail: "auto",
-                },
-              };
-            }
-          }
-          return part;
-        }),
+        content: processedContent,
       };
     }
     return message;
@@ -147,6 +152,8 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
   private tools: Record<string, Tool> = {};
   private enabledSearch = false;
   private enableBrowse = false;
+  private enableImageGeneration = false;
+  private imageGenerationToolNames: string[] = [];
 
   constructor(
     model: LanguageModel,
@@ -170,6 +177,14 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
     this.enableBrowse = enableBrowse;
   }
 
+  updateImageGenerationEnabled(
+    enableImageGeneration: boolean,
+    toolNames: readonly string[],
+  ) {
+    this.enableImageGeneration = enableImageGeneration;
+    this.imageGenerationToolNames = [...toolNames];
+  }
+
   /**
    * Initialize MCP tools and convert them to AI SDK format
    */
@@ -183,7 +198,22 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
       );
 
       // Convert MCP tools to AI SDK CoreTool format
-      this.tools = toolsResponse.data.reduce(
+      let filteredTools = toolsResponse.data;
+
+      // Filter tools based on image generation mode
+      if (this.enableImageGeneration) {
+        // When image generation is enabled, only include image generation tools
+        filteredTools = filteredTools.filter((tool) =>
+          this.imageGenerationToolNames.includes(tool.name),
+        );
+      } else {
+        // When image generation is disabled, exclude image generation tools
+        filteredTools = filteredTools.filter(
+          (tool) => !this.imageGenerationToolNames.includes(tool.name),
+        );
+      }
+
+      this.tools = filteredTools.reduce(
         (acc, tool) => {
           acc[tool.name] = {
             description: tool.description,
@@ -231,7 +261,9 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
       // This avoids CORS issues with presigned S3 URLs
       experimental_download: passUrlsDirectly,
       tools:
-        (this.enabledSearch || this.enableBrowse) &&
+        (this.enabledSearch ||
+          this.enableBrowse ||
+          this.enableImageGeneration) &&
         Object.keys(this.tools).length > 0
           ? this.tools
           : undefined,
