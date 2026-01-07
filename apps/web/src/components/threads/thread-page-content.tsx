@@ -65,6 +65,9 @@ export function ThreadPageContent({
     (state) => state.deepResearchEnabled,
   );
   const enableThinking = useCapabilities((state) => state.reasoningEnabled);
+  const imageGenerationEnabled = useCapabilities(
+    (state) => state.imageGenerationEnabled,
+  );
   const [conversationTitle, setConversationTitle] = useState<string>("");
   const navigate = useNavigate();
   const hasRedirectedRef = useRef(false);
@@ -461,6 +464,29 @@ export function ThreadPageContent({
     ],
   );
 
+  const appendImageUrlsToPrompt = useCallback(
+    (message: PromptInputMessage, enabled: boolean): PromptInputMessage => {
+      if (!enabled) return message;
+      const urls = message.files
+        .map((file) => file.url)
+        .filter(
+          (url): url is string => typeof url === "string" && url.trim() !== "",
+        );
+      if (urls.length === 0) return message;
+
+      const baseText = (message.text || "").trim();
+      const appended = baseText
+        ? `${baseText}\n\nImages:\n${urls.join("\n")}`
+        : `Images:\n${urls.join("\n")}`;
+
+      return {
+        ...message,
+        text: appended,
+      };
+    },
+    [],
+  );
+
   const handleSubmit = useCallback(
     async (message?: PromptInputMessage) => {
       // Get the current session to check its status directly
@@ -474,14 +500,19 @@ export function ThreadPageContent({
       ) {
         sessionData.tools = [];
 
+        const withImageUrls = appendImageUrlsToPrompt(
+          message,
+          imageGenerationEnabled,
+        );
+
         // Normal message flow
 
         // Persist to server (fire-and-forget, ID mapping handled in onFinish)
-        createUserMessageItem(message);
+        createUserMessageItem(withImageUrls);
 
         sendMessage({
-          text: message.text || "Sent with attachments",
-          files: message.files,
+          text: withImageUrls.text || "Sent with attachments",
+          files: withImageUrls.files,
         });
         // Move conversation to top when a new message is sent
         if (conversationId && !isPrivateChat) {
@@ -512,6 +543,8 @@ export function ThreadPageContent({
       moveConversationToTop,
       setMessages,
       createUserMessageItem,
+      appendImageUrlsToPrompt,
+      imageGenerationEnabled,
     ],
   );
 
@@ -572,12 +605,17 @@ export function ThreadPageContent({
           sessionStorage.removeItem(initialItemsKey);
         }
 
+        const withImageUrls = appendImageUrlsToPrompt(
+          message,
+          imageGenerationEnabled,
+        );
+
         // Persist to server (fire-and-forget, ID mapping handled in onFinish)
-        createUserMessageItem(message);
+        createUserMessageItem(withImageUrls);
 
         sendMessage({
-          text: message.text,
-          files: message.files,
+          text: withImageUrls.text,
+          files: withImageUrls.files,
         });
         // Move conversation to top when initial message is sent
         if (conversationId && !isPrivateChat) {
@@ -595,6 +633,8 @@ export function ThreadPageContent({
     setMessages,
     moveConversationToTop,
     createUserMessageItem,
+    appendImageUrlsToPrompt,
+    imageGenerationEnabled,
   ]);
 
   // Fetch messages for old conversations (only for persistent conversations)
