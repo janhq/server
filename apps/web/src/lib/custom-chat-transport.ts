@@ -29,7 +29,7 @@ async function passUrlsDirectly(
 
 /**
  * Convert file parts to custom image_url format for the API.
- * The server expects: { type: "image_url", image_url: { url: "data:image/jpeg;jan_MEDIA_ID", detail: "auto" } }
+ * The server expects: { type: "image_url", image_url: { url: "<image url>", detail: "auto" } }
  */
 function convertToImageUrlFormat(messages: CoreMessage[]): CoreMessage[] {
   return messages.map((message) => {
@@ -40,7 +40,7 @@ function convertToImageUrlFormat(messages: CoreMessage[]): CoreMessage[] {
           // Convert image parts to image_url format
           if (part.type === "image" && "image" in part) {
             const imageData = part.image;
-            // If it's a URL string (jan media URL or presigned URL)
+            // If it's a URL string
             if (typeof imageData === "string") {
               return {
                 type: "image_url",
