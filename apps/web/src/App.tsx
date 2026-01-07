@@ -2,7 +2,6 @@
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/sidebar/sidebar";
 import { NavHeader } from "@/components/sidebar/nav-header";
-import { Confetti, ConfettiCanvas } from "@/components/animations/confetti";
 import ChatInput from "@/components/chat-input";
 import { usePrivateChat } from "./stores/private-chat-store";
 import { HatGlassesIcon } from "lucide-react";
@@ -10,14 +9,7 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 
-const newYearPhrases = [
-  "New year, new chat?",
-  "What should 2026 be good for?",
-  "Hello 2026, what are we doing today?",
-  "New year, new project?",
-  "What should we try first in 2026?",
-  "2026 is here. Let us not panic",
-];
+const newYearPhrases = ["How can I help you today?"];
 
 function AppPageContent() {
   const isPrivateChat = usePrivateChat((state) => state.isPrivateChat);
@@ -28,7 +20,7 @@ function AppPageContent() {
   );
 
   return (
-    <ConfettiCanvas>
+    <>
       <AppSidebar />
       <SidebarInset>
         <NavHeader />
@@ -143,14 +135,6 @@ function AppPageContent() {
                   >
                     {randomPhrase}
                   </motion.h2>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="mb-6"
-                  >
-                    <Confetti />
-                  </motion.div>
                 </div>
               )}
               <ChatInput initialConversation={true} />
@@ -158,7 +142,7 @@ function AppPageContent() {
           </div>
         </div>
       </SidebarInset>
-    </ConfettiCanvas>
+    </>
   );
 }
 

@@ -212,7 +212,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-linear-to-b from-sidebar dark:from-sidebar/30 to-background text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          className="bg-linear-to-b from-sidebar to-background text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
           hideOverlayBackdrop={true}
           style={
             {
@@ -270,7 +270,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-linear-to-b from-sidebar dark:from-sidebar/30 to-background group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg  group-data-[variant=floating]:shadow-sm"
+          className="bg-linear-to-b from-sidebar to-background group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg  group-data-[variant=floating]:shadow-sm"
         >
           {children}
         </div>
