@@ -43,6 +43,9 @@ func New(cfg *config.Config, log zerolog.Logger, mediaService *domain.Service, a
 	// Register public routes (health checks, swagger) without authentication
 	registerPublicRoutes(engine, cfg, authValidator)
 
+	// Register public media serving endpoint (no auth required for img src usage)
+	engine.GET("/api/media/:id", handlerProvider.Media.PublicServe)
+
 	// Apply authentication middleware before protected routes
 	if authValidator != nil {
 		engine.Use(authValidator.Middleware())

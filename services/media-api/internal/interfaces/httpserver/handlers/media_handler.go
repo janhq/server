@@ -3,8 +3,10 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -31,11 +33,11 @@ func NewMediaHandler(cfg *config.Config, service *domain.Service, log zerolog.Lo
 }
 
 type ingestResponse struct {
-	ID           string `json:"id"`
-	Mime         string `json:"mime"`
-	Bytes        int64  `json:"bytes"`
-	Deduped      bool   `json:"deduped"`
-	PresignedURL string `json:"presigned_url,omitempty"`
+	ID      string `json:"id"`
+	Mime    string `json:"mime"`
+	Bytes   int64  `json:"bytes"`
+	Deduped bool   `json:"deduped"`
+	URL     string `json:"url"`
 }
 
 type resolveRequest struct {
@@ -75,19 +77,15 @@ func (h *MediaHandler) Ingest(c *gin.Context) {
 		return
 	}
 
-	// Generate presigned URL for immediate access
-	presignedURL, err := h.service.Presign(c.Request.Context(), obj.ID)
-	if err != nil {
-		h.log.Warn().Err(err).Msg("failed to generate presigned URL, continuing without it")
-		presignedURL = ""
-	}
+	// Generate direct public URL for embedding in HTML
+	directURL := h.buildDirectURL(obj.ID)
 
 	c.JSON(http.StatusOK, ingestResponse{
-		ID:           obj.ID,
-		Mime:         obj.MimeType,
-		Bytes:        obj.Bytes,
-		Deduped:      dedup,
-		PresignedURL: presignedURL,
+		ID:      obj.ID,
+		Mime:    obj.MimeType,
+		Bytes:   obj.Bytes,
+		Deduped: dedup,
+		URL:     directURL,
 	})
 }
 
@@ -289,18 +287,60 @@ func (h *MediaHandler) DirectUpload(c *gin.Context) {
 		return
 	}
 
-	// Generate presigned/direct URL for immediate access
-	presignedURL, err := h.service.Presign(c.Request.Context(), obj.ID)
-	if err != nil {
-		h.log.Warn().Err(err).Msg("failed to generate URL, continuing without it")
-		presignedURL = ""
-	}
+	// Generate direct public URL for embedding in HTML
+	directURL := h.buildDirectURL(obj.ID)
 
 	c.JSON(http.StatusOK, ingestResponse{
-		ID:           obj.ID,
-		Mime:         obj.MimeType,
-		Bytes:        obj.Bytes,
-		Deduped:      dedup,
-		PresignedURL: presignedURL,
+		ID:      obj.ID,
+		Mime:    obj.MimeType,
+		Bytes:   obj.Bytes,
+		Deduped: dedup,
+		URL:     directURL,
 	})
+}
+
+// PublicServe godoc
+// @Summary      Serve media publicly
+// @Description  Streams the media file directly for use in HTML img src. This endpoint does not require authentication.
+// @Tags         media
+// @Produce      image/jpeg
+// @Produce      image/png
+// @Produce      image/webp
+// @Produce      image/gif
+// @Param        id   path      string  true  "Media ID (jan_xxx)"
+// @Success      200  {file}    binary
+// @Failure      404  {object}  map[string]string
+// @Router       /api/media/{id} [get]
+func (h *MediaHandler) PublicServe(c *gin.Context) {
+	id := c.Param("id")
+
+	reader, mime, err := h.service.Download(c.Request.Context(), id)
+	if err != nil {
+		h.log.Error().Err(err).Str("id", id).Msg("public serve failed")
+		c.JSON(http.StatusNotFound, gin.H{"error": "media not found"})
+		return
+	}
+	defer reader.Close()
+
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+
+	// Set cache headers for browser caching
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.Header("Content-Type", mime)
+	c.Status(http.StatusOK)
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		h.log.Error().Err(err).Msg("stream error")
+	}
+}
+
+// buildDirectURL constructs the public URL for direct media access
+func (h *MediaHandler) buildDirectURL(id string) string {
+	publicURL := h.cfg.PublicURL
+	if publicURL == "" {
+		// Fallback to localhost if not configured
+		publicURL = "http://localhost:8000"
+	}
+	return fmt.Sprintf("%s/api/media/%s", strings.TrimSuffix(publicURL, "/"), id)
 }
