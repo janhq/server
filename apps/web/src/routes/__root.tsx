@@ -20,7 +20,7 @@ import {
   URL_PARAM_VALUE,
   SETTINGS_SECTION,
 } from "@/constants";
-import { AccentColorProvider } from "@/hooks/use-accent-color";
+import { AccentColorProvider } from "@/providers/accent-color";
 
 function RootLayout() {
   const location = useLocation();

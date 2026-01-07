@@ -2,6 +2,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useTheme } from "@/components/themes/theme-provider";
 import { LOCAL_STORAGE_KEY } from "@/constants";
+import { profileService } from "@/services/profile-service";
+import { useAuth } from "@/stores/auth-store";
 
 export const THEME_COLORS = [
   {
@@ -19,70 +21,100 @@ export const THEME_COLORS = [
     value: "red",
     thumb: "#F0614B",
     primary: "#F0614B",
-    sidebar: "#F3CBC4",
+    sidebar: {
+      light: "#F3CBC4",
+      dark: "#5E1308",
+    },
   },
   {
     name: "Orange",
     value: "orange",
     thumb: "#E9A23F",
     primary: "#E9A23F",
-    sidebar: "#F3DFC4",
+    sidebar: {
+      light: "#F3DFC4",
+      dark: "#5C3A0A",
+    },
   },
   {
     name: "Green",
     value: "green",
     thumb: "#88BA42",
     primary: "#88BA42",
-    sidebar: "#DFF3C4",
+    sidebar: {
+      light: "#DFF3C4",
+      dark: "#374B1B",
+    },
   },
   {
     name: "Emerald",
     value: "emerald",
     thumb: "#38AB51",
     primary: "#38AB51",
-    sidebar: "#C4F3CE",
+    sidebar: {
+      light: "#C4F3CE",
+      dark: "#194D24",
+    },
   },
   {
     name: "Teal",
     value: "teal",
     thumb: "#38AB8D",
     primary: "#38AB8D",
-    sidebar: "#C4F3E6",
+    sidebar: {
+      light: "#C4F3E6",
+      dark: "#194D3F",
+    },
   },
   {
     name: "Cyan",
     value: "cyan",
     thumb: "#45BBDE",
     primary: "#45BBDE",
-    sidebar: "#C4E8F3",
+    sidebar: {
+      light: "#C4E8F3",
+      dark: "#0F4657",
+    },
   },
   {
     name: "Blue",
     value: "blue",
     thumb: "#456BDE",
     primary: "#456BDE",
-    sidebar: "#C4D0F3",
+    sidebar: {
+      light: "#C4D0F3",
+      dark: "#0F2157",
+    },
   },
   {
     name: "Purple",
     value: "purple",
     thumb: "#865EEA",
     primary: "#865EEA",
-    sidebar: "#D2C4F3",
+    sidebar: {
+      light: "#D2C4F3",
+      dark: "#220C5A",
+    },
   },
   {
     name: "Pink",
     value: "pink",
     thumb: "#D55EF3",
     primary: "#D55EF3",
-    sidebar: "#E9C4F3",
+    sidebar: {
+      light: "#E9C4F3",
+      dark: "#4D075F",
+    },
   },
   {
     name: "Rose",
     value: "rose",
     thumb: "#F655B8",
     primary: "#F655B8",
-    sidebar: "#F3C4E1",
+    sidebar: {
+      light: "#F3C4E1",
+      dark: "#61053E",
+    },
   },
 ] as const;
 
@@ -92,6 +124,7 @@ type AccentColorContextType = {
   accentColor: string;
   setAccentColor: (color: string) => void;
   availableColors: typeof THEME_COLORS;
+  isLoading: boolean;
 };
 
 const AccentColorContext = createContext<AccentColorContextType | undefined>(
@@ -104,12 +137,64 @@ export function AccentColorProvider({
   children: React.ReactNode;
 }) {
   const { theme } = useTheme();
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
+  const isGuest = useAuth((state) => state.isGuest);
   const [accentColor, setAccentColorState] = useState<string>(() => {
     if (typeof window === "undefined") return DEFAULT_COLOR;
     return (
       localStorage.getItem(LOCAL_STORAGE_KEY.ACCENT_COLOR) || DEFAULT_COLOR
     );
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch accent color from API on mount (only if authenticated)
+  useEffect(() => {
+    const fetchAccentColorFromAPI = async () => {
+      setIsLoading(true);
+
+      if (!isAuthenticated || isGuest) {
+        // Fallback to default when not authenticated or guest
+        setAccentColorState(DEFAULT_COLOR);
+        localStorage.setItem(LOCAL_STORAGE_KEY.ACCENT_COLOR, DEFAULT_COLOR);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await profileService.getPreferences();
+        const apiThemeColor = response.preferences?.theme_color;
+
+        if (
+          apiThemeColor &&
+          THEME_COLORS.find((c) => c.value === apiThemeColor)
+        ) {
+          // User has a saved theme color preference
+          setAccentColorState(apiThemeColor);
+          localStorage.setItem(LOCAL_STORAGE_KEY.ACCENT_COLOR, apiThemeColor);
+        } else {
+          // No theme color in preferences, use default
+          setAccentColorState(DEFAULT_COLOR);
+          localStorage.setItem(LOCAL_STORAGE_KEY.ACCENT_COLOR, DEFAULT_COLOR);
+        }
+      } catch (error) {
+        console.error("Failed to fetch accent color from API:", error);
+        // On error, keep current localStorage value or use default
+        const storedColor = localStorage.getItem(
+          LOCAL_STORAGE_KEY.ACCENT_COLOR,
+        );
+        if (storedColor && THEME_COLORS.find((c) => c.value === storedColor)) {
+          setAccentColorState(storedColor);
+        } else {
+          setAccentColorState(DEFAULT_COLOR);
+          localStorage.setItem(LOCAL_STORAGE_KEY.ACCENT_COLOR, DEFAULT_COLOR);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAccentColorFromAPI();
+  }, [isAuthenticated, isGuest]);
 
   useEffect(() => {
     const selectedColor = THEME_COLORS.find((c) => c.value === accentColor);
@@ -171,6 +256,7 @@ export function AccentColorProvider({
     accentColor,
     setAccentColor,
     availableColors: THEME_COLORS,
+    isLoading,
   };
 
   return (
