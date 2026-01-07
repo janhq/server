@@ -20,7 +20,7 @@ import {
   URL_PARAM_VALUE,
   SETTINGS_SECTION,
 } from "@/constants";
-import { AccentColorProvider } from "@/hooks/use-accent-color";
+import { AccentColorProvider } from "@/providers/accent-color";
 
 function RootLayout() {
   const location = useLocation();
@@ -72,10 +72,7 @@ function RootLayout() {
           open={isLoginModal}
           onOpenChange={(open: boolean) => !open && handleCloseModal()}
         >
-          <DialogContent
-            onPointerDownOutside={(e) => e.preventDefault()}
-            onEscapeKeyDown={(e) => e.preventDefault()}
-          >
+          <DialogContent>
             <LoginForm />
           </DialogContent>
         </Dialog>

@@ -13,7 +13,8 @@ import { Button } from "@janhq/interfaces/button";
 import { useRef } from "react";
 import { THEME } from "@/constants";
 import { Separator } from "@janhq/interfaces/ui/separator";
-import { useAccentColor } from "@/hooks/use-accent-color";
+import { useAccentColor } from "@/providers/accent-color";
+import { profileService } from "@/services/profile-service";
 // import { useSidebarStore } from "@/stores/sidebar-store";
 
 export function GeneralSettings() {
@@ -23,6 +24,45 @@ export function GeneralSettings() {
   // const variant = useSidebarStore((state) => state.variant);
   // const setSidebarVariant = useSidebarStore((state) => state.setSidebarVariant);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleAccentColorChange = async (color: string) => {
+    setAccentColor(color);
+
+    // Find the selected color config
+    const selectedColor = availableColors.find((c) => c.value === color);
+    if (!selectedColor) return;
+
+    // Determine current theme mode
+    const isDark =
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+    // Get sidebar color based on theme
+    const sidebarColor =
+      typeof selectedColor.sidebar === "string"
+        ? selectedColor.sidebar
+        : isDark
+          ? selectedColor.sidebar.dark
+          : selectedColor.sidebar.light;
+
+    try {
+      await profileService.updatePreferences({
+        preferences: {
+          theme_color: color,
+          theme_config: {
+            name: selectedColor.name,
+            value: selectedColor.value,
+            thumb: selectedColor.thumb,
+            primary: selectedColor.primary,
+            sidebar: sidebarColor,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Failed to save accent color to API:", error);
+    }
+  };
 
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
     if (!buttonRef.current || !document.startViewTransition) {
@@ -182,7 +222,7 @@ export function GeneralSettings() {
           {availableColors.map((color) => (
             <button
               key={color.value}
-              onClick={() => setAccentColor(color.value)}
+              onClick={() => handleAccentColorChange(color.value)}
               className={cn(
                 "size-4 rounded-full transition-all hover:scale-110",
                 accentColor === color.value

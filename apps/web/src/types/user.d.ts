@@ -58,6 +58,14 @@ interface UpdateProfileSettingsRequest {
   preferences?: Partial<Preferences>;
 }
 
+interface ThemeConfig {
+  name: string;
+  value: string;
+  thumb: string;
+  primary: string;
+  sidebar: string;
+}
+
 interface Preferences {
   enable_browser: boolean;
   enable_deep_research: boolean;
@@ -65,4 +73,6 @@ interface Preferences {
   enable_thinking: boolean;
   enable_image_generation: boolean;
   selected_model: string;
+  theme_color?: string;
+  theme_config?: ThemeConfig;
 }

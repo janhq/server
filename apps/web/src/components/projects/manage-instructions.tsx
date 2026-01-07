@@ -77,8 +77,6 @@ export function ManageInstructions({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent
         className="p-0 gap-0 overflow-hidden"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => (isMobile ? e.preventDefault() : undefined)}
       >
         <DialogHeader className="px-6 py-4 border-b border-muted text-left">
