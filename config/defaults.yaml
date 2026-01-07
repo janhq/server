@@ -103,6 +103,7 @@ services:
     s3:
       endpoint: https://s3.menlo.ai
       public_endpoint: ""
+      url_enabled: false
       region: us-west-2
       bucket: platform-dev
       use_path_style: true

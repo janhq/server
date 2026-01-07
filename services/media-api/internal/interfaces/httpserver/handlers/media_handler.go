@@ -77,8 +77,8 @@ func (h *MediaHandler) Ingest(c *gin.Context) {
 		return
 	}
 
-	// Generate direct public URL for embedding in HTML
-	directURL := h.buildDirectURL(obj.ID)
+	// Generate public URL for embedding in HTML
+	directURL := h.buildMediaURL(obj)
 
 	c.JSON(http.StatusOK, ingestResponse{
 		ID:      obj.ID,
@@ -287,8 +287,8 @@ func (h *MediaHandler) DirectUpload(c *gin.Context) {
 		return
 	}
 
-	// Generate direct public URL for embedding in HTML
-	directURL := h.buildDirectURL(obj.ID)
+	// Generate public URL for embedding in HTML
+	directURL := h.buildMediaURL(obj)
 
 	c.JSON(http.StatusOK, ingestResponse{
 		ID:      obj.ID,
@@ -336,6 +336,18 @@ func (h *MediaHandler) PublicServe(c *gin.Context) {
 }
 
 // buildDirectURL constructs the public URL for direct media access
+func (h *MediaHandler) buildMediaURL(obj *domain.MediaObject) string {
+	if h.cfg.S3URLEnabled && h.cfg.IsS3Storage() {
+		publicEndpoint := strings.TrimSpace(h.cfg.S3PublicEndpoint)
+		if publicEndpoint != "" && strings.TrimSpace(obj.StorageKey) != "" {
+			base := strings.TrimSuffix(publicEndpoint, "/")
+			key := strings.TrimPrefix(strings.TrimSpace(obj.StorageKey), "/")
+			return fmt.Sprintf("%s/%s", base, key)
+		}
+	}
+	return h.buildDirectURL(obj.ID)
+}
+
 func (h *MediaHandler) buildDirectURL(id string) string {
 	publicURL := h.cfg.PublicURL
 	if publicURL == "" {
