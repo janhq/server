@@ -62,7 +62,9 @@ export function SharesSettings() {
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold">Share Links</h3>
+          <p className="text-base font-semibold mb-1 font-studio">
+            Share Links
+          </p>
           <p className="text-sm text-muted-foreground">
             Manage all your shared conversation links
           </p>
@@ -91,7 +93,7 @@ export function SharesSettings() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold">Share Links</h3>
+        <p className="text-base font-semibold mb-1 font-studio">Share Links</p>
         <p className="text-sm text-muted-foreground">
           Manage all your shared conversation links
         </p>
