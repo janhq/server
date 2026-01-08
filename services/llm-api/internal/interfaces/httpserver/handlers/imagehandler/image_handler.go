@@ -14,15 +14,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"jan-server/services/llm-api/internal/config"
-	"jan-server/services/llm-api/internal/domain/conversation"
 	domainmodel "jan-server/services/llm-api/internal/domain/model"
-	"jan-server/services/llm-api/internal/domain/query"
 	"jan-server/services/llm-api/internal/infrastructure/inference"
 	"jan-server/services/llm-api/internal/infrastructure/mediaclient"
 	"jan-server/services/llm-api/internal/infrastructure/observability"
 	imagerequest "jan-server/services/llm-api/internal/interfaces/httpserver/requests/image"
 	imageresponse "jan-server/services/llm-api/internal/interfaces/httpserver/responses/image"
-	"jan-server/services/llm-api/internal/utils/idgen"
 	"jan-server/services/llm-api/internal/utils/platformerrors"
 )
 
@@ -32,11 +29,11 @@ const (
 
 // ImageHandler handles image generation requests.
 type ImageHandler struct {
-	cfg                 *config.Config
-	providerService     *domainmodel.ProviderService
-	imageService        inference.ImageService
-	mediaClient         *mediaclient.Client
-	conversationService *conversation.ConversationService
+	cfg             *config.Config
+	providerService *domainmodel.ProviderService
+	imageService    inference.ImageService
+	mediaClient     *mediaclient.Client
+	// NOTE: conversationService removed - conversation items are now managed by chat handler
 }
 
 // NewImageHandler creates a new ImageHandler instance.
@@ -45,14 +42,13 @@ func NewImageHandler(
 	providerService *domainmodel.ProviderService,
 	imageService inference.ImageService,
 	mediaClient *mediaclient.Client,
-	conversationService *conversation.ConversationService,
+	_ interface{}, // conversationService - kept for backwards compatibility but unused
 ) *ImageHandler {
 	return &ImageHandler{
-		cfg:                 cfg,
-		providerService:     providerService,
-		imageService:        imageService,
-		mediaClient:         mediaClient,
-		conversationService: conversationService,
+		cfg:             cfg,
+		providerService: providerService,
+		imageService:    imageService,
+		mediaClient:     mediaClient,
 	}
 }
 
@@ -128,13 +124,9 @@ func (h *ImageHandler) GenerateImage(
 	// Calculate and add usage
 	response.Usage = h.calculateUsage(len(request.Prompt), serviceResponse)
 
-	// Store request/response in conversation when requested
-	storeConversation := request.Store == nil || *request.Store
-	if storeConversation && request.ConversationID != "" {
-		if err := h.storeInConversation(ctx, userID, request, response); err != nil {
-			log.Warn().Err(err).Msg("[ImageHandler] Failed to store image generation in conversation")
-		}
-	}
+	// NOTE: Conversation storage is now handled by chat handler when tool calls complete
+	// The storeInConversation logic has been removed to avoid duplicate items
+	// See chat_handler.go for conversation item management
 
 	duration := time.Since(startTime)
 	log.Info().
@@ -249,12 +241,9 @@ func (h *ImageHandler) EditImage(
 	response := h.convertToHTTPResponse(ctx, serviceResponse, request.ResponseFormat, authHeader)
 	response.Usage = h.calculateUsage(len(request.Prompt), serviceResponse)
 
-	storeConversation := request.Store == nil || *request.Store
-	if storeConversation && request.ConversationID != "" {
-		if err := h.storeInConversationEdit(ctx, userID, request, response); err != nil {
-			log.Warn().Err(err).Msg("[ImageHandler] Failed to store image edit in conversation")
-		}
-	}
+	// NOTE: Conversation storage is now handled by chat handler when tool calls complete
+	// The storeInConversationEdit logic has been removed to avoid duplicate items
+	// See chat_handler.go for conversation item management
 
 	duration := time.Since(startTime)
 	log.Info().
@@ -359,22 +348,22 @@ func (h *ImageHandler) buildEditServiceRequest(
 	}
 
 	return &inference.ImageEditRequest{
-		Model:             req.Model,
-		Prompt:            req.Prompt,
-		N:                 req.N,
-		Size:              size,
-		ResponseFormat:    responseFormat,
-		Strength:          req.Strength,
-		Steps:             req.Steps,
-		Seed:              req.Seed,
-		CfgScale:          req.CfgScale,
-		Sampler:           req.Sampler,
-		Scheduler:         req.Scheduler,
-		NegativePrompt:    req.NegativePrompt,
-		ImageData:         imageBytes,
-		ImageContentType:  imageContentType,
-		MaskData:          maskBytes,
-		MaskContentType:   maskContentType,
+		Model:            req.Model,
+		Prompt:           req.Prompt,
+		N:                req.N,
+		Size:             size,
+		ResponseFormat:   responseFormat,
+		Strength:         req.Strength,
+		Steps:            req.Steps,
+		Seed:             req.Seed,
+		CfgScale:         req.CfgScale,
+		Sampler:          req.Sampler,
+		Scheduler:        req.Scheduler,
+		NegativePrompt:   req.NegativePrompt,
+		ImageData:        imageBytes,
+		ImageContentType: imageContentType,
+		MaskData:         maskBytes,
+		MaskContentType:  maskContentType,
 	}, nil
 }
 
@@ -626,201 +615,9 @@ func (h *ImageHandler) convertToHTTPResponse(
 	}
 }
 
-// storeInConversation persists the prompt and generated images to the conversation.
-// Creates a user message followed by an assistant image_generation_call item so
-// images appear in history alongside normal chat messages.
-func (h *ImageHandler) storeInConversation(
-	ctx context.Context,
-	userID uint,
-	request imagerequest.ImageGenerationRequest,
-	response *imageresponse.ImageGenerationResponse,
-) error {
-	if h.conversationService == nil || request.ConversationID == "" {
-		return nil
-	}
-
-	conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, request.ConversationID, userID)
-	if err != nil {
-		return fmt.Errorf("failed to load conversation: %w", err)
-	}
-
-	branch := conv.ActiveBranch
-	if branch == "" {
-		branch = conversation.BranchMain
-	}
-
-	userRole := conversation.ItemRoleUser
-	assistantRole := conversation.ItemRoleAssistant
-	completed := conversation.ItemStatusCompleted
-
-	userItemID, _ := idgen.GenerateSecureID("msg", 16)
-	assistantItemID, _ := idgen.GenerateSecureID("msg", 16)
-
-	shouldStoreUserPrompt := true
-	lastItem, err := h.getLastConversationItem(ctx, conv, branch)
-	if err == nil && lastItem != nil {
-		if lastItem.Role != nil && *lastItem.Role == conversation.ItemRoleTool &&
-			lastItem.Status != nil && *lastItem.Status == conversation.ItemStatusInProgress {
-			// Tool calls (like image generation) already have a user message in the conversation.
-			shouldStoreUserPrompt = false
-		}
-	}
-
-	userItem := conversation.Item{
-		PublicID:  userItemID,
-		Object:    "conversation.item",
-		Type:      conversation.ItemTypeMessage,
-		Role:      &userRole,
-		Status:    &completed,
-		Content:   []conversation.Content{conversation.NewInputTextContent(request.Prompt)},
-		CreatedAt: time.Now().UTC(),
-	}
-
-	// Build assistant content summary + images
-	summary := fmt.Sprintf("Generated %d image(s)", len(response.Data))
-	if request.Prompt != "" {
-		summary = fmt.Sprintf("%s for prompt: %s", summary, request.Prompt)
-	}
-	assistantContent := []conversation.Content{
-		conversation.NewOutputTextContent(summary, nil),
-	}
-	for _, img := range response.Data {
-		if img.URL != "" {
-			assistantContent = append(assistantContent, conversation.NewImageContent(img.URL, "", ""))
-		}
-	}
-
-	modelName := request.Model
-	if modelName == "" {
-		modelName = "image-generation"
-	}
-
-	assistantItem := conversation.Item{
-		PublicID:  assistantItemID,
-		Object:    "conversation.item",
-		Type:      conversation.ItemTypeImageGenerationCall,
-		Role:      &assistantRole,
-		Status:    &completed,
-		Content:   assistantContent,
-		Name:      &modelName,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	items := make([]conversation.Item, 0, 2)
-	if shouldStoreUserPrompt {
-		items = append(items, userItem)
-	}
-	items = append(items, assistantItem)
-	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, branch, items); err != nil {
-		return fmt.Errorf("failed to add image items to conversation: %w", err)
-	}
-
-	return nil
-}
-
-// storeInConversationEdit persists the edit prompt and resulting images.
-func (h *ImageHandler) storeInConversationEdit(
-	ctx context.Context,
-	userID uint,
-	request imagerequest.ImageEditRequest,
-	response *imageresponse.ImageGenerationResponse,
-) error {
-	if h.conversationService == nil || request.ConversationID == "" {
-		return nil
-	}
-
-	conv, err := h.conversationService.GetConversationByPublicIDAndUserID(ctx, request.ConversationID, userID)
-	if err != nil {
-		return fmt.Errorf("failed to load conversation: %w", err)
-	}
-
-	branch := conv.ActiveBranch
-	if branch == "" {
-		branch = conversation.BranchMain
-	}
-
-	userRole := conversation.ItemRoleUser
-	assistantRole := conversation.ItemRoleAssistant
-	completed := conversation.ItemStatusCompleted
-
-	userItemID, _ := idgen.GenerateSecureID("msg", 16)
-	assistantItemID, _ := idgen.GenerateSecureID("msg", 16)
-
-	userContent := []conversation.Content{conversation.NewInputTextContent(request.Prompt)}
-	if request.Image != nil {
-		if request.Image.URL != "" {
-			userContent = append(userContent, conversation.NewImageContent(request.Image.URL, "", ""))
-		}
-	}
-
-	userItem := conversation.Item{
-		PublicID:  userItemID,
-		Object:    "conversation.item",
-		Type:      conversation.ItemTypeMessage,
-		Role:      &userRole,
-		Status:    &completed,
-		Content:   userContent,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	summary := fmt.Sprintf("Edited %d image(s)", len(response.Data))
-	if request.Prompt != "" {
-		summary = fmt.Sprintf("%s for prompt: %s", summary, request.Prompt)
-	}
-	assistantContent := []conversation.Content{
-		conversation.NewOutputTextContent(summary, nil),
-	}
-	for _, img := range response.Data {
-		if img.URL != "" {
-			assistantContent = append(assistantContent, conversation.NewImageContent(img.URL, "", ""))
-		}
-	}
-
-	modelName := request.Model
-	if modelName == "" {
-		modelName = "image-edit"
-	}
-
-	assistantItem := conversation.Item{
-		PublicID:  assistantItemID,
-		Object:    "conversation.item",
-		Type:      conversation.ItemTypeImageEditCall,
-		Role:      &assistantRole,
-		Status:    &completed,
-		Content:   assistantContent,
-		Name:      &modelName,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	items := []conversation.Item{userItem, assistantItem}
-	if _, err := h.conversationService.AddItemsToConversation(ctx, conv, branch, items); err != nil {
-		return fmt.Errorf("failed to add image edit items to conversation: %w", err)
-	}
-
-	return nil
-}
-
-func (h *ImageHandler) getLastConversationItem(
-	ctx context.Context,
-	conv *conversation.Conversation,
-	branch string,
-) (*conversation.Item, error) {
-	if h.conversationService == nil || conv == nil {
-		return nil, nil
-	}
-
-	limit := 1
-	pagination := &query.Pagination{
-		Limit: &limit,
-		Order: "desc",
-	}
-	items, err := h.conversationService.GetConversationItems(ctx, conv, branch, pagination)
-	if err != nil || len(items) == 0 {
-		return nil, err
-	}
-
-	return &items[0], nil
-}
+// NOTE: storeInConversation, storeInConversationEdit, and getLastConversationItem
+// have been removed. Conversation items are now managed by chat_handler.go
+// when MCP tool calls complete. This avoids duplicate item creation.
 
 // calculateUsage provides an estimated token usage for billing purposes.
 // Image generation doesn't have true tokens - this maps bytes/params to pseudo-tokens.

@@ -66,7 +66,7 @@ func (h *MediaHandler) Ingest(c *gin.Context) {
 	}
 
 	// Generate direct public URL for embedding in HTML
-	directURL := h.buildDirectURL(obj.ID)
+	directURL := h.buildMediaURL(obj)
 
 	c.JSON(http.StatusOK, ingestResponse{
 		ID:      obj.ID,
@@ -180,7 +180,7 @@ func (h *MediaHandler) DirectUpload(c *gin.Context) {
 	}
 
 	// Generate direct public URL for embedding in HTML
-	directURL := h.buildDirectURL(obj.ID)
+	directURL := h.buildMediaURL(obj)
 
 	c.JSON(http.StatusOK, ingestResponse{
 		ID:      obj.ID,
