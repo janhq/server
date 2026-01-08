@@ -32,6 +32,7 @@ func NewMediaHandler(cfg *config.Config, service *domain.Service, log zerolog.Lo
 }
 
 type ingestResponse struct {
+	ID      string `json:"id"`
 	Mime    string `json:"mime"`
 	Bytes   int64  `json:"bytes"`
 	Deduped bool   `json:"deduped"`
@@ -64,10 +65,11 @@ func (h *MediaHandler) Ingest(c *gin.Context) {
 		return
 	}
 
-	// Generate public URL for embedding in HTML
-	directURL := h.buildMediaURL(obj)
+	// Generate direct public URL for embedding in HTML
+	directURL := h.buildDirectURL(obj.ID)
 
 	c.JSON(http.StatusOK, ingestResponse{
+		ID:      obj.ID,
 		Mime:    obj.MimeType,
 		Bytes:   obj.Bytes,
 		Deduped: dedup,
@@ -177,10 +179,11 @@ func (h *MediaHandler) DirectUpload(c *gin.Context) {
 		return
 	}
 
-	// Generate public URL for embedding in HTML
-	directURL := h.buildMediaURL(obj)
+	// Generate direct public URL for embedding in HTML
+	directURL := h.buildDirectURL(obj.ID)
 
 	c.JSON(http.StatusOK, ingestResponse{
+		ID:      obj.ID,
 		Mime:    obj.MimeType,
 		Bytes:   obj.Bytes,
 		Deduped: dedup,

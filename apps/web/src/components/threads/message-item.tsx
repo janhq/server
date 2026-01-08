@@ -164,6 +164,37 @@ export const MessageItem = memo(
         .replace(/\n+$/, "")
         .trim();
     };
+    // Render user text with code blocks only (no other markdown)
+    const renderUserTextWithCodeBlocks = (text: string) => {
+      const codeBlockRegex = /(```[\s\S]*?```)/g;
+      const parts = text.split(codeBlockRegex);
+
+      return parts.map((part, index) => {
+        // Check if this part is a code block
+        if (part.startsWith("```") && part.endsWith("```")) {
+          // Remove the triple backticks and optional language identifier
+          const codeContent = part
+            .replace(/^```[^\n]*\n?/, "") // Remove opening ``` and language
+            .replace(/\n?```$/, ""); // Remove closing ```
+
+          return (
+            <pre
+              key={index}
+              className="bg-muted rounded-md p-2 overflow-x-auto"
+            >
+              <code>{codeContent}</code>
+            </pre>
+          );
+        } else {
+          // Render plain text (preserve whitespace)
+          return part ? (
+            <span key={index} className="whitespace-pre-wrap">
+              {part}
+            </span>
+          ) : null;
+        }
+      });
+    };
 
     const renderTextPart = (part: { text: string }, partIndex: number) => {
       // Don't render if text is empty
@@ -200,7 +231,7 @@ export const MessageItem = memo(
             )}
           >
             {message.role === MESSAGE_ROLE.USER ? (
-              displayText
+              renderUserTextWithCodeBlocks(displayText)
             ) : (
               <MessageResponse>{normalizeLatex(part.text)}</MessageResponse>
             )}
