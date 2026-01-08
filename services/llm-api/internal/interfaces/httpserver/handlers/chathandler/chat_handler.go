@@ -245,6 +245,12 @@ func (h *ChatHandler) CreateChatCompletion(
 			observability.AddSpanAttributes(ctx, attribute.Bool("chat.deep_research", true))
 		}
 
+		// Pass image flag to prompt orchestration for image generation tools
+		if request.Image != nil && *request.Image {
+			preferences["image"] = true
+			observability.AddSpanAttributes(ctx, attribute.Bool("chat.image", true))
+		}
+
 		var profileSettings *usersettings.ProfileSettings
 		if userSettings != nil {
 			profileSettings = &userSettings.ProfileSettings

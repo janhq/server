@@ -132,6 +132,9 @@ type ChatCompletionRequest struct {
 	// Defaults to true. When set to false for a model with supports_reasoning: true
 	// and an instruct model configured, the instruct model will be used instead.
 	EnableThinking *bool `json:"enable_thinking,omitempty"`
+	// Image indicates the user wants to generate images.
+	// When true, image generation tools will be made available.
+	Image *bool `json:"image,omitempty"`
 }
 
 // ConversationReference can unmarshal from either a string (ID) or an object
@@ -198,11 +201,11 @@ func (r *ChatCompletionRequest) UnmarshalJSON(data []byte) error {
 	// Post-process messages to handle JSON-stringified content
 	for i := range r.Messages {
 		msg := &r.Messages[i]
-		
+
 		// Check if content is a JSON-stringified array (starts with '[{')
 		if msg.Content != "" && len(msg.Content) > 2 && msg.Content[0] == '[' && msg.Content[1] == '{' {
 			log.Info().Int("message_index", i).Str("role", msg.Role).Str("content_prefix", msg.Content[:min(50, len(msg.Content))]).Msg("Detected JSON-stringified content")
-			
+
 			// Use flexible parser that handles both OpenAI and client formats
 			parts, err := parseFlexibleContentParts(msg.Content)
 			if err == nil {

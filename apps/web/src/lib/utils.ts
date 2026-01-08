@@ -7,6 +7,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Strip <attached_url>...</attached_url> tags from text for display
+ * These tags are used internally to pass image URLs to the API
+ */
+export const stripAttachedUrlTags = (text: string): string => {
+  if (!text) return text;
+  return text
+    .replace(/<attached_url>.*?<\/attached_url>\n?/g, "")
+    .replace(/\n+$/, "")
+    .trim();
+};
+
 export const getInitialsAvatar = (name: string) => {
   const words = name.trim().split(/\s+/);
   if (words.length >= 2) {
@@ -93,12 +105,13 @@ export const convertToUIMessages = (items: ConversationItem[]): UIMessage[] => {
           return [
             {
               type: contentType,
-              text:
+              text: stripAttachedUrlTags(
                 content.text?.text ||
-                content.text ||
-                content.input_text ||
-                content.reasoning_text ||
-                "",
+                  content.text ||
+                  content.input_text ||
+                  content.reasoning_text ||
+                  "",
+              ),
               mediaType:
                 contentType === CONTENT_TYPE.FILE ? "image/jpeg" : undefined,
               url:

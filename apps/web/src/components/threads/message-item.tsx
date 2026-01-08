@@ -157,6 +157,14 @@ export const MessageItem = memo(
       return result;
     };
 
+    // Strip <attached_url>...</attached_url> tags from display text
+    const stripAttachedUrlTags = (text: string): string => {
+      return text
+        .replace(/<attached_url>.*?<\/attached_url>\n?/g, "")
+        .replace(/\n+$/, "")
+        .trim();
+    };
+
     const renderTextPart = (part: { text: string }, partIndex: number) => {
       // Don't render if text is empty
       if (!part.text || part.text.trim() === "") {
@@ -164,6 +172,17 @@ export const MessageItem = memo(
       }
 
       const isLastPart = partIndex === message.parts.length - 1;
+
+      // Strip attached_url tags from user messages for display
+      const displayText =
+        message.role === MESSAGE_ROLE.USER
+          ? stripAttachedUrlTags(part.text)
+          : part.text;
+
+      // Don't render if display text is empty after stripping
+      if (!displayText) {
+        return null;
+      }
 
       return (
         <Message
@@ -181,7 +200,7 @@ export const MessageItem = memo(
             )}
           >
             {message.role === MESSAGE_ROLE.USER ? (
-              part.text
+              displayText
             ) : (
               <MessageResponse>{normalizeLatex(part.text)}</MessageResponse>
             )}

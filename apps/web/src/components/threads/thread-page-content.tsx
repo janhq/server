@@ -86,8 +86,15 @@ export function ThreadPageContent({
         deepResearchEnabled,
         isPrivateChat,
         enableThinking,
+        imageGenerationEnabled,
       ),
-    [conversationId, deepResearchEnabled, isPrivateChat, enableThinking],
+    [
+      conversationId,
+      deepResearchEnabled,
+      isPrivateChat,
+      enableThinking,
+      imageGenerationEnabled,
+    ],
   );
 
   const getUIMessages = useConversations((state) => state.getUIMessages);
@@ -475,9 +482,10 @@ export function ThreadPageContent({
       if (urls.length === 0) return message;
 
       const baseText = (message.text || "").trim();
-      const appended = baseText
-        ? `${baseText}\n\nImages:\n${urls.join("\n")}`
-        : `Images:\n${urls.join("\n")}`;
+      const wrappedUrls = urls
+        .map((url) => `<attached_url>${url}</attached_url>`)
+        .join("\n");
+      const appended = baseText ? `${baseText}\n\n${wrappedUrls}` : wrappedUrls;
 
       return {
         ...message,
