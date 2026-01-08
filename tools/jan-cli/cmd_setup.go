@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bufio"
@@ -157,6 +157,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 
 	// Ask about starting platform app
 	startPlatform := false
+	startWeb := true
 	if !skipPrompts {
 		fmt.Println()
 		fmt.Println("=" + strings.Repeat("=", 50))
@@ -236,6 +237,9 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	if startPlatform {
 		fmt.Println("  • Platform Web App: http://localhost:3000")
 	}
+	if startWeb {
+		fmt.Println("  - Web App:          http://localhost:3001")
+	}
 
 	fmt.Println()
 	fmt.Println("Get started:")
@@ -294,7 +298,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime boo
 
 	// Track which services to enable
 	useLocalVLLM := false
-	profiles := []string{"infra", "api", "mcp"} // Always include core services
+	profiles := []string{"infra", "api", "mcp", "web"} // Always include core services + web app
 	updates["JAN_PROVIDER_CONFIGS"] = "true"
 
 	if providerChoice == "1" {
@@ -482,6 +486,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime boo
 				s3Region = "us-west-2"
 			}
 			updates["MEDIA_S3_REGION"] = s3Region
+			promptForPublicS3URL(reader, updates, s3Endpoint, s3Bucket)
 
 			// Set media API URLs
 			updates["MEDIA_API_URL"] = "http://media-api:8285"
@@ -566,6 +571,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime boo
 					s3Region = "us-west-2"
 				}
 				updates["MEDIA_S3_REGION"] = s3Region
+				promptForPublicS3URL(reader, updates, s3Endpoint, s3Bucket)
 
 				fmt.Println("✓ Media API enabled with S3 storage")
 			} else {
@@ -886,6 +892,37 @@ func configureMemoryOptions(reader *bufio.Reader, updates map[string]string) (bo
 	return external, useRedis
 }
 
+func promptForPublicS3URL(reader *bufio.Reader, updates map[string]string, s3Endpoint string, s3Bucket string) {
+	fmt.Println()
+	fmt.Println("Public S3 URLs (optional)")
+	fmt.Println("Remote LLMs cannot read local media URLs.")
+	fmt.Print("Return public S3 URLs in upload responses? (y/N): ")
+
+	publicChoice, _ := reader.ReadString('\n')
+	publicChoice = strings.TrimSpace(strings.ToLower(publicChoice))
+
+	if publicChoice == "y" || publicChoice == "yes" {
+		updates["MEDIA_S3_URL_ENABLED"] = "true"
+
+		base := strings.TrimSuffix(strings.TrimSpace(s3Endpoint), "/")
+		defaultPublic := base
+		if s3Bucket != "" {
+			defaultPublic = fmt.Sprintf("%s/%s", base, strings.TrimPrefix(s3Bucket, "/"))
+		}
+
+		fmt.Printf("Public S3 base URL (default: %s): ", defaultPublic)
+		publicEndpoint, _ := reader.ReadString('\n')
+		publicEndpoint = strings.TrimSpace(publicEndpoint)
+		if publicEndpoint == "" {
+			publicEndpoint = defaultPublic
+		}
+		updates["MEDIA_S3_PUBLIC_ENDPOINT"] = publicEndpoint
+		fmt.Println("✓ Public S3 URLs enabled for media uploads")
+	} else {
+		updates["MEDIA_S3_URL_ENABLED"] = "false"
+	}
+}
+
 func updateEnvVariable(envPath, key, value string) error {
 	// Read current .env
 	data, err := os.ReadFile(envPath)
@@ -935,7 +972,7 @@ func parseProfiles(lines []string) []string {
 			}
 		}
 	}
-	return []string{"infra", "api", "mcp"}
+	return []string{"infra", "api", "mcp", "web"}
 }
 
 func addPlatformProfile(envPath string) error {

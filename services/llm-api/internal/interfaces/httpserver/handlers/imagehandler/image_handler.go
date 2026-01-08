@@ -205,7 +205,6 @@ func (h *ImageHandler) EditImage(
 
 	if request.Image != nil {
 		log.Debug().
-			Str("image_id", request.Image.ID).
 			Str("image_url", request.Image.URL).
 			Bool("image_has_b64", strings.TrimSpace(request.Image.B64JSON) != "").
 			Str("request_id", reqID).
@@ -213,7 +212,6 @@ func (h *ImageHandler) EditImage(
 	}
 	if request.Mask != nil {
 		log.Debug().
-			Str("mask_id", request.Mask.ID).
 			Str("mask_url", request.Mask.URL).
 			Bool("mask_has_b64", strings.TrimSpace(request.Mask.B64JSON) != "").
 			Str("request_id", reqID).
@@ -511,30 +509,9 @@ func (h *ImageHandler) resolveImageInput(
 		return downloadImage(ctx, input.URL)
 	}
 
-	if strings.TrimSpace(input.ID) != "" {
-		if h.mediaClient == nil {
-			return nil, "", platformerrors.NewError(ctx, platformerrors.LayerDomain,
-				platformerrors.ErrorTypeValidation,
-				"media client not configured", nil, "media-client-missing")
-		}
-		authHeader := reqCtx.GetHeader("Authorization")
-		log.Debug().
-			Str("id", input.ID).
-			Msg("[ImageHandler] Resolving image input from media ID")
-		presigned, err := h.mediaClient.GetPresignedURL(ctx, input.ID, authHeader)
-		if err != nil {
-			return nil, "", err
-		}
-		log.Debug().
-			Str("id", input.ID).
-			Str("url", presigned).
-			Msg("[ImageHandler] Resolved media ID to presigned URL")
-		return downloadImage(ctx, presigned)
-	}
-
 	return nil, "", platformerrors.NewError(ctx, platformerrors.LayerDomain,
 		platformerrors.ErrorTypeValidation,
-		"image input must include id, url, or b64_json", nil, "image-edit-validation-003")
+		"image input must include url or b64_json", nil, "image-edit-validation-003")
 }
 
 func decodeBase64Image(raw string) ([]byte, string, error) {
@@ -609,7 +586,7 @@ func downloadImage(ctx context.Context, url string) ([]byte, string, error) {
 }
 
 // convertToHTTPResponse converts the service response to an HTTP response.
-// Uploads base64 images to media-api and returns jan_id placeholders.
+// Uploads base64 images to media-api and returns direct URLs.
 func (h *ImageHandler) convertToHTTPResponse(
 	ctx context.Context,
 	resp *inference.ImageGenerateResponse,
@@ -623,16 +600,14 @@ func (h *ImageHandler) convertToHTTPResponse(
 			RevisedPrompt: item.RevisedPrompt,
 		}
 
-		// If we have base64 data, upload to media-api and return jan_id placeholder
+		// If we have base64 data, upload to media-api and return direct URL
 		if item.B64JSON != "" && format != "b64_json" && h.mediaClient != nil {
 			mediaResp, err := h.mediaClient.UploadBase64Image(ctx, item.B64JSON, "image/png", authHeader)
 			if err != nil {
 				log.Warn().Err(err).Msg("[ImageHandler] Failed to upload to media-api, falling back to base64")
 				imgData.B64JSON = item.B64JSON
 			} else {
-				// Return presigned URL for immediate access
-				imgData.ID = mediaResp.ID
-				imgData.URL = mediaResp.PresignedURL
+				imgData.URL = mediaResp.URL
 			}
 		} else if item.URL != "" {
 			// If provider returned a URL directly, use it
@@ -710,8 +685,8 @@ func (h *ImageHandler) storeInConversation(
 		conversation.NewOutputTextContent(summary, nil),
 	}
 	for _, img := range response.Data {
-		if img.URL != "" || img.ID != "" {
-			assistantContent = append(assistantContent, conversation.NewImageContent(img.URL, img.ID, ""))
+		if img.URL != "" {
+			assistantContent = append(assistantContent, conversation.NewImageContent(img.URL, "", ""))
 		}
 	}
 
@@ -773,8 +748,8 @@ func (h *ImageHandler) storeInConversationEdit(
 
 	userContent := []conversation.Content{conversation.NewInputTextContent(request.Prompt)}
 	if request.Image != nil {
-		if request.Image.URL != "" || request.Image.ID != "" {
-			userContent = append(userContent, conversation.NewImageContent(request.Image.URL, request.Image.ID, ""))
+		if request.Image.URL != "" {
+			userContent = append(userContent, conversation.NewImageContent(request.Image.URL, "", ""))
 		}
 	}
 
@@ -796,8 +771,8 @@ func (h *ImageHandler) storeInConversationEdit(
 		conversation.NewOutputTextContent(summary, nil),
 	}
 	for _, img := range response.Data {
-		if img.URL != "" || img.ID != "" {
-			assistantContent = append(assistantContent, conversation.NewImageContent(img.URL, img.ID, ""))
+		if img.URL != "" {
+			assistantContent = append(assistantContent, conversation.NewImageContent(img.URL, "", ""))
 		}
 	}
 

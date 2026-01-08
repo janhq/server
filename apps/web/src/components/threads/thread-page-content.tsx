@@ -17,7 +17,6 @@ import { useModels } from "@/stores/models-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConversations } from "@/stores/conversation-store";
 import { mcpService } from "@/services/mcp-service";
-import { imageGenerationService } from "@/services/image-generation-service";
 import { useCapabilities } from "@/stores/capabilities-store";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { UIDataTypes, UIMessage, UITools } from "ai";
@@ -60,7 +59,6 @@ export function ThreadPageContent({
   const models = useModels((state) => state.models);
   const setSelectedModel = useModels((state) => state.setSelectedModel);
   const getConversation = useConversations((state) => state.getConversation);
-  const [generatingImage, setGeneratingImage] = useState<boolean>(false);
   const initialMessageSentRef = useRef(false);
   const reasoningContainerRef = useRef<HTMLDivElement>(null);
   const deepResearchEnabled = useCapabilities(
@@ -88,8 +86,15 @@ export function ThreadPageContent({
         deepResearchEnabled,
         isPrivateChat,
         enableThinking,
+        imageGenerationEnabled,
       ),
-    [conversationId, deepResearchEnabled, isPrivateChat, enableThinking],
+    [
+      conversationId,
+      deepResearchEnabled,
+      isPrivateChat,
+      enableThinking,
+      imageGenerationEnabled,
+    ],
   );
 
   const getUIMessages = useConversations((state) => state.getUIMessages);
@@ -466,61 +471,29 @@ export function ThreadPageContent({
     ],
   );
 
-  const generateImage = async (message: PromptInputMessage) => {
-    setGeneratingImage(true);
-    const prompt = message.text || "";
+  const appendImageUrlsToPrompt = useCallback(
+    (message: PromptInputMessage, enabled: boolean): PromptInputMessage => {
+      if (!enabled) return message;
+      const urls = message.files
+        .map((file) => file.url)
+        .filter(
+          (url): url is string => typeof url === "string" && url.trim() !== "",
+        );
+      if (urls.length === 0) return message;
 
-    // Add user message to UI immediately
-    const tempUserId = `temp-user-${Date.now()}`;
-    const userMessage: UIMessage = {
-      id: tempUserId,
-      role: MESSAGE_ROLE.USER,
-      parts: [{ type: CONTENT_TYPE.TEXT, text: prompt }],
-    };
-    setMessages([...getCurrentMessages(), userMessage]);
+      const baseText = (message.text || "").trim();
+      const wrappedUrls = urls
+        .map((url) => `<attached_url>${url}</attached_url>`)
+        .join("\n");
+      const appended = baseText ? `${baseText}\n\n${wrappedUrls}` : wrappedUrls;
 
-    try {
-      // Create user item in conversation
-
-      // Generate image
-      const imageResponse = await imageGenerationService.generateImage({
-        prompt,
-        n: 1,
-        size: "1024x1024",
-        response_format: "url",
-        conversation_id: conversationId,
-        store: true,
-      });
-
-      // Create assistant message with image
-      const imageUrl = imageResponse.data[0]?.url;
-      if (imageUrl) {
-        const tempAssistantId = `temp-assistant-${Date.now()}`;
-        const assistantMessage: UIMessage = {
-          id: tempAssistantId,
-          role: MESSAGE_ROLE.ASSISTANT,
-          parts: [
-            {
-              type: CONTENT_TYPE.FILE,
-              url: imageUrl,
-              mediaType: "image/png",
-            },
-          ],
-        };
-        setMessages([...getCurrentMessages(), assistantMessage]);
-
-        // Move conversation to top
-        if (!isPrivateChat && conversationId) {
-          moveConversationToTop(conversationId);
-        }
-      }
-    } catch (error) {
-      console.error("Image generation failed:", error);
-      // TODO: Show error message to user
-    } finally {
-      setGeneratingImage(false);
-    }
-  };
+      return {
+        ...message,
+        text: appended,
+      };
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(
     async (message?: PromptInputMessage) => {
@@ -535,20 +508,19 @@ export function ThreadPageContent({
       ) {
         sessionData.tools = [];
 
-        // Handle image generation mode
-        if (imageGenerationEnabled && conversationId) {
-          await generateImage(message);
-          return;
-        }
+        const withImageUrls = appendImageUrlsToPrompt(
+          message,
+          imageGenerationEnabled,
+        );
 
         // Normal message flow
 
         // Persist to server (fire-and-forget, ID mapping handled in onFinish)
-        createUserMessageItem(message);
+        createUserMessageItem(withImageUrls);
 
         sendMessage({
-          text: message.text || "Sent with attachments",
-          files: message.files,
+          text: withImageUrls.text || "Sent with attachments",
+          files: withImageUrls.files,
         });
         // Move conversation to top when a new message is sent
         if (conversationId && !isPrivateChat) {
@@ -577,9 +549,10 @@ export function ThreadPageContent({
       conversationId,
       isPrivateChat,
       moveConversationToTop,
-      imageGenerationEnabled,
       setMessages,
       createUserMessageItem,
+      appendImageUrlsToPrompt,
+      imageGenerationEnabled,
     ],
   );
 
@@ -640,18 +613,17 @@ export function ThreadPageContent({
           sessionStorage.removeItem(initialItemsKey);
         }
 
-        if (imageGenerationEnabled && conversationId) {
-          // Handle image generation mode
-          generateImage(message);
-          return;
-        }
+        const withImageUrls = appendImageUrlsToPrompt(
+          message,
+          imageGenerationEnabled,
+        );
 
         // Persist to server (fire-and-forget, ID mapping handled in onFinish)
-        createUserMessageItem(message);
+        createUserMessageItem(withImageUrls);
 
         sendMessage({
-          text: message.text,
-          files: message.files,
+          text: withImageUrls.text,
+          files: withImageUrls.files,
         });
         // Move conversation to top when initial message is sent
         if (conversationId && !isPrivateChat) {
@@ -669,6 +641,8 @@ export function ThreadPageContent({
     setMessages,
     moveConversationToTop,
     createUserMessageItem,
+    appendImageUrlsToPrompt,
+    imageGenerationEnabled,
   ]);
 
   // Fetch messages for old conversations (only for persistent conversations)
@@ -748,14 +722,12 @@ export function ThreadPageContent({
                     message={message}
                     isFirstMessage={messageIndex === 0}
                     isLastMessage={messageIndex === messages.length - 1}
-                    status={generatingImage ? CHAT_STATUS.STREAMING : status}
+                    status={status}
                     reasoningContainerRef={reasoningContainerRef}
                     onRegenerate={conversationId ? handleRegenerate : undefined}
                   />
                 ))}
-                {(generatingImage
-                  ? CHAT_STATUS.STREAMING
-                  : status === CHAT_STATUS.SUBMITTED) && (
+                {status === CHAT_STATUS.SUBMITTED && (
                   <Loader className="animate-spin" />
                 )}
               </ConversationContent>
@@ -768,11 +740,7 @@ export function ThreadPageContent({
             <ChatInput
               submit={handleSubmit}
               status={
-                sessionData.tools.length > 0
-                  ? CHAT_STATUS.STREAMING
-                  : generatingImage
-                    ? CHAT_STATUS.STREAMING
-                    : status
+                sessionData.tools.length > 0 ? CHAT_STATUS.STREAMING : status
               }
               conversationId={conversationId}
             />

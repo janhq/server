@@ -47,7 +47,6 @@ import {
 import { Button } from "@janhq/interfaces/button";
 import { twMerge } from "tailwind-merge";
 import { cn } from "@/lib/utils";
-import { resolveJanMediaUrl } from "@/services/media-upload-service";
 
 export type MessageItemProps = {
   message: UIMessage;
@@ -158,6 +157,13 @@ export const MessageItem = memo(
       return result;
     };
 
+    // Strip <attached_url>...</attached_url> tags from display text
+    const stripAttachedUrlTags = (text: string): string => {
+      return text
+        .replace(/<attached_url>.*?<\/attached_url>\n?/g, "")
+        .replace(/\n+$/, "")
+        .trim();
+    };
     // Render user text with code blocks only (no other markdown)
     const renderUserTextWithCodeBlocks = (text: string) => {
       const codeBlockRegex = /(```[\s\S]*?```)/g;
@@ -198,6 +204,17 @@ export const MessageItem = memo(
 
       const isLastPart = partIndex === message.parts.length - 1;
 
+      // Strip attached_url tags from user messages for display
+      const displayText =
+        message.role === MESSAGE_ROLE.USER
+          ? stripAttachedUrlTags(part.text)
+          : part.text;
+
+      // Don't render if display text is empty after stripping
+      if (!displayText) {
+        return null;
+      }
+
       return (
         <Message
           key={`${message.id}-${partIndex}`}
@@ -207,9 +224,14 @@ export const MessageItem = memo(
             isFirstMessage && message.role === MESSAGE_ROLE.USER && "mt-0!",
           )}
         >
-          <MessageContent className={cn("leading-relaxed")}>
+          <MessageContent
+            className={cn(
+              "leading-relaxed",
+              message.role === MESSAGE_ROLE.USER && "whitespace-pre-wrap",
+            )}
+          >
             {message.role === MESSAGE_ROLE.USER ? (
-              renderUserTextWithCodeBlocks(part.text)
+              renderUserTextWithCodeBlocks(displayText)
             ) : (
               <MessageResponse>{normalizeLatex(part.text)}</MessageResponse>
             )}
@@ -302,7 +324,6 @@ export const MessageItem = memo(
                   });
                 }
               }}
-              resolver={resolveJanMediaUrl}
             />
           </MessageAttachments>
 
@@ -403,14 +424,12 @@ export const MessageItem = memo(
               <ToolOutput
                 output={part.output}
                 errorText={"errorText" in part ? part.errorText : undefined}
-                resolver={resolveJanMediaUrl}
               />
             )}
             {part.state === TOOL_STATE.OUTPUT_ERROR && (
               <ToolOutput
                 output={undefined}
                 errorText={"errorText" in part ? part.errorText : undefined}
-                resolver={resolveJanMediaUrl}
               />
             )}
           </ToolContent>

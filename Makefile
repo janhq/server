@@ -9,7 +9,7 @@
 # QUICK START
 # ============================================================================================================
 #
-#   make quickstart              - Interactive setup and run (core: infra + API + MCP web search)
+#   make quickstart              - Interactive setup and run (core: infra + API + MCP web search + web app)
 #   make setup                   - Initial project setup (dependencies, networks, .env)
 #   make cli-install             - Install jan-cli tool globally
 #   make build-all               - Build all Docker images (including platform & web)
