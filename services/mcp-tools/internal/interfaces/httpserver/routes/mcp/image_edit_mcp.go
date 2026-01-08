@@ -23,6 +23,37 @@ type ImageEditInput struct {
 	B64JSON *string `json:"b64_json,omitempty"`
 }
 
+// UnmarshalJSON supports string inputs (treated as URL, ID, or base64) or object inputs.
+func (i *ImageEditInput) UnmarshalJSON(data []byte) error {
+	if i == nil {
+		return nil
+	}
+	var rawString string
+	if err := json.Unmarshal(data, &rawString); err == nil {
+		trimmed := strings.TrimSpace(rawString)
+		if trimmed == "" {
+			return nil
+		}
+		switch {
+		case strings.HasPrefix(trimmed, "jan_"):
+			i.ID = &trimmed
+		case strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") || strings.HasPrefix(trimmed, "data:"):
+			i.URL = &trimmed
+		default:
+			i.B64JSON = &trimmed
+		}
+		return nil
+	}
+
+	type Alias ImageEditInput
+	var decoded Alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*i = ImageEditInput(decoded)
+	return nil
+}
+
 // ImageEditArgs defines the arguments for the edit_image tool.
 type ImageEditArgs struct {
 	Prompt         string          `json:"prompt"`
@@ -105,13 +136,13 @@ func (i *ImageEditMCP) RegisterTools(server *mcp.Server) {
 				"description": "Edit instruction describing the desired changes",
 			},
 			"image": map[string]any{
-				"type":        []string{"object", "null"},
-				"description": "Input image (id, url, or b64_json)",
+				"type":        []string{"object", "string", "null"},
+				"description": "Input image (id, url, b64_json, or URL string)",
 				"properties":  imageInputSchema["properties"],
 			},
 			"mask": map[string]any{
-				"type":        []string{"object", "null"},
-				"description": "Optional mask for inpainting (id, url, or b64_json)",
+				"type":        []string{"object", "string", "null"},
+				"description": "Optional mask for inpainting (id, url, b64_json, or URL string)",
 				"properties":  imageInputSchema["properties"],
 			},
 			"size": map[string]any{

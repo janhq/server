@@ -175,8 +175,8 @@ export function createAuthenticatedFetch(customBody?: object): typeof fetch {
       ...init,
       body: customBody
         ? JSON.stringify({
-            ...customBody,
             ...(init?.body ? JSON.parse(init.body.toString()) : {}),
+            ...customBody,
           })
         : init?.body,
       skipAuthRefresh: false,
