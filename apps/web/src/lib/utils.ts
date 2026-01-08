@@ -34,7 +34,9 @@ export const getInitialsAvatar = (name: string) => {
  */
 export const convertToUIMessages = (items: ConversationItem[]): UIMessage[] => {
   return items
-    .filter((e) => e.role !== MESSAGE_ROLE.TOOL)
+    .filter(
+      (e) => e.role !== MESSAGE_ROLE.TOOL && e.type !== "image_generation_call",
+    )
     .map((item) => {
       const parts = item.content
         .map((content) => {
