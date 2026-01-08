@@ -698,6 +698,7 @@ COLLECTION_FILES := $(filter-out $(COLLECTIONS_DIR)/memory.postman.json $(COLLEC
 # Base flags without auth (for targets that need custom auth)
 API_TEST_BASE_FLAGS := --env-file tests/e2e/.env \
   --env-var gateway_url=$(GATEWAY_URL) \
+  --env-var media_service_key=$(MEDIA_SERVICE_KEY) \
   --auto-models \
   --timeout-request $(TIMEOUT_MS)
 

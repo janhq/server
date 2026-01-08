@@ -185,9 +185,16 @@ func (h *ChatHandler) CreateChatCompletion(
 		return nil, err
 	}
 
+	imageRequested := request.Image != nil && *request.Image
+
+	if imageRequested && request.EnableThinking != nil && !*request.EnableThinking {
+		observability.AddSpanEvent(ctx, "ignoring_enable_thinking_for_image_request")
+		request.EnableThinking = nil
+	}
+
 	// Check if we should use the instruct model instead
 	// This happens when enable_thinking is explicitly false and the model has an instruct model configured
-	if request.EnableThinking != nil && !*request.EnableThinking && selectedProviderModel.InstructModelID != nil {
+	if request.EnableThinking != nil && !*request.EnableThinking && selectedProviderModel.InstructModelID != nil && !imageRequested {
 		instructModel, instructProvider, err := h.providerHandler.GetProviderModelByID(ctx, *selectedProviderModel.InstructModelID)
 		if err == nil && instructModel != nil && instructProvider != nil {
 			observability.AddSpanEvent(ctx, "switching_to_instruct_model",
