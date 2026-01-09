@@ -91,7 +91,7 @@ func NewImageEditMCP(llmAPIBaseURL string, enabled bool) *ImageEditMCP {
 		llmAPIBaseURL: strings.TrimRight(llmAPIBaseURL, "/"),
 		enabled:       enabled,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 600 * time.Second,
 		},
 	}
 }
