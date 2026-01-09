@@ -1,57 +1,69 @@
 {
   "name": "@janhq/interfaces",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.0.3",
   "type": "module",
+  "homepage": "https://jan.ai/",
+  "description": "Shared UI component library for Jan",
+  "author": "Jan service@jan.ai",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janhq/jan-server.git",
+    "directory": "packages/interfaces"
+  },
+  "keywords": [
+    "jan",
+    "interfaces"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./lib": {
-      "types": "./src/lib/utils.ts",
-      "default": "./src/lib/utils.ts"
-    },
-    "./hooks": {
-      "types": "./src/hooks/use-mobile.ts",
-      "default": "./src/hooks/use-mobile.ts"
-    },
-    "./hooks/use-mobile": {
-      "types": "./src/hooks/use-mobile.ts",
-      "default": "./src/hooks/use-mobile.ts"
-    },
-    "./hooks/use-is-mobile-device": {
-      "types": "./src/hooks/use-is-mobile-device.ts",
-      "default": "./src/hooks/use-is-mobile-device.ts"
-    },
-    "./hooks/use-resolved-media-url": {
-      "types": "./src/hooks/use-resolved-media-url.ts",
-      "default": "./src/hooks/use-resolved-media-url.ts"
-    },
-    "./ai-elements/*": {
-      "types": "./src/ai-elements/*.tsx",
-      "default": "./src/ai-elements/*.tsx"
+      "types": "./dist/lib/utils.d.ts",
+      "import": "./dist/lib/utils.js"
     },
     "./constants": {
-      "types": "./src/lib/constants.ts",
-      "default": "./src/lib/constants.ts"
+      "types": "./dist/lib/constants.d.ts",
+      "import": "./dist/lib/constants.js"
+    },
+    "./hooks/*": {
+      "types": "./dist/hooks/*.d.ts",
+      "import": "./dist/hooks/*.js"
+    },
+    "./ai-elements/*": {
+      "types": "./dist/ai-elements/*.d.ts",
+      "import": "./dist/ai-elements/*.js"
     },
     "./svgs/*": {
-      "types": "./src/svgs/*.tsx",
-      "default": "./src/svgs/*.tsx"
+      "types": "./dist/svgs/*.d.ts",
+      "import": "./dist/svgs/*.js"
+    },
+    "./providers/*": {
+      "types": "./dist/providers/*.d.ts",
+      "import": "./dist/providers/*.js"
     },
     "./ui/*": {
-      "types": "./src/ui/*.tsx",
-      "default": "./src/ui/*.tsx"
-    },
-    "./components/*": {
-      "types": "./src/ui/*.tsx",
-      "default": "./src/ui/*.tsx"
+      "types": "./dist/ui/*.d.ts",
+      "import": "./dist/ui/*.js"
     },
     "./*": {
-      "types": "./src/ui/*.tsx",
-      "default": "./src/ui/*.tsx"
+      "types": "./dist/ui/*.d.ts",
+      "import": "./dist/ui/*.js"
     }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": "^19.2.0",
