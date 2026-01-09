@@ -20,16 +20,20 @@ func init() {
 	setupAndRunCmd.Flags().Bool("skip-prompts", false, "Skip interactive prompts and use existing .env")
 	setupAndRunCmd.Flags().Bool("with-memory-tools", false, "Enable memory tools profile and defaults during setup")
 	setupAndRunCmd.Flags().Bool("with-realtime-api", false, "Enable realtime API profile during setup")
+	setupAndRunCmd.Flags().Bool("with-aio", false, "Enable AIO Sandbox profile during setup")
 	setupAndRunCmd.Flags().Bool("skip-realtime", false, "Skip realtime API setup (disable realtime profile)")
 	setupAndRunCmd.Flags().Bool("skip-memory", false, "Skip memory tools setup (disable memory profile)")
+	setupAndRunCmd.Flags().Bool("skip-aio", false, "Skip AIO Sandbox setup (disable aio profile)")
 }
 
 func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	skipPrompts, _ := cmd.Flags().GetBool("skip-prompts")
 	enableMemory, _ := cmd.Flags().GetBool("with-memory-tools")
 	enableRealtime, _ := cmd.Flags().GetBool("with-realtime-api")
+	enableAIO, _ := cmd.Flags().GetBool("with-aio")
 	skipRealtime, _ := cmd.Flags().GetBool("skip-realtime")
 	skipMemory, _ := cmd.Flags().GetBool("skip-memory")
+	skipAIO, _ := cmd.Flags().GetBool("skip-aio")
 
 	fmt.Println("🚀 Jan Server Setup and Run")
 	fmt.Println("=" + strings.Repeat("=", 50))
@@ -55,7 +59,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 			if response != "y" && response != "yes" {
 				fmt.Println("Using existing .env file...")
 			} else {
-				if err := promptForEnvVars(envPath, enableMemory, skipRealtime, skipMemory); err != nil {
+				if err := promptForEnvVars(envPath, enableMemory, enableAIO, skipRealtime, skipMemory, skipAIO); err != nil {
 					return fmt.Errorf("failed to update .env: %w", err)
 				}
 			}
@@ -66,7 +70,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to copy .env template: %w", err)
 			}
 
-			if err := promptForEnvVars(envPath, enableMemory, skipRealtime, skipMemory); err != nil {
+			if err := promptForEnvVars(envPath, enableMemory, enableAIO, skipRealtime, skipMemory, skipAIO); err != nil {
 				return fmt.Errorf("failed to configure .env: %w", err)
 			}
 		}
@@ -87,6 +91,12 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 	if skipPrompts && enableRealtime {
 		if err := applyRealtimeDefaults(envPath); err != nil {
 			return fmt.Errorf("failed to enable realtime API defaults: %w", err)
+		}
+	}
+
+	if skipPrompts && enableAIO {
+		if err := applyAIODefaults(envPath); err != nil {
+			return fmt.Errorf("failed to enable AIO Sandbox defaults: %w", err)
 		}
 	}
 
@@ -178,7 +188,7 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 		if platformResponse == "y" || platformResponse == "yes" {
 			startPlatform = true
 			fmt.Println("✓ Platform app will be started")
-			
+
 			// Update COMPOSE_PROFILES to include platform
 			if err := addPlatformProfile(envPath); err != nil {
 				fmt.Println("⚠️  Warning: Failed to add platform profile to .env")
@@ -233,6 +243,12 @@ func runSetupAndRun(cmd *cobra.Command, args []string) error {
 		fmt.Println("  • Realtime API:     http://localhost:8186")
 	}
 
+	// Show AIO Sandbox if enabled
+	if os.Getenv("AIO_ENABLED") == "true" {
+		fmt.Println("  • AIO Sandbox:      http://localhost:8180")
+		fmt.Println("  • AIO Docs:         http://localhost:8180/v1/docs")
+	}
+
 	// Show Platform if it was started
 	if startPlatform {
 		fmt.Println("  • Platform Web App: http://localhost:3000")
@@ -269,7 +285,7 @@ func copyEnvTemplate(destPath string) error {
 	return nil
 }
 
-func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime bool, skipMemory bool) error {
+func promptForEnvVars(envPath string, defaultEnableMemory bool, enableAIO bool, skipRealtime bool, skipMemory bool, skipAIO bool) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println()
@@ -394,7 +410,7 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime boo
 	var enableMemory bool
 	var externalEmbedding bool
 	var useRedis bool
-	
+
 	if skipMemory {
 		// Skip memory prompt - disable memory tools
 		enableMemory = false
@@ -639,6 +655,44 @@ func promptForEnvVars(envPath string, defaultEnableMemory bool, skipRealtime boo
 		fmt.Println("✓ Realtime API disabled (skipped via --skip-realtime flag)")
 	}
 
+	// 6. AIO Sandbox Configuration
+	if skipAIO {
+		updates["AIO_ENABLED"] = "false"
+		fmt.Println()
+		fmt.Println("⏭️  Skipping AIO Sandbox setup (disabled via --skip-aio flag)")
+	} else if enableAIO {
+		// Enable AIO via flag without prompting
+		updates["AIO_ENABLED"] = "true"
+		updates["AIO_URL"] = "http://aio-sandbox:8080"
+		updates["AIO_TIMEOUT"] = "120s"
+		profiles = append(profiles, "aio")
+		fmt.Println()
+		fmt.Println("✓ AIO Sandbox enabled (via --with-aio flag)")
+	} else {
+		fmt.Println()
+		fmt.Println("🤖 AIO Sandbox Setup")
+		fmt.Println("AIO Sandbox provides browser automation, shell/terminal, file operations, and code execution.")
+		fmt.Println("Note: AIO requires ~4GB RAM and takes ~60s to start.")
+		fmt.Print("Enable AIO Sandbox? (y/N): ")
+
+		aioChoice, _ := reader.ReadString('\n')
+		aioChoice = strings.TrimSpace(strings.ToLower(aioChoice))
+
+		// Default is No for AIO (resource-intensive)
+		if aioChoice == "y" || aioChoice == "yes" {
+			updates["AIO_ENABLED"] = "true"
+			updates["AIO_URL"] = "http://aio-sandbox:8080"
+			updates["AIO_TIMEOUT"] = "120s"
+			profiles = append(profiles, "aio")
+			fmt.Println("✓ AIO Sandbox enabled (profile: aio)")
+			fmt.Println("  Tools: aio_shell_exec, aio_file_read, aio_file_write, aio_file_list,")
+			fmt.Println("         aio_browser_info, aio_code_execute, aio_markitdown_convert")
+		} else {
+			updates["AIO_ENABLED"] = "false"
+			fmt.Println("✓ AIO Sandbox disabled (enable later with: make up-aio)")
+		}
+	}
+
 	// Apply all updates
 	fmt.Println()
 
@@ -796,6 +850,38 @@ func disableRealtime(envPath string) error {
 	}
 
 	fmt.Println("✓ Realtime API disabled (profile removed)")
+	return applyEnvUpdates(envPath, updates)
+}
+
+func applyAIODefaults(envPath string) error {
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("read .env: %w", err)
+	}
+
+	profiles := parseProfiles(strings.Split(string(data), "\n"))
+	updates := make(map[string]string)
+
+	// Add aio profile if not present
+	hasAIO := false
+	for _, profile := range profiles {
+		if profile == "aio" {
+			hasAIO = true
+			break
+		}
+	}
+	if !hasAIO {
+		profiles = append(profiles, "aio")
+	}
+
+	updates["AIO_ENABLED"] = "true"
+	updates["AIO_URL"] = "http://aio-sandbox:8080"
+	updates["AIO_TIMEOUT"] = "120s"
+	if len(profiles) > 0 {
+		updates["COMPOSE_PROFILES"] = strings.Join(profiles, ",")
+	}
+
+	fmt.Println("✓ AIO Sandbox enabled (profile: aio)")
 	return applyEnvUpdates(envPath, updates)
 }
 
@@ -983,7 +1069,7 @@ func addPlatformProfile(envPath string) error {
 	}
 
 	lines := strings.Split(string(data), "\n")
-	
+
 	// Find and update COMPOSE_PROFILES line
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -995,7 +1081,7 @@ func addPlatformProfile(envPath string) error {
 		if strings.HasPrefix(trimmed, "COMPOSE_PROFILES=") {
 			value := strings.TrimPrefix(trimmed, "COMPOSE_PROFILES=")
 			profiles := strings.Split(value, ",")
-			
+
 			// Check if platform is already in the list
 			hasPlatform := false
 			for _, p := range profiles {
@@ -1004,7 +1090,7 @@ func addPlatformProfile(envPath string) error {
 					break
 				}
 			}
-			
+
 			// Add platform if not present
 			if !hasPlatform {
 				profiles = append(profiles, "platform")
