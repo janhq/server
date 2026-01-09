@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,35 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
+// parseSSEorJSON extracts JSON from SSE format or returns body as-is if already JSON.
+// SSE format: "event: message\ndata: {...}\n\n"
+func parseSSEorJSON(body []byte) ([]byte, error) {
+	bodyStr := string(body)
+
+	// If it starts with '{', it's already JSON
+	trimmed := strings.TrimSpace(bodyStr)
+	if strings.HasPrefix(trimmed, "{") {
+		return body, nil
+	}
+
+	// Parse SSE format - look for "data: " lines
+	scanner := bufio.NewScanner(strings.NewReader(bodyStr))
+	var jsonData string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "data: ") {
+			jsonData = strings.TrimPrefix(line, "data: ")
+			break
+		}
+	}
+
+	if jsonData == "" {
+		return nil, fmt.Errorf("no JSON data found in SSE response")
+	}
+
+	return []byte(jsonData), nil
+}
+
 // ListTools fetches the tools via JSON-RPC call tools/list.
 func (c *Client) ListTools(ctx context.Context) ([]tool.MCPTool, error) {
 	payload := map[string]interface{}{
@@ -35,11 +65,9 @@ func (c *Client) ListTools(ctx context.Context) ([]tool.MCPTool, error) {
 		"id":      1,
 	}
 
-	var rpcResp rpcResponse
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(payload).
-		SetResult(&rpcResp).
 		Post("/v1/mcp")
 	if err != nil {
 		return nil, err
@@ -47,6 +75,18 @@ func (c *Client) ListTools(ctx context.Context) ([]tool.MCPTool, error) {
 	if resp.IsError() {
 		return nil, fmt.Errorf("mcp list tools error: %s", resp.String())
 	}
+
+	// Parse SSE or JSON response
+	jsonBody, err := parseSSEorJSON(resp.Body())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MCP response: %w", err)
+	}
+
+	var rpcResp rpcResponse
+	if err := json.Unmarshal(jsonBody, &rpcResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal RPC response: %w", err)
+	}
+
 	if rpcResp.Error != nil {
 		return nil, rpcResp.Error
 	}
@@ -86,11 +126,9 @@ func (c *Client) CallTool(ctx context.Context, req tool.CallRequest) (*tool.Resu
 		"id": rpcID,
 	}
 
-	var rpcResp rpcResponse
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetBody(payload).
-		SetResult(&rpcResp).
 		Post("/v1/mcp")
 	if err != nil {
 		return nil, err
@@ -98,6 +136,18 @@ func (c *Client) CallTool(ctx context.Context, req tool.CallRequest) (*tool.Resu
 	if resp.IsError() {
 		return nil, fmt.Errorf("mcp call error: %s", resp.String())
 	}
+
+	// Parse SSE or JSON response
+	jsonBody, err := parseSSEorJSON(resp.Body())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MCP response: %w", err)
+	}
+
+	var rpcResp rpcResponse
+	if err := json.Unmarshal(jsonBody, &rpcResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal RPC response: %w", err)
+	}
+
 	if rpcResp.Error != nil {
 		return nil, rpcResp.Error
 	}
