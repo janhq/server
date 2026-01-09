@@ -746,7 +746,7 @@ API_TEST_BASE_FLAGS := --env-file tests/e2e/.env \
 # Full flags with default auth mode
 API_TEST_FLAGS := $(API_TEST_BASE_FLAGS) --auto-auth $(AUTH_MODE) --debug
 
-.PHONY: test-all test-auth test-conversation test-response test-response-aio test-model test-media test-mcp test-user-management test-model-prompts test-image test-dev
+.PHONY: test-all test-auth test-conversation test-response test-response-aio test-response-artifact test-mcp-agent test-model test-media test-mcp test-user-management test-model-prompts test-image test-dev seed-response-artifact
 
 test-all:
 	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS) --timeout-request 120000
@@ -762,6 +762,16 @@ test-response:
 
 test-response-aio:
 	$(API_TEST) $(COLLECTIONS_DIR)/response-aio.postman.json $(API_TEST_FLAGS) --timeout-request 180000
+
+seed-response-artifact:
+	@echo "Seeding response/artifact test data..."
+	@$(COMPOSE) exec -T api-db psql -U jan_user -d jan_llm_api -v ON_ERROR_STOP=1 < tests/e2e/automation/seeds/response_artifact_seed.sql
+
+test-response-artifact: seed-response-artifact
+	$(API_TEST) $(COLLECTIONS_DIR)/response-artifact.postman.json $(API_TEST_FLAGS)
+
+test-mcp-agent:
+	$(API_TEST) $(COLLECTIONS_DIR)/mcp-agent.postman.json $(API_TEST_FLAGS) --timeout-request 120000
 
 test-model:
 	$(API_TEST) $(COLLECTIONS_DIR)/model.postman.json $(API_TEST_BASE_FLAGS) --auto-auth admin

@@ -21,11 +21,15 @@ import (
 	"jan-server/services/response-api/internal/infrastructure/mcp"
 	"jan-server/services/response-api/internal/infrastructure/observability"
 	"jan-server/services/response-api/internal/infrastructure/queue"
+	artifactrepo "jan-server/services/response-api/internal/infrastructure/repository/artifact"
 	conversationrepo "jan-server/services/response-api/internal/infrastructure/repository/conversation"
+	planrepo "jan-server/services/response-api/internal/infrastructure/repository/plan"
 	respRepo "jan-server/services/response-api/internal/infrastructure/repository/response"
 	"jan-server/services/response-api/internal/interfaces/httpserver"
 	"jan-server/services/response-api/internal/webhook"
 	"jan-server/services/response-api/internal/worker"
+	"jan-server/services/response-api/internal/domain/artifact"
+	"jan-server/services/response-api/internal/domain/plan"
 )
 
 // @title Response API
@@ -101,6 +105,8 @@ func main() {
 	responseRepository := respRepo.NewPostgresRepository(db)
 	conversationRepository := conversationrepo.NewRepository(db)
 	conversationItemRepository := conversationrepo.NewItemRepository(db)
+	planRepository := planrepo.NewPostgresRepository(db)
+	artifactRepository := artifactrepo.NewPostgresRepository(db)
 	llmClient := llmprovider.NewClient(cfg.LLMAPIURL)
 	mcpClient := mcp.NewClient(cfg.MCPToolsURL)
 	orchestrator := tool.NewOrchestrator(llmClient, mcpClient, cfg.MaxToolDepth, cfg.ToolTimeout)
@@ -120,6 +126,8 @@ func main() {
 		webhookService,
 		log,
 	)
+	planService := plan.NewService(planRepository)
+	artifactService := artifact.NewService(artifactRepository)
 
 	// Initialize background task infrastructure
 	taskQueue := queue.NewPostgresQueue(db, log)
@@ -140,7 +148,7 @@ func main() {
 		workerPool.Stop()
 	}()
 
-	httpServer := httpserver.New(cfg, log, responseService, authValidator)
+	httpServer := httpserver.New(cfg, log, responseService, planService, artifactService, authValidator)
 	app := NewApplication(httpServer, log)
 
 	if err := app.Start(ctx); err != nil {

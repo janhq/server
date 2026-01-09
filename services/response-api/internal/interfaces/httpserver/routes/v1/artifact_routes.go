@@ -15,5 +15,5 @@ func registerArtifactRoutes(router gin.IRoutes, handler *handlers.ArtifactHandle
 
 	// Artifact routes nested under responses
 	router.GET("/responses/:response_id/artifacts", handler.GetByResponse)
-	router.GET("/responses/:response_id/artifact", handler.GetLatestByResponse)
+	router.GET("/responses/:response_id/artifacts/latest", handler.GetLatestByResponse)
 }

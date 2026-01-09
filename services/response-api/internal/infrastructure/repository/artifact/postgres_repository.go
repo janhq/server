@@ -26,7 +26,29 @@ func NewPostgresRepository(db *gorm.DB) *PostgresRepository {
 
 // Create inserts a new artifact record.
 func (r *PostgresRepository) Create(ctx context.Context, artifact *domain.Artifact) error {
-	entity := mapArtifactToEntity(artifact)
+	responseID, err := r.resolveResponseID(ctx, artifact.ResponseID)
+	if err != nil {
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeNotFound,
+			"response not found for artifact creation",
+			err,
+			"artifact-create-response-001",
+		)
+	}
+
+	planID, err := r.resolvePlanID(ctx, artifact.PlanID)
+	if err != nil {
+		return err
+	}
+
+	parentID, err := r.resolveArtifactID(ctx, artifact.ParentID)
+	if err != nil {
+		return err
+	}
+
+	entity := mapArtifactToEntity(artifact, responseID, planID, parentID)
 	if entity.PublicID == "" {
 		entity.PublicID = uuid.New().String()
 	}
@@ -48,12 +70,52 @@ func (r *PostgresRepository) Create(ctx context.Context, artifact *domain.Artifa
 
 // Update persists changes to an artifact.
 func (r *PostgresRepository) Update(ctx context.Context, artifact *domain.Artifact) error {
-	entity := mapArtifactToEntity(artifact)
+	responseID, err := r.resolveResponseID(ctx, artifact.ResponseID)
+	if err != nil {
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeNotFound,
+			"response not found for artifact update",
+			err,
+			"artifact-update-response-001",
+		)
+	}
+
+	planID, err := r.resolvePlanID(ctx, artifact.PlanID)
+	if err != nil {
+		return err
+	}
+
+	parentID, err := r.resolveArtifactID(ctx, artifact.ParentID)
+	if err != nil {
+		return err
+	}
+
+	entity := mapArtifactToEntity(artifact, responseID, planID, parentID)
+
+	updates := map[string]interface{}{
+		"response_id":       entity.ResponseID,
+		"plan_id":           entity.PlanID,
+		"content_type":      entity.ContentType,
+		"mime_type":         entity.MimeType,
+		"title":             entity.Title,
+		"content":           entity.Content,
+		"storage_path":      entity.StoragePath,
+		"size_bytes":        entity.SizeBytes,
+		"version":           entity.Version,
+		"parent_id":         entity.ParentID,
+		"is_latest":         entity.IsLatest,
+		"retention_policy":  entity.RetentionPolicy,
+		"metadata":          entity.Metadata,
+		"updated_at":        entity.UpdatedAt,
+		"expires_at":        entity.ExpiresAt,
+	}
 
 	if err := r.db.WithContext(ctx).
 		Model(&entities.Artifact{}).
 		Where("public_id = ?", artifact.ID).
-		Updates(entity).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return platformerrors.NewError(
 			ctx,
 			platformerrors.LayerRepository,
@@ -70,6 +132,9 @@ func (r *PostgresRepository) Update(ctx context.Context, artifact *domain.Artifa
 func (r *PostgresRepository) FindByID(ctx context.Context, id string) (*domain.Artifact, error) {
 	var entity entities.Artifact
 	if err := r.db.WithContext(ctx).
+		Preload("Response").
+		Preload("Plan").
+		Preload("Parent").
 		Where("public_id = ?", id).
 		First(&entity).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -92,13 +157,20 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id string) (*domain.A
 		)
 	}
 
-	return mapArtifactFromEntity(&entity), nil
+	artifact := mapArtifactFromEntity(&entity)
+	if err := r.hydrateArtifactRefs(ctx, artifact, &entity); err != nil {
+		return nil, err
+	}
+	return artifact, nil
 }
 
 // FindLatestByResponseID finds the latest artifact for a response.
 func (r *PostgresRepository) FindLatestByResponseID(ctx context.Context, responseID string) (*domain.Artifact, error) {
 	var entity entities.Artifact
 	if err := r.db.WithContext(ctx).
+		Preload("Response").
+		Preload("Plan").
+		Preload("Parent").
 		Joins("JOIN responses ON responses.id = artifacts.response_id").
 		Where("responses.public_id = ?", responseID).
 		Where("artifacts.is_latest = ?", true).
@@ -123,13 +195,20 @@ func (r *PostgresRepository) FindLatestByResponseID(ctx context.Context, respons
 		)
 	}
 
-	return mapArtifactFromEntity(&entity), nil
+	artifact := mapArtifactFromEntity(&entity)
+	if err := r.hydrateArtifactRefs(ctx, artifact, &entity); err != nil {
+		return nil, err
+	}
+	return artifact, nil
 }
 
 // FindLatestByPlanID finds the latest artifact for a plan.
 func (r *PostgresRepository) FindLatestByPlanID(ctx context.Context, planID string) (*domain.Artifact, error) {
 	var entity entities.Artifact
 	if err := r.db.WithContext(ctx).
+		Preload("Response").
+		Preload("Plan").
+		Preload("Parent").
 		Joins("JOIN plans ON plans.id = artifacts.plan_id").
 		Where("plans.public_id = ?", planID).
 		Where("artifacts.is_latest = ?", true).
@@ -154,12 +233,19 @@ func (r *PostgresRepository) FindLatestByPlanID(ctx context.Context, planID stri
 		)
 	}
 
-	return mapArtifactFromEntity(&entity), nil
+	artifact := mapArtifactFromEntity(&entity)
+	if err := r.hydrateArtifactRefs(ctx, artifact, &entity); err != nil {
+		return nil, err
+	}
+	return artifact, nil
 }
 
 // List retrieves artifacts matching the filter.
 func (r *PostgresRepository) List(ctx context.Context, filter *domain.Filter) ([]*domain.Artifact, int64, error) {
-	query := r.db.WithContext(ctx).Model(&entities.Artifact{})
+	query := r.db.WithContext(ctx).Model(&entities.Artifact{}).
+		Preload("Response").
+		Preload("Plan").
+		Preload("Parent")
 
 	if filter.ResponseID != nil {
 		query = query.Joins("JOIN responses ON responses.id = artifacts.response_id").
@@ -218,7 +304,11 @@ func (r *PostgresRepository) List(ctx context.Context, filter *domain.Filter) ([
 
 	artifacts := make([]*domain.Artifact, 0, len(entities))
 	for _, e := range entities {
-		artifacts = append(artifacts, mapArtifactFromEntity(&e))
+		artifact := mapArtifactFromEntity(&e)
+		if err := r.hydrateArtifactRefs(ctx, artifact, &e); err != nil {
+			return nil, 0, err
+		}
+		artifacts = append(artifacts, artifact)
 	}
 
 	return artifacts, total, nil
@@ -257,6 +347,9 @@ func (r *PostgresRepository) ListVersions(ctx context.Context, artifactID string
 	// Find all versions
 	var entities []entities.Artifact
 	if err := r.db.WithContext(ctx).
+		Preload("Response").
+		Preload("Plan").
+		Preload("Parent").
 		Where("id = ? OR parent_id = ?", rootEntity.ID, rootEntity.ID).
 		Order("version ASC").
 		Find(&entities).Error; err != nil {
@@ -272,7 +365,11 @@ func (r *PostgresRepository) ListVersions(ctx context.Context, artifactID string
 
 	artifacts := make([]*domain.Artifact, 0, len(entities))
 	for _, e := range entities {
-		artifacts = append(artifacts, mapArtifactFromEntity(&e))
+		artifact := mapArtifactFromEntity(&e)
+		if err := r.hydrateArtifactRefs(ctx, artifact, &e); err != nil {
+			return nil, err
+		}
+		artifacts = append(artifacts, artifact)
 	}
 
 	return artifacts, nil
@@ -347,11 +444,13 @@ func (r *PostgresRepository) MarkOldVersionsNotLatest(ctx context.Context, newVe
 
 // Mapping functions
 
-func mapArtifactToEntity(artifact *domain.Artifact) *entities.Artifact {
+func mapArtifactToEntity(artifact *domain.Artifact, responseID uint, planID, parentID *uint) *entities.Artifact {
 	isLatest := artifact.IsLatest
 
 	return &entities.Artifact{
 		PublicID:        artifact.ID,
+		ResponseID:      responseID,
+		PlanID:          planID,
 		ContentType:     string(artifact.ContentType),
 		MimeType:        artifact.MimeType,
 		Title:           artifact.Title,
@@ -359,6 +458,7 @@ func mapArtifactToEntity(artifact *domain.Artifact) *entities.Artifact {
 		StoragePath:     artifact.StoragePath,
 		SizeBytes:       artifact.SizeBytes,
 		Version:         artifact.Version,
+		ParentID:        parentID,
 		IsLatest:        &isLatest,
 		RetentionPolicy: string(artifact.RetentionPolicy),
 		Metadata:        datatypes.JSON(artifact.Metadata),
@@ -390,4 +490,92 @@ func mapArtifactFromEntity(entity *entities.Artifact) *domain.Artifact {
 	}
 
 	return artifact
+}
+
+func (r *PostgresRepository) resolveResponseID(ctx context.Context, publicID string) (uint, error) {
+	if publicID == "" {
+		return 0, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeValidation,
+			"response_id is required",
+			nil,
+			"artifact-response-missing-001",
+		)
+	}
+	var response entities.Response
+	if err := r.db.WithContext(ctx).Select("id").Where("public_id = ?", publicID).First(&response).Error; err != nil {
+		return 0, err
+	}
+	return response.ID, nil
+}
+
+func (r *PostgresRepository) resolvePlanID(ctx context.Context, publicID *string) (*uint, error) {
+	if publicID == nil || *publicID == "" {
+		return nil, nil
+	}
+	var plan entities.Plan
+	if err := r.db.WithContext(ctx).Select("id").Where("public_id = ?", *publicID).First(&plan).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeNotFound,
+				"plan not found",
+				err,
+				"artifact-plan-001",
+			)
+		}
+		return nil, err
+	}
+	return &plan.ID, nil
+}
+
+func (r *PostgresRepository) resolveArtifactID(ctx context.Context, publicID *string) (*uint, error) {
+	if publicID == nil || *publicID == "" {
+		return nil, nil
+	}
+	var artifact entities.Artifact
+	if err := r.db.WithContext(ctx).Select("id").Where("public_id = ?", *publicID).First(&artifact).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeNotFound,
+				"artifact not found",
+				err,
+				"artifact-parent-001",
+			)
+		}
+		return nil, err
+	}
+	return &artifact.ID, nil
+}
+
+func (r *PostgresRepository) hydrateArtifactRefs(ctx context.Context, artifact *domain.Artifact, entity *entities.Artifact) error {
+	if artifact.ResponseID == "" && entity.ResponseID != 0 {
+		var response entities.Response
+		if err := r.db.WithContext(ctx).Select("public_id").Where("id = ?", entity.ResponseID).First(&response).Error; err != nil {
+			return err
+		}
+		artifact.ResponseID = response.PublicID
+	}
+
+	if entity.PlanID != nil {
+		var plan entities.Plan
+		if err := r.db.WithContext(ctx).Select("public_id").Where("id = ?", *entity.PlanID).First(&plan).Error; err != nil {
+			return err
+		}
+		artifact.PlanID = &plan.PublicID
+	}
+
+	if entity.ParentID != nil {
+		var parent entities.Artifact
+		if err := r.db.WithContext(ctx).Select("public_id").Where("id = ?", *entity.ParentID).First(&parent).Error; err != nil {
+			return err
+		}
+		artifact.ParentID = &parent.PublicID
+	}
+
+	return nil
 }

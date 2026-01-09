@@ -24,7 +24,7 @@ func TestArtifactAPI_GetArtifactsByResponse(t *testing.T) {
 		// Should return 200 with empty array, or 404 if response doesn't exist
 		if resp.StatusCode == http.StatusOK {
 			result := parseJSON(t, body)
-			artifacts := getArray(t, result, "artifacts")
+			artifacts := getArray(t, result, "data")
 			if len(artifacts) != 0 {
 				t.Errorf("Expected empty artifacts array, got %d items", len(artifacts))
 			}

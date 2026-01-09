@@ -27,7 +27,29 @@ func NewPostgresRepository(db *gorm.DB) *PostgresRepository {
 
 // Create inserts a new plan record.
 func (r *PostgresRepository) Create(ctx context.Context, plan *domain.Plan) error {
-	entity, err := mapPlanToEntity(plan)
+	responseID, err := r.resolveResponseID(ctx, plan.ResponseID)
+	if err != nil {
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeNotFound,
+			"response not found for plan creation",
+			err,
+			"plan-create-response-001",
+		)
+	}
+
+	currentTaskID, err := r.resolveTaskID(ctx, plan.CurrentTaskID)
+	if err != nil {
+		return err
+	}
+
+	finalArtifactID, err := r.resolveArtifactID(ctx, plan.FinalArtifactID)
+	if err != nil {
+		return err
+	}
+
+	entity, err := mapPlanToEntity(plan, responseID, currentTaskID, finalArtifactID)
 	if err != nil {
 		return platformerrors.NewError(
 			ctx,
@@ -60,7 +82,29 @@ func (r *PostgresRepository) Create(ctx context.Context, plan *domain.Plan) erro
 
 // Update persists changes to a plan.
 func (r *PostgresRepository) Update(ctx context.Context, plan *domain.Plan) error {
-	entity, err := mapPlanToEntity(plan)
+	responseID, err := r.resolveResponseID(ctx, plan.ResponseID)
+	if err != nil {
+		return platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeNotFound,
+			"response not found for plan update",
+			err,
+			"plan-update-response-001",
+		)
+	}
+
+	currentTaskID, err := r.resolveTaskID(ctx, plan.CurrentTaskID)
+	if err != nil {
+		return err
+	}
+
+	finalArtifactID, err := r.resolveArtifactID(ctx, plan.FinalArtifactID)
+	if err != nil {
+		return err
+	}
+
+	entity, err := mapPlanToEntity(plan, responseID, currentTaskID, finalArtifactID)
 	if err != nil {
 		return platformerrors.NewError(
 			ctx,
@@ -72,10 +116,26 @@ func (r *PostgresRepository) Update(ctx context.Context, plan *domain.Plan) erro
 		)
 	}
 
+	updates := map[string]interface{}{
+		"response_id":      entity.ResponseID,
+		"status":           entity.Status,
+		"progress":         entity.Progress,
+		"agent_type":       entity.AgentType,
+		"planning_config":  entity.PlanningConfig,
+		"estimated_steps":  entity.EstimatedSteps,
+		"completed_steps":  entity.CompletedSteps,
+		"current_task_id":  entity.CurrentTaskID,
+		"final_artifact_id": entity.FinalArtifactID,
+		"user_selection":   entity.UserSelection,
+		"error_message":    entity.ErrorMessage,
+		"updated_at":       entity.UpdatedAt,
+		"completed_at":     entity.CompletedAt,
+	}
+
 	if err := r.db.WithContext(ctx).
 		Model(&entities.Plan{}).
 		Where("public_id = ?", plan.ID).
-		Updates(entity).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return platformerrors.NewError(
 			ctx,
 			platformerrors.LayerRepository,
@@ -92,6 +152,7 @@ func (r *PostgresRepository) Update(ctx context.Context, plan *domain.Plan) erro
 func (r *PostgresRepository) FindByID(ctx context.Context, id string) (*domain.Plan, error) {
 	var entity entities.Plan
 	if err := r.db.WithContext(ctx).
+		Preload("Response").
 		Where("public_id = ?", id).
 		First(&entity).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -114,13 +175,23 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id string) (*domain.P
 		)
 	}
 
-	return mapPlanFromEntity(&entity)
+	plan, err := mapPlanFromEntity(&entity)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.hydratePlanRefs(ctx, plan, &entity); err != nil {
+		return nil, err
+	}
+
+	return plan, nil
 }
 
 // FindByResponseID fetches a plan by response ID.
 func (r *PostgresRepository) FindByResponseID(ctx context.Context, responseID string) (*domain.Plan, error) {
 	var entity entities.Plan
 	if err := r.db.WithContext(ctx).
+		Preload("Response").
 		Joins("JOIN responses ON responses.id = plans.response_id").
 		Where("responses.public_id = ?", responseID).
 		First(&entity).Error; err != nil {
@@ -144,12 +215,21 @@ func (r *PostgresRepository) FindByResponseID(ctx context.Context, responseID st
 		)
 	}
 
-	return mapPlanFromEntity(&entity)
+	plan, err := mapPlanFromEntity(&entity)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.hydratePlanRefs(ctx, plan, &entity); err != nil {
+		return nil, err
+	}
+
+	return plan, nil
 }
 
 // List retrieves plans matching the filter.
 func (r *PostgresRepository) List(ctx context.Context, filter *domain.Filter) ([]*domain.Plan, int64, error) {
-	query := r.db.WithContext(ctx).Model(&entities.Plan{})
+	query := r.db.WithContext(ctx).Model(&entities.Plan{}).Preload("Response")
 
 	if filter.ResponseID != nil {
 		query = query.Joins("JOIN responses ON responses.id = plans.response_id").
@@ -200,6 +280,9 @@ func (r *PostgresRepository) List(ctx context.Context, filter *domain.Filter) ([
 	for _, e := range entities {
 		p, err := mapPlanFromEntity(&e)
 		if err != nil {
+			return nil, 0, err
+		}
+		if err := r.hydratePlanRefs(ctx, p, &e); err != nil {
 			return nil, 0, err
 		}
 		plans = append(plans, p)
@@ -265,19 +348,19 @@ func (r *PostgresRepository) CreateTask(ctx context.Context, task *domain.Task) 
 
 // UpdateTask persists changes to a task.
 func (r *PostgresRepository) UpdateTask(ctx context.Context, task *domain.Task) error {
-	entity := &entities.PlanTask{
-		Status:       string(task.Status),
-		Title:        task.Title,
-		Description:  task.Description,
-		ErrorMessage: task.ErrorMessage,
-		UpdatedAt:    task.UpdatedAt,
-		CompletedAt:  task.CompletedAt,
+	updates := map[string]interface{}{
+		"status":        string(task.Status),
+		"title":         task.Title,
+		"description":   task.Description,
+		"error_message": task.ErrorMessage,
+		"updated_at":    task.UpdatedAt,
+		"completed_at":  task.CompletedAt,
 	}
 
 	if err := r.db.WithContext(ctx).
 		Model(&entities.PlanTask{}).
 		Where("public_id = ?", task.ID).
-		Updates(entity).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return platformerrors.NewError(
 			ctx,
 			platformerrors.LayerRepository,
@@ -410,21 +493,21 @@ func (r *PostgresRepository) UpdateStep(ctx context.Context, step *domain.Step) 
 		errorSeverity = &s
 	}
 
-	entity := &entities.PlanStep{
-		Status:        string(step.Status),
-		OutputData:    outputData,
-		RetryCount:    step.RetryCount,
-		ErrorMessage:  step.ErrorMessage,
-		ErrorSeverity: errorSeverity,
-		DurationMs:    step.DurationMs,
-		StartedAt:     step.StartedAt,
-		CompletedAt:   step.CompletedAt,
+	updates := map[string]interface{}{
+		"status":         string(step.Status),
+		"output_data":    outputData,
+		"retry_count":    step.RetryCount,
+		"error_message":  step.ErrorMessage,
+		"error_severity": errorSeverity,
+		"duration_ms":    step.DurationMs,
+		"started_at":     step.StartedAt,
+		"completed_at":   step.CompletedAt,
 	}
 
 	if err := r.db.WithContext(ctx).
 		Model(&entities.PlanStep{}).
 		Where("public_id = ?", step.ID).
-		Updates(entity).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return platformerrors.NewError(
 			ctx,
 			platformerrors.LayerRepository,
@@ -602,23 +685,41 @@ func (r *PostgresRepository) GetProgress(ctx context.Context, planID string) (*d
 
 	// Count completed steps
 	var completedCount int64
-	r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Model(&entities.PlanStep{}).
 		Joins("JOIN plan_tasks ON plan_tasks.id = plan_steps.task_id").
 		Joins("JOIN plans ON plans.id = plan_tasks.plan_id").
 		Where("plans.public_id = ?", planID).
 		Where("plan_steps.status = ?", "completed").
-		Count(&completedCount)
+		Count(&completedCount).Error; err != nil {
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to count completed steps",
+			err,
+			"plan-progress-completed-001",
+		)
+	}
 
 	// Count failed steps
 	var failedCount int64
-	r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Model(&entities.PlanStep{}).
 		Joins("JOIN plan_tasks ON plan_tasks.id = plan_steps.task_id").
 		Joins("JOIN plans ON plans.id = plan_tasks.plan_id").
 		Where("plans.public_id = ?", planID).
 		Where("plan_steps.status = ?", "failed").
-		Count(&failedCount)
+		Count(&failedCount).Error; err != nil {
+		return nil, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeDatabaseError,
+			"failed to count failed steps",
+			err,
+			"plan-progress-failed-001",
+		)
+	}
 
 	progress := &domain.PlanProgress{
 		PlanID:         plan.ID,
@@ -676,12 +777,21 @@ func (r *PostgresRepository) FindPlanWithDetails(ctx context.Context, id string)
 		)
 	}
 
-	return mapPlanFromEntityWithDetails(&entity)
+	plan, err := mapPlanFromEntityWithDetails(&entity)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.hydratePlanRefs(ctx, plan, &entity); err != nil {
+		return nil, err
+	}
+
+	return plan, nil
 }
 
 // Mapping functions
 
-func mapPlanToEntity(plan *domain.Plan) (*entities.Plan, error) {
+func mapPlanToEntity(plan *domain.Plan, responseID uint, currentTaskID, finalArtifactID *uint) (*entities.Plan, error) {
 	config, err := json.Marshal(plan.PlanningConfig)
 	if err != nil {
 		return nil, fmt.Errorf("marshal planning config: %w", err)
@@ -694,12 +804,15 @@ func mapPlanToEntity(plan *domain.Plan) (*entities.Plan, error) {
 
 	return &entities.Plan{
 		PublicID:       plan.ID,
+		ResponseID:     responseID,
 		Status:         string(plan.Status),
 		Progress:       plan.Progress,
 		AgentType:      string(plan.AgentType),
 		PlanningConfig: datatypes.JSON(config),
 		EstimatedSteps: plan.EstimatedSteps,
 		CompletedSteps: plan.CompletedSteps,
+		CurrentTaskID:  currentTaskID,
+		FinalArtifactID: finalArtifactID,
 		UserSelection:  userSelection,
 		ErrorMessage:   plan.ErrorMessage,
 		CreatedAt:      plan.CreatedAt,
@@ -720,6 +833,10 @@ func mapPlanFromEntity(entity *entities.Plan) (*domain.Plan, error) {
 		CreatedAt:      entity.CreatedAt,
 		UpdatedAt:      entity.UpdatedAt,
 		CompletedAt:    entity.CompletedAt,
+	}
+
+	if entity.Response != nil {
+		plan.ResponseID = entity.Response.PublicID
 	}
 
 	if len(entity.PlanningConfig) > 0 {
@@ -758,6 +875,94 @@ func mapPlanFromEntityWithDetails(entity *entities.Plan) (*domain.Plan, error) {
 	}
 
 	return plan, nil
+}
+
+func (r *PostgresRepository) resolveResponseID(ctx context.Context, publicID string) (uint, error) {
+	if publicID == "" {
+		return 0, platformerrors.NewError(
+			ctx,
+			platformerrors.LayerRepository,
+			platformerrors.ErrorTypeValidation,
+			"response_id is required",
+			nil,
+			"plan-response-missing-001",
+		)
+	}
+	var response entities.Response
+	if err := r.db.WithContext(ctx).Select("id").Where("public_id = ?", publicID).First(&response).Error; err != nil {
+		return 0, err
+	}
+	return response.ID, nil
+}
+
+func (r *PostgresRepository) resolveTaskID(ctx context.Context, publicID *string) (*uint, error) {
+	if publicID == nil || *publicID == "" {
+		return nil, nil
+	}
+	var task entities.PlanTask
+	if err := r.db.WithContext(ctx).Select("id").Where("public_id = ?", *publicID).First(&task).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeNotFound,
+				"task not found",
+				err,
+				"plan-current-task-001",
+			)
+		}
+		return nil, err
+	}
+	return &task.ID, nil
+}
+
+func (r *PostgresRepository) resolveArtifactID(ctx context.Context, publicID *string) (*uint, error) {
+	if publicID == nil || *publicID == "" {
+		return nil, nil
+	}
+	var artifact entities.Artifact
+	if err := r.db.WithContext(ctx).Select("id").Where("public_id = ?", *publicID).First(&artifact).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, platformerrors.NewError(
+				ctx,
+				platformerrors.LayerRepository,
+				platformerrors.ErrorTypeNotFound,
+				"artifact not found",
+				err,
+				"plan-final-artifact-001",
+			)
+		}
+		return nil, err
+	}
+	return &artifact.ID, nil
+}
+
+func (r *PostgresRepository) hydratePlanRefs(ctx context.Context, plan *domain.Plan, entity *entities.Plan) error {
+	if plan.ResponseID == "" && entity.ResponseID != 0 {
+		var response entities.Response
+		if err := r.db.WithContext(ctx).Select("public_id").Where("id = ?", entity.ResponseID).First(&response).Error; err != nil {
+			return err
+		}
+		plan.ResponseID = response.PublicID
+	}
+
+	if entity.CurrentTaskID != nil {
+		var task entities.PlanTask
+		if err := r.db.WithContext(ctx).Select("public_id").Where("id = ?", *entity.CurrentTaskID).First(&task).Error; err != nil {
+			return err
+		}
+		plan.CurrentTaskID = &task.PublicID
+	}
+
+	if entity.FinalArtifactID != nil {
+		var artifact entities.Artifact
+		if err := r.db.WithContext(ctx).Select("public_id").Where("id = ?", *entity.FinalArtifactID).First(&artifact).Error; err != nil {
+			return err
+		}
+		plan.FinalArtifactID = &artifact.PublicID
+	}
+
+	return nil
 }
 
 func mapTaskToEntity(task *domain.Task, planID uint) *entities.PlanTask {

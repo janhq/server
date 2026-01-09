@@ -11,8 +11,10 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"jan-server/services/response-api/internal/config"
+	"jan-server/services/response-api/internal/domain/artifact"
 	"jan-server/services/response-api/internal/domain/conversation"
 	"jan-server/services/response-api/internal/domain/llm"
+	"jan-server/services/response-api/internal/domain/plan"
 	responseDomain "jan-server/services/response-api/internal/domain/response"
 	"jan-server/services/response-api/internal/domain/tool"
 	"jan-server/services/response-api/internal/infrastructure/auth"
@@ -20,7 +22,9 @@ import (
 	"jan-server/services/response-api/internal/infrastructure/llmprovider"
 	"jan-server/services/response-api/internal/infrastructure/logger"
 	"jan-server/services/response-api/internal/infrastructure/mcp"
+	artifactrepo "jan-server/services/response-api/internal/infrastructure/repository/artifact"
 	conversationrepo "jan-server/services/response-api/internal/infrastructure/repository/conversation"
+	planrepo "jan-server/services/response-api/internal/infrastructure/repository/plan"
 	responseRepo "jan-server/services/response-api/internal/infrastructure/repository/response"
 	"jan-server/services/response-api/internal/interfaces/httpserver"
 	"jan-server/services/response-api/internal/webhook"
@@ -30,6 +34,10 @@ var responseSet = wire.NewSet(
 	responseRepo.NewPostgresRepository,
 	wire.Bind(new(responseDomain.Repository), new(*responseRepo.PostgresRepository)),
 	wire.Bind(new(responseDomain.ToolExecutionRepository), new(*responseRepo.PostgresRepository)),
+	planrepo.NewPostgresRepository,
+	wire.Bind(new(plan.Repository), new(*planrepo.PostgresRepository)),
+	artifactrepo.NewPostgresRepository,
+	wire.Bind(new(artifact.Repository), new(*artifactrepo.PostgresRepository)),
 	conversationrepo.NewRepository,
 	wire.Bind(new(conversation.Repository), new(*conversationrepo.Repository)),
 	conversationrepo.NewItemRepository,
@@ -42,6 +50,8 @@ var responseSet = wire.NewSet(
 	newWebhookService,
 	wire.Bind(new(webhook.Service), new(*webhook.HTTPService)),
 	newResponseService,
+	plan.NewService,
+	artifact.NewService,
 )
 
 // BuildApplication demonstrates how to assemble the response service with Wire.

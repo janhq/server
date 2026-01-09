@@ -96,7 +96,7 @@ func (h *ArtifactHandler) GetByResponse(c *gin.Context) {
 	})
 }
 
-// GetLatestByResponse handles GET /v1/responses/:response_id/artifact
+// GetLatestByResponse handles GET /v1/responses/:response_id/artifacts/latest
 // @Summary Get latest artifact for a response
 // @Description Retrieves the most recent artifact for a response
 // @Tags Artifacts
@@ -105,7 +105,7 @@ func (h *ArtifactHandler) GetByResponse(c *gin.Context) {
 // @Success 200 {object} responses.ArtifactResponse
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /v1/responses/{response_id}/artifact [get]
+// @Router /v1/responses/{response_id}/artifacts/latest [get]
 func (h *ArtifactHandler) GetLatestByResponse(c *gin.Context) {
 	responseID := c.Param("response_id")
 

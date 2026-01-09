@@ -1,15 +1,8 @@
 -- ============================================================================
--- Rollback: Remove Plans and Artifacts tables
+-- Rollback: Remove Plans, Artifacts, and Idempotency Keys
 -- ============================================================================
 
 SET search_path TO response_api;
-
--- Drop indexes first
-DROP INDEX IF EXISTS idx_responses_plan;
-
--- Remove columns from responses
-ALTER TABLE response_api.responses
-    DROP COLUMN IF EXISTS plan_id;
 
 -- Remove columns from conversation_items
 DROP INDEX IF EXISTS idx_conv_items_parent;
@@ -35,9 +28,9 @@ ALTER TABLE response_api.conversation_items
     DROP COLUMN IF EXISTS provider;
 
 -- Drop tables in reverse dependency order
-DROP TABLE IF EXISTS response_api.idempotency_keys;
-DROP TABLE IF EXISTS response_api.artifacts;
 DROP TABLE IF EXISTS response_api.plan_step_details;
+DROP TABLE IF EXISTS response_api.artifacts;
 DROP TABLE IF EXISTS response_api.plan_steps;
 DROP TABLE IF EXISTS response_api.plan_tasks;
 DROP TABLE IF EXISTS response_api.plans;
+DROP TABLE IF EXISTS response_api.idempotency_keys;
