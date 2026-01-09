@@ -62,7 +62,6 @@ type ImageEditArgs struct {
 	Model          *string         `json:"model,omitempty"`
 	Size           *string         `json:"size,omitempty"`
 	N              *int            `json:"n,omitempty"`
-	ResponseFormat *string         `json:"response_format,omitempty"`
 	Strength       *float64        `json:"strength,omitempty"`
 	Steps          *int            `json:"steps,omitempty"`
 	Seed           *int            `json:"seed,omitempty"`
@@ -159,11 +158,6 @@ func (i *ImageEditMCP) RegisterTools(server *mcp.Server) {
 				"description": "Number of images to generate (often only 1 supported)",
 				"default":     1,
 			},
-			"response_format": map[string]any{
-				"type":        []string{"string", "null"},
-				"description": "Response format (url or b64_json)",
-				"default":     "url",
-			},
 			"strength": map[string]any{
 				"type":        []string{"number", "null"},
 				"description": "Edit strength (0.0-1.0)",
@@ -250,9 +244,6 @@ func (i *ImageEditMCP) RegisterTools(server *mcp.Server) {
 		}
 		if input.N != nil {
 			payload["n"] = *input.N
-		}
-		if input.ResponseFormat != nil {
-			payload["response_format"] = *input.ResponseFormat
 		}
 		if input.Strength != nil {
 			payload["strength"] = *input.Strength

@@ -598,9 +598,9 @@ func (h *ImageHandler) convertToHTTPResponse(
 			} else {
 				imgData.URL = mediaResp.URL
 			}
-		} else if item.URL != "" {
+		} else if strings.TrimSpace(item.URL) != "" {
 			// If provider returned a URL directly, use it
-			imgData.URL = item.URL
+			imgData.URL = strings.TrimSpace(item.URL)
 		} else if item.B64JSON != "" {
 			// No media client, return base64 directly
 			imgData.B64JSON = item.B64JSON
