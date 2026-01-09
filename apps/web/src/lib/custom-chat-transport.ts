@@ -178,13 +178,16 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
 
   /**
    * Initialize MCP tools and convert them to AI SDK format
+   * Search tools (google_search, scrape) are always included regardless of user toggle
    */
   private async initializeTools() {
     try {
+      // Always include "search" server for google_search and scrape tools
+      // Browser tools are conditional on user preference
       const servers = this.enableImageTools
         ? undefined
         : ([
-            this.enabledSearch ? "search" : null,
+            "search", // Always include search tools
             this.enableBrowse ? "browse" : null,
           ].filter(Boolean) as string[]);
       const toolsResponse = await mcpService.getTools(servers);
@@ -236,9 +239,9 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
     // Convert image parts to image_url format for the API
     const messagesWithImageUrls = convertToImageUrlFormat(filteredMessages);
 
-    const hasTools =
-      (this.enabledSearch || this.enableBrowse || this.enableImageTools) &&
-      Object.keys(this.tools).length > 0;
+    // Always include tools if we have any loaded
+    // Search tools (google_search, scrape) are always sent regardless of user toggle
+    const hasTools = Object.keys(this.tools).length > 0;
     const result = streamText({
       model: this.model,
       messages: messagesWithImageUrls,

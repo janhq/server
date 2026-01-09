@@ -62,7 +62,6 @@ type ImageEditArgs struct {
 	Model          *string         `json:"model,omitempty"`
 	Size           *string         `json:"size,omitempty"`
 	N              *int            `json:"n,omitempty"`
-	ResponseFormat *string         `json:"response_format,omitempty"`
 	Strength       *float64        `json:"strength,omitempty"`
 	Steps          *int            `json:"steps,omitempty"`
 	Seed           *int            `json:"seed,omitempty"`
@@ -91,7 +90,7 @@ func NewImageEditMCP(llmAPIBaseURL string, enabled bool) *ImageEditMCP {
 		llmAPIBaseURL: strings.TrimRight(llmAPIBaseURL, "/"),
 		enabled:       enabled,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 600 * time.Second,
 		},
 	}
 }
@@ -158,11 +157,6 @@ func (i *ImageEditMCP) RegisterTools(server *mcp.Server) {
 				"type":        []string{"integer", "null"},
 				"description": "Number of images to generate (often only 1 supported)",
 				"default":     1,
-			},
-			"response_format": map[string]any{
-				"type":        []string{"string", "null"},
-				"description": "Response format (url or b64_json)",
-				"default":     "url",
 			},
 			"strength": map[string]any{
 				"type":        []string{"number", "null"},
@@ -250,9 +244,6 @@ func (i *ImageEditMCP) RegisterTools(server *mcp.Server) {
 		}
 		if input.N != nil {
 			payload["n"] = *input.N
-		}
-		if input.ResponseFormat != nil {
-			payload["response_format"] = *input.ResponseFormat
 		}
 		if input.Strength != nil {
 			payload["strength"] = *input.Strength
