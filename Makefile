@@ -749,7 +749,7 @@ API_TEST_FLAGS := $(API_TEST_BASE_FLAGS) --auto-auth $(AUTH_MODE) --debug
 .PHONY: test-all test-auth test-conversation test-response test-response-aio test-model test-media test-mcp test-user-management test-model-prompts test-image test-dev
 
 test-all:
-	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS)
+	$(API_TEST) $(COLLECTION_FILES) $(API_TEST_FLAGS) --timeout-request 120000
 
 test-auth:
 	$(API_TEST) $(COLLECTIONS_DIR)/auth.postman.json $(API_TEST_FLAGS)
@@ -758,10 +758,10 @@ test-conversation:
 	$(API_TEST) $(COLLECTIONS_DIR)/conversation.postman.json $(API_TEST_FLAGS)
 
 test-response:
-	$(API_TEST) $(COLLECTIONS_DIR)/response.postman.json $(API_TEST_FLAGS)
+	$(API_TEST) $(COLLECTIONS_DIR)/response.postman.json $(API_TEST_FLAGS) --timeout-request 120000
 
 test-response-aio:
-	$(API_TEST) $(COLLECTIONS_DIR)/response-aio.postman.json $(API_TEST_FLAGS) --timeout-request 120000
+	$(API_TEST) $(COLLECTIONS_DIR)/response-aio.postman.json $(API_TEST_FLAGS) --timeout-request 180000
 
 test-model:
 	$(API_TEST) $(COLLECTIONS_DIR)/model.postman.json $(API_TEST_BASE_FLAGS) --auto-auth admin

@@ -345,9 +345,9 @@ func (s *ServiceImpl) ListConversationItems(ctx context.Context, publicID string
 	result := make([]ConversationItem, 0, len(items))
 	for _, item := range items {
 		result = append(result, ConversationItem{
-			Role:    string(item.Role),
-			Content: item.Content,
-			Status:  string(item.Status),
+			Role:    string(item.GetRole()),
+			Content: item.GetContent(),
+			Status:  string(item.GetStatus()),
 		})
 	}
 	return result, nil
@@ -378,8 +378,8 @@ func (s *ServiceImpl) buildBaseMessages(systemPrompt *string, items []conversati
 
 	for _, item := range items {
 		messages = append(messages, llm.ChatMessage{
-			Role:    string(item.Role),
-			Content: contentToLLM(item.Content),
+			Role:    string(item.GetRole()),
+			Content: contentToLLM(item.GetContent()),
 		})
 	}
 	return messages, nil
@@ -454,8 +454,9 @@ func newConversationItem(conversationID uint, sequence int, msg llm.ChatMessage)
 		ConversationID: conversationID,
 		Role:           role,
 		Status:         conversation.ItemStatusCompleted,
-		Content:        content,
+		LegacyContent:  content,
 		Sequence:       sequence + 1,
+		SequenceNumber: sequence + 1,
 		CreatedAt:      time.Now(),
 	}
 }
