@@ -73,7 +73,7 @@ export const SCROLL_ANIMATION = {
 
 // Pagination / Query limits
 export const QUERY_LIMIT = {
-  CONVERSATIONS: 200,
+  CONVERSATIONS: 50,
   ITEMS: 100,
   MAX_RECENT_SEARCHES: 5,
 } as const;
