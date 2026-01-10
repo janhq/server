@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/rules-of-hooks */
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
 import type { UIMessage, ChatStatus } from "ai";
 import {
   TOOL_STATE,
@@ -30,6 +30,10 @@ import {
   ToolInput,
   ToolOutput,
 } from "@janhq/interfaces/ai-elements/tool";
+import {
+  ToolCompact,
+  ToolCompactList,
+} from "@janhq/interfaces/ai-elements/tool-compact";
 import {
   Dialog,
   DialogTitle,
@@ -71,6 +75,10 @@ export const MessageItem = memo(
       url: string;
       filename?: string;
     } | null>(null);
+    // Track which tool indices are expanded (removed from horizontal list)
+    const [expandedToolIndices, setExpandedToolIndices] = useState<Set<number>>(
+      new Set(),
+    );
 
     const handleCopy = (text: string) => {
       navigator.clipboard.writeText(text.trim());
@@ -386,32 +394,58 @@ export const MessageItem = memo(
       );
     };
 
-    const renderToolPart = (part: any, partIndex: number) => {
-      if (!part.type.startsWith("tool-") || !("state" in part)) {
-        return null;
-      }
+    // Extract all tool parts with their original indices
+    const toolPartsWithIndices = useMemo(() => {
+      return message.parts
+        .map((part, index) => ({ part, index }))
+        .filter(
+          ({ part }) => part.type.startsWith("tool-") && "state" in part,
+        ) as { part: any; index: number }[];
+    }, [message.parts]);
 
-      const toolName = part.type.split("-").slice(1).join("-");
-
-      // Check if there's any text/file/reasoning part before this tool
-      const hasContentBefore = message.parts
-        .slice(0, partIndex)
+    // Check if there's any text/file/reasoning part before the first tool
+    const hasContentBeforeTools = useMemo(() => {
+      if (toolPartsWithIndices.length === 0) return false;
+      const firstToolIndex = toolPartsWithIndices[0].index;
+      return message.parts
+        .slice(0, firstToolIndex)
         .some(
           (p) =>
             p.type === CONTENT_TYPE.TEXT ||
             p.type === CONTENT_TYPE.FILE ||
             p.type === CONTENT_TYPE.REASONING,
         );
+    }, [message.parts, toolPartsWithIndices]);
 
-      // Check if this is the first tool part
-      const isFirstTool = !message.parts
-        .slice(0, partIndex)
-        .some((p) => p.type.startsWith("tool-"));
+    const handleToolExpand = (toolIndex: number) => {
+      setExpandedToolIndices((prev) => {
+        const next = new Set(prev);
+        next.add(toolIndex);
+        return next;
+      });
+    };
+
+    const handleToolCollapse = (toolIndex: number) => {
+      setExpandedToolIndices((prev) => {
+        const next = new Set(prev);
+        next.delete(toolIndex);
+        return next;
+      });
+    };
+
+    const renderExpandedToolPart = (part: any, partIndex: number) => {
+      const toolName = part.type.split("-").slice(1).join("-");
 
       return (
         <Tool
           key={`${message.id}-${partIndex}`}
-          className={cn(hasContentBefore && isFirstTool && "mt-4")}
+          className="mb-2"
+          defaultOpen={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleToolCollapse(partIndex);
+            }
+          }}
         >
           <ToolHeader
             title={toolName}
@@ -437,6 +471,50 @@ export const MessageItem = memo(
       );
     };
 
+    const renderToolsSection = () => {
+      if (toolPartsWithIndices.length === 0) return null;
+
+      // Tools in compact horizontal list (not expanded)
+      const compactTools = toolPartsWithIndices.filter(
+        ({ index }) => !expandedToolIndices.has(index),
+      );
+
+      // Tools that are expanded (shown as full Tool components)
+      const expandedTools = toolPartsWithIndices.filter(({ index }) =>
+        expandedToolIndices.has(index),
+      );
+
+      return (
+        <div className={cn(hasContentBeforeTools && "mt-4")}>
+          {/* Horizontal compact list */}
+          {compactTools.length > 0 && (
+            <ToolCompactList>
+              {compactTools.map(({ part, index }) => {
+                const toolName = part.type.split("-").slice(1).join("-");
+                return (
+                  <ToolCompact
+                    key={`${message.id}-compact-${index}`}
+                    toolName={toolName}
+                    state={part.state}
+                    input={part.input as Record<string, unknown>}
+                    onClick={() => handleToolExpand(index)}
+                  />
+                );
+              })}
+            </ToolCompactList>
+          )}
+
+          {/* Expanded tool details - render in original order */}
+          {expandedTools
+            .sort((a, b) => a.index - b.index)
+            .map(({ part, index }) => renderExpandedToolPart(part, index))}
+        </div>
+      );
+    };
+
+    // Track if we've rendered the tools section
+    let toolsSectionRendered = false;
+
     return (
       <>
         <div>
@@ -449,7 +527,17 @@ export const MessageItem = memo(
               case CONTENT_TYPE.REASONING:
                 return renderReasoningPart(part, i);
               default:
-                return renderToolPart(part, i);
+                // For tool parts, render the entire tools section once at the first tool
+                if (part.type.startsWith("tool-") && !toolsSectionRendered) {
+                  toolsSectionRendered = true;
+                  return (
+                    <div key={`${message.id}-tools-section`}>
+                      {renderToolsSection()}
+                    </div>
+                  );
+                }
+                // Skip subsequent tool parts (already rendered in the section)
+                return null;
             }
           })}
         </div>
