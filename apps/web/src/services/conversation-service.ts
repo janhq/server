@@ -5,8 +5,11 @@ declare const JAN_API_BASE_URL: string;
 
 export const conversationService = {
   getConversations: async (): Promise<ConversationsResponse> => {
+    const params = new URLSearchParams({
+      limit: String(QUERY_LIMIT.CONVERSATIONS),
+    });
     return fetchJsonWithAuth<ConversationsResponse>(
-      `${JAN_API_BASE_URL}v1/conversations`,
+      `${JAN_API_BASE_URL}v1/conversations?${params}`,
     );
   },
 
